@@ -254,7 +254,7 @@ The agent signs requests with its agent token (#agent-tokens). The resource veri
 ~~~ ascii-art
 Agent                                        Resource
   |                                             |
-  | HTTPSig w/ agent token                      |
+  | HTTPSig w/ agent_token                      |
   |-------------------------------------------->|
   |                                             |
   | 200 OK                                      |
@@ -269,7 +269,7 @@ The resource handles authorization itself — via interaction (#user-interaction
 ~~~ ascii-art
 Agent                                        Resource
   |                                             |
-  | HTTPSig w/ agent token                      |
+  | HTTPSig w/ agent_token                      |
   |-------------------------------------------->|
   |                                             |
   | 202 (interaction required)                  |
@@ -284,7 +284,7 @@ Agent                                        Resource
   | AAuth-Access: opaque-token                  |
   |<--------------------------------------------|
   |                                             |
-  | HTTPSig w/ agent token                      |
+  | HTTPSig w/ agent_token                      |
   | Authorization: AAuth opaque-token           |
   |-------------------------------------------->|
   |                                             |
@@ -300,14 +300,14 @@ The resource has no separate access server — it accepts identity claims from w
 ~~~ ascii-art
 Agent                                 Resource       PS
   |                                      |            |
-  | HTTPSig w/ agent token               |            |
+  | HTTPSig w/ agent_token               |            |
   | POST authorization_endpoint          |            |
   |------------------------------------->|            |
   |                                      |            |
   | resource_token (aud = PS URL)        |            |
   |<-------------------------------------|            |
   |                                      |            |
-  | HTTPSig w/ agent token               |            |
+  | HTTPSig w/ agent_token               |            |
   | POST token_endpoint                  |            |
   | w/ resource_token                    |            |
   |-------------------------------------------------->|
@@ -315,7 +315,7 @@ Agent                                 Resource       PS
   | auth_token                           |            |
   |<--------------------------------------------------|
   |                                      |            |
-  | HTTPSig w/ auth token                |            |
+  | HTTPSig w/ auth_token                |            |
   | GET /api/documents                   |            |
   |------------------------------------->|            |
   |                                      |            |
@@ -331,14 +331,14 @@ The resource has its own access server. The resource issues a resource token (#r
 ~~~ ascii-art
 Agent                                Resource   PS                    AS
   |                                     |       |                      |
-  | HTTPSig w/ agent token              |       |                      |
+  | HTTPSig w/ agent_token              |       |                      |
   | POST authorization_endpoint         |       |                      |
   |------------------------------------>|       |                      |
   |                                     |       |                      |
   | resource_token (aud = AS URL)       |       |                      |
   |<------------------------------------|       |                      |
   |                                     |       |                      |
-  | HTTPSig w/ agent token              |       |                      |
+  | HTTPSig w/ agent_token              |       |                      |
   | POST token_endpoint                 |       |                      |
   | w/ resource_token                   |       |                      |
   |-------------------------------------------->|                      |
@@ -354,7 +354,7 @@ Agent                                Resource   PS                    AS
   | auth_token                          |       |                      |
   |<--------------------------------------------|                      |
   |                                     |       |                      |
-  | HTTPSig w/ auth token               |       |                      |
+  | HTTPSig w/ auth_token               |       |                      |
   | GET /api/documents                  |       |                      |
   |------------------------------------>|       |                      |
   |                                     |       |                      |
@@ -403,7 +403,7 @@ The agent proposes a mission at the PS. The PS and user may clarify and refine b
 ~~~ ascii-art
 Agent                                     PS                        User
   |                                        |                          |
-  | HTTPSig w/ agent token                 |                          |
+  | HTTPSig w/ agent_token                 |                          |
   | POST mission_endpoint                  |                          |
   | proposal                               |                          |
   |--------------------------------------->|                          |
@@ -425,7 +425,7 @@ The agent includes the `AAuth-Mission` header when sending requests to resources
 ~~~ ascii-art
 Agent                                        Resource
   |                                             |
-  | HTTPSig w/ agent token                      |
+  | HTTPSig w/ agent_token                      |
   | AAuth-Mission: approver=...; s256=...       |
   | POST authorization_endpoint                 |
   |-------------------------------------------->|
@@ -443,7 +443,7 @@ When the agent believes the mission is complete, it proposes completion via the 
 ~~~ ascii-art
 Agent                                     PS                        User
   |                                        |                          |
-  | HTTPSig w/ agent token                 |                          |
+  | HTTPSig w/ agent_token                 |                          |
   | POST interaction_endpoint              |                          |
   | type=completion, summary               |                          |
   |--------------------------------------->|                          |
@@ -2612,11 +2612,11 @@ See (#call-chaining) for normative requirements. Resource 1 acts as an agent, se
 Agent        Resource 1       Resource 2          PS
   |              |                |                 |
   | HTTPSig w/   |                |                 |
-  | auth token   |                |                 |
+  | auth_token   |                |                 |
   |------------->|                |                 |
   |              |                |                 |
   |              | HTTPSig w/     |                 |
-  |              | R1 agent token |                 |
+  |              | R1 agent_token |                 |
   |              | AAuth-Mission  |                 |
   |              |--------------->|                 |
   |              |                |                 |
@@ -2637,7 +2637,7 @@ Agent        Resource 1       Resource 2          PS
   |              |<---------------------------------|
   |              |                |                 |
   |              | HTTPSig w/     |                 |
-  |              | auth token     |                 |
+  |              | auth_token     |                 |
   |              |--------------->|                 |
   |              |                |                 |
   |              | 200 OK         |                 |
@@ -2699,7 +2699,7 @@ User      Agent       Resource 1      Resource 2    PS
   |         |          gets auth_token]    |          |
   |         |              |               |          |
   |         |              | HTTPSig w/    |          |
-  |         |              | auth token    |          |
+  |         |              | auth_token    |          |
   |         |              |-------------->|          |
   |         |              |               |          |
   |         |              | 200 OK        |          |
