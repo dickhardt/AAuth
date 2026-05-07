@@ -315,7 +315,7 @@ Agent                                 Resource       PS
   | auth_token                           |            |
   |<--------------------------------------------------|
   |                                      |            |
-  | HTTPSig w/ auth token                |            |
+  | HTTPSig w/ auth_token                |            |
   | GET /api/documents                   |            |
   |------------------------------------->|            |
   |                                      |            |
@@ -354,7 +354,7 @@ Agent                                Resource   PS                    AS
   | auth_token                          |       |                      |
   |<--------------------------------------------|                      |
   |                                     |       |                      |
-  | HTTPSig w/ auth token               |       |                      |
+  | HTTPSig w/ auth_token               |       |                      |
   | GET /api/documents                  |       |                      |
   |------------------------------------>|       |                      |
   |                                     |       |                      |
@@ -2612,7 +2612,7 @@ See (#call-chaining) for normative requirements. Resource 1 acts as an agent, se
 Agent        Resource 1       Resource 2          PS
   |              |                |                 |
   | HTTPSig w/   |                |                 |
-  | auth token   |                |                 |
+  | auth_token   |                |                 |
   |------------->|                |                 |
   |              |                |                 |
   |              | HTTPSig w/     |                 |
@@ -2637,7 +2637,7 @@ Agent        Resource 1       Resource 2          PS
   |              |<---------------------------------|
   |              |                |                 |
   |              | HTTPSig w/     |                 |
-  |              | auth token     |                 |
+  |              | auth_token     |                 |
   |              |--------------->|                 |
   |              |                |                 |
   |              | 200 OK         |                 |
@@ -2699,7 +2699,7 @@ User      Agent       Resource 1      Resource 2    PS
   |         |          gets auth_token]    |          |
   |         |              |               |          |
   |         |              | HTTPSig w/    |          |
-  |         |              | auth token    |          |
+  |         |              | auth_token    |          |
   |         |              |-------------->|          |
   |         |              |               |          |
   |         |              | 200 OK        |          |
