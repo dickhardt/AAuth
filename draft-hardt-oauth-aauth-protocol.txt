@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                              6 May 2026
-Expires: 7 November 2026
+Intended status: Standards Track                              8 May 2026
+Expires: 9 November 2026
 
 
                              AAuth Protocol
@@ -46,7 +46,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 7 November 2026.
+   This Internet-Draft will expire on 9 November 2026.
 
 Copyright Notice
 
