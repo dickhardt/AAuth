@@ -2571,7 +2571,7 @@ This section records the status of known implementations of the protocol defined
 
 The following implementations are known:
 
-- **TypeScript** — [github.com/hellocoop/AAuth](https://github.com/hellocoop/AAuth). Organization: Hellō. Coverage: agent token issuance, HTTP Message Signatures, resource token exchange, PS token endpoint. Level of maturity: exploratory.
+- **TypeScript** — [github.com/aauth-dev/packages-js](https://github.com/aauth-dev/packages-js). Organization: Hellō. Coverage: agent token issuance, HTTP Message Signatures, resource token exchange, PS token endpoint. Level of maturity: exploratory.
 - **Python** — [github.com/christian-posta/aauth-full-demo](https://github.com/christian-posta/aauth-full-demo). Contact: Christian Posta. Coverage: agent-to-resource flows with Keycloak as AS. Level of maturity: exploratory.
 - **Java (Keycloak SPI)** — [github.com/christian-posta/keycloak-aauth-extension](https://github.com/christian-posta/keycloak-aauth-extension). Contact: Christian Posta. Coverage: AAuth access server extension for Keycloak 26.2.5. Level of maturity: exploratory.
 
