@@ -60,6 +60,7 @@ The authorization protocol for agent-to-resource access. Defines four resource a
 | TypeScript | [github.com/aauth-dev/packages-js](https://github.com/aauth-dev/packages-js) |
 | Python | [github.com/christian-posta/aauth-full-demo](https://github.com/christian-posta/aauth-full-demo) |
 | Java (Keycloak) | [github.com/christian-posta/keycloak-aauth-extension](https://github.com/christian-posta/keycloak-aauth-extension) |
+| .NET | [github.com/aauth-dev/dotnet-samples](https://github.com/aauth-dev/dotnet-samples) |
 
 ### HTTP Signature Keys (Foundation)
 
