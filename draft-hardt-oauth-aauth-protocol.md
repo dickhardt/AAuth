@@ -507,7 +507,7 @@ This section defines agent identity — how agents are identified and how that i
 
 Agent identifiers are URIs using the `aauth` scheme, of the form `aauth:local@domain` where `domain` is the agent provider's domain. The `local` part MUST consist of lowercase ASCII letters (`a-z`), digits (`0-9`), hyphen (`-`), underscore (`_`), plus (`+`), and period (`.`). The `local` part MUST NOT be empty and MUST NOT exceed 255 characters. The `domain` part MUST be a valid domain name conforming to the server identifier requirements (#server-identifiers) (without scheme).
 
-The plus character (`+`) is RESERVED as the sub-agent delimiter (#sub-agents). A top-level agent's `local` part MUST NOT contain `+`. A sub-agent's `local` part MUST be its parent's `local` part, followed by `+`, followed by a non-empty discriminator (for example, `planner.7f3c+search1`). This naming is for operational readability only — a sub-agent's identifier shows its parent at a glance in logs. Parties MUST NOT parse the `local` part for protocol decisions; the `act` claim (#sub-agents) is the authoritative sub-agent marker, and the parent is conveyed authoritatively by the `act` claim and the `subagent_token` (#sub-agents).
+The plus character (`+`) is RESERVED as the sub-agent delimiter (#sub-agents). A top-level agent's `local` part MUST NOT contain `+`. A sub-agent's `local` part MUST be its parent's `local` part, followed by `+`, followed by a non-empty discriminator (for example, `planner.7f3c+search1`). This naming is for operational readability only — a sub-agent's identifier shows its parent at a glance in logs. Parties MUST NOT parse the `local` part for protocol decisions; the `parent_agent` claim (#sub-agents) is the authoritative sub-agent marker, and the parent is conveyed authoritatively by the `parent_agent` claim and the `subagent_token` (#sub-agents).
 
 Valid agent identifiers:
 
@@ -555,7 +555,7 @@ Required payload claims:
 
 Optional payload claims:
 - `ps`: The HTTPS URL of the agent's person server. Configured per agent instance. When present, resources can discover the agent's PS from the agent token. This claim is distinct from `iss` (which identifies the agent provider that issued the token).
-- `act`: Sub-agent marker (#sub-agents). When present and non-empty, the agent is a sub-agent and `act.sub` is the identifier of its parent agent. A sub-agent MUST NOT request authorization directly; its parent obtains auth tokens on its behalf (#sub-agents).
+- `parent_agent`: Sub-agent marker (#sub-agents). When present, the agent is a sub-agent and the value is the identifier of its parent agent. A sub-agent MUST NOT request authorization directly; its parent obtains auth tokens on its behalf (#sub-agents).
 
 Agent providers MAY include additional claims in the agent token. Companion specifications may define additional claims for use by PSes or ASes in policy evaluation — for example, software attestation, platform integrity, secure enclave status, workload identity assertions, or software publisher identity. PSes and ASes MUST ignore unrecognized claims.
 
@@ -578,7 +578,7 @@ Verify the agent token per [@!RFC7515] and [@!RFC7519]:
 4. Verify `iss` is a valid HTTPS URL conforming to the Server Identifier requirements.
 5. Verify `cnf.jwk` matches the key used to sign the HTTP request.
 6. If `ps` is present, verify it is a valid HTTPS URL conforming to the Server Identifier requirements.
-7. If `act` is present, verify it has a `sub` member containing a valid agent identifier — the parent agent. A non-empty `act` marks this as a sub-agent's token (#sub-agents); the PS additionally enforces the single-level rule (#sub-agents) when such a token signs a request.
+7. If `parent_agent` is present, verify it is a valid agent identifier — the parent agent. Its presence marks this as a sub-agent's token (#sub-agents); the PS additionally enforces the single-level rule (#sub-agents) when such a token signs a request.
 
 # Resource Access and Resource Tokens {#resource-tokens}
 
@@ -855,7 +855,7 @@ The agent MUST make a signed POST to the PS's `token_endpoint`. The request MUST
 
 - `resource_token` (REQUIRED): The resource token.
 - `upstream_token` (OPTIONAL): An auth token from an upstream authorization, used in call chaining (#call-chaining).
-- `subagent_token` (OPTIONAL): A sub-agent's agent token, present when a parent agent requests authorization on behalf of one of its sub-agents (#sub-agents). The signing agent (the parent) MUST be named by the `subagent_token`'s `act.sub`.
+- `subagent_token` (OPTIONAL): A sub-agent's agent token, present when a parent agent requests authorization on behalf of one of its sub-agents (#sub-agents). The signing agent (the parent) MUST be named by the `subagent_token`'s `parent_agent`.
 - `justification` (OPTIONAL): A Markdown string declaring why access is being requested. The PS SHOULD present this value to the user during consent. The PS MUST sanitize the Markdown before rendering to users. The PS MAY log the `justification` for audit and monitoring purposes. **TODO:** Define recommended sections.
 - `login_hint` (OPTIONAL): Hint about who to authorize, per [@!OpenID.Core] Section 3.1.2.1.
 - `tenant` (OPTIONAL): Tenant identifier, per OpenID Connect Enterprise Extensions 1.0 [@OpenID.Enterprise].
@@ -1419,7 +1419,7 @@ The PS MUST make a signed POST to the AS's `token_endpoint`. The PS authenticate
 
 - `resource_token` (REQUIRED): The resource token issued by the resource.
 - `agent_token` (REQUIRED): The agent's agent token. For a parent-mediated sub-agent authorization, this is the parent (top-level) agent's token.
-- `subagent_token` (OPTIONAL): A sub-agent's agent token, present when the PS federates a parent-mediated sub-agent authorization (#sub-agents). When present, the AS binds the issued auth token to the sub-agent (verifying `resource_token`'s `agent_jkt` against the `subagent_token`'s `cnf.jwk`) and records the parent — named by the `subagent_token`'s `act.sub`, which MUST match `agent_token` — in the `act` chain.
+- `subagent_token` (OPTIONAL): A sub-agent's agent token, present when the PS federates a parent-mediated sub-agent authorization (#sub-agents). When present, the AS binds the issued auth token to the sub-agent (verifying `resource_token`'s `agent_jkt` against the `subagent_token`'s `cnf.jwk`) and records the parent — named by the `subagent_token`'s `parent_agent`, which MUST match `agent_token` — in the `act` chain.
 - `upstream_token` (OPTIONAL): An auth token from an upstream authorization, used in call chaining (#call-chaining).
 
 **Example request:**
@@ -1706,14 +1706,14 @@ When a resource acting as an agent receives a `202 Accepted` response with `AAut
 
 # Sub-Agents {#sub-agents}
 
-Agent platforms increasingly spawn short-lived sub-agents — workers or tool-specific helpers — under an orchestrating parent agent. AAuth represents a sub-agent as an agent whose agent token carries a non-empty `act` claim identifying its parent. The user consents to the parent; sub-agents operate under that consent without per-spawn re-prompting, while remaining individually identifiable for audit and revocation.
+Agent platforms increasingly spawn short-lived sub-agents — workers or tool-specific helpers — under an orchestrating parent agent. AAuth represents a sub-agent as an agent whose agent token carries a `parent_agent` claim identifying its parent. The user consents to the parent; sub-agents operate under that consent without per-spawn re-prompting, while remaining individually identifiable for audit and revocation.
 
 ## Sub-Agent Identity
 
 A sub-agent has its own agent identity — its own `aauth:local@domain` identifier and signing key, issued by the agent provider, exactly like a top-level agent. Two things distinguish it:
 
-- **`act` claim**: the sub-agent's agent token includes `act` with `act.sub` set to the parent agent's identifier. A non-empty `act` is the authoritative marker of sub-agent status.
-- **Local-part naming**: the sub-agent's `local` part MUST be the parent's `local` part followed by `+` and a non-empty discriminator (#agent-identifiers) — for example `aauth:planner.7f3c+search1@vendor.example`. For protocol decisions, verifiers rely on `act`, not on parsing the local part; the naming is for operational readability (e.g., logs).
+- **`parent_agent` claim**: the sub-agent's agent token includes `parent_agent` set to the parent agent's identifier. Its presence is the authoritative marker of sub-agent status.
+- **Local-part naming**: the sub-agent's `local` part MUST be the parent's `local` part followed by `+` and a non-empty discriminator (#agent-identifiers) — for example `aauth:planner.7f3c+search1@vendor.example`. For protocol decisions, verifiers rely on `parent_agent`, not on parsing the local part; the naming is for operational readability (e.g., logs).
 
 ```json
 {
@@ -1722,7 +1722,7 @@ A sub-agent has its own agent identity — its own `aauth:local@domain` identifi
   "sub": "aauth:planner.7f3c+search1@vendor.example",
   "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519", "x": "..." } },
   "ps":  "https://ps.example",
-  "act": { "sub": "aauth:planner.7f3c@vendor.example" }
+  "parent_agent": "aauth:planner.7f3c@vendor.example"
 }
 ```
 
@@ -1732,8 +1732,8 @@ Acquisition of a sub-agent token from the agent provider is platform-dependent a
 
 The delegation chain is at most one level deep: a top-level agent may have sub-agents, but a sub-agent MUST NOT have sub-agents of its own. Two rules enforce this:
 
-- A PS MUST reject a token request signed by an agent whose agent token has a non-empty `act` — a sub-agent cannot request authorization on its own behalf or on behalf of a further sub-agent.
-- An agent provider MUST NOT issue a sub-agent token whose parent (`act.sub`) is itself a sub-agent.
+- A PS MUST reject a token request signed by an agent whose agent token has a `parent_agent` claim — a sub-agent cannot request authorization on its own behalf or on behalf of a further sub-agent.
+- An agent provider MUST NOT issue a sub-agent token whose parent (`parent_agent`) is itself a sub-agent.
 
 For genuinely deeper workflows, AAuth already provides chained top-level agents (#call-chaining): each hop is an independent principal with its own grant, rather than recursive sub-agent spawning.
 
@@ -1745,12 +1745,52 @@ A sub-agent MUST NOT call the PS directly. Instead, the parent obtains auth toke
 2. The parent POSTs to the PS's `token_endpoint`, signing the request with its own key and presenting its own agent token via the `Signature-Key` header. The request body includes `resource_token` (the sub-agent's resource token) and `subagent_token` (the sub-agent's agent token).
 3. The PS processes this as an authorization request from the parent (#ps-token-endpoint):
    - It verifies the HTTP Message Signature against the parent's `cnf.jwk`.
-   - It verifies the `subagent_token` (#agent-token-verification) and that its `act.sub` names the parent — the agent that signed the request.
+   - It verifies the `subagent_token` (#agent-token-verification) and that its `parent_agent` names the parent — the agent that signed the request.
    - It verifies the `resource_token` is bound to the sub-agent's key: `agent_jkt` matches the `subagent_token`'s `cnf.jwk` (not the signing key) and `agent` matches the sub-agent's identifier (#resource-token-verification).
    - It evaluates the parent's grant for the requested scope, exactly as for a direct request from the parent. If the user has already consented, the response is immediate; otherwise consent surfaces for the parent as usual.
-4. On success the issuer — the PS in three-party, or the AS in four-party — issues an auth token bound to the sub-agent's key (`cnf` = the sub-agent's `jwk`, `agent` = the sub-agent's identifier), with `act` recording the delegation chain: `act.sub` is the sub-agent, and a nested `act.sub` is the parent. In four-party, the PS federates by passing the parent as `agent_token` and the sub-agent as `subagent_token` to the AS (#as-token-endpoint), so the AS records the parent authoritatively from those tokens. The parent passes the auth token to the sub-agent, which presents it to the resource signing with its own key.
+4. On success the issuer — the PS in three-party, or the AS in four-party — issues an auth token bound to the sub-agent's key (`cnf` = the sub-agent's `jwk`, `agent` = the sub-agent's identifier), with `act` recording the delegation chain: `act.sub` is the sub-agent, and a nested `act.sub` is the parent. The parent is taken from the `subagent_token`'s `parent_agent`. In four-party, the PS federates by passing the parent as `agent_token` and the sub-agent as `subagent_token` to the AS (#as-token-endpoint), so the AS records the parent authoritatively from those tokens. The parent passes the auth token to the sub-agent, which presents it to the resource signing with its own key.
 
 Because every sub-agent authorization passes through the parent, the parent retains control — it can refuse, attenuate, or rate-limit — and revocation propagates naturally: revoking the parent's grant causes the next sub-agent authorization to fail, while existing auth tokens expire normally (≤1 hour).
+
+## Delegation Chain Examples {#delegation-chain-examples}
+
+These examples show how the auth token's `act` claim records delegation. In all cases the rule is uniform: `act.sub` is the agent presenting the token (self), and the prior actor is nested inside. Sub-agents and call chaining ({#call-chaining}) use the same nesting; a sub-agent simply means the first nested actor is the parent.
+
+**Just chaining.** A top-level agent `asst` calls `booking`, which acts as an agent to call `payments`. No sub-agents.
+
+```json
+// auth token asst presents at booking
+{ "aud": "booking.example", "sub": "user:alice",
+  "agent": "aauth:asst@agent.example",
+  "act": { "sub": "aauth:asst@agent.example" } }
+
+// auth token booking presents at payments
+{ "aud": "payments.example", "sub": "user:alice",
+  "agent": "aauth:booking@booking.example",
+  "act": { "sub": "aauth:booking@booking.example",
+           "act": { "sub": "aauth:asst@agent.example" } } }
+```
+
+**Just a sub-agent.** The parent mediates; the sub-agent `planner.7f3c+search1` calls `search`. The parent appears only as the agent token's `parent_agent`; in the auth token it is the first nested actor.
+
+```json
+// auth token search1 presents at search
+{ "aud": "search.example", "sub": "user:alice",
+  "agent": "aauth:planner.7f3c+search1@vendor.example",
+  "act": { "sub": "aauth:planner.7f3c+search1@vendor.example",
+           "act": { "sub": "aauth:planner.7f3c@vendor.example" } } }
+```
+
+**A sub-agent and a chain.** The sub-agent `search1` calls `maps`, which acts as an agent to call `places`. The chain composes: each hop nests the prior actor.
+
+```json
+// auth token maps presents at places
+{ "aud": "places.example", "sub": "user:alice",
+  "agent": "aauth:maps@maps.example",
+  "act": { "sub": "aauth:maps@maps.example",
+           "act": { "sub": "aauth:planner.7f3c+search1@vendor.example",
+                    "act": { "sub": "aauth:planner.7f3c@vendor.example" } } } }
+```
 
 # Third-Party Login {#third-party-login}
 
@@ -2617,6 +2657,7 @@ This specification registers the following claims in the IANA "JSON Web Token Cl
 | `ps` | Person Server URL | IETF | This document |
 | `agent` | Agent identifier | IETF | This document |
 | `agent_jkt` | JWK Thumbprint of the agent's signing key | IETF | This document |
+| `parent_agent` | Parent agent identifier in a sub-agent's agent token | IETF | This document |
 | `mission` | Mission object (approver, s256) in resource tokens and auth tokens | IETF | This document |
 
 ## AAuth Requirement Value Registry
