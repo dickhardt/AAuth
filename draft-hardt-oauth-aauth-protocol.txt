@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                             11 May 2026
-Expires: 12 November 2026
+Intended status: Standards Track                             8 June 2026
+Expires: 10 December 2026
 
 
                              AAuth Protocol
@@ -46,7 +46,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 12 November 2026.
+   This Internet-Draft will expire on 10 December 2026.
 
 Copyright Notice
 
@@ -3428,6 +3428,17 @@ Initial request (with Prefer: wait=N)
 
    Participants publish metadata at well-known URLs ([RFC8615]) to
    enable discovery.
+
+   When fetching a metadata document, implementations MUST verify that
+   the issuer value in the document matches the URL the document was
+   retrieved from (the URL minus the /.well-known/{dwk} suffix).  If the
+   values do not match, the metadata document MUST be rejected.
+
+   This check prevents host-poisoned metadata: an attacker hosting a
+   metadata document at one domain that claims an issuer of a different
+   domain.  Without it, a permissive verifier following the jwks_uri in
+   such a document could end up trusting attacker-controlled keys for
+   tokens claiming the impersonated issuer.
 
 12.10.1.  Agent Provider Metadata
 
