@@ -72,7 +72,7 @@ R3 addresses these by introducing:
 # Terminology
 
 - **Vocabulary**: A defined scheme for expressing resource operations. Each vocabulary corresponds to an API description format (MCP, OpenAPI, gRPC, GraphQL, AsyncAPI, WSDL, OData). Resources advertise which vocabularies they support; agents use them to request access.
-- **R3 Document**: A JSON document published by a resource, describing the operations it provides and the consequences of granting access. Identified by the SHA-256 hash of its content. Fetched by both the MM (for user consent using `display` fields) and the AS (for policy evaluation using `operations`); not accessible to agents.
+- **R3 Document**: A JSON document published by a resource, describing the operations it provides and the consequences of granting access. Identified by the SHA-256 hash of its content. Fetched by both the PS (for user consent using `display` fields) and the AS (for policy evaluation using `operations`); not accessible to agents.
 - **R3 URI (`r3_uri`)**: A URI identifying an R3 document. Included in a resource token.
 - **R3 Hash (`r3_s256`)**: A SHA-256 hash of the R3 document, base64url-encoded without padding. Included alongside `r3_uri` in the resource token and the auth token.
 
@@ -286,7 +286,7 @@ When an agent's `r3_operations` request includes operations that the resource ma
 - **`operations`** is the union of the requested operations, expressed in the request's vocabulary.
 - **`display`** describes the combined access. The resource MAY merge the `display` sections of the underlying definitions (for example, concatenating `implications` and unioning `data_accessed`) or author a purpose-built summary for the combination.
 
-The composed document is served at a fresh content-addressed `r3_uri` exactly like any other R3 document (see {{content-addressing}}): the resource builds it on the fly and persists the serialized bytes so the hash remains stable across the AS and MM fetches. Because R3 documents are content-addressed, an identical combination of operations reduces to the same hash and MAY be cached and reused across requests.
+The composed document is served at a fresh content-addressed `r3_uri` exactly like any other R3 document (see {{content-addressing}}): the resource builds it on the fly and persists the serialized bytes so the hash remains stable across the AS and PS fetches. Because R3 documents are content-addressed, an identical combination of operations reduces to the same hash and MAY be cached and reused across requests.
 
 This composition is opaque to the agent. The agent sees one `r3_uri`/`r3_s256` in the resource token regardless of how many internal definitions the requested operations were drawn from, and the auth token's `r3_granted` and `r3_conditional` claims express the granted operations against that single composed document.
 
@@ -385,9 +385,9 @@ Resource tokens MAY include both `scope` (as defined in AAuth Protocol ([@!I-D.h
 
 # R3 Processing
 
-Both the MM and the AS fetch R3 documents, but for different purposes:
+Both the PS and the AS fetch R3 documents, but for different purposes:
 
-- **The MM** fetches R3 to present the `display` section to the user during consent — summary, implications, data accessed, irreversibility. The MM uses this information to determine whether the request fits the mission scope and to obtain informed user consent.
+- **The PS** fetches R3 to present the `display` section to the user during consent — summary, implications, data accessed, irreversibility. The PS uses this information to determine whether the request fits the mission scope and to obtain informed user consent.
 - **The AS** fetches R3 to evaluate `operations` for policy decisions and to populate `r3_granted` and `r3_conditional` in the auth token.
 
 Both independently verify `r3_s256` against the fetched document. Because R3 documents are content-addressed, both can cache aggressively by hash.
