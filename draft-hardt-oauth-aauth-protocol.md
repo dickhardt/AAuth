@@ -476,6 +476,8 @@ The agent obtains an agent token from its agent provider. The agent generates a 
 
 Before protocol flows begin, each entity must be established with its identity, keys, and relationships. The requirements build incrementally.
 
+Acquiring the agent token — the AP-side enrollment ceremony, including per-platform key handling, optional platform attestation, and token refresh — is informational and described in [@?I-D.hardt-aauth-bootstrap]. This section lists the cross-mode setup each party completes before protocol flows begin.
+
 **All modes:**
 
 - Agent obtains an agent token from its agent provider, binding its signing key to its identifier (`aauth:local@domain`). See [@?I-D.hardt-aauth-bootstrap].
