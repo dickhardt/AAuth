@@ -2498,38 +2498,39 @@ svg {
 <a href="#section-4.6" class="section-number selfRef">4.6. </a><a href="#name-bootstrapping" class="section-name selfRef">Bootstrapping</a>
         </h3>
 <p id="section-4.6-1">Before protocol flows begin, each entity must be established with its identity, keys, and relationships. The requirements build incrementally.<a href="#section-4.6-1" class="pilcrow">¶</a></p>
-<p id="section-4.6-2"><strong>All modes:</strong><a href="#section-4.6-2" class="pilcrow">¶</a></p>
+<p id="section-4.6-2">Acquiring the agent token — the AP-side enrollment ceremony, including per-platform key handling, optional platform attestation, and token refresh — is informational and described in <span>[<a href="#I-D.hardt-aauth-bootstrap" class="cite xref">I-D.hardt-aauth-bootstrap</a>]</span>. This section lists the cross-mode setup each party completes before protocol flows begin.<a href="#section-4.6-2" class="pilcrow">¶</a></p>
+<p id="section-4.6-3"><strong>All modes:</strong><a href="#section-4.6-3" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-4.6-3.1">Agent obtains an agent token from its agent provider, binding its signing key to its identifier (<code>aauth:local@domain</code>). See <span>[<a href="#I-D.hardt-aauth-bootstrap" class="cite xref">I-D.hardt-aauth-bootstrap</a>]</span>.<a href="#section-4.6-3.1" class="pilcrow">¶</a>
+<li class="compact" id="section-4.6-4.1">Agent obtains an agent token from its agent provider, binding its signing key to its identifier (<code>aauth:local@domain</code>). See <span>[<a href="#I-D.hardt-aauth-bootstrap" class="cite xref">I-D.hardt-aauth-bootstrap</a>]</span>.<a href="#section-4.6-4.1" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-4.6-3.2">Agent providers publish metadata at <code>/.well-known/aauth-agent.json</code> <a href="#agent-provider-metadata" class="auto internal xref">Section 13.10.1</a>.<a href="#section-4.6-3.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-4.6-4.2">Agent providers publish metadata at <code>/.well-known/aauth-agent.json</code> <a href="#agent-provider-metadata" class="auto internal xref">Section 13.10.1</a>.<a href="#section-4.6-4.2" class="pilcrow">¶</a>
 </li>
         </ul>
-<p id="section-4.6-4"><strong>Resource-managed access (two-party) and above:</strong><a href="#section-4.6-4" class="pilcrow">¶</a></p>
+<p id="section-4.6-5"><strong>Resource-managed access (two-party) and above:</strong><a href="#section-4.6-5" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-4.6-5.1">Resources MAY publish metadata at <code>/.well-known/aauth-resource.json</code> <a href="#resource-metadata" class="auto internal xref">Section 13.10.4</a>. Resources that do not publish metadata can still issue resource tokens and interaction requirements via <code>401</code> responses.<a href="#section-4.6-5.1" class="pilcrow">¶</a>
+<li class="compact" id="section-4.6-6.1">Resources MAY publish metadata at <code>/.well-known/aauth-resource.json</code> <a href="#resource-metadata" class="auto internal xref">Section 13.10.4</a>. Resources that do not publish metadata can still issue resource tokens and interaction requirements via <code>401</code> responses.<a href="#section-4.6-6.1" class="pilcrow">¶</a>
 </li>
         </ul>
-<p id="section-4.6-6"><strong>PS-asserted access (three-party) and above:</strong><a href="#section-4.6-6" class="pilcrow">¶</a></p>
+<p id="section-4.6-7"><strong>PS-asserted access (three-party) and above:</strong><a href="#section-4.6-7" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-4.6-7.1">The agent's agent token MUST include the <code>ps</code> claim identifying its person server. This is configured during agent setup (e.g., set by the agent provider or chosen by the person deploying the agent).<a href="#section-4.6-7.1" class="pilcrow">¶</a>
+<li class="compact" id="section-4.6-8.1">The agent's agent token MUST include the <code>ps</code> claim identifying its person server. This is configured during agent setup (e.g., set by the agent provider or chosen by the person deploying the agent).<a href="#section-4.6-8.1" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-4.6-7.2">The PS maintains the association between an agent and its person. This association is typically established when the person first authorizes the agent at the PS via the interaction flow. An organization administrator may also pre-authorize agents for the organization.<a href="#section-4.6-7.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-4.6-8.2">The PS maintains the association between an agent and its person. This association is typically established when the person first authorizes the agent at the PS via the interaction flow. An organization administrator may also pre-authorize agents for the organization.<a href="#section-4.6-8.2" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-4.6-7.3">The PS MAY establish a direct communication channel with the user (e.g., email, push notification, or messaging) to support out-of-band authorization, approval notifications, and revocation alerts.<a href="#section-4.6-7.3" class="pilcrow">¶</a>
+          <li class="compact" id="section-4.6-8.3">The PS MAY establish a direct communication channel with the user (e.g., email, push notification, or messaging) to support out-of-band authorization, approval notifications, and revocation alerts.<a href="#section-4.6-8.3" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-4.6-7.4">Person servers publish metadata at <code>/.well-known/aauth-person.json</code> <a href="#ps-metadata" class="auto internal xref">Section 13.10.2</a>.<a href="#section-4.6-7.4" class="pilcrow">¶</a>
+          <li class="compact" id="section-4.6-8.4">Person servers publish metadata at <code>/.well-known/aauth-person.json</code> <a href="#ps-metadata" class="auto internal xref">Section 13.10.2</a>.<a href="#section-4.6-8.4" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-4.6-7.5">The resource discovers the agent's PS from the <code>ps</code> claim in the agent token and issues resource tokens with <code>aud</code> = PS URL.<a href="#section-4.6-7.5" class="pilcrow">¶</a>
+          <li class="compact" id="section-4.6-8.5">The resource discovers the agent's PS from the <code>ps</code> claim in the agent token and issues resource tokens with <code>aud</code> = PS URL.<a href="#section-4.6-8.5" class="pilcrow">¶</a>
 </li>
         </ul>
-<p id="section-4.6-8"><strong>Federated access (four-party):</strong><a href="#section-4.6-8" class="pilcrow">¶</a></p>
+<p id="section-4.6-9"><strong>Federated access (four-party):</strong><a href="#section-4.6-9" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-4.6-9.1">Access servers publish metadata at <code>/.well-known/aauth-access.json</code> <a href="#access-server-metadata" class="auto internal xref">Section 13.10.3</a>.<a href="#section-4.6-9.1" class="pilcrow">¶</a>
+<li class="compact" id="section-4.6-10.1">Access servers publish metadata at <code>/.well-known/aauth-access.json</code> <a href="#access-server-metadata" class="auto internal xref">Section 13.10.3</a>.<a href="#section-4.6-10.1" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-4.6-9.2">The resource issues resource tokens with <code>aud</code> = AS URL.<a href="#section-4.6-9.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-4.6-10.2">The resource issues resource tokens with <code>aud</code> = AS URL.<a href="#section-4.6-10.2" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-4.6-9.3">The PS and the resource's AS must have a trust relationship before the AS will issue auth tokens. This trust may be pre-established (through a business relationship) or established dynamically through the AS's token endpoint responses — interaction, payment, or claims. When an organization controls both the PS and AS, trust is implicit. See <a href="#ps-as-federation" class="auto internal xref">Section 9.3</a> for details.<a href="#section-4.6-9.3" class="pilcrow">¶</a>
+          <li class="compact" id="section-4.6-10.3">The PS and the resource's AS must have a trust relationship before the AS will issue auth tokens. This trust may be pre-established (through a business relationship) or established dynamically through the AS's token endpoint responses — interaction, payment, or claims. When an organization controls both the PS and AS, trust is implicit. See <a href="#ps-as-federation" class="auto internal xref">Section 9.3</a> for details.<a href="#section-4.6-10.3" class="pilcrow">¶</a>
 </li>
         </ul>
 </section>
