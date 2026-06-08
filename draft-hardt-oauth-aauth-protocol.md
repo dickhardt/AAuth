@@ -2538,6 +2538,18 @@ Real-time revocation (#token-revocation) and short token lifetimes provide layer
 
 All HTTPS connections MUST use TLS 1.2 or later, following the recommendations in BCP 195 [@!RFC9325].
 
+## Non-Repudiation and Audit After Key Rotation
+
+AAuth signatures prove authenticity at request time: a valid HTTP Message Signature shows that the signer held the private key bound to the presented identity when the request was made (proof-of-possession). This is request-time authentication, not long-term non-repudiation. Agent keys are short-lived and agent providers rotate their JWKS; once a key is removed from the issuer's JWKS, a signature made with it can no longer be verified by re-fetching the JWKS later. The persistent identifiers (`agent`, `sub`) do not by themselves cryptographically prove that a specific key signed a specific request at a specific time once that key is gone.
+
+This is partly by design — short-lived keys and directed identifiers (#directed-identifiers) limit long-term linkability. Deployments that require durable audit or non-repudiation beyond a key's lifetime SHOULD capture the evidence at verification time, while the key is still discoverable, rather than relying on re-verification later:
+
+- **Archive the verified artifacts.** At verification time, record the signed request (covered components and signature), the `Signature-Key` value (the presented key or JWT), the verification result, and a trusted timestamp. Optionally snapshot the issuer's JWKS entry (`kid` + JWK) so the key binding can be re-checked independently of later rotation.
+- **Use external timestamping or transparency logs** where stronger non-repudiation is needed — for example, RFC 3161 [@?RFC3161] timestamps over the signed request, or appending verification records to a tamper-evident log.
+- **Bind audit records to durable identifiers.** Index archived records by `(iss, sub)` for agents and by `jti` for tokens, so later review can attribute activity even though the signing key is no longer live.
+
+These measures trade privacy for durability: archived signatures and keys are correlatable, so deployments MUST balance audit retention against the privacy-preserving properties of short-lived keys and directed identifiers (#privacy-considerations), and apply appropriate retention limits and access controls.
+
 # Privacy Considerations
 
 ## Directed Identifiers
@@ -2553,6 +2565,20 @@ In two-party mode, no PS is involved and there is no centralized visibility — 
 ## Mission Content Exposure
 
 The mission JSON is visible to the PS and, when included in resource tokens and auth tokens via the `s256` hash, its integrity is verifiable by any party that holds it. The approved mission JSON is shared between the agent and PS. Resources and ASes see only the `s256` hash and the approver URL, not the full mission content.
+
+## Pseudonymous Access {#pseudonymous-access}
+
+The HTTP Message Signatures profile (#keying-material) supports pseudonymous keying — `scheme=hwk` (an inline public key) or `scheme=jkt-jwt` (delegation from a hardware-backed key) — in which the agent proves possession of a signing key without presenting an agent-provider-issued identity (`aauth:local@domain`). The agent is identified only by its key (its JWK thumbprint), with no stable, attested identity behind it.
+
+Pseudonymous access is appropriate where a resource needs proof-of-possession and continuity but not identity:
+
+- **Privacy-preserving access**: the user or agent does not wish to present an attested, provider-linked identity — only a consistent key the resource can recognize across requests.
+- **Sybil resistance and rate limiting without identification**: a resource can bind quotas, sessions, or reputation to a key thumbprint without learning who the caller is.
+- **Ephemeral or unenrolled agents**: agents with no agent-provider relationship, or that are short-lived and do not warrant a durable identity, can still sign requests and hold key-bound grants.
+- **Capability-style access**: where authorization is bound to a key (the key is the credential) and identity is irrelevant to the resource's policy.
+- **Hardware-anchored continuity**: `scheme=jkt-jwt` anchors a key to a hardware-backed key (e.g., a TPM or secure enclave) for device-bound continuity while remaining pseudonymous.
+
+Pseudonymity has limits. A resource that requires an attributable, provider-vouched identity — for accountability, governance through a PS, or organizational policy — MUST require an `identity` scheme (`scheme=jwt` or `scheme=jwks_uri`) and reject pseudonymous keys. And a pseudonymous key still uniquely identifies its holder to a given resource across requests: it is pseudonymous, not anonymous. A holder that wants unlinkable interactions MUST use fresh keys.
 
 # IANA Considerations
 
