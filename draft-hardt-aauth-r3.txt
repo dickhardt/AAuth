@@ -82,6 +82,7 @@ Table of Contents
    5.  Authorization Endpoint Extensions
      5.1.  Request
      5.2.  Response
+     5.3.  Operations Spanning Multiple Definitions
    6.  R3 Document
      6.1.  Fields
      6.2.  Content Addressing
@@ -91,22 +92,26 @@ Table of Contents
      7.2.  Caching
    8.  Auth Token Extensions
      8.1.  Resource Enforcement
-   9.  Security Considerations
-     9.1.  R3 Document Access Restriction
-     9.2.  R3 Endpoint Access Control
-     9.3.  Hash Verification
-     9.4.  Audit Log Integrity
-     9.5.  Operation Validation
-     9.6.  Grant Enforcement
-   10. IANA Considerations
-     10.1.  JWT Claims Registration
-     10.2.  R3 Vocabulary Registry
-   11. Implementation Status
-   12. Document History
-   13. Acknowledgments
-   14. References
-     14.1.  Normative References
-     14.2.  Informative References
+   9.  Per-Call Proposals
+     9.1.  Proposal Document
+     9.2.  Flow
+     9.3.  Large and Sensitive Payloads
+   10. Security Considerations
+     10.1.  R3 Document Access Restriction
+     10.2.  R3 Endpoint Access Control
+     10.3.  Hash Verification
+     10.4.  Audit Log Integrity
+     10.5.  Operation Validation
+     10.6.  Grant Enforcement
+   11. IANA Considerations
+     11.1.  JWT Claims Registration
+     11.2.  R3 Vocabulary Registry
+   12. Implementation Status
+   13. Document History
+   14. Acknowledgments
+   15. References
+     15.1.  Normative References
+     15.2.  Informative References
    Appendix A.  Design Rationale
      A.1.  Why Not RAR
    Appendix B.  Vocabulary Summary
@@ -159,7 +164,7 @@ Table of Contents
    *  *R3 Document*: A JSON document published by a resource, describing
       the operations it provides and the consequences of granting
       access.  Identified by the SHA-256 hash of its content.  Fetched
-      by both the MM (for user consent using display fields) and the AS
+      by both the PS (for user consent using display fields) and the AS
       (for policy evaluation using operations); not accessible to
       agents.
    *  *R3 URI (r3_uri)*: A URI identifying an R3 document.  Included in
@@ -401,6 +406,41 @@ Table of Contents
    internal mapping from operations to R3 documents is opaque to the
    agent.
 
+5.3.  Operations Spanning Multiple Definitions
+
+   A resource MAY organize its authorization definitions into multiple
+   R3 documents internally — for example, one document per scope or
+   operation group.  A single resource token carries exactly one r3_uri/
+   r3_s256 pair, and the resulting auth token therefore pins exactly one
+   R3 document.
+
+   When an agent's r3_operations request includes operations that the
+   resource maps to more than one of its internal definitions, the
+   resource MUST compose a single R3 document that covers all of the
+   requested operations and reference that composed document in the
+   resource token:
+
+   *  *operations* is the union of the requested operations, expressed
+      in the request's vocabulary.
+   *  *display* describes the combined access.  The resource MAY merge
+      the display sections of the underlying definitions (for example,
+      concatenating implications and unioning data_accessed) or author a
+      purpose-built summary for the combination.
+
+   The composed document is served at a fresh content-addressed r3_uri
+   exactly like any other R3 document (see {{content-addressing}}): the
+   resource builds it on the fly and persists the serialized bytes so
+   the hash remains stable across the AS and PS fetches.  Because R3
+   documents are content-addressed, an identical combination of
+   operations reduces to the same hash and MAY be cached and reused
+   across requests.
+
+   This composition is opaque to the agent.  The agent sees one r3_uri/
+   r3_s256 in the resource token regardless of how many internal
+   definitions the requested operations were drawn from, and the auth
+   token's r3_granted and r3_conditional claims express the granted
+   operations against that single composed document.
+
 6.  R3 Document
 
    An R3 document is a JSON object published by the resource at a URI.
@@ -531,12 +571,12 @@ Table of Contents
 
 7.  R3 Processing
 
-   Both the MM and the AS fetch R3 documents, but for different
+   Both the PS and the AS fetch R3 documents, but for different
    purposes:
 
-   *  *The MM* fetches R3 to present the display section to the user
+   *  *The PS* fetches R3 to present the display section to the user
       during consent — summary, implications, data accessed,
-      irreversibility.  The MM uses this information to determine
+      irreversibility.  The PS uses this information to determine
       whether the request fits the mission scope and to obtain informed
       user consent.
    *  *The AS* fetches R3 to evaluate operations for policy decisions
@@ -644,10 +684,11 @@ Table of Contents
 
    The distinction: r3_granted operations are fully authorized and the
    resource serves them. r3_conditional operations require the resource
-   to challenge when the agent actually calls, including the specific
-   parameters from the agent's API request in the resource token.  The
-   AS then evaluates those concrete parameters before issuing a per-call
-   auth token.
+   to challenge when the agent actually calls.  On the challenge the
+   resource builds a *per-call proposal* ({{per-call-proposals}}) — a
+   content-addressed document carrying the specific parameters of the
+   call — and the AS evaluates those concrete parameters before issuing
+   a per-call auth token.
 
 8.1.  Resource Enforcement
 
@@ -655,9 +696,10 @@ Table of Contents
    claims:
 
    1.  *Match in r3_granted*: serve the request.
-   2.  *Match in r3_conditional*: return AAuth-Requirement with a
-       resource token containing the actual parameters the agent
-       provided.  The AS evaluates the specific call.
+   2.  *Match in r3_conditional*: build a per-call proposal ({{per-call-
+       proposals}}) and return AAuth-Requirement with a resource token
+       referencing it.  The AS evaluates the specific call against the
+       proposed parameters.
    3.  *No match*: reject the request.
 
    No token introspection or R3 document fetch is needed at enforcement
@@ -669,9 +711,103 @@ Table of Contents
    defined in the R3 document and its own policy.  The AS decides which
    operations to grant outright and which to make conditional.
 
-9.  Security Considerations
+9.  Per-Call Proposals
 
-9.1.  R3 Document Access Restriction
+   An r3_conditional operation is authorized in principle but not for
+   any specific call: the consequences depend on the concrete parameters
+   the agent supplies (who the email is addressed to, how large the
+   payment is, which record is deleted).  When the agent invokes such an
+   operation, the resource challenges the call and the AS re-evaluates
+   it against those parameters before issuing a per-call auth token.
+
+   A *per-call proposal* is the document that carries the specifics of
+   that one pending call.  It is an R3 document scoped to a single
+   invocation: same structure, same content-addressing ({{content-
+   addressing}}), and the same AS/PS-only fetch restriction as a class
+   R3 document.  Reusing content-addressing keeps tokens small — they
+   carry only the r3_uri/r3_s256 reference, never the parameters — and
+   binds the eventual approval to the exact call that was proposed.
+
+9.1.  Proposal Document
+
+   In addition to the R3 document fields ({{r3-document}}), a per-call
+   proposal carries:
+
+   *operations* (REQUIRED).  The single conditional operation being
+   invoked, in the resource's vocabulary.
+
+   *parameters* (REQUIRED).  The concrete parameters of the call,
+   machine-readable, for the AS to evaluate and the resource to bind.  A
+   large or sensitive value MAY be represented by a digest object in
+   place of the inline value:
+
+   *  s256 (REQUIRED).  BASE64URL(SHA-256(value-bytes)) of the parameter
+      value as it will be presented at call time.
+   *  excerpt (OPTIONAL).  A short, human-readable excerpt of the value
+      for display.
+   *  media_type (OPTIONAL).  The media type of the value.
+
+   *display* (RECOMMENDED).  Per-call human context for the user's
+   approval decision.  In addition to the structured fields defined in
+   {{r3-document}}, a proposal's display MAY include a detail Markdown
+   string.  The following sections are RECOMMENDED as a convention (not
+   normative requirements): ## Action, ## To / ## Recipient, ## Details,
+   ## Content (excerpt), ## Irreversible.
+
+   {
+     "vocabulary": "urn:aauth:vocabulary:mcp",
+     "operations": [ { "tool": "send_email" } ],
+     "parameters": {
+       "to": "mom@example.com",
+       "subject": "Dinner Sunday?",
+       "body": { "s256": "aBcD…", "excerpt": "Hi Mom, are you free…", "media_type": "text/plain" }
+     },
+     "display": {
+       "summary": "Send an email as you",
+       "detail": "## Action\nSend an email\n\n## To\nmom@example.com\n\n## Details\nSubject: Dinner Sunday?\n\n## Content\nHi Mom, are you free…"
+     }
+   }
+
+9.2.  Flow
+
+   1.  *Conditional challenge.* The agent invokes an r3_conditional
+       operation.  The resource builds the proposal, persists it keyed
+       by its r3_s256, and returns AAuth-Requirement with a resource
+       token whose r3_uri/r3_s256 reference the proposal.  The token
+       carries only the reference, not the parameters.
+   2.  *Approval.* The AS fetches the proposal and evaluates parameters
+       per policy; the PS renders display for user consent.  On
+       approval, the AS issues a per-call auth token that echoes the
+       proposal's r3_uri/r3_s256 and lists the now-approved operation in
+       r3_granted.
+   3.  *Enforced retry.* The agent retries the actual call with the per-
+       call auth token.  The resource recovers the proposal from its
+       store via r3_s256 and MUST verify that the agent's actual
+       parameters match the approved proposal.  For any parameter
+       represented as a digest, the resource MUST verify that
+       BASE64URL(SHA-256(presented-value)) equals the stored s256.  If
+       anything differs, the resource MUST reject the call.  An approval
+       to email one recipient cannot be replayed against another.
+
+9.3.  Large and Sensitive Payloads
+
+   Representing a parameter as a digest keeps large or sensitive
+   payloads out of every token and away from the PS: only the s256 and a
+   short excerpt appear in the proposal.  The full bytes travel directly
+   from the agent to the resource at call time, where the resource
+   verifies them against the digest.  This is also a privacy control —
+   the resource chooses what the PS (and through it, the user-facing
+   surface) sees versus what stays between the agent and the resource.
+
+   Whether the AS or PS additionally _machine-evaluates_ parameters (for
+   example, auto-denying a payment over a threshold) or treats the
+   proposal as display-for-human-consent only is deployment policy.  The
+   parameters are present in the proposal either way, so machine policy
+   can be layered on without a format change.
+
+10.  Security Considerations
+
+10.1.  R3 Document Access Restriction
 
    The AS MUST authenticate itself when fetching r3_uri using an HTTP
    Message Signature as defined in the AAuth Protocol
@@ -684,7 +820,7 @@ Table of Contents
    that AS.  The agent opacity property (agents carry the hash of a
    document they cannot read) depends on this restriction.
 
-9.2.  R3 Endpoint Access Control
+10.2.  R3 Endpoint Access Control
 
    The agent opacity property — agents carry the hash of a document they
    cannot read — depends entirely on the resource correctly restricting
@@ -696,27 +832,27 @@ Table of Contents
    security requirement and SHOULD verify this restriction during
    deployment testing.
 
-9.3.  Hash Verification
+10.3.  Hash Verification
 
    The AS MUST verify r3_s256 against the fetched document before using
    it.  Failure to verify allows a resource to serve different content
    than what was hashed in the resource token.
 
-9.4.  Audit Log Integrity
+10.4.  Audit Log Integrity
 
    The AS MUST write audit log entries atomically with token issuance.
    An auth token issued without a corresponding audit log entry creates
    an undetectable gap in the observability record.  Implementations
    SHOULD use transactional writes or equivalent mechanisms.
 
-9.5.  Operation Validation
+10.5.  Operation Validation
 
    For all vocabularies, the resource MUST validate declared operations
    against its authoritative definition (MCP tool list, OpenAPI spec,
    .proto file, GraphQL schema, AsyncAPI spec, WSDL document, or OData
    $metadata) before issuing a resource token.
 
-9.6.  Grant Enforcement
+10.6.  Grant Enforcement
 
    Resources MUST enforce r3_granted and r3_conditional claims in auth
    tokens.  Operations in r3_granted define fully authorized access.
@@ -724,9 +860,9 @@ Table of Contents
    being served.  The resource MUST reject API calls that do not match
    an operation in either claim.
 
-10.  IANA Considerations
+11.  IANA Considerations
 
-10.1.  JWT Claims Registration
+11.1.  JWT Claims Registration
 
    This document requests registration of the following JWT claims in
    the IANA JSON Web Token Claims registry:
@@ -749,7 +885,7 @@ Table of Contents
 
                                  Table 1
 
-10.2.  R3 Vocabulary Registry
+11.2.  R3 Vocabulary Registry
 
    This specification establishes the AAuth R3 Vocabulary Registry.  The
    initial contents are:
@@ -777,7 +913,7 @@ Table of Contents
    New values may be registered following the Specification Required
    policy ([RFC8126]).
 
-11.  Implementation Status
+12.  Implementation Status
 
    _Note: This section is to be removed before publishing as an RFC._
 
@@ -790,20 +926,20 @@ Table of Contents
 
    There are currently no known implementations.
 
-12.  Document History
+13.  Document History
 
    _Note: This section is to be removed before publishing as an RFC._
 
    *  draft-hardt-aauth-r3-00
       -  Initial submission
 
-13.  Acknowledgments
+14.  Acknowledgments
 
    The author would like to thank reviewers for their feedback.
 
-14.  References
+15.  References
 
-14.1.  Normative References
+15.1.  Normative References
 
    [I-D.hardt-aauth-protocol]
               Hardt, D., "AAuth Protocol", 2026,
@@ -814,7 +950,7 @@ Table of Contents
               RFC 8126, DOI 10.17487/RFC8126, June 2017,
               <https://www.rfc-editor.org/info/rfc8126>.
 
-14.2.  Informative References
+15.2.  Informative References
 
    [RFC7942]  Sheffer, Y. and A. Farrel, "Improving Awareness of Running
               Code: The Implementation Status Section", BCP 205,
