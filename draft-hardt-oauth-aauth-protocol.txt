@@ -161,6 +161,7 @@ Table of Contents
      11.1.  Sub-Agent Identity
      11.2.  Single-Level Depth
      11.3.  Parent-Mediated Authorization
+     11.4.  Delegation Chain Examples
    12. Third-Party Login
      12.1.  Login Endpoint
      12.2.  Login Flow
@@ -998,10 +999,10 @@ Table of Contents
    +, followed by a non-empty discriminator (for example,
    planner.7f3c+search1).  This naming is for operational readability
    only — a sub-agent's identifier shows its parent at a glance in logs.
-   Parties MUST NOT parse the local part for protocol decisions; the act
-   claim Section 11 is the authoritative sub-agent marker, and the
-   parent is conveyed authoritatively by the act claim and the
-   subagent_token Section 11.
+   Parties MUST NOT parse the local part for protocol decisions; the
+   parent_agent claim Section 11 is the authoritative sub-agent marker,
+   and the parent is conveyed authoritatively by the parent_agent claim
+   and the subagent_token Section 11.
 
    Valid agent identifiers:
 
@@ -1059,10 +1060,10 @@ Table of Contents
    server.  Configured per agent instance.  When present, resources can
    discover the agent's PS from the agent token.  This claim is distinct
    from iss (which identifies the agent provider that issued the token).
-   - act: Sub-agent marker Section 11.  When present and non-empty, the
-   agent is a sub-agent and act.sub is the identifier of its parent
-   agent.  A sub-agent MUST NOT request authorization directly; its
-   parent obtains auth tokens on its behalf Section 11.
+   - parent_agent: Sub-agent marker Section 11.  When present, the agent
+   is a sub-agent and the value is the identifier of its parent agent.
+   A sub-agent MUST NOT request authorization directly; its parent
+   obtains auth tokens on its behalf Section 11.
 
    Agent providers MAY include additional claims in the agent token.
    Companion specifications may define additional claims for use by PSes
@@ -1094,11 +1095,10 @@ Table of Contents
    5.  Verify cnf.jwk matches the key used to sign the HTTP request.
    6.  If ps is present, verify it is a valid HTTPS URL conforming to
        the Server Identifier requirements.
-   7.  If act is present, verify it has a sub member containing a valid
-       agent identifier — the parent agent.  A non-empty act marks this
-       as a sub-agent's token Section 11; the PS additionally enforces
-       the single-level rule Section 11 when such a token signs a
-       request.
+   7.  If parent_agent is present, verify it is a valid agent identifier
+       — the parent agent.  Its presence marks this as a sub-agent's
+       token Section 11; the PS additionally enforces the single-level
+       rule Section 11 when such a token signs a request.
 
 6.  Resource Access and Resource Tokens
 
@@ -1498,7 +1498,7 @@ Table of Contents
    *  subagent_token (OPTIONAL): A sub-agent's agent token, present when
       a parent agent requests authorization on behalf of one of its sub-
       agents Section 11.  The signing agent (the parent) MUST be named
-      by the subagent_token's act.sub.
+      by the subagent_token's parent_agent.
    *  justification (OPTIONAL): A Markdown string declaring why access
       is being requested.  The PS SHOULD present this value to the user
       during consent.  The PS MUST sanitize the Markdown before
@@ -2314,8 +2314,8 @@ Table of Contents
       Section 11.  When present, the AS binds the issued auth token to
       the sub-agent (verifying resource_token's agent_jkt against the
       subagent_token's cnf.jwk) and records the parent — named by the
-      subagent_token's act.sub, which MUST match agent_token — in the
-      act chain.
+      subagent_token's parent_agent, which MUST match agent_token — in
+      the act chain.
    *  upstream_token (OPTIONAL): An auth token from an upstream
       authorization, used in call chaining Section 10.1.
 
@@ -2787,7 +2787,7 @@ Table of Contents
    Agent platforms increasingly spawn short-lived sub-agents — workers
    or tool-specific helpers — under an orchestrating parent agent.
    AAuth represents a sub-agent as an agent whose agent token carries a
-   non-empty act claim identifying its parent.  The user consents to the
+   parent_agent claim identifying its parent.  The user consents to the
    parent; sub-agents operate under that consent without per-spawn re-
    prompting, while remaining individually identifiable for audit and
    revocation.
@@ -2798,15 +2798,16 @@ Table of Contents
    identifier and signing key, issued by the agent provider, exactly
    like a top-level agent.  Two things distinguish it:
 
-   *  *act claim*: the sub-agent's agent token includes act with act.sub
-      set to the parent agent's identifier.  A non-empty act is the
-      authoritative marker of sub-agent status.
+   *  *parent_agent claim*: the sub-agent's agent token includes
+      parent_agent set to the parent agent's identifier.  Its presence
+      is the authoritative marker of sub-agent status.
    *  *Local-part naming*: the sub-agent's local part MUST be the
       parent's local part followed by + and a non-empty discriminator
       Section 5.1 — for example
       aauth:planner.7f3c+search1@vendor.example.  For protocol
-      decisions, verifiers rely on act, not on parsing the local part;
-      the naming is for operational readability (e.g., logs).
+      decisions, verifiers rely on parent_agent, not on parsing the
+      local part; the naming is for operational readability (e.g.,
+      logs).
 
    {
      "iss": "https://vendor.example",
@@ -2814,7 +2815,7 @@ Table of Contents
      "sub": "aauth:planner.7f3c+search1@vendor.example",
      "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519", "x": "..." } },
      "ps":  "https://ps.example",
-     "act": { "sub": "aauth:planner.7f3c@vendor.example" }
+     "parent_agent": "aauth:planner.7f3c@vendor.example"
    }
 
    Acquisition of a sub-agent token from the agent provider is platform-
@@ -2828,11 +2829,11 @@ Table of Contents
    Two rules enforce this:
 
    *  A PS MUST reject a token request signed by an agent whose agent
-      token has a non-empty act — a sub-agent cannot request
+      token has a parent_agent claim — a sub-agent cannot request
       authorization on its own behalf or on behalf of a further sub-
       agent.
    *  An agent provider MUST NOT issue a sub-agent token whose parent
-      (act.sub) is itself a sub-agent.
+      (parent_agent) is itself a sub-agent.
 
    For genuinely deeper workflows, AAuth already provides chained top-
    level agents Section 10.1: each hop is an independent principal with
@@ -2857,7 +2858,8 @@ Table of Contents
        *  It verifies the HTTP Message Signature against the parent's
           cnf.jwk.
        *  It verifies the subagent_token Section 5.2.4 and that its
-          act.sub names the parent — the agent that signed the request.
+          parent_agent names the parent — the agent that signed the
+          request.
        *  It verifies the resource_token is bound to the sub-agent's
           key: agent_jkt matches the subagent_token's cnf.jwk (not the
           signing key) and agent matches the sub-agent's identifier
@@ -2870,7 +2872,8 @@ Table of Contents
        party — issues an auth token bound to the sub-agent's key (cnf =
        the sub-agent's jwk, agent = the sub-agent's identifier), with
        act recording the delegation chain: act.sub is the sub-agent, and
-       a nested act.sub is the parent.  In four-party, the PS federates
+       a nested act.sub is the parent.  The parent is taken from the
+       subagent_token's parent_agent.  In four-party, the PS federates
        by passing the parent as agent_token and the sub-agent as
        subagent_token to the AS Section 9.1, so the AS records the
        parent authoritatively from those tokens.  The parent passes the
@@ -2882,6 +2885,50 @@ Table of Contents
    and revocation propagates naturally: revoking the parent's grant
    causes the next sub-agent authorization to fail, while existing auth
    tokens expire normally (≤1 hour).
+
+11.4.  Delegation Chain Examples
+
+   These examples show how the auth token's act claim records
+   delegation.  In all cases the rule is uniform: act.sub is the agent
+   presenting the token (self), and the prior actor is nested inside.
+   Sub-agents and call chaining ({#call-chaining}) use the same nesting;
+   a sub-agent simply means the first nested actor is the parent.
+
+   *Just chaining.* A top-level agent asst calls booking, which acts as
+   an agent to call payments.  No sub-agents.
+
+   // auth token asst presents at booking
+   { "aud": "booking.example", "sub": "user:alice",
+     "agent": "aauth:asst@agent.example",
+     "act": { "sub": "aauth:asst@agent.example" } }
+
+   // auth token booking presents at payments
+   { "aud": "payments.example", "sub": "user:alice",
+     "agent": "aauth:booking@booking.example",
+     "act": { "sub": "aauth:booking@booking.example",
+              "act": { "sub": "aauth:asst@agent.example" } } }
+
+   *Just a sub-agent.* The parent mediates; the sub-agent
+   planner.7f3c+search1 calls search.  The parent appears only as the
+   agent token's parent_agent; in the auth token it is the first nested
+   actor.
+
+   // auth token search1 presents at search
+   { "aud": "search.example", "sub": "user:alice",
+     "agent": "aauth:planner.7f3c+search1@vendor.example",
+     "act": { "sub": "aauth:planner.7f3c+search1@vendor.example",
+              "act": { "sub": "aauth:planner.7f3c@vendor.example" } } }
+
+   *A sub-agent and a chain.* The sub-agent search1 calls maps, which
+   acts as an agent to call places.  The chain composes: each hop nests
+   the prior actor.
+
+   // auth token maps presents at places
+   { "aud": "places.example", "sub": "user:alice",
+     "agent": "aauth:maps@maps.example",
+     "act": { "sub": "aauth:maps@maps.example",
+              "act": { "sub": "aauth:planner.7f3c+search1@vendor.example",
+                       "act": { "sub": "aauth:planner.7f3c@vendor.example" } } } }
 
 12.  Third-Party Login
 
@@ -4302,28 +4349,34 @@ Initial request (with Prefer: wait=N)
    This specification registers the following claims in the IANA "JSON
    Web Token Claims" registry established by [RFC7519]:
 
-    +===========+===========================+============+===========+
-    | Claim     | Claim Description         | Change     | Reference |
-    | Name      |                           | Controller |           |
-    +===========+===========================+============+===========+
-    | dwk       | Discovery Well-Known      | IETF       | This      |
-    |           | document name             |            | document  |
-    +-----------+---------------------------+------------+-----------+
-    | ps        | Person Server URL         | IETF       | This      |
-    |           |                           |            | document  |
-    +-----------+---------------------------+------------+-----------+
-    | agent     | Agent identifier          | IETF       | This      |
-    |           |                           |            | document  |
-    +-----------+---------------------------+------------+-----------+
-    | agent_jkt | JWK Thumbprint of the     | IETF       | This      |
-    |           | agent's signing key       |            | document  |
-    +-----------+---------------------------+------------+-----------+
-    | mission   | Mission object (approver, | IETF       | This      |
-    |           | s256) in resource tokens  |            | document  |
-    |           | and auth tokens           |            |           |
-    +-----------+---------------------------+------------+-----------+
+   +==============+===========================+============+===========+
+   | Claim Name   | Claim Description         | Change     | Reference |
+   |              |                           | Controller |           |
+   +==============+===========================+============+===========+
+   | dwk          | Discovery Well-Known      | IETF       | This      |
+   |              | document name             |            | document  |
+   +--------------+---------------------------+------------+-----------+
+   | ps           | Person Server URL         | IETF       | This      |
+   |              |                           |            | document  |
+   +--------------+---------------------------+------------+-----------+
+   | agent        | Agent identifier          | IETF       | This      |
+   |              |                           |            | document  |
+   +--------------+---------------------------+------------+-----------+
+   | agent_jkt    | JWK Thumbprint of         | IETF       | This      |
+   |              | the agent's signing       |            | document  |
+   |              | key                       |            |           |
+   +--------------+---------------------------+------------+-----------+
+   | parent_agent | Parent agent              | IETF       | This      |
+   |              | identifier in a sub-      |            | document  |
+   |              | agent's agent token       |            |           |
+   +--------------+---------------------------+------------+-----------+
+   | mission      | Mission object            | IETF       | This      |
+   |              | (approver, s256) in       |            | document  |
+   |              | resource tokens and       |            |           |
+   |              | auth tokens               |            |           |
+   +--------------+---------------------------+------------+-----------+
 
-                                 Table 13
+                                  Table 13
 
 17.7.  AAuth Requirement Value Registry
 

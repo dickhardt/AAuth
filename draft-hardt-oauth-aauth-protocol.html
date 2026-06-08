@@ -1472,6 +1472,9 @@ svg {
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.3">
                 <p id="section-toc.1-1.11.2.3.1"><a href="#section-11.3" class="auto internal xref">11.3</a>.  <a href="#name-parent-mediated-authorizati" class="internal xref">Parent-Mediated Authorization</a></p>
 </li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.4">
+                <p id="section-toc.1-1.11.2.4.1"><a href="#section-11.4" class="auto internal xref">11.4</a>.  <a href="#name-delegation-chain-examples" class="internal xref">Delegation Chain Examples</a></p>
+</li>
             </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12">
@@ -2539,7 +2542,7 @@ svg {
 <a href="#section-5.1" class="section-number selfRef">5.1. </a><a href="#name-agent-identifiers" class="section-name selfRef">Agent Identifiers</a>
         </h3>
 <p id="section-5.1-1">Agent identifiers are URIs using the <code>aauth</code> scheme, of the form <code>aauth:local@domain</code> where <code>domain</code> is the agent provider's domain. The <code>local</code> part MUST consist of lowercase ASCII letters (<code>a-z</code>), digits (<code>0-9</code>), hyphen (<code>-</code>), underscore (<code>_</code>), plus (<code>+</code>), and period (<code>.</code>). The <code>local</code> part MUST NOT be empty and MUST NOT exceed 255 characters. The <code>domain</code> part MUST be a valid domain name conforming to the server identifier requirements <a href="#server-identifiers" class="auto internal xref">Section 13.9.1</a> (without scheme).<a href="#section-5.1-1" class="pilcrow">¶</a></p>
-<p id="section-5.1-2">The plus character (<code>+</code>) is RESERVED as the sub-agent delimiter <a href="#sub-agents" class="auto internal xref">Section 11</a>. A top-level agent's <code>local</code> part MUST NOT contain <code>+</code>. A sub-agent's <code>local</code> part MUST be its parent's <code>local</code> part, followed by <code>+</code>, followed by a non-empty discriminator (for example, <code>planner.7f3c+search1</code>). This naming is for operational readability only — a sub-agent's identifier shows its parent at a glance in logs. Parties MUST NOT parse the <code>local</code> part for protocol decisions; the <code>act</code> claim <a href="#sub-agents" class="auto internal xref">Section 11</a> is the authoritative sub-agent marker, and the parent is conveyed authoritatively by the <code>act</code> claim and the <code>subagent_token</code> <a href="#sub-agents" class="auto internal xref">Section 11</a>.<a href="#section-5.1-2" class="pilcrow">¶</a></p>
+<p id="section-5.1-2">The plus character (<code>+</code>) is RESERVED as the sub-agent delimiter <a href="#sub-agents" class="auto internal xref">Section 11</a>. A top-level agent's <code>local</code> part MUST NOT contain <code>+</code>. A sub-agent's <code>local</code> part MUST be its parent's <code>local</code> part, followed by <code>+</code>, followed by a non-empty discriminator (for example, <code>planner.7f3c+search1</code>). This naming is for operational readability only — a sub-agent's identifier shows its parent at a glance in logs. Parties MUST NOT parse the <code>local</code> part for protocol decisions; the <code>parent_agent</code> claim <a href="#sub-agents" class="auto internal xref">Section 11</a> is the authoritative sub-agent marker, and the parent is conveyed authoritatively by the <code>parent_agent</code> claim and the <code>subagent_token</code> <a href="#sub-agents" class="auto internal xref">Section 11</a>.<a href="#section-5.1-2" class="pilcrow">¶</a></p>
 <p id="section-5.1-3">Valid agent identifiers:<a href="#section-5.1-3" class="pilcrow">¶</a></p>
 <ul class="compact">
 <li class="compact" id="section-5.1-4.1">
@@ -2609,7 +2612,7 @@ svg {
 - <code>exp</code>: Expiration timestamp. Agent tokens SHOULD NOT have a lifetime exceeding 24 hours.<a href="#section-5.2.2-3" class="pilcrow">¶</a></p>
 <p id="section-5.2.2-4">Optional payload claims:
 - <code>ps</code>: The HTTPS URL of the agent's person server. Configured per agent instance. When present, resources can discover the agent's PS from the agent token. This claim is distinct from <code>iss</code> (which identifies the agent provider that issued the token).
-- <code>act</code>: Sub-agent marker <a href="#sub-agents" class="auto internal xref">Section 11</a>. When present and non-empty, the agent is a sub-agent and <code>act.sub</code> is the identifier of its parent agent. A sub-agent MUST NOT request authorization directly; its parent obtains auth tokens on its behalf <a href="#sub-agents" class="auto internal xref">Section 11</a>.<a href="#section-5.2.2-4" class="pilcrow">¶</a></p>
+- <code>parent_agent</code>: Sub-agent marker <a href="#sub-agents" class="auto internal xref">Section 11</a>. When present, the agent is a sub-agent and the value is the identifier of its parent agent. A sub-agent MUST NOT request authorization directly; its parent obtains auth tokens on its behalf <a href="#sub-agents" class="auto internal xref">Section 11</a>.<a href="#section-5.2.2-4" class="pilcrow">¶</a></p>
 <p id="section-5.2.2-5">Agent providers MAY include additional claims in the agent token. Companion specifications may define additional claims for use by PSes or ASes in policy evaluation — for example, software attestation, platform integrity, secure enclave status, workload identity assertions, or software publisher identity. PSes and ASes MUST ignore unrecognized claims.<a href="#section-5.2.2-5" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -2646,7 +2649,7 @@ svg {
 </li>
             <li id="section-5.2.4-2.6">If <code>ps</code> is present, verify it is a valid HTTPS URL conforming to the Server Identifier requirements.<a href="#section-5.2.4-2.6" class="pilcrow">¶</a>
 </li>
-            <li id="section-5.2.4-2.7">If <code>act</code> is present, verify it has a <code>sub</code> member containing a valid agent identifier — the parent agent. A non-empty <code>act</code> marks this as a sub-agent's token <a href="#sub-agents" class="auto internal xref">Section 11</a>; the PS additionally enforces the single-level rule <a href="#sub-agents" class="auto internal xref">Section 11</a> when such a token signs a request.<a href="#section-5.2.4-2.7" class="pilcrow">¶</a>
+            <li id="section-5.2.4-2.7">If <code>parent_agent</code> is present, verify it is a valid agent identifier — the parent agent. Its presence marks this as a sub-agent's token <a href="#sub-agents" class="auto internal xref">Section 11</a>; the PS additionally enforces the single-level rule <a href="#sub-agents" class="auto internal xref">Section 11</a> when such a token signs a request.<a href="#section-5.2.4-2.7" class="pilcrow">¶</a>
 </li>
           </ol>
 </section>
@@ -3082,7 +3085,7 @@ AAuth-Requirement: requirement=agent-token
               <code>upstream_token</code> (OPTIONAL): An auth token from an upstream authorization, used in call chaining <a href="#call-chaining" class="auto internal xref">Section 10.1</a>.<a href="#section-7.1.3-3.2" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-7.1.3-3.3">
-              <code>subagent_token</code> (OPTIONAL): A sub-agent's agent token, present when a parent agent requests authorization on behalf of one of its sub-agents <a href="#sub-agents" class="auto internal xref">Section 11</a>. The signing agent (the parent) MUST be named by the <code>subagent_token</code>'s <code>act.sub</code>.<a href="#section-7.1.3-3.3" class="pilcrow">¶</a>
+              <code>subagent_token</code> (OPTIONAL): A sub-agent's agent token, present when a parent agent requests authorization on behalf of one of its sub-agents <a href="#sub-agents" class="auto internal xref">Section 11</a>. The signing agent (the parent) MUST be named by the <code>subagent_token</code>'s <code>parent_agent</code>.<a href="#section-7.1.3-3.3" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-7.1.3-3.4">
               <code>justification</code> (OPTIONAL): A Markdown string declaring why access is being requested. The PS SHOULD present this value to the user during consent. The PS MUST sanitize the Markdown before rendering to users. The PS MAY log the <code>justification</code> for audit and monitoring purposes. <strong>TODO:</strong> Define recommended sections.<a href="#section-7.1.3-3.4" class="pilcrow">¶</a>
@@ -3885,7 +3888,7 @@ Content-Type: application/json
               <code>agent_token</code> (REQUIRED): The agent's agent token. For a parent-mediated sub-agent authorization, this is the parent (top-level) agent's token.<a href="#section-9.1.1-3.2" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-9.1.1-3.3">
-              <code>subagent_token</code> (OPTIONAL): A sub-agent's agent token, present when the PS federates a parent-mediated sub-agent authorization <a href="#sub-agents" class="auto internal xref">Section 11</a>. When present, the AS binds the issued auth token to the sub-agent (verifying <code>resource_token</code>'s <code>agent_jkt</code> against the <code>subagent_token</code>'s <code>cnf.jwk</code>) and records the parent — named by the <code>subagent_token</code>'s <code>act.sub</code>, which MUST match <code>agent_token</code> — in the <code>act</code> chain.<a href="#section-9.1.1-3.3" class="pilcrow">¶</a>
+              <code>subagent_token</code> (OPTIONAL): A sub-agent's agent token, present when the PS federates a parent-mediated sub-agent authorization <a href="#sub-agents" class="auto internal xref">Section 11</a>. When present, the AS binds the issued auth token to the sub-agent (verifying <code>resource_token</code>'s <code>agent_jkt</code> against the <code>subagent_token</code>'s <code>cnf.jwk</code>) and records the parent — named by the <code>subagent_token</code>'s <code>parent_agent</code>, which MUST match <code>agent_token</code> — in the <code>act</code> chain.<a href="#section-9.1.1-3.3" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-9.1.1-3.4">
               <code>upstream_token</code> (OPTIONAL): An auth token from an upstream authorization, used in call chaining <a href="#call-chaining" class="auto internal xref">Section 10.1</a>.<a href="#section-9.1.1-3.4" class="pilcrow">¶</a>
@@ -4313,7 +4316,7 @@ Content-Type: application/json
       <h2 id="name-sub-agents">
 <a href="#section-11" class="section-number selfRef">11. </a><a href="#name-sub-agents" class="section-name selfRef">Sub-Agents</a>
       </h2>
-<p id="section-11-1">Agent platforms increasingly spawn short-lived sub-agents — workers or tool-specific helpers — under an orchestrating parent agent. AAuth represents a sub-agent as an agent whose agent token carries a non-empty <code>act</code> claim identifying its parent. The user consents to the parent; sub-agents operate under that consent without per-spawn re-prompting, while remaining individually identifiable for audit and revocation.<a href="#section-11-1" class="pilcrow">¶</a></p>
+<p id="section-11-1">Agent platforms increasingly spawn short-lived sub-agents — workers or tool-specific helpers — under an orchestrating parent agent. AAuth represents a sub-agent as an agent whose agent token carries a <code>parent_agent</code> claim identifying its parent. The user consents to the parent; sub-agents operate under that consent without per-spawn re-prompting, while remaining individually identifiable for audit and revocation.<a href="#section-11-1" class="pilcrow">¶</a></p>
 <div id="sub-agent-identity">
 <section id="section-11.1">
         <h3 id="name-sub-agent-identity">
@@ -4322,10 +4325,10 @@ Content-Type: application/json
 <p id="section-11.1-1">A sub-agent has its own agent identity — its own <code>aauth:local@domain</code> identifier and signing key, issued by the agent provider, exactly like a top-level agent. Two things distinguish it:<a href="#section-11.1-1" class="pilcrow">¶</a></p>
 <ul class="compact">
 <li class="compact" id="section-11.1-2.1">
-            <strong><code>act</code> claim</strong>: the sub-agent's agent token includes <code>act</code> with <code>act.sub</code> set to the parent agent's identifier. A non-empty <code>act</code> is the authoritative marker of sub-agent status.<a href="#section-11.1-2.1" class="pilcrow">¶</a>
+            <strong><code>parent_agent</code> claim</strong>: the sub-agent's agent token includes <code>parent_agent</code> set to the parent agent's identifier. Its presence is the authoritative marker of sub-agent status.<a href="#section-11.1-2.1" class="pilcrow">¶</a>
 </li>
           <li class="compact" id="section-11.1-2.2">
-            <strong>Local-part naming</strong>: the sub-agent's <code>local</code> part MUST be the parent's <code>local</code> part followed by <code>+</code> and a non-empty discriminator <a href="#agent-identifiers" class="auto internal xref">Section 5.1</a> — for example <code>aauth:planner.7f3c+search1@vendor.example</code>. For protocol decisions, verifiers rely on <code>act</code>, not on parsing the local part; the naming is for operational readability (e.g., logs).<a href="#section-11.1-2.2" class="pilcrow">¶</a>
+            <strong>Local-part naming</strong>: the sub-agent's <code>local</code> part MUST be the parent's <code>local</code> part followed by <code>+</code> and a non-empty discriminator <a href="#agent-identifiers" class="auto internal xref">Section 5.1</a> — for example <code>aauth:planner.7f3c+search1@vendor.example</code>. For protocol decisions, verifiers rely on <code>parent_agent</code>, not on parsing the local part; the naming is for operational readability (e.g., logs).<a href="#section-11.1-2.2" class="pilcrow">¶</a>
 </li>
         </ul>
 <div class="lang-json sourcecode" id="section-11.1-3">
@@ -4335,7 +4338,7 @@ Content-Type: application/json
   "sub": "aauth:planner.7f3c+search1@vendor.example",
   "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519", "x": "..." } },
   "ps":  "https://ps.example",
-  "act": { "sub": "aauth:planner.7f3c@vendor.example" }
+  "parent_agent": "aauth:planner.7f3c@vendor.example"
 }
 
 </pre><a href="#section-11.1-3" class="pilcrow">¶</a>
@@ -4350,9 +4353,9 @@ Content-Type: application/json
         </h3>
 <p id="section-11.2-1">The delegation chain is at most one level deep: a top-level agent may have sub-agents, but a sub-agent MUST NOT have sub-agents of its own. Two rules enforce this:<a href="#section-11.2-1" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-11.2-2.1">A PS MUST reject a token request signed by an agent whose agent token has a non-empty <code>act</code> — a sub-agent cannot request authorization on its own behalf or on behalf of a further sub-agent.<a href="#section-11.2-2.1" class="pilcrow">¶</a>
+<li class="compact" id="section-11.2-2.1">A PS MUST reject a token request signed by an agent whose agent token has a <code>parent_agent</code> claim — a sub-agent cannot request authorization on its own behalf or on behalf of a further sub-agent.<a href="#section-11.2-2.1" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-11.2-2.2">An agent provider MUST NOT issue a sub-agent token whose parent (<code>act.sub</code>) is itself a sub-agent.<a href="#section-11.2-2.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-11.2-2.2">An agent provider MUST NOT issue a sub-agent token whose parent (<code>parent_agent</code>) is itself a sub-agent.<a href="#section-11.2-2.2" class="pilcrow">¶</a>
 </li>
         </ul>
 <p id="section-11.2-3">For genuinely deeper workflows, AAuth already provides chained top-level agents <a href="#call-chaining" class="auto internal xref">Section 10.1</a>: each hop is an independent principal with its own grant, rather than recursive sub-agent spawning.<a href="#section-11.2-3" class="pilcrow">¶</a></p>
@@ -4374,7 +4377,7 @@ Content-Type: application/json
 <ul class="compact">
 <li class="compact" id="section-11.3-2.3.2.1">It verifies the HTTP Message Signature against the parent's <code>cnf.jwk</code>.<a href="#section-11.3-2.3.2.1" class="pilcrow">¶</a>
 </li>
-              <li class="compact" id="section-11.3-2.3.2.2">It verifies the <code>subagent_token</code> <a href="#agent-token-verification" class="auto internal xref">Section 5.2.4</a> and that its <code>act.sub</code> names the parent — the agent that signed the request.<a href="#section-11.3-2.3.2.2" class="pilcrow">¶</a>
+              <li class="compact" id="section-11.3-2.3.2.2">It verifies the <code>subagent_token</code> <a href="#agent-token-verification" class="auto internal xref">Section 5.2.4</a> and that its <code>parent_agent</code> names the parent — the agent that signed the request.<a href="#section-11.3-2.3.2.2" class="pilcrow">¶</a>
 </li>
               <li class="compact" id="section-11.3-2.3.2.3">It verifies the <code>resource_token</code> is bound to the sub-agent's key: <code>agent_jkt</code> matches the <code>subagent_token</code>'s <code>cnf.jwk</code> (not the signing key) and <code>agent</code> matches the sub-agent's identifier <a href="#resource-token-verification" class="auto internal xref">Section 6.7.2</a>.<a href="#section-11.3-2.3.2.3" class="pilcrow">¶</a>
 </li>
@@ -4382,10 +4385,54 @@ Content-Type: application/json
 </li>
             </ul>
 </li>
-          <li id="section-11.3-2.4">On success the issuer — the PS in three-party, or the AS in four-party — issues an auth token bound to the sub-agent's key (<code>cnf</code> = the sub-agent's <code>jwk</code>, <code>agent</code> = the sub-agent's identifier), with <code>act</code> recording the delegation chain: <code>act.sub</code> is the sub-agent, and a nested <code>act.sub</code> is the parent. In four-party, the PS federates by passing the parent as <code>agent_token</code> and the sub-agent as <code>subagent_token</code> to the AS <a href="#as-token-endpoint" class="auto internal xref">Section 9.1</a>, so the AS records the parent authoritatively from those tokens. The parent passes the auth token to the sub-agent, which presents it to the resource signing with its own key.<a href="#section-11.3-2.4" class="pilcrow">¶</a>
+          <li id="section-11.3-2.4">On success the issuer — the PS in three-party, or the AS in four-party — issues an auth token bound to the sub-agent's key (<code>cnf</code> = the sub-agent's <code>jwk</code>, <code>agent</code> = the sub-agent's identifier), with <code>act</code> recording the delegation chain: <code>act.sub</code> is the sub-agent, and a nested <code>act.sub</code> is the parent. The parent is taken from the <code>subagent_token</code>'s <code>parent_agent</code>. In four-party, the PS federates by passing the parent as <code>agent_token</code> and the sub-agent as <code>subagent_token</code> to the AS <a href="#as-token-endpoint" class="auto internal xref">Section 9.1</a>, so the AS records the parent authoritatively from those tokens. The parent passes the auth token to the sub-agent, which presents it to the resource signing with its own key.<a href="#section-11.3-2.4" class="pilcrow">¶</a>
 </li>
         </ol>
 <p id="section-11.3-3">Because every sub-agent authorization passes through the parent, the parent retains control — it can refuse, attenuate, or rate-limit — and revocation propagates naturally: revoking the parent's grant causes the next sub-agent authorization to fail, while existing auth tokens expire normally (≤1 hour).<a href="#section-11.3-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="delegation-chain-examples">
+<section id="section-11.4">
+        <h3 id="name-delegation-chain-examples">
+<a href="#section-11.4" class="section-number selfRef">11.4. </a><a href="#name-delegation-chain-examples" class="section-name selfRef">Delegation Chain Examples</a>
+        </h3>
+<p id="section-11.4-1">These examples show how the auth token's <code>act</code> claim records delegation. In all cases the rule is uniform: <code>act.sub</code> is the agent presenting the token (self), and the prior actor is nested inside. Sub-agents and call chaining ({#call-chaining}) use the same nesting; a sub-agent simply means the first nested actor is the parent.<a href="#section-11.4-1" class="pilcrow">¶</a></p>
+<p id="section-11.4-2"><strong>Just chaining.</strong> A top-level agent <code>asst</code> calls <code>booking</code>, which acts as an agent to call <code>payments</code>. No sub-agents.<a href="#section-11.4-2" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-11.4-3">
+<pre>// auth token asst presents at booking
+{ "aud": "booking.example", "sub": "user:alice",
+  "agent": "aauth:asst@agent.example",
+  "act": { "sub": "aauth:asst@agent.example" } }
+
+// auth token booking presents at payments
+{ "aud": "payments.example", "sub": "user:alice",
+  "agent": "aauth:booking@booking.example",
+  "act": { "sub": "aauth:booking@booking.example",
+           "act": { "sub": "aauth:asst@agent.example" } } }
+
+</pre><a href="#section-11.4-3" class="pilcrow">¶</a>
+</div>
+<p id="section-11.4-4"><strong>Just a sub-agent.</strong> The parent mediates; the sub-agent <code>planner.7f3c+search1</code> calls <code>search</code>. The parent appears only as the agent token's <code>parent_agent</code>; in the auth token it is the first nested actor.<a href="#section-11.4-4" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-11.4-5">
+<pre>// auth token search1 presents at search
+{ "aud": "search.example", "sub": "user:alice",
+  "agent": "aauth:planner.7f3c+search1@vendor.example",
+  "act": { "sub": "aauth:planner.7f3c+search1@vendor.example",
+           "act": { "sub": "aauth:planner.7f3c@vendor.example" } } }
+
+</pre><a href="#section-11.4-5" class="pilcrow">¶</a>
+</div>
+<p id="section-11.4-6"><strong>A sub-agent and a chain.</strong> The sub-agent <code>search1</code> calls <code>maps</code>, which acts as an agent to call <code>places</code>. The chain composes: each hop nests the prior actor.<a href="#section-11.4-6" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-11.4-7">
+<pre>// auth token maps presents at places
+{ "aud": "places.example", "sub": "user:alice",
+  "agent": "aauth:maps@maps.example",
+  "act": { "sub": "aauth:maps@maps.example",
+           "act": { "sub": "aauth:planner.7f3c+search1@vendor.example",
+                    "act": { "sub": "aauth:planner.7f3c@vendor.example" } } } }
+
+</pre><a href="#section-11.4-7" class="pilcrow">¶</a>
+</div>
 </section>
 </div>
 </section>
@@ -6176,6 +6223,14 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
                 <code>agent_jkt</code>
 </td>
               <td class="text-left" rowspan="1" colspan="1">JWK Thumbprint of the agent's signing key</td>
+              <td class="text-left" rowspan="1" colspan="1">IETF</td>
+              <td class="text-left" rowspan="1" colspan="1">This document</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>parent_agent</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">Parent agent identifier in a sub-agent's agent token</td>
               <td class="text-left" rowspan="1" colspan="1">IETF</td>
               <td class="text-left" rowspan="1" colspan="1">This document</td>
             </tr>
