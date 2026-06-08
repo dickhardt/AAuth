@@ -1198,6 +1198,8 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 For `interaction` and `payment` types, the PS relays the interaction to the user and returns a deferred response (#deferred-responses). The agent polls until the user completes the interaction.
 
+If the PS has no channel available to relay an `interaction` or `payment` to the user, it returns `interaction_unavailable` (#interaction-endpoint-errors). This is the PS declining to relay this specific interaction; the agent falls back to directing the user to the `url`/`code` itself (#interaction-relay). It is distinct from `user_unreachable`: `interaction_unavailable` is non-terminal — the agent can still drive the interaction — whereas `user_unreachable` (#token-endpoint-error-codes) is terminal, meaning no party can reach the user.
+
 For `question` type, the PS delivers the question to the user and returns the answer:
 
 ```http
@@ -1211,7 +1213,15 @@ Content-Type: application/json
 
 For `completion` type, the PS presents the summary to the user. The user either accepts — the PS terminates the mission and returns `200 OK` — or responds with follow-up questions via clarification (#clarification-chat), keeping the mission active. The PS returns a deferred response while the user reviews.
 
-If the PS cannot reach the user and the agent does not have the `interaction` capability, the PS returns `interaction_required`. If the mission is no longer active, the PS returns a mission status error (#mission-status-errors). The PS SHOULD record all interaction requests and responses. When a mission is active, the PS records the interaction in the mission log.
+If the PS cannot reach the user and the agent does not have the `interaction` capability, the PS returns `user_unreachable` (#token-endpoint-error-codes) — a terminal error, since no party can reach the user. If the mission is no longer active, the PS returns a mission status error (#mission-status-errors). The PS SHOULD record all interaction requests and responses. When a mission is active, the PS records the interaction in the mission log.
+
+### Interaction Endpoint Errors {#interaction-endpoint-errors}
+
+Errors use the token endpoint error response format (#error-response-format).
+
+| Error | Status | Meaning |
+|-------|--------|---------|
+| `interaction_unavailable` | 424 | The PS has no channel available to relay this `interaction` or `payment` to the user. Non-terminal: the agent falls back to directing the user to the `url`/`code` itself (#interaction-relay). Distinct from the terminal `user_unreachable` (#token-endpoint-error-codes). |
 
 ## Re-authorization
 
@@ -1852,7 +1862,18 @@ The response MUST also include:
 - `Location`: A URL the agent polls (with GET) for a terminal response.
 - `Retry-After`: Recommended polling interval in seconds.
 
-The agent constructs a user-facing URL by appending the code as a query parameter: `{url}?code={code}`. The agent then directs the user to this URL using one of:
+#### Relaying Through the Person Server {#interaction-relay}
+
+When the agent has a PS, it SHOULD relay the interaction to the PS's `interaction_endpoint` (#interaction-endpoint) before directing the user itself. The PS may have a lower-friction channel to the user — an active web session, a registered mobile app — than the agent opening a browser or rendering a QR code.
+
+To relay, the agent POSTs `{ "type": "interaction", "url": "...", "code": "..." }` to the PS's `interaction_endpoint` (#interaction-endpoint). The PS attempts to reach the user through its own channels and responds:
+
+- **PS can relay**: it returns a `202` deferred response, and the agent polls for completion as described in (#interaction-endpoint).
+- **PS cannot relay**: it returns `interaction_unavailable` (#interaction-endpoint-errors). This is non-terminal — the agent falls back to directing the user itself.
+
+The agent directs the user itself — using the methods below — when it has no PS, or when the PS returns `interaction_unavailable`.
+
+To direct the user, the agent constructs a user-facing URL by appending the code as a query parameter: `{url}?code={code}`. The agent then directs the user to this URL using one of:
 
 - **Browser redirect**: The agent opens the URL in the user's browser.
 - **Display code**: The agent displays the `url` and `code` for the user to enter manually. The agent MAY also render the constructed URL as a QR code for the user to scan with their phone.
@@ -2004,7 +2025,7 @@ Token endpoint errors use `Content-Type: application/json` ([@!RFC8259]) with th
 - `error` (REQUIRED): String. A single error code.
 - `error_description` (OPTIONAL): String. A human-readable description.
 
-### Token Endpoint Error Codes
+### Token Endpoint Error Codes {#token-endpoint-error-codes}
 
 | Error | Status | Meaning |
 |-------|--------|---------|
@@ -2013,7 +2034,7 @@ Token endpoint errors use `Content-Type: application/json` ([@!RFC8259]) with th
 | `expired_agent_token` | 400 | Agent token has expired |
 | `invalid_resource_token` | 400 | Resource token malformed or signature verification failed |
 | `expired_resource_token` | 400 | Resource token has expired |
-| `interaction_required` | 403 | User interaction is needed but no interaction channel is available — the PS cannot reach the user and the agent does not have the `interaction` capability |
+| `user_unreachable` | 403 | Terminal. The PS has no channel to reach the user and the agent did not declare the `interaction` capability, so the user cannot be reached at all. The non-terminal "user action is needed" case uses a `202` with `requirement=interaction` (#requirement-responses), not this error. |
 | `server_error` | 500 | Internal error |
 
 ### Polling Error Codes
