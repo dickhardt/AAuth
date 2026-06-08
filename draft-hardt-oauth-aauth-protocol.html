@@ -1666,6 +1666,9 @@ svg {
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15.2.14">
                 <p id="section-toc.1-1.15.2.14.1"><a href="#section-15.14" class="auto internal xref">15.14</a>. <a href="#name-tls-requirements" class="internal xref">TLS Requirements</a></p>
 </li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15.2.15">
+                <p id="section-toc.1-1.15.2.15.1"><a href="#section-15.15" class="auto internal xref">15.15</a>. <a href="#name-non-repudiation-and-audit-a" class="internal xref">Non-Repudiation and Audit After Key Rotation</a></p>
+</li>
             </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16">
@@ -1679,6 +1682,9 @@ svg {
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.3">
                 <p id="section-toc.1-1.16.2.3.1"><a href="#section-16.3" class="auto internal xref">16.3</a>.  <a href="#name-mission-content-exposure" class="internal xref">Mission Content Exposure</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.4">
+                <p id="section-toc.1-1.16.2.4.1"><a href="#section-16.4" class="auto internal xref">16.4</a>.  <a href="#name-pseudonymous-access" class="internal xref">Pseudonymous Access</a></p>
 </li>
             </ul>
 </li>
@@ -5885,6 +5891,27 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <p id="section-15.14-1">All HTTPS connections MUST use TLS 1.2 or later, following the recommendations in BCP 195 <span>[<a href="#RFC9325" class="cite xref">RFC9325</a>]</span>.<a href="#section-15.14-1" class="pilcrow">¶</a></p>
 </section>
 </div>
+<div id="non-repudiation-and-audit-after-key-rotation">
+<section id="section-15.15">
+        <h3 id="name-non-repudiation-and-audit-a">
+<a href="#section-15.15" class="section-number selfRef">15.15. </a><a href="#name-non-repudiation-and-audit-a" class="section-name selfRef">Non-Repudiation and Audit After Key Rotation</a>
+        </h3>
+<p id="section-15.15-1">AAuth signatures prove authenticity at request time: a valid HTTP Message Signature shows that the signer held the private key bound to the presented identity when the request was made (proof-of-possession). This is request-time authentication, not long-term non-repudiation. Agent keys are short-lived and agent providers rotate their JWKS; once a key is removed from the issuer's JWKS, a signature made with it can no longer be verified by re-fetching the JWKS later. The persistent identifiers (<code>agent</code>, <code>sub</code>) do not by themselves cryptographically prove that a specific key signed a specific request at a specific time once that key is gone.<a href="#section-15.15-1" class="pilcrow">¶</a></p>
+<p id="section-15.15-2">This is partly by design — short-lived keys and directed identifiers <a href="#directed-identifiers" class="auto internal xref">Section 16.1</a> limit long-term linkability. Deployments that require durable audit or non-repudiation beyond a key's lifetime SHOULD capture the evidence at verification time, while the key is still discoverable, rather than relying on re-verification later:<a href="#section-15.15-2" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-15.15-3.1">
+            <strong>Archive the verified artifacts.</strong> At verification time, record the signed request (covered components and signature), the <code>Signature-Key</code> value (the presented key or JWT), the verification result, and a trusted timestamp. Optionally snapshot the issuer's JWKS entry (<code>kid</code> + JWK) so the key binding can be re-checked independently of later rotation.<a href="#section-15.15-3.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-15.15-3.2">
+            <strong>Use external timestamping or transparency logs</strong> where stronger non-repudiation is needed — for example, RFC 3161 <span>[<a href="#RFC3161" class="cite xref">RFC3161</a>]</span> timestamps over the signed request, or appending verification records to a tamper-evident log.<a href="#section-15.15-3.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-15.15-3.3">
+            <strong>Bind audit records to durable identifiers.</strong> Index archived records by <code>(iss, sub)</code> for agents and by <code>jti</code> for tokens, so later review can attribute activity even though the signing key is no longer live.<a href="#section-15.15-3.3" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-15.15-4">These measures trade privacy for durability: archived signatures and keys are correlatable, so deployments MUST balance audit retention against the privacy-preserving properties of short-lived keys and directed identifiers <a href="#privacy-considerations" class="auto internal xref">Section 16</a>, and apply appropriate retention limits and access controls.<a href="#section-15.15-4" class="pilcrow">¶</a></p>
+</section>
+</div>
 </section>
 </div>
 <div id="privacy-considerations">
@@ -5915,6 +5942,33 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <a href="#section-16.3" class="section-number selfRef">16.3. </a><a href="#name-mission-content-exposure" class="section-name selfRef">Mission Content Exposure</a>
         </h3>
 <p id="section-16.3-1">The mission JSON is visible to the PS and, when included in resource tokens and auth tokens via the <code>s256</code> hash, its integrity is verifiable by any party that holds it. The approved mission JSON is shared between the agent and PS. Resources and ASes see only the <code>s256</code> hash and the approver URL, not the full mission content.<a href="#section-16.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="pseudonymous-access">
+<section id="section-16.4">
+        <h3 id="name-pseudonymous-access">
+<a href="#section-16.4" class="section-number selfRef">16.4. </a><a href="#name-pseudonymous-access" class="section-name selfRef">Pseudonymous Access</a>
+        </h3>
+<p id="section-16.4-1">The HTTP Message Signatures profile <a href="#keying-material" class="auto internal xref">Section 13.7.2</a> supports pseudonymous keying — <code>scheme=hwk</code> (an inline public key) or <code>scheme=jkt-jwt</code> (delegation from a hardware-backed key) — in which the agent proves possession of a signing key without presenting an agent-provider-issued identity (<code>aauth:local@domain</code>). The agent is identified only by its key (its JWK thumbprint), with no stable, attested identity behind it.<a href="#section-16.4-1" class="pilcrow">¶</a></p>
+<p id="section-16.4-2">Pseudonymous access is appropriate where a resource needs proof-of-possession and continuity but not identity:<a href="#section-16.4-2" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-16.4-3.1">
+            <strong>Privacy-preserving access</strong>: the user or agent does not wish to present an attested, provider-linked identity — only a consistent key the resource can recognize across requests.<a href="#section-16.4-3.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-16.4-3.2">
+            <strong>Sybil resistance and rate limiting without identification</strong>: a resource can bind quotas, sessions, or reputation to a key thumbprint without learning who the caller is.<a href="#section-16.4-3.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-16.4-3.3">
+            <strong>Ephemeral or unenrolled agents</strong>: agents with no agent-provider relationship, or that are short-lived and do not warrant a durable identity, can still sign requests and hold key-bound grants.<a href="#section-16.4-3.3" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-16.4-3.4">
+            <strong>Capability-style access</strong>: where authorization is bound to a key (the key is the credential) and identity is irrelevant to the resource's policy.<a href="#section-16.4-3.4" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-16.4-3.5">
+            <strong>Hardware-anchored continuity</strong>: <code>scheme=jkt-jwt</code> anchors a key to a hardware-backed key (e.g., a TPM or secure enclave) for device-bound continuity while remaining pseudonymous.<a href="#section-16.4-3.5" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-16.4-4">Pseudonymity has limits. A resource that requires an attributable, provider-vouched identity — for accountability, governance through a PS, or organizational policy — MUST require an <code>identity</code> scheme (<code>scheme=jwt</code> or <code>scheme=jwks_uri</code>) and reject pseudonymous keys. And a pseudonymous key still uniquely identifies its holder to a given resource across requests: it is pseudonymous, not anonymous. A holder that wants unlinkable interactions MUST use fresh keys.<a href="#section-16.4-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -6610,6 +6664,10 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <dt id="OpenID.Enterprise">[OpenID.Enterprise]</dt>
         <dd>
 <span class="refAuthor">Hardt, D.</span> and <span class="refAuthor">K. McGuinness</span>, <span class="refTitle">"OpenID Connect Enterprise Extensions 1.0"</span>, <time datetime="2025" class="refDate">2025</time>, <span>&lt;<a href="https://openid.net/specs/openid-connect-enterprise-extensions-1_0.html">https://openid.net/specs/openid-connect-enterprise-extensions-1_0.html</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC3161">[RFC3161]</dt>
+        <dd>
+<span class="refAuthor">Adams, C.</span>, <span class="refAuthor">Cain, P.</span>, <span class="refAuthor">Pinkas, D.</span>, and <span class="refAuthor">R. Zuccherato</span>, <span class="refTitle">"Internet X.509 Public Key Infrastructure Time-Stamp Protocol (TSP)"</span>, <span class="seriesInfo">RFC 3161</span>, <span class="seriesInfo">DOI 10.17487/RFC3161</span>, <time datetime="2001-08" class="refDate">August 2001</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc3161">https://www.rfc-editor.org/info/rfc3161</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC5905">[RFC5905]</dt>
         <dd>
