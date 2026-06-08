@@ -5274,7 +5274,8 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
                 <code>signature-key</code>: The Signature-Key header value<a href="#section-13.7.3.1-2.4" class="pilcrow">¶</a>
 </li>
             </ul>
-<p id="section-13.7.3.1-3">Servers MAY require additional covered components (e.g., <code>content-digest</code> (<span>[<a href="#RFC9530" class="cite xref">RFC9530</a>]</span>) for request body integrity). The agent learns about additional requirements from server metadata or from an <code>invalid_input</code> error response that includes <code>required_input</code>.<a href="#section-13.7.3.1-3" class="pilcrow">¶</a></p>
+<p id="section-13.7.3.1-3">These four are mandated rather than advisory because each closes a request-substitution attack and all four are derivable by the agent at signing time on every platform, including browsers: <code>@method</code> prevents a captured signature from being replayed with a different method (a signed <code>GET</code> reused as a <code>DELETE</code>); <code>@authority</code> binds the signature to the target host, preventing cross-host replay; <code>@path</code> binds it to the specific endpoint; and <code>signature-key</code> binds the signature to the presented key material, preventing key substitution. Omitting any one would let a captured signature be replayed against a different method, host, path, or key.<a href="#section-13.7.3.1-3" class="pilcrow">¶</a></p>
+<p id="section-13.7.3.1-4">Servers MAY require additional covered components (e.g., <code>content-digest</code> (<span>[<a href="#RFC9530" class="cite xref">RFC9530</a>]</span>) for request body integrity). The agent learns about additional requirements from server metadata or from an <code>invalid_input</code> error response that includes <code>required_input</code>.<a href="#section-13.7.3.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="signature-parameters">
