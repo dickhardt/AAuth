@@ -2745,6 +2745,16 @@ Table of Contents
       upstream_token.  The AS evaluates the request based on resource
       policy.  No PS is involved — no governance context is available.
 
+   In every case the intermediary signs the downstream token request
+   with its *own* key, presenting its own agent token via the Signature-
+   Key header Section 13.7.  The upstream_token is a body parameter — it
+   is neither presented via Signature-Key nor used as the signing key.
+   It is the auth token previously issued to the intermediary (its aud
+   is the intermediary and its cnf is the intermediary's key), and it
+   serves only as proof of the upstream authorization that the recipient
+   extends downstream.  The signature the recipient verifies is
+   therefore always the intermediary's, over its own key.
+
    The recipient (PS or AS) evaluates the downstream request per
    Section 9.4.5.
 
