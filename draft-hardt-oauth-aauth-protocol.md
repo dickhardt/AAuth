@@ -2236,6 +2236,8 @@ The signature MUST cover the following derived components and header fields:
 - `@path`: The request path ([@!RFC9421], Section 2.2.6)
 - `signature-key`: The Signature-Key header value
 
+These four are mandated rather than advisory because each closes a request-substitution attack and all four are derivable by the agent at signing time on every platform, including browsers: `@method` prevents a captured signature from being replayed with a different method (a signed `GET` reused as a `DELETE`); `@authority` binds the signature to the target host, preventing cross-host replay; `@path` binds it to the specific endpoint; and `signature-key` binds the signature to the presented key material, preventing key substitution. Omitting any one would let a captured signature be replayed against a different method, host, path, or key.
+
 Servers MAY require additional covered components (e.g., `content-digest` ([@RFC9530]) for request body integrity). The agent learns about additional requirements from server metadata or from an `invalid_input` error response that includes `required_input`.
 
 #### Signature Parameters
