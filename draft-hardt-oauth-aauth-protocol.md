@@ -754,6 +754,19 @@ The agent MUST extract the `resource-token` parameter, verify the resource token
 
 A resource MAY return `requirement=auth-token` with a new resource token to a request that already includes an auth token — for example, when the request requires a higher level of authorization than the current token provides. Agents MUST be prepared for this step-up authorization at any time.
 
+## Agent Token Required {#requirement-agent-token}
+
+A resource that requires only the agent's identity — identity-based access, with no user auth token — uses `requirement=agent-token` with a `401 Unauthorized` response when the request did not present an AAuth agent token. This signals that the resource specifically requires an AAuth agent token (`typ: aa-agent+jwt`), as distinct from any other URI-identified signing key.
+
+```http
+HTTP/1.1 401 Unauthorized
+AAuth-Requirement: requirement=agent-token
+```
+
+The header carries no additional parameters: the agent already holds its agent token and need only present it. The agent retries the request, signing it per (#http-message-signatures-profile) and presenting its agent token via the `Signature-Key` header using `sig=jwt;jwt="<agent-token>"`.
+
+`requirement=agent-token` is distinct from `requirement=auth-token`: the former asks for the agent's own identity token, with no PS or AS involved; the latter asks the agent to obtain an auth token from its PS using the enclosed resource token. It is also more specific than an `Accept-Signature` challenge ([@!I-D.hardt-httpbis-signature-key]), which accepts any URI-identified key — `requirement=agent-token` tells the agent that an AAuth agent token in particular is required.
+
 ## Resource Token
 
 ### Resource Token Structure
@@ -839,8 +852,10 @@ The agent MUST make a signed POST to the PS's `token_endpoint`. The request MUST
 - `login_hint` (OPTIONAL): Hint about who to authorize, per [@!OpenID.Core] Section 3.1.2.1.
 - `tenant` (OPTIONAL): Tenant identifier, per OpenID Connect Enterprise Extensions 1.0 [@OpenID.Enterprise].
 - `domain_hint` (OPTIONAL): Domain hint, per OpenID Connect Enterprise Extensions 1.0 [@OpenID.Enterprise].
+- `prompt` (OPTIONAL): Space-delimited, case-sensitive list of values specifying whether the PS prompts the user for reauthentication and consent, per [@!OpenID.Core] Section 3.1.2.1. Defined values: `none`, `login`, `consent`, `select_account`.
 - `platform` (OPTIONAL): Identifier for the runtime platform the agent runs on. The value MUST be from the AAuth Platform Value Registry (#aauth-platform-value-registry). Describes the runtime context (where the agent runs) but does not by itself convey what security measures were applied within that context. Used for display at the PS consent screen and the PS's connected-agents dashboard. Agent-attested.
 - `device` (OPTIONAL): Short human-readable string identifying the specific device or browser, intended for display so users can distinguish entries in their connected-agents dashboard (e.g., `Chrome on macOS`, `Pixel 8 (App)`). The string is opaque to receivers — they display it but do not parse it. The string MUST consist of UTF-8 printable characters only (no control characters) and MUST NOT exceed 64 characters. Agents MUST NOT include personally identifying information beyond what the user has chosen (e.g., user-supplied nicknames). Agent-attested.
+- `capabilities` (OPTIONAL): An array of capability values (#aauth-capabilities) the agent can handle for this request — the request-body equivalent of the `AAuth-Capabilities` header, which is not used on PS endpoints. Without a mission, this is how the PS learns the agent's capabilities (for example, whether the agent can drive `requirement=interaction`). Within a mission, `capabilities` is OPTIONAL: if omitted, the PS uses the values captured at mission approval (#mission-approval); if present, it refreshes them for this request.
 
 **Example request:**
 ```http
@@ -1788,7 +1803,7 @@ This specification defines the following capability values:
 
 The agent determines its capabilities by combining what it can do directly with what its PS can do on its behalf. When the agent has a PS and has created a mission, the mission approval response MAY include a `capabilities` array listing what the PS can handle for this user/session (#mission-approval). When present, the agent unions those capabilities with its own to produce the `AAuth-Capabilities` header value.
 
-Agents SHOULD include the `AAuth-Capabilities` header on signed requests to resources. The header is not used on requests to PS endpoints — the PS learns the agent's capabilities through the mission approval flow. Recipients MUST ignore unrecognized capability values. When the header is absent, recipients MUST NOT assume any capabilities — the agent may not support interaction, clarification, or payment flows.
+Agents SHOULD include the `AAuth-Capabilities` header on signed requests to resources. The header is not used on requests to PS endpoints: on the PS token endpoint the agent conveys capabilities via the `capabilities` request parameter (#ps-token-endpoint), and within a mission the PS also has the capabilities captured at mission approval (#mission-approval). Recipients MUST ignore unrecognized capability values. When the header is absent, recipients MUST NOT assume any capabilities — the agent may not support interaction, clarification, or payment flows.
 
 ## Scopes {#scopes}
 
@@ -1835,13 +1850,14 @@ The `requirement` value is an extension point. This document defines the followi
 
 | Value | Status Code | Meaning | Resource | PS | AS |
 |-------|-------------|---------|:--------:|:--:|:--:|
+| `agent-token` | `401` | AAuth agent token required for identity-only access | Y | | |
 | `auth-token` | `401` | Auth token required for resource access | Y | | |
 | `interaction` | `202` | User action required at an interaction endpoint | Y | Y | Y |
 | `approval` | `202` | Approval pending, poll for result | Y | Y | Y |
 | `clarification` | `202` | Question posed to the recipient | Y | Y | Y |
 | `claims` | `202` | Identity claims required | | | Y |
 
-The `auth-token` requirement is defined in (#requirement-auth-token); the `interaction` and `approval` requirements are defined in this section;  `clarification` in (#requirement-clarification); and `claims` in (#requirement-claims).
+The `agent-token` requirement is defined in (#requirement-agent-token); the `auth-token` requirement in (#requirement-auth-token); the `interaction` and `approval` requirements are defined in this section;  `clarification` in (#requirement-clarification); and `claims` in (#requirement-claims).
 
 ### Interaction Required
 
@@ -2552,6 +2568,7 @@ This specification establishes the AAuth Requirement Value Registry. The registr
 
 | Value | Reference |
 |-------|-----------|
+| `agent-token` | This document |
 | `interaction` | This document |
 | `approval` | This document |
 | `auth-token` | This document |
