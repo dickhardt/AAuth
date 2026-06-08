@@ -277,6 +277,19 @@ The resource returns a resource token as defined in AAuth Protocol ([@!I-D.hardt
 
 The resource token contains `r3_uri` and `r3_s256` identifying the R3 document that covers the requested operations. The resource's internal mapping from operations to R3 documents is opaque to the agent.
 
+## Operations Spanning Multiple Definitions {#operations-spanning-definitions}
+
+A resource MAY organize its authorization definitions into multiple R3 documents internally — for example, one document per scope or operation group. A single resource token carries exactly one `r3_uri`/`r3_s256` pair, and the resulting auth token therefore pins exactly one R3 document.
+
+When an agent's `r3_operations` request includes operations that the resource maps to more than one of its internal definitions, the resource MUST compose a single R3 document that covers all of the requested operations and reference that composed document in the resource token:
+
+- **`operations`** is the union of the requested operations, expressed in the request's vocabulary.
+- **`display`** describes the combined access. The resource MAY merge the `display` sections of the underlying definitions (for example, concatenating `implications` and unioning `data_accessed`) or author a purpose-built summary for the combination.
+
+The composed document is served at a fresh content-addressed `r3_uri` exactly like any other R3 document (see {{content-addressing}}): the resource builds it on the fly and persists the serialized bytes so the hash remains stable across the AS and MM fetches. Because R3 documents are content-addressed, an identical combination of operations reduces to the same hash and MAY be cached and reused across requests.
+
+This composition is opaque to the agent. The agent sees one `r3_uri`/`r3_s256` in the resource token regardless of how many internal definitions the requested operations were drawn from, and the auth token's `r3_granted` and `r3_conditional` claims express the granted operations against that single composed document.
+
 # R3 Document
 
 An R3 document is a JSON object published by the resource at a URI. It describes the authorization semantics for a class of access: what operations are covered (in vocabulary format), what the access means in human terms, and what consequences it carries.
@@ -315,7 +328,7 @@ The document MUST be served over HTTPS. The resource MUST require a valid HTTP M
 - `data_accessed` (OPTIONAL). What data becomes visible to the caller.
 - `irreversible` (OPTIONAL). Plain-language description of actions that cannot be undone.
 
-## Content Addressing
+## Content Addressing {#content-addressing}
 
 The R3 hash (`r3_s256`) is computed as the SHA-256 hash of the bytes of the R3 document as served by the resource, base64url-encoded without padding.
 
