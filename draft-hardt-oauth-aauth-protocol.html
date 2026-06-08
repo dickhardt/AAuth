@@ -1265,16 +1265,19 @@ svg {
                 <p id="section-toc.1-1.6.2.5.1"><a href="#section-6.5" class="auto internal xref">6.5</a>.  <a href="#name-auth-token-required" class="internal xref">Auth Token Required</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.6">
-                <p id="section-toc.1-1.6.2.6.1"><a href="#section-6.6" class="auto internal xref">6.6</a>.  <a href="#name-resource-token" class="internal xref">Resource Token</a></p>
+                <p id="section-toc.1-1.6.2.6.1"><a href="#section-6.6" class="auto internal xref">6.6</a>.  <a href="#name-agent-token-required" class="internal xref">Agent Token Required</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.7">
+                <p id="section-toc.1-1.6.2.7.1"><a href="#section-6.7" class="auto internal xref">6.7</a>.  <a href="#name-resource-token" class="internal xref">Resource Token</a></p>
 <ul class="compact toc ulBare ulEmpty">
-<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.6.2.1">
-                    <p id="section-toc.1-1.6.2.6.2.1.1"><a href="#section-6.6.1" class="auto internal xref">6.6.1</a>.  <a href="#name-resource-token-structure" class="internal xref">Resource Token Structure</a></p>
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.7.2.1">
+                    <p id="section-toc.1-1.6.2.7.2.1.1"><a href="#section-6.7.1" class="auto internal xref">6.7.1</a>.  <a href="#name-resource-token-structure" class="internal xref">Resource Token Structure</a></p>
 </li>
-                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.6.2.2">
-                    <p id="section-toc.1-1.6.2.6.2.2.1"><a href="#section-6.6.2" class="auto internal xref">6.6.2</a>.  <a href="#name-resource-token-verification" class="internal xref">Resource Token Verification</a></p>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.7.2.2">
+                    <p id="section-toc.1-1.6.2.7.2.2.1"><a href="#section-6.7.2" class="auto internal xref">6.7.2</a>.  <a href="#name-resource-token-verification" class="internal xref">Resource Token Verification</a></p>
 </li>
-                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.6.2.3">
-                    <p id="section-toc.1-1.6.2.6.2.3.1"><a href="#section-6.6.3" class="auto internal xref">6.6.3</a>.  <a href="#name-resource-challenge-verifica" class="internal xref">Resource Challenge Verification</a></p>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.7.2.3">
+                    <p id="section-toc.1-1.6.2.7.2.3.1"><a href="#section-6.7.3" class="auto internal xref">6.7.3</a>.  <a href="#name-resource-challenge-verifica" class="internal xref">Resource Challenge Verification</a></p>
 </li>
                 </ul>
 </li>
@@ -2873,33 +2876,49 @@ Content-Type: application/json
         <h3 id="name-auth-token-required">
 <a href="#section-6.5" class="section-number selfRef">6.5. </a><a href="#name-auth-token-required" class="section-name selfRef">Auth Token Required</a>
         </h3>
-<p id="section-6.5-1">A resource MUST use <code>requirement=auth-token</code> with a <code>401 Unauthorized</code> response when an auth token is required. The header MUST include a <code>resource-token</code> parameter containing a resource token JWT <a href="#resource-token-structure" class="auto internal xref">Section 6.6.1</a>.<a href="#section-6.5-1" class="pilcrow">¶</a></p>
+<p id="section-6.5-1">A resource MUST use <code>requirement=auth-token</code> with a <code>401 Unauthorized</code> response when an auth token is required. The header MUST include a <code>resource-token</code> parameter containing a resource token JWT <a href="#resource-token-structure" class="auto internal xref">Section 6.7.1</a>.<a href="#section-6.5-1" class="pilcrow">¶</a></p>
 <div class="lang-http sourcecode" id="section-6.5-2">
 <pre>HTTP/1.1 401 Unauthorized
 AAuth-Requirement: requirement=auth-token; resource-token="eyJ..."
 
 </pre><a href="#section-6.5-2" class="pilcrow">¶</a>
 </div>
-<p id="section-6.5-3">The agent MUST extract the <code>resource-token</code> parameter, verify the resource token <a href="#resource-challenge-verification" class="auto internal xref">Section 6.6.3</a>, and present it to its PS's token endpoint to obtain an auth token <a href="#ps-token-endpoint" class="auto internal xref">Section 7.1</a>. A resource MAY also use <code>402 Payment Required</code> with the same <code>AAuth-Requirement</code> header when payment is additionally required <a href="#requirement-responses" class="auto internal xref">Section 12.3</a>.<a href="#section-6.5-3" class="pilcrow">¶</a></p>
+<p id="section-6.5-3">The agent MUST extract the <code>resource-token</code> parameter, verify the resource token <a href="#resource-challenge-verification" class="auto internal xref">Section 6.7.3</a>, and present it to its PS's token endpoint to obtain an auth token <a href="#ps-token-endpoint" class="auto internal xref">Section 7.1</a>. A resource MAY also use <code>402 Payment Required</code> with the same <code>AAuth-Requirement</code> header when payment is additionally required <a href="#requirement-responses" class="auto internal xref">Section 12.3</a>.<a href="#section-6.5-3" class="pilcrow">¶</a></p>
 <p id="section-6.5-4">A resource MAY return <code>requirement=auth-token</code> with a new resource token to a request that already includes an auth token — for example, when the request requires a higher level of authorization than the current token provides. Agents MUST be prepared for this step-up authorization at any time.<a href="#section-6.5-4" class="pilcrow">¶</a></p>
 </section>
 </div>
-<div id="resource-token">
+<div id="requirement-agent-token">
 <section id="section-6.6">
+        <h3 id="name-agent-token-required">
+<a href="#section-6.6" class="section-number selfRef">6.6. </a><a href="#name-agent-token-required" class="section-name selfRef">Agent Token Required</a>
+        </h3>
+<p id="section-6.6-1">A resource that requires only the agent's identity — identity-based access, with no user auth token — uses <code>requirement=agent-token</code> with a <code>401 Unauthorized</code> response when the request did not present an AAuth agent token. This signals that the resource specifically requires an AAuth agent token (<code>typ: aa-agent+jwt</code>), as distinct from any other URI-identified signing key.<a href="#section-6.6-1" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-6.6-2">
+<pre>HTTP/1.1 401 Unauthorized
+AAuth-Requirement: requirement=agent-token
+
+</pre><a href="#section-6.6-2" class="pilcrow">¶</a>
+</div>
+<p id="section-6.6-3">The header carries no additional parameters: the agent already holds its agent token and need only present it. The agent retries the request, signing it per <a href="#http-message-signatures-profile" class="auto internal xref">Section 12.7</a> and presenting its agent token via the <code>Signature-Key</code> header using <code>sig=jwt;jwt="&lt;agent-token&gt;"</code>.<a href="#section-6.6-3" class="pilcrow">¶</a></p>
+<p id="section-6.6-4"><code>requirement=agent-token</code> is distinct from <code>requirement=auth-token</code>: the former asks for the agent's own identity token, with no PS or AS involved; the latter asks the agent to obtain an auth token from its PS using the enclosed resource token. It is also more specific than an <code>Accept-Signature</code> challenge (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>), which accepts any URI-identified key — <code>requirement=agent-token</code> tells the agent that an AAuth agent token in particular is required.<a href="#section-6.6-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="resource-token">
+<section id="section-6.7">
         <h3 id="name-resource-token">
-<a href="#section-6.6" class="section-number selfRef">6.6. </a><a href="#name-resource-token" class="section-name selfRef">Resource Token</a>
+<a href="#section-6.7" class="section-number selfRef">6.7. </a><a href="#name-resource-token" class="section-name selfRef">Resource Token</a>
         </h3>
 <div id="resource-token-structure">
-<section id="section-6.6.1">
+<section id="section-6.7.1">
           <h4 id="name-resource-token-structure">
-<a href="#section-6.6.1" class="section-number selfRef">6.6.1. </a><a href="#name-resource-token-structure" class="section-name selfRef">Resource Token Structure</a>
+<a href="#section-6.7.1" class="section-number selfRef">6.7.1. </a><a href="#name-resource-token-structure" class="section-name selfRef">Resource Token Structure</a>
           </h4>
-<p id="section-6.6.1-1">A resource token is a JWT with <code>typ: aa-resource+jwt</code> containing:<a href="#section-6.6.1-1" class="pilcrow">¶</a></p>
-<p id="section-6.6.1-2">Header:
+<p id="section-6.7.1-1">A resource token is a JWT with <code>typ: aa-resource+jwt</code> containing:<a href="#section-6.7.1-1" class="pilcrow">¶</a></p>
+<p id="section-6.7.1-2">Header:
 - <code>alg</code>: Signing algorithm. EdDSA is RECOMMENDED. Implementations MUST NOT accept <code>none</code>.
 - <code>typ</code>: <code>aa-resource+jwt</code>
-- <code>kid</code>: Key identifier<a href="#section-6.6.1-2" class="pilcrow">¶</a></p>
-<p id="section-6.6.1-3">Payload:
+- <code>kid</code>: Key identifier<a href="#section-6.7.1-2" class="pilcrow">¶</a></p>
+<p id="section-6.7.1-3">Payload:
 - <code>iss</code>: Resource URL
 - <code>dwk</code>: <code>aauth-resource.json</code> — the well-known metadata document name for key discovery (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>)
 - <code>aud</code>: Token audience — the PS URL (when the resource delegates authorization to the agent's PS) or the AS URL (when the resource has its own access server)
@@ -2908,58 +2927,58 @@ AAuth-Requirement: requirement=auth-token; resource-token="eyJ..."
 - <code>agent_jkt</code>: JWK Thumbprint (<span>[<a href="#RFC7638" class="cite xref">RFC7638</a>]</span>) of the agent's current signing key
 - <code>iat</code>: Issued at timestamp
 - <code>exp</code>: Expiration timestamp
-- <code>scope</code>: Requested scopes, as a space-separated string of scope values. Companion specifications MAY define alternative authorization claims that replace <code>scope</code>.<a href="#section-6.6.1-3" class="pilcrow">¶</a></p>
-<p id="section-6.6.1-4">Optional payload claims:
+- <code>scope</code>: Requested scopes, as a space-separated string of scope values. Companion specifications MAY define alternative authorization claims that replace <code>scope</code>.<a href="#section-6.7.1-3" class="pilcrow">¶</a></p>
+<p id="section-6.7.1-4">Optional payload claims:
 - <code>mission</code>: Mission object (present when the resource is mission-aware and the agent sent an <code>AAuth-Mission</code> header). Contains:
   - <code>approver</code>: HTTPS URL of the entity that approved the mission
-  - <code>s256</code>: SHA-256 hash of the approved mission JSON (base64url)<a href="#section-6.6.1-4" class="pilcrow">¶</a></p>
-<p id="section-6.6.1-5">Resource tokens SHOULD NOT have a lifetime exceeding 5 minutes. The <code>jti</code> claim provides an audit trail for token requests; ASes are not required to enforce replay detection on resource tokens. If a resource token expires before the PS presents it to the AS (e.g., because user interaction was required), the agent MUST obtain a fresh resource token from the resource and submit a new token request to the PS. The PS SHOULD remember prior consent decisions within a mission so the user is not re-prompted when the agent resubmits a request for the same resource and scope.<a href="#section-6.6.1-5" class="pilcrow">¶</a></p>
+  - <code>s256</code>: SHA-256 hash of the approved mission JSON (base64url)<a href="#section-6.7.1-4" class="pilcrow">¶</a></p>
+<p id="section-6.7.1-5">Resource tokens SHOULD NOT have a lifetime exceeding 5 minutes. The <code>jti</code> claim provides an audit trail for token requests; ASes are not required to enforce replay detection on resource tokens. If a resource token expires before the PS presents it to the AS (e.g., because user interaction was required), the agent MUST obtain a fresh resource token from the resource and submit a new token request to the PS. The PS SHOULD remember prior consent decisions within a mission so the user is not re-prompted when the agent resubmits a request for the same resource and scope.<a href="#section-6.7.1-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="resource-token-verification">
-<section id="section-6.6.2">
+<section id="section-6.7.2">
           <h4 id="name-resource-token-verification">
-<a href="#section-6.6.2" class="section-number selfRef">6.6.2. </a><a href="#name-resource-token-verification" class="section-name selfRef">Resource Token Verification</a>
+<a href="#section-6.7.2" class="section-number selfRef">6.7.2. </a><a href="#name-resource-token-verification" class="section-name selfRef">Resource Token Verification</a>
           </h4>
-<p id="section-6.6.2-1">Verify the resource token per <span>[<a href="#RFC7515" class="cite xref">RFC7515</a>]</span> and <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>:<a href="#section-6.6.2-1" class="pilcrow">¶</a></p>
-<ol start="1" type="1" class="compact type-1" id="section-6.6.2-2">
-<li id="section-6.6.2-2.1">Decode the JWT header. Verify <code>typ</code> is <code>aa-resource+jwt</code>.<a href="#section-6.6.2-2.1" class="pilcrow">¶</a>
+<p id="section-6.7.2-1">Verify the resource token per <span>[<a href="#RFC7515" class="cite xref">RFC7515</a>]</span> and <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>:<a href="#section-6.7.2-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="compact type-1" id="section-6.7.2-2">
+<li id="section-6.7.2-2.1">Decode the JWT header. Verify <code>typ</code> is <code>aa-resource+jwt</code>.<a href="#section-6.7.2-2.1" class="pilcrow">¶</a>
 </li>
-            <li id="section-6.6.2-2.2">Verify <code>dwk</code> is <code>aauth-resource.json</code>. Discover the issuer's JWKS via <code>{iss}/.well-known/{dwk}</code> per the HTTP Signature Keys specification (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). Locate the key matching the JWT header <code>kid</code> and verify the JWT signature.<a href="#section-6.6.2-2.2" class="pilcrow">¶</a>
+            <li id="section-6.7.2-2.2">Verify <code>dwk</code> is <code>aauth-resource.json</code>. Discover the issuer's JWKS via <code>{iss}/.well-known/{dwk}</code> per the HTTP Signature Keys specification (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). Locate the key matching the JWT header <code>kid</code> and verify the JWT signature.<a href="#section-6.7.2-2.2" class="pilcrow">¶</a>
 </li>
-            <li id="section-6.6.2-2.3">Verify <code>exp</code> is in the future and <code>iat</code> is not in the future.<a href="#section-6.6.2-2.3" class="pilcrow">¶</a>
+            <li id="section-6.7.2-2.3">Verify <code>exp</code> is in the future and <code>iat</code> is not in the future.<a href="#section-6.7.2-2.3" class="pilcrow">¶</a>
 </li>
-            <li id="section-6.6.2-2.4">Verify <code>aud</code> matches the recipient's own identifier (the PS in three-party, or the AS in four-party).<a href="#section-6.6.2-2.4" class="pilcrow">¶</a>
+            <li id="section-6.7.2-2.4">Verify <code>aud</code> matches the recipient's own identifier (the PS in three-party, or the AS in four-party).<a href="#section-6.7.2-2.4" class="pilcrow">¶</a>
 </li>
-            <li id="section-6.6.2-2.5">Verify <code>agent</code> matches the requesting agent's identifier.<a href="#section-6.6.2-2.5" class="pilcrow">¶</a>
+            <li id="section-6.7.2-2.5">Verify <code>agent</code> matches the requesting agent's identifier.<a href="#section-6.7.2-2.5" class="pilcrow">¶</a>
 </li>
-            <li id="section-6.6.2-2.6">Verify <code>agent_jkt</code> matches the JWK Thumbprint of the key used to sign the HTTP request.<a href="#section-6.6.2-2.6" class="pilcrow">¶</a>
+            <li id="section-6.7.2-2.6">Verify <code>agent_jkt</code> matches the JWK Thumbprint of the key used to sign the HTTP request.<a href="#section-6.7.2-2.6" class="pilcrow">¶</a>
 </li>
-            <li id="section-6.6.2-2.7">If <code>mission</code> is present, verify <code>mission.approver</code> matches the PS that sent the token request.<a href="#section-6.6.2-2.7" class="pilcrow">¶</a>
+            <li id="section-6.7.2-2.7">If <code>mission</code> is present, verify <code>mission.approver</code> matches the PS that sent the token request.<a href="#section-6.7.2-2.7" class="pilcrow">¶</a>
 </li>
           </ol>
 </section>
 </div>
 <div id="resource-challenge-verification">
-<section id="section-6.6.3">
+<section id="section-6.7.3">
           <h4 id="name-resource-challenge-verifica">
-<a href="#section-6.6.3" class="section-number selfRef">6.6.3. </a><a href="#name-resource-challenge-verifica" class="section-name selfRef">Resource Challenge Verification</a>
+<a href="#section-6.7.3" class="section-number selfRef">6.7.3. </a><a href="#name-resource-challenge-verifica" class="section-name selfRef">Resource Challenge Verification</a>
           </h4>
-<p id="section-6.6.3-1">When an agent receives a <code>401</code> response with <code>AAuth-Requirement: requirement=auth-token</code>:<a href="#section-6.6.3-1" class="pilcrow">¶</a></p>
-<ol start="1" type="1" class="compact type-1" id="section-6.6.3-2">
-<li id="section-6.6.3-2.1">Extract the <code>resource-token</code> parameter.<a href="#section-6.6.3-2.1" class="pilcrow">¶</a>
+<p id="section-6.7.3-1">When an agent receives a <code>401</code> response with <code>AAuth-Requirement: requirement=auth-token</code>:<a href="#section-6.7.3-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="compact type-1" id="section-6.7.3-2">
+<li id="section-6.7.3-2.1">Extract the <code>resource-token</code> parameter.<a href="#section-6.7.3-2.1" class="pilcrow">¶</a>
 </li>
-            <li id="section-6.6.3-2.2">Decode and verify the resource token JWT.<a href="#section-6.6.3-2.2" class="pilcrow">¶</a>
+            <li id="section-6.7.3-2.2">Decode and verify the resource token JWT.<a href="#section-6.7.3-2.2" class="pilcrow">¶</a>
 </li>
-            <li id="section-6.6.3-2.3">Verify <code>iss</code> matches the resource the agent sent the request to.<a href="#section-6.6.3-2.3" class="pilcrow">¶</a>
+            <li id="section-6.7.3-2.3">Verify <code>iss</code> matches the resource the agent sent the request to.<a href="#section-6.7.3-2.3" class="pilcrow">¶</a>
 </li>
-            <li id="section-6.6.3-2.4">Verify <code>agent</code> matches the agent's own identifier.<a href="#section-6.6.3-2.4" class="pilcrow">¶</a>
+            <li id="section-6.7.3-2.4">Verify <code>agent</code> matches the agent's own identifier.<a href="#section-6.7.3-2.4" class="pilcrow">¶</a>
 </li>
-            <li id="section-6.6.3-2.5">Verify <code>agent_jkt</code> matches the JWK Thumbprint of the agent's signing key.<a href="#section-6.6.3-2.5" class="pilcrow">¶</a>
+            <li id="section-6.7.3-2.5">Verify <code>agent_jkt</code> matches the JWK Thumbprint of the agent's signing key.<a href="#section-6.7.3-2.5" class="pilcrow">¶</a>
 </li>
-            <li id="section-6.6.3-2.6">Verify <code>exp</code> is in the future.<a href="#section-6.6.3-2.6" class="pilcrow">¶</a>
+            <li id="section-6.7.3-2.6">Verify <code>exp</code> is in the future.<a href="#section-6.7.3-2.6" class="pilcrow">¶</a>
 </li>
-            <li id="section-6.6.3-2.7">Send the resource token to the agent's PS's token endpoint.<a href="#section-6.6.3-2.7" class="pilcrow">¶</a>
+            <li id="section-6.7.3-2.7">Send the resource token to the agent's PS's token endpoint.<a href="#section-6.7.3-2.7" class="pilcrow">¶</a>
 </li>
           </ol>
 </section>
@@ -3053,10 +3072,16 @@ AAuth-Requirement: requirement=auth-token; resource-token="eyJ..."
               <code>domain_hint</code> (OPTIONAL): Domain hint, per OpenID Connect Enterprise Extensions 1.0 <span>[<a href="#OpenID.Enterprise" class="cite xref">OpenID.Enterprise</a>]</span>.<a href="#section-7.1.3-3.6" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-7.1.3-3.7">
-              <code>platform</code> (OPTIONAL): Identifier for the runtime platform the agent runs on. The value MUST be from the AAuth Platform Value Registry <a href="#aauth-platform-value-registry" class="auto internal xref">Section 16.9</a>. Describes the runtime context (where the agent runs) but does not by itself convey what security measures were applied within that context. Used for display at the PS consent screen and the PS's connected-agents dashboard. Agent-attested.<a href="#section-7.1.3-3.7" class="pilcrow">¶</a>
+              <code>prompt</code> (OPTIONAL): Space-delimited, case-sensitive list of values specifying whether the PS prompts the user for reauthentication and consent, per <span>[<a href="#OpenID.Core" class="cite xref">OpenID.Core</a>]</span> Section 3.1.2.1. Defined values: <code>none</code>, <code>login</code>, <code>consent</code>, <code>select_account</code>.<a href="#section-7.1.3-3.7" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-7.1.3-3.8">
-              <code>device</code> (OPTIONAL): Short human-readable string identifying the specific device or browser, intended for display so users can distinguish entries in their connected-agents dashboard (e.g., <code>Chrome on macOS</code>, <code>Pixel 8 (App)</code>). The string is opaque to receivers — they display it but do not parse it. The string MUST consist of UTF-8 printable characters only (no control characters) and MUST NOT exceed 64 characters. Agents MUST NOT include personally identifying information beyond what the user has chosen (e.g., user-supplied nicknames). Agent-attested.<a href="#section-7.1.3-3.8" class="pilcrow">¶</a>
+              <code>platform</code> (OPTIONAL): Identifier for the runtime platform the agent runs on. The value MUST be from the AAuth Platform Value Registry <a href="#aauth-platform-value-registry" class="auto internal xref">Section 16.9</a>. Describes the runtime context (where the agent runs) but does not by itself convey what security measures were applied within that context. Used for display at the PS consent screen and the PS's connected-agents dashboard. Agent-attested.<a href="#section-7.1.3-3.8" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-7.1.3-3.9">
+              <code>device</code> (OPTIONAL): Short human-readable string identifying the specific device or browser, intended for display so users can distinguish entries in their connected-agents dashboard (e.g., <code>Chrome on macOS</code>, <code>Pixel 8 (App)</code>). The string is opaque to receivers — they display it but do not parse it. The string MUST consist of UTF-8 printable characters only (no control characters) and MUST NOT exceed 64 characters. Agents MUST NOT include personally identifying information beyond what the user has chosen (e.g., user-supplied nicknames). Agent-attested.<a href="#section-7.1.3-3.9" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-7.1.3-3.10">
+              <code>capabilities</code> (OPTIONAL): An array of capability values <a href="#aauth-capabilities" class="auto internal xref">Section 12.1</a> the agent can handle for this request — the request-body equivalent of the <code>AAuth-Capabilities</code> header, which is not used on PS endpoints. Without a mission, this is how the PS learns the agent's capabilities (for example, whether the agent can drive <code>requirement=interaction</code>). Within a mission, <code>capabilities</code> is OPTIONAL: if omitted, the PS uses the values captured at mission approval <a href="#mission-approval" class="auto internal xref">Section 8.2</a>; if present, it refreshes them for this request.<a href="#section-7.1.3-3.10" class="pilcrow">¶</a>
 </li>
           </ul>
 <p id="section-7.1.3-4"><strong>Example request:</strong><a href="#section-7.1.3-4" class="pilcrow">¶</a></p>
@@ -4430,7 +4455,7 @@ Content-Type: application/json
           </tbody>
         </table>
 <p id="section-12.1-6">The agent determines its capabilities by combining what it can do directly with what its PS can do on its behalf. When the agent has a PS and has created a mission, the mission approval response MAY include a <code>capabilities</code> array listing what the PS can handle for this user/session <a href="#mission-approval" class="auto internal xref">Section 8.2</a>. When present, the agent unions those capabilities with its own to produce the <code>AAuth-Capabilities</code> header value.<a href="#section-12.1-6" class="pilcrow">¶</a></p>
-<p id="section-12.1-7">Agents SHOULD include the <code>AAuth-Capabilities</code> header on signed requests to resources. The header is not used on requests to PS endpoints — the PS learns the agent's capabilities through the mission approval flow. Recipients MUST ignore unrecognized capability values. When the header is absent, recipients MUST NOT assume any capabilities — the agent may not support interaction, clarification, or payment flows.<a href="#section-12.1-7" class="pilcrow">¶</a></p>
+<p id="section-12.1-7">Agents SHOULD include the <code>AAuth-Capabilities</code> header on signed requests to resources. The header is not used on requests to PS endpoints: on the PS token endpoint the agent conveys capabilities via the <code>capabilities</code> request parameter <a href="#ps-token-endpoint" class="auto internal xref">Section 7.1</a>, and within a mission the PS also has the capabilities captured at mission approval <a href="#mission-approval" class="auto internal xref">Section 8.2</a>. Recipients MUST ignore unrecognized capability values. When the header is absent, recipients MUST NOT assume any capabilities — the agent may not support interaction, clarification, or payment flows.<a href="#section-12.1-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="scopes">
@@ -4512,6 +4537,18 @@ Content-Type: application/json
             <tbody>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">
+                  <code>agent-token</code>
+</td>
+                <td class="text-left" rowspan="1" colspan="1">
+                  <code>401</code>
+</td>
+                <td class="text-left" rowspan="1" colspan="1">AAuth agent token required for identity-only access</td>
+                <td class="text-center" rowspan="1" colspan="1">Y</td>
+                <td class="text-center" rowspan="1" colspan="1"></td>
+                <td class="text-center" rowspan="1" colspan="1"></td>
+              </tr>
+              <tr>
+                <td class="text-left" rowspan="1" colspan="1">
                   <code>auth-token</code>
 </td>
                 <td class="text-left" rowspan="1" colspan="1">
@@ -4572,7 +4609,7 @@ Content-Type: application/json
               </tr>
             </tbody>
           </table>
-<p id="section-12.3.2-3">The <code>auth-token</code> requirement is defined in <a href="#requirement-auth-token" class="auto internal xref">Section 6.5</a>; the <code>interaction</code> and <code>approval</code> requirements are defined in this section;  <code>clarification</code> in <a href="#requirement-clarification" class="auto internal xref">Section 7.3.1</a>; and <code>claims</code> in <a href="#requirement-claims" class="auto internal xref">Section 9.2</a>.<a href="#section-12.3.2-3" class="pilcrow">¶</a></p>
+<p id="section-12.3.2-3">The <code>agent-token</code> requirement is defined in <a href="#requirement-agent-token" class="auto internal xref">Section 6.6</a>; the <code>auth-token</code> requirement in <a href="#requirement-auth-token" class="auto internal xref">Section 6.5</a>; the <code>interaction</code> and <code>approval</code> requirements are defined in this section;  <code>clarification</code> in <a href="#requirement-clarification" class="auto internal xref">Section 7.3.1</a>; and <code>claims</code> in <a href="#requirement-claims" class="auto internal xref">Section 9.2</a>.<a href="#section-12.3.2-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="interaction-required">
@@ -6059,6 +6096,12 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
             </tr>
           </thead>
           <tbody>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>agent-token</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">This document</td>
+            </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
                 <code>interaction</code>

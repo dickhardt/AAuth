@@ -101,10 +101,11 @@ Table of Contents
      6.3.  AAuth-Access Response Header
      6.4.  Resource-Managed Authorization
      6.5.  Auth Token Required
-     6.6.  Resource Token
-       6.6.1.  Resource Token Structure
-       6.6.2.  Resource Token Verification
-       6.6.3.  Resource Challenge Verification
+     6.6.  Agent Token Required
+     6.7.  Resource Token
+       6.7.1.  Resource Token Structure
+       6.7.2.  Resource Token Verification
+       6.7.3.  Resource Challenge Verification
    7.  Person Server
      7.1.  PS Token Endpoint
        7.1.1.  Token Endpoint Modes
@@ -1292,13 +1293,13 @@ Table of Contents
    A resource MUST use requirement=auth-token with a 401 Unauthorized
    response when an auth token is required.  The header MUST include a
    resource-token parameter containing a resource token JWT
-   Section 6.6.1.
+   Section 6.7.1.
 
    HTTP/1.1 401 Unauthorized
    AAuth-Requirement: requirement=auth-token; resource-token="eyJ..."
 
    The agent MUST extract the resource-token parameter, verify the
-   resource token Section 6.6.3, and present it to its PS's token
+   resource token Section 6.7.3, and present it to its PS's token
    endpoint to obtain an auth token Section 7.1.  A resource MAY also
    use 402 Payment Required with the same AAuth-Requirement header when
    payment is additionally required Section 12.3.
@@ -1309,9 +1310,34 @@ Table of Contents
    current token provides.  Agents MUST be prepared for this step-up
    authorization at any time.
 
-6.6.  Resource Token
+6.6.  Agent Token Required
 
-6.6.1.  Resource Token Structure
+   A resource that requires only the agent's identity — identity-based
+   access, with no user auth token — uses requirement=agent-token with a
+   401 Unauthorized response when the request did not present an AAuth
+   agent token.  This signals that the resource specifically requires an
+   AAuth agent token (typ: aa-agent+jwt), as distinct from any other
+   URI-identified signing key.
+
+   HTTP/1.1 401 Unauthorized
+   AAuth-Requirement: requirement=agent-token
+
+   The header carries no additional parameters: the agent already holds
+   its agent token and need only present it.  The agent retries the
+   request, signing it per Section 12.7 and presenting its agent token
+   via the Signature-Key header using sig=jwt;jwt="<agent-token>".
+
+   requirement=agent-token is distinct from requirement=auth-token: the
+   former asks for the agent's own identity token, with no PS or AS
+   involved; the latter asks the agent to obtain an auth token from its
+   PS using the enclosed resource token.  It is also more specific than
+   an Accept-Signature challenge ([I-D.hardt-httpbis-signature-key]),
+   which accepts any URI-identified key — requirement=agent-token tells
+   the agent that an AAuth agent token in particular is required.
+
+6.7.  Resource Token
+
+6.7.1.  Resource Token Structure
 
    A resource token is a JWT with typ: aa-resource+jwt containing:
 
@@ -1347,7 +1373,7 @@ Table of Contents
    mission so the user is not re-prompted when the agent resubmits a
    request for the same resource and scope.
 
-6.6.2.  Resource Token Verification
+6.7.2.  Resource Token Verification
 
    Verify the resource token per [RFC7515] and [RFC7519]:
 
@@ -1365,7 +1391,7 @@ Table of Contents
    7.  If mission is present, verify mission.approver matches the PS
        that sent the token request.
 
-6.6.3.  Resource Challenge Verification
+6.7.3.  Resource Challenge Verification
 
    When an agent receives a 401 response with AAuth-Requirement:
    requirement=auth-token:
@@ -1449,6 +1475,10 @@ Table of Contents
       Enterprise Extensions 1.0 [OpenID.Enterprise].
    *  domain_hint (OPTIONAL): Domain hint, per OpenID Connect Enterprise
       Extensions 1.0 [OpenID.Enterprise].
+   *  prompt (OPTIONAL): Space-delimited, case-sensitive list of values
+      specifying whether the PS prompts the user for reauthentication
+      and consent, per [OpenID.Core] Section 3.1.2.1.  Defined values:
+      none, login, consent, select_account.
    *  platform (OPTIONAL): Identifier for the runtime platform the agent
       runs on.  The value MUST be from the AAuth Platform Value Registry
       Section 16.9.  Describes the runtime context (where the agent
@@ -1464,6 +1494,15 @@ Table of Contents
       and MUST NOT exceed 64 characters.  Agents MUST NOT include
       personally identifying information beyond what the user has chosen
       (e.g., user-supplied nicknames).  Agent-attested.
+   *  capabilities (OPTIONAL): An array of capability values
+      Section 12.1 the agent can handle for this request — the request-
+      body equivalent of the AAuth-Capabilities header, which is not
+      used on PS endpoints.  Without a mission, this is how the PS
+      learns the agent's capabilities (for example, whether the agent
+      can drive requirement=interaction).  Within a mission,
+      capabilities is OPTIONAL: if omitted, the PS uses the values
+      captured at mission approval Section 8.2; if present, it refreshes
+      them for this request.
 
    *Example request:*
 
@@ -2867,11 +2906,13 @@ Table of Contents
 
    Agents SHOULD include the AAuth-Capabilities header on signed
    requests to resources.  The header is not used on requests to PS
-   endpoints — the PS learns the agent's capabilities through the
-   mission approval flow.  Recipients MUST ignore unrecognized
-   capability values.  When the header is absent, recipients MUST NOT
-   assume any capabilities — the agent may not support interaction,
-   clarification, or payment flows.
+   endpoints: on the PS token endpoint the agent conveys capabilities
+   via the capabilities request parameter Section 7.1, and within a
+   mission the PS also has the capabilities captured at mission approval
+   Section 8.2.  Recipients MUST ignore unrecognized capability values.
+   When the header is absent, recipients MUST NOT assume any
+   capabilities — the agent may not support interaction, clarification,
+   or payment flows.
 
 12.2.  Scopes
 
@@ -2951,36 +2992,44 @@ Table of Contents
    The requirement value is an extension point.  This document defines
    the following values:
 
-     +===============+========+=================+==========+====+====+
-     | Value         | Status | Meaning         | Resource | PS | AS |
-     |               | Code   |                 |          |    |    |
-     +===============+========+=================+==========+====+====+
-     | auth-token    | 401    | Auth token      |    Y     |    |    |
-     |               |        | required for    |          |    |    |
-     |               |        | resource access |          |    |    |
-     +---------------+--------+-----------------+----------+----+----+
-     | interaction   | 202    | User action     |    Y     | Y  | Y  |
-     |               |        | required at an  |          |    |    |
-     |               |        | interaction     |          |    |    |
-     |               |        | endpoint        |          |    |    |
-     +---------------+--------+-----------------+----------+----+----+
-     | approval      | 202    | Approval        |    Y     | Y  | Y  |
-     |               |        | pending, poll   |          |    |    |
-     |               |        | for result      |          |    |    |
-     +---------------+--------+-----------------+----------+----+----+
-     | clarification | 202    | Question posed  |    Y     | Y  | Y  |
-     |               |        | to the          |          |    |    |
-     |               |        | recipient       |          |    |    |
-     +---------------+--------+-----------------+----------+----+----+
-     | claims        | 202    | Identity claims |          |    | Y  |
-     |               |        | required        |          |    |    |
-     +---------------+--------+-----------------+----------+----+----+
+     +===============+========+================+==========+====+====+
+     | Value         | Status | Meaning        | Resource | PS | AS |
+     |               | Code   |                |          |    |    |
+     +===============+========+================+==========+====+====+
+     | agent-token   | 401    | AAuth agent    |    Y     |    |    |
+     |               |        | token required |          |    |    |
+     |               |        | for identity-  |          |    |    |
+     |               |        | only access    |          |    |    |
+     +---------------+--------+----------------+----------+----+----+
+     | auth-token    | 401    | Auth token     |    Y     |    |    |
+     |               |        | required for   |          |    |    |
+     |               |        | resource       |          |    |    |
+     |               |        | access         |          |    |    |
+     +---------------+--------+----------------+----------+----+----+
+     | interaction   | 202    | User action    |    Y     | Y  | Y  |
+     |               |        | required at an |          |    |    |
+     |               |        | interaction    |          |    |    |
+     |               |        | endpoint       |          |    |    |
+     +---------------+--------+----------------+----------+----+----+
+     | approval      | 202    | Approval       |    Y     | Y  | Y  |
+     |               |        | pending, poll  |          |    |    |
+     |               |        | for result     |          |    |    |
+     +---------------+--------+----------------+----------+----+----+
+     | clarification | 202    | Question posed |    Y     | Y  | Y  |
+     |               |        | to the         |          |    |    |
+     |               |        | recipient      |          |    |    |
+     +---------------+--------+----------------+----------+----+----+
+     | claims        | 202    | Identity       |          |    | Y  |
+     |               |        | claims         |          |    |    |
+     |               |        | required       |          |    |    |
+     +---------------+--------+----------------+----------+----+----+
 
-                                  Table 7
+                                 Table 7
 
-   The auth-token requirement is defined in Section 6.5; the interaction
-   and approval requirements are defined in this section; clarification
-   in Section 7.3.1; and claims in Section 9.2.
+   The agent-token requirement is defined in Section 6.6; the auth-token
+   requirement in Section 6.5; the interaction and approval requirements
+   are defined in this section; clarification in Section 7.3.1; and
+   claims in Section 9.2.
 
 12.3.3.  Interaction Required
 
@@ -4139,6 +4188,8 @@ Initial request (with Prefer: wait=N)
                      +===============+===============+
                      | Value         | Reference     |
                      +===============+===============+
+                     | agent-token   | This document |
+                     +---------------+---------------+
                      | interaction   | This document |
                      +---------------+---------------+
                      | approval      | This document |
