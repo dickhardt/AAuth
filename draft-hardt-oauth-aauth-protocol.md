@@ -1142,6 +1142,7 @@ The agent MUST make a signed POST to the PS's `interaction_endpoint`. The reques
 - `description` (OPTIONAL): A Markdown string providing context for the user.
 - `url` (OPTIONAL): The interaction URL to relay to the user (for `interaction` and `payment` types).
 - `code` (OPTIONAL): The interaction code associated with the URL.
+- `max_wait` (OPTIONAL): Maximum seconds the PS SHOULD hold the relay's deferred response before resolving it (for `interaction` and `payment` types). When the interaction URL is resource-hosted, the PS resolves its deferred response once the user has engaged or when this window elapses, whichever comes first; the agent then relies on the resource's pending URL for completion (#interaction-response-poll-authority). Absent `max_wait`, the PS resolves the relay when the user has engaged or it can make no further progress.
 - `question` (OPTIONAL): A Markdown string containing a question for the user (for `question` type).
 - `summary` (OPTIONAL): A Markdown string summarizing what the agent accomplished (for `completion` type).
 - `mission` (OPTIONAL): Mission object with `approver` and `s256` fields, binding the request to a mission.
@@ -1194,9 +1195,13 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 }
 ```
 
-### Interaction Response
+### Interaction Response {#interaction-response-poll-authority}
 
-For `interaction` and `payment` types, the PS relays the interaction to the user and returns a deferred response (#deferred-responses). The agent polls until the user completes the interaction.
+For `interaction` and `payment` types, the PS relays the interaction to the user and returns a deferred response (#deferred-responses).
+
+When the interaction URL is hosted by the **PS itself**, the PS's deferred response is authoritative for completion: the agent polls it until the user completes the interaction.
+
+When the interaction URL is hosted by a **resource** — the common case for a relayed `interaction`, such as a proxy's OAuth bootstrap page or a merchant's payment-confirmation page — the user completes the interaction at the resource, not at the PS. The agent then holds two pending URLs: the resource's original `Location` (from the resource's `202`) and the PS's relay `Location`. The **resource's** pending URL is authoritative for completion. The PS's relay deferred response reports only that the relay reached the user: it returns `status: "interacting"` (#deferred-responses) once the user has engaged, and a terminal response when the PS has done all it can — the user engaged, the agent's `max_wait` window elapsed, or the PS can make no further progress. The agent MUST treat the resource's pending URL as the signal that the interaction is complete, and continues polling it after the PS relay resolves.
 
 If the PS has no channel available to relay an `interaction` or `payment` to the user, it returns `interaction_unavailable` (#interaction-endpoint-errors). This is the PS declining to relay this specific interaction; the agent falls back to directing the user to the `url`/`code` itself (#interaction-relay). It is distinct from `user_unreachable`: `interaction_unavailable` is non-terminal — the agent can still drive the interaction — whereas `user_unreachable` (#token-endpoint-error-codes) is terminal, meaning no party can reach the user.
 
