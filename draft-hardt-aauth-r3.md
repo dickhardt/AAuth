@@ -290,7 +290,7 @@ The composed document is served at a fresh content-addressed `r3_uri` exactly li
 
 This composition is opaque to the agent. The agent sees one `r3_uri`/`r3_s256` in the resource token regardless of how many internal definitions the requested operations were drawn from, and the auth token's `r3_granted` and `r3_conditional` claims express the granted operations against that single composed document.
 
-# R3 Document
+# R3 Document {#r3-document}
 
 An R3 document is a JSON object published by the resource at a URI. It describes the authorization semantics for a class of access: what operations are covered (in vocabulary format), what the access means in human terms, and what consequences it carries.
 
@@ -474,19 +474,67 @@ R3 extension claims:
 - **`vocabulary`** (REQUIRED). The vocabulary URI.
 - **`operations`** (REQUIRED). An array of operations using the vocabulary-specific structure. The AS MAY narrow the grant to fewer operations than defined in the R3 document.
 
-The distinction: `r3_granted` operations are fully authorized and the resource serves them. `r3_conditional` operations require the resource to challenge when the agent actually calls, including the specific parameters from the agent's API request in the resource token. The AS then evaluates those concrete parameters before issuing a per-call auth token.
+The distinction: `r3_granted` operations are fully authorized and the resource serves them. `r3_conditional` operations require the resource to challenge when the agent actually calls. On the challenge the resource builds a **per-call proposal** ({{per-call-proposals}}) — a content-addressed document carrying the specific parameters of the call — and the AS evaluates those concrete parameters before issuing a per-call auth token.
 
 ## Resource Enforcement
 
 The resource matches each incoming API call against the auth token claims:
 
 1. **Match in `r3_granted`**: serve the request.
-2. **Match in `r3_conditional`**: return `AAuth-Requirement` with a resource token containing the actual parameters the agent provided. The AS evaluates the specific call.
+2. **Match in `r3_conditional`**: build a per-call proposal ({{per-call-proposals}}) and return `AAuth-Requirement` with a resource token referencing it. The AS evaluates the specific call against the proposed parameters.
 3. **No match**: reject the request.
 
 No token introspection or R3 document fetch is needed at enforcement time. The resource uses the vocabulary it already understands.
 
 When `r3_operations` was not used (the agent received the resource token via a 401 rather than the authorization endpoint), the AS populates `r3_granted` and `r3_conditional` based on the operations defined in the R3 document and its own policy. The AS decides which operations to grant outright and which to make conditional.
+
+# Per-Call Proposals {#per-call-proposals}
+
+An `r3_conditional` operation is authorized in principle but not for any specific call: the consequences depend on the concrete parameters the agent supplies (who the email is addressed to, how large the payment is, which record is deleted). When the agent invokes such an operation, the resource challenges the call and the AS re-evaluates it against those parameters before issuing a per-call auth token.
+
+A **per-call proposal** is the document that carries the specifics of that one pending call. It is an R3 document scoped to a single invocation: same structure, same content-addressing ({{content-addressing}}), and the same AS/PS-only fetch restriction as a class R3 document. Reusing content-addressing keeps tokens small — they carry only the `r3_uri`/`r3_s256` reference, never the parameters — and binds the eventual approval to the exact call that was proposed.
+
+## Proposal Document
+
+In addition to the R3 document fields ({{r3-document}}), a per-call proposal carries:
+
+**`operations`** (REQUIRED). The single conditional operation being invoked, in the resource's vocabulary.
+
+**`parameters`** (REQUIRED). The concrete parameters of the call, machine-readable, for the AS to evaluate and the resource to bind. A large or sensitive value MAY be represented by a digest object in place of the inline value:
+
+- `s256` (REQUIRED). `BASE64URL(SHA-256(value-bytes))` of the parameter value as it will be presented at call time.
+- `excerpt` (OPTIONAL). A short, human-readable excerpt of the value for display.
+- `media_type` (OPTIONAL). The media type of the value.
+
+**`display`** (RECOMMENDED). Per-call human context for the user's approval decision. In addition to the structured fields defined in {{r3-document}}, a proposal's `display` MAY include a `detail` Markdown string. The following sections are RECOMMENDED as a convention (not normative requirements): `## Action`, `## To` / `## Recipient`, `## Details`, `## Content` (excerpt), `## Irreversible`.
+
+```json
+{
+  "vocabulary": "urn:aauth:vocabulary:mcp",
+  "operations": [ { "tool": "send_email" } ],
+  "parameters": {
+    "to": "mom@example.com",
+    "subject": "Dinner Sunday?",
+    "body": { "s256": "aBcD…", "excerpt": "Hi Mom, are you free…", "media_type": "text/plain" }
+  },
+  "display": {
+    "summary": "Send an email as you",
+    "detail": "## Action\nSend an email\n\n## To\nmom@example.com\n\n## Details\nSubject: Dinner Sunday?\n\n## Content\nHi Mom, are you free…"
+  }
+}
+```
+
+## Flow
+
+1. **Conditional challenge.** The agent invokes an `r3_conditional` operation. The resource builds the proposal, persists it keyed by its `r3_s256`, and returns `AAuth-Requirement` with a resource token whose `r3_uri`/`r3_s256` reference the proposal. The token carries only the reference, not the parameters.
+2. **Approval.** The AS fetches the proposal and evaluates `parameters` per policy; the PS renders `display` for user consent. On approval, the AS issues a per-call auth token that echoes the proposal's `r3_uri`/`r3_s256` and lists the now-approved operation in `r3_granted`.
+3. **Enforced retry.** The agent retries the actual call with the per-call auth token. The resource recovers the proposal from its store via `r3_s256` and MUST verify that the agent's actual parameters match the approved proposal. For any parameter represented as a digest, the resource MUST verify that `BASE64URL(SHA-256(presented-value))` equals the stored `s256`. If anything differs, the resource MUST reject the call. An approval to email one recipient cannot be replayed against another.
+
+## Large and Sensitive Payloads
+
+Representing a parameter as a digest keeps large or sensitive payloads out of every token and away from the PS: only the `s256` and a short `excerpt` appear in the proposal. The full bytes travel directly from the agent to the resource at call time, where the resource verifies them against the digest. This is also a privacy control — the resource chooses what the PS (and through it, the user-facing surface) sees versus what stays between the agent and the resource.
+
+Whether the AS or PS additionally *machine-evaluates* `parameters` (for example, auto-denying a payment over a threshold) or treats the proposal as display-for-human-consent only is deployment policy. The parameters are present in the proposal either way, so machine policy can be layered on without a format change.
 
 # Security Considerations
 
