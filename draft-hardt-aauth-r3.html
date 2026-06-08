@@ -1701,14 +1701,15 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
         <h3 id="name-content-addressing">
 <a href="#section-6.2" class="section-number selfRef">6.2. </a><a href="#name-content-addressing" class="section-name selfRef">Content Addressing</a>
         </h3>
-<p id="section-6.2-1">The R3 hash (<code>r3_s256</code>) is computed as the SHA-256 hash of the canonical JSON serialization (<span>[<a href="#RFC8785" class="cite xref">RFC8785</a>]</span>) of the R3 document, base64url-encoded without padding.<a href="#section-6.2-1" class="pilcrow">¶</a></p>
-<p id="section-6.2-2">The <code>r3_s256</code> hash is the document's identity, not the URI. The AS caches documents by hash. If a resource updates the document at the same URI, existing auth tokens still reference the previous hash (which the AS has cached). New resource tokens reference the new hash. This enables:<a href="#section-6.2-2" class="pilcrow">¶</a></p>
+<p id="section-6.2-1">The R3 hash (<code>r3_s256</code>) is computed as the SHA-256 hash of the bytes of the R3 document as served by the resource, base64url-encoded without padding.<a href="#section-6.2-1" class="pilcrow">¶</a></p>
+<p id="section-6.2-2">The resource's serialization is the document. There is no canonicalization step — verifiers hash the bytes received over the wire, not a normalized form. Resources MUST serialize the R3 document once and serve those exact bytes verbatim on every request for the same <code>r3_uri</code>. Re-serialization between hash computation and serving (e.g. middleware that parses and re-stringifies JSON, CDN minification, response framework helpers that reorder keys) will produce different bytes and break hash verification. Resources that build R3 documents on the fly SHOULD persist the serialized bytes (e.g. in a key-value store keyed by <code>r3_uri</code> or <code>r3_s256</code>) rather than re-build the document per request.<a href="#section-6.2-2" class="pilcrow">¶</a></p>
+<p id="section-6.2-3">The <code>r3_s256</code> hash is the document's identity, not the URI. The AS caches documents by hash. If a resource updates the document at the same URI, existing auth tokens still reference the previous hash (which the AS has cached). New resource tokens reference the new hash. This enables:<a href="#section-6.2-3" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-6.2-3.1">
-            <strong>Infinite caching by the AS.</strong> A document that verifies against its hash need never be re-fetched.<a href="#section-6.2-3.1" class="pilcrow">¶</a>
+<li class="compact" id="section-6.2-4.1">
+            <strong>Infinite caching by the AS.</strong> A document that verifies against its hash need never be re-fetched.<a href="#section-6.2-4.1" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-6.2-3.2">
-            <strong>Permanent audit records.</strong> An auth token carrying <code>r3_s256</code> identifies the exact authorization semantics that were approved, regardless of subsequent changes at the same URI.<a href="#section-6.2-3.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-6.2-4.2">
+            <strong>Permanent audit records.</strong> An auth token carrying <code>r3_s256</code> identifies the exact authorization semantics that were approved, regardless of subsequent changes at the same URI.<a href="#section-6.2-4.2" class="pilcrow">¶</a>
 </li>
         </ul>
 </section>
@@ -1735,7 +1736,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <div class="lang-json sourcecode" id="section-6.3-4">
 <pre>{
   "typ": "resource+jwt",
-  "alg": "ES256",
+  "alg": "EdDSA",
   "kid": "resource-key-1"
 }
 
@@ -1788,7 +1789,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 </li>
           <li id="section-7.1-2.2">Fetch the R3 document at <code>r3_uri</code>. The AS MAY use a cached copy if the cache entry was stored with the same <code>r3_s256</code> value.<a href="#section-7.1-2.2" class="pilcrow">¶</a>
 </li>
-          <li id="section-7.1-2.3">Compute the SHA-256 hash of the fetched document using canonical JSON serialization (<span>[<a href="#RFC8785" class="cite xref">RFC8785</a>]</span>) and compare it to <code>r3_s256</code>. If the hashes do not match, the AS MUST reject the resource token.<a href="#section-7.1-2.3" class="pilcrow">¶</a>
+          <li id="section-7.1-2.3">Compute the SHA-256 hash of the bytes received and compare it to <code>r3_s256</code>. If the hashes do not match, the AS MUST reject the resource token.<a href="#section-7.1-2.3" class="pilcrow">¶</a>
 </li>
           <li id="section-7.1-2.4">Record <code>r3_uri</code> and <code>r3_s256</code> in its audit log alongside the token issuance event, the agent identifier, and the timestamp.<a href="#section-7.1-2.4" class="pilcrow">¶</a>
 </li>
@@ -1834,7 +1835,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <div class="lang-json sourcecode" id="section-8-4">
 <pre>{
   "typ": "auth+jwt",
-  "alg": "ES256",
+  "alg": "EdDSA",
   "kid": "as-key-1"
 }
 
@@ -2134,12 +2135,8 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <span class="refAuthor">Hardt, D.</span>, <span class="refTitle">"AAuth Protocol"</span>, <time datetime="2026" class="refDate">2026</time>, <span>&lt;<a href="https://github.com/dickhardt/AAuth">https://github.com/dickhardt/AAuth</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC8126">[RFC8126]</dt>
-        <dd>
-<span class="refAuthor">Cotton, M.</span>, <span class="refAuthor">Leiba, B.</span>, and <span class="refAuthor">T. Narten</span>, <span class="refTitle">"Guidelines for Writing an IANA Considerations Section in RFCs"</span>, <span class="seriesInfo">BCP 26</span>, <span class="seriesInfo">RFC 8126</span>, <span class="seriesInfo">DOI 10.17487/RFC8126</span>, <time datetime="2017-06" class="refDate">June 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8126">https://www.rfc-editor.org/info/rfc8126</a>&gt;</span>. </dd>
-<dd class="break"></dd>
-<dt id="RFC8785">[RFC8785]</dt>
       <dd>
-<span class="refAuthor">Rundgren, A.</span>, <span class="refAuthor">Jordan, B.</span>, and <span class="refAuthor">S. Erdtman</span>, <span class="refTitle">"JSON Canonicalization Scheme (JCS)"</span>, <span class="seriesInfo">RFC 8785</span>, <span class="seriesInfo">DOI 10.17487/RFC8785</span>, <time datetime="2020-06" class="refDate">June 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8785">https://www.rfc-editor.org/info/rfc8785</a>&gt;</span>. </dd>
+<span class="refAuthor">Cotton, M.</span>, <span class="refAuthor">Leiba, B.</span>, and <span class="refAuthor">T. Narten</span>, <span class="refTitle">"Guidelines for Writing an IANA Considerations Section in RFCs"</span>, <span class="seriesInfo">BCP 26</span>, <span class="seriesInfo">RFC 8126</span>, <span class="seriesInfo">DOI 10.17487/RFC8126</span>, <time datetime="2017-06" class="refDate">June 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8126">https://www.rfc-editor.org/info/rfc8126</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 </dl>
 </section>

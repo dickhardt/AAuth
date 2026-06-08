@@ -590,7 +590,7 @@ Table of Contents
 
    Agent                                        Resource
      |                                             |
-     | HTTPSig w/ agent token                      |
+     | HTTPSig w/ agent_token                      |
      |-------------------------------------------->|
      |                                             |
      | 200 OK                                      |
@@ -607,7 +607,7 @@ Table of Contents
 
    Agent                                        Resource
      |                                             |
-     | HTTPSig w/ agent token                      |
+     | HTTPSig w/ agent_token                      |
      |-------------------------------------------->|
      |                                             |
      | 202 (interaction required)                  |
@@ -622,7 +622,7 @@ Table of Contents
      | AAuth-Access: opaque-token                  |
      |<--------------------------------------------|
      |                                             |
-     | HTTPSig w/ agent token                      |
+     | HTTPSig w/ agent_token                      |
      | Authorization: AAuth opaque-token           |
      |-------------------------------------------->|
      |                                             |
@@ -656,14 +656,14 @@ Table of Contents
 
    Agent                                 Resource       PS
      |                                      |            |
-     | HTTPSig w/ agent token               |            |
+     | HTTPSig w/ agent_token               |            |
      | POST authorization_endpoint          |            |
      |------------------------------------->|            |
      |                                      |            |
      | resource_token (aud = PS URL)        |            |
      |<-------------------------------------|            |
      |                                      |            |
-     | HTTPSig w/ agent token               |            |
+     | HTTPSig w/ agent_token               |            |
      | POST token_endpoint                  |            |
      | w/ resource_token                    |            |
      |-------------------------------------------------->|
@@ -671,7 +671,7 @@ Table of Contents
      | auth_token                           |            |
      |<--------------------------------------------------|
      |                                      |            |
-     | HTTPSig w/ auth token                |            |
+     | HTTPSig w/ auth_token                |            |
      | GET /api/documents                   |            |
      |------------------------------------->|            |
      |                                      |            |
@@ -690,14 +690,14 @@ Table of Contents
 
    Agent                                Resource   PS                    AS
      |                                     |       |                      |
-     | HTTPSig w/ agent token              |       |                      |
+     | HTTPSig w/ agent_token              |       |                      |
      | POST authorization_endpoint         |       |                      |
      |------------------------------------>|       |                      |
      |                                     |       |                      |
      | resource_token (aud = AS URL)       |       |                      |
      |<------------------------------------|       |                      |
      |                                     |       |                      |
-     | HTTPSig w/ agent token              |       |                      |
+     | HTTPSig w/ agent_token              |       |                      |
      | POST token_endpoint                 |       |                      |
      | w/ resource_token                   |       |                      |
      |-------------------------------------------->|                      |
@@ -713,7 +713,7 @@ Table of Contents
      | auth_token                          |       |                      |
      |<--------------------------------------------|                      |
      |                                     |       |                      |
-     | HTTPSig w/ auth token               |       |                      |
+     | HTTPSig w/ auth_token               |       |                      |
      | GET /api/documents                  |       |                      |
      |------------------------------------>|       |                      |
      |                                     |       |                      |
@@ -824,7 +824,7 @@ Table of Contents
 
    Agent                                     PS                        User
      |                                        |                          |
-     | HTTPSig w/ agent token                 |                          |
+     | HTTPSig w/ agent_token                 |                          |
      | POST mission_endpoint                  |                          |
      | proposal                               |                          |
      |--------------------------------------->|                          |
@@ -848,7 +848,7 @@ Table of Contents
 
    Agent                                        Resource
      |                                             |
-     | HTTPSig w/ agent token                      |
+     | HTTPSig w/ agent_token                      |
      | AAuth-Mission: approver=...; s256=...       |
      | POST authorization_endpoint                 |
      |-------------------------------------------->|
@@ -868,7 +868,7 @@ Table of Contents
 
    Agent                                     PS                        User
      |                                        |                          |
-     | HTTPSig w/ agent token                 |                          |
+     | HTTPSig w/ agent_token                 |                          |
      | POST interaction_endpoint              |                          |
      | type=completion, summary               |                          |
      |--------------------------------------->|                          |
@@ -4421,11 +4421,11 @@ A.1.  Four-Party: Call Chaining
    Agent        Resource 1       Resource 2          PS
      |              |                |                 |
      | HTTPSig w/   |                |                 |
-     | auth token   |                |                 |
+     | auth_token   |                |                 |
      |------------->|                |                 |
      |              |                |                 |
      |              | HTTPSig w/     |                 |
-     |              | R1 agent token |                 |
+     |              | R1 agent_token |                 |
      |              | AAuth-Mission  |                 |
      |              |--------------->|                 |
      |              |                |                 |
@@ -4446,7 +4446,7 @@ A.1.  Four-Party: Call Chaining
      |              |<---------------------------------|
      |              |                |                 |
      |              | HTTPSig w/     |                 |
-     |              | auth token     |                 |
+     |              | auth_token     |                 |
      |              |--------------->|                 |
      |              |                |                 |
      |              | 200 OK         |                 |
@@ -4508,7 +4508,7 @@ A.2.  Interaction Chaining
      |         |          gets auth_token]    |          |
      |         |              |               |          |
      |         |              | HTTPSig w/    |          |
-     |         |              | auth token    |          |
+     |         |              | auth_token    |          |
      |         |              |-------------->|          |
      |         |              |               |          |
      |         |              | 200 OK        |          |

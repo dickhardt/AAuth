@@ -2129,7 +2129,7 @@ svg {
             <div class="lang-ascii-art sourcecode" id="section-4.1.1-2.1">
 <pre>Agent                                        Resource
   |                                             |
-  | HTTPSig w/ agent token                      |
+  | HTTPSig w/ agent_token                      |
   |--------------------------------------------&gt;|
   |                                             |
   | 200 OK                                      |
@@ -2154,7 +2154,7 @@ svg {
             <div class="lang-ascii-art sourcecode" id="section-4.1.2-2.1">
 <pre>Agent                                        Resource
   |                                             |
-  | HTTPSig w/ agent token                      |
+  | HTTPSig w/ agent_token                      |
   |--------------------------------------------&gt;|
   |                                             |
   | 202 (interaction required)                  |
@@ -2169,7 +2169,7 @@ svg {
   | AAuth-Access: opaque-token                  |
   |&lt;--------------------------------------------|
   |                                             |
-  | HTTPSig w/ agent token                      |
+  | HTTPSig w/ agent_token                      |
   | Authorization: AAuth opaque-token           |
   |--------------------------------------------&gt;|
   |                                             |
@@ -2195,14 +2195,14 @@ svg {
             <div class="lang-ascii-art sourcecode" id="section-4.1.3-2.1">
 <pre>Agent                                 Resource       PS
   |                                      |            |
-  | HTTPSig w/ agent token               |            |
+  | HTTPSig w/ agent_token               |            |
   | POST authorization_endpoint          |            |
   |-------------------------------------&gt;|            |
   |                                      |            |
   | resource_token (aud = PS URL)        |            |
   |&lt;-------------------------------------|            |
   |                                      |            |
-  | HTTPSig w/ agent token               |            |
+  | HTTPSig w/ agent_token               |            |
   | POST token_endpoint                  |            |
   | w/ resource_token                    |            |
   |--------------------------------------------------&gt;|
@@ -2210,7 +2210,7 @@ svg {
   | auth_token                           |            |
   |&lt;--------------------------------------------------|
   |                                      |            |
-  | HTTPSig w/ auth token                |            |
+  | HTTPSig w/ auth_token                |            |
   | GET /api/documents                   |            |
   |-------------------------------------&gt;|            |
   |                                      |            |
@@ -2236,14 +2236,14 @@ svg {
             <div class="lang-ascii-art sourcecode" id="section-4.1.4-2.1">
 <pre>Agent                                Resource   PS                    AS
   |                                     |       |                      |
-  | HTTPSig w/ agent token              |       |                      |
+  | HTTPSig w/ agent_token              |       |                      |
   | POST authorization_endpoint         |       |                      |
   |------------------------------------&gt;|       |                      |
   |                                     |       |                      |
   | resource_token (aud = AS URL)       |       |                      |
   |&lt;------------------------------------|       |                      |
   |                                     |       |                      |
-  | HTTPSig w/ agent token              |       |                      |
+  | HTTPSig w/ agent_token              |       |                      |
   | POST token_endpoint                 |       |                      |
   | w/ resource_token                   |       |                      |
   |--------------------------------------------&gt;|                      |
@@ -2259,7 +2259,7 @@ svg {
   | auth_token                          |       |                      |
   |&lt;--------------------------------------------|                      |
   |                                     |       |                      |
-  | HTTPSig w/ auth token               |       |                      |
+  | HTTPSig w/ auth_token               |       |                      |
   | GET /api/documents                  |       |                      |
   |------------------------------------&gt;|       |                      |
   |                                     |       |                      |
@@ -2349,7 +2349,7 @@ svg {
               <div class="lang-ascii-art sourcecode" id="section-4.4.1.1-2.1">
 <pre>Agent                                     PS                        User
   |                                        |                          |
-  | HTTPSig w/ agent token                 |                          |
+  | HTTPSig w/ agent_token                 |                          |
   | POST mission_endpoint                  |                          |
   | proposal                               |                          |
   |---------------------------------------&gt;|                          |
@@ -2381,7 +2381,7 @@ svg {
               <div class="lang-ascii-art sourcecode" id="section-4.4.1.2-2.1">
 <pre>Agent                                        Resource
   |                                             |
-  | HTTPSig w/ agent token                      |
+  | HTTPSig w/ agent_token                      |
   | AAuth-Mission: approver=...; s256=...       |
   | POST authorization_endpoint                 |
   |--------------------------------------------&gt;|
@@ -2409,7 +2409,7 @@ svg {
               <div class="lang-ascii-art sourcecode" id="section-4.4.1.3-2.1">
 <pre>Agent                                     PS                        User
   |                                        |                          |
-  | HTTPSig w/ agent token                 |                          |
+  | HTTPSig w/ agent_token                 |                          |
   | POST interaction_endpoint              |                          |
   | type=completion, summary               |                          |
   |---------------------------------------&gt;|                          |
@@ -6418,11 +6418,11 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <pre>Agent        Resource 1       Resource 2          PS
   |              |                |                 |
   | HTTPSig w/   |                |                 |
-  | auth token   |                |                 |
+  | auth_token   |                |                 |
   |-------------&gt;|                |                 |
   |              |                |                 |
   |              | HTTPSig w/     |                 |
-  |              | R1 agent token |                 |
+  |              | R1 agent_token |                 |
   |              | AAuth-Mission  |                 |
   |              |---------------&gt;|                 |
   |              |                |                 |
@@ -6443,7 +6443,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
   |              |&lt;---------------------------------|
   |              |                |                 |
   |              | HTTPSig w/     |                 |
-  |              | auth token     |                 |
+  |              | auth_token     |                 |
   |              |---------------&gt;|                 |
   |              |                |                 |
   |              | 200 OK         |                 |
@@ -6510,7 +6510,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
   |         |          gets auth_token]    |          |
   |         |              |               |          |
   |         |              | HTTPSig w/    |          |
-  |         |              | auth token    |          |
+  |         |              | auth_token    |          |
   |         |              |--------------&gt;|          |
   |         |              |               |          |
   |         |              | 200 OK        |          |
