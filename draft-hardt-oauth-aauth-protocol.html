@@ -1351,6 +1351,9 @@ svg {
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.6.2.2">
                     <p id="section-toc.1-1.7.2.6.2.2.1"><a href="#section-7.6.2" class="auto internal xref">7.6.2</a>.  <a href="#name-interaction-response" class="internal xref">Interaction Response</a></p>
 </li>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.6.2.3">
+                    <p id="section-toc.1-1.7.2.6.2.3.1"><a href="#section-7.6.3" class="auto internal xref">7.6.3</a>.  <a href="#name-interaction-endpoint-errors" class="internal xref">Interaction Endpoint Errors</a></p>
+</li>
                 </ul>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.7">
@@ -3469,13 +3472,16 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
               <code>code</code> (OPTIONAL): The interaction code associated with the URL.<a href="#section-7.6.1-3.4" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-7.6.1-3.5">
-              <code>question</code> (OPTIONAL): A Markdown string containing a question for the user (for <code>question</code> type).<a href="#section-7.6.1-3.5" class="pilcrow">¶</a>
+              <code>max_wait</code> (OPTIONAL): Maximum seconds the PS SHOULD hold the relay's deferred response before resolving it (for <code>interaction</code> and <code>payment</code> types). When the interaction URL is resource-hosted, the PS resolves its deferred response once the user has engaged or when this window elapses, whichever comes first; the agent then relies on the resource's pending URL for completion <a href="#interaction-response-poll-authority" class="auto internal xref">Section 7.6.2</a>. Absent <code>max_wait</code>, the PS resolves the relay when the user has engaged or it can make no further progress.<a href="#section-7.6.1-3.5" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-7.6.1-3.6">
-              <code>summary</code> (OPTIONAL): A Markdown string summarizing what the agent accomplished (for <code>completion</code> type).<a href="#section-7.6.1-3.6" class="pilcrow">¶</a>
+              <code>question</code> (OPTIONAL): A Markdown string containing a question for the user (for <code>question</code> type).<a href="#section-7.6.1-3.6" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-7.6.1-3.7">
-              <code>mission</code> (OPTIONAL): Mission object with <code>approver</code> and <code>s256</code> fields, binding the request to a mission.<a href="#section-7.6.1-3.7" class="pilcrow">¶</a>
+              <code>summary</code> (OPTIONAL): A Markdown string summarizing what the agent accomplished (for <code>completion</code> type).<a href="#section-7.6.1-3.7" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-7.6.1-3.8">
+              <code>mission</code> (OPTIONAL): Mission object with <code>approver</code> and <code>s256</code> fields, binding the request to a mission.<a href="#section-7.6.1-3.8" class="pilcrow">¶</a>
 </li>
           </ul>
 <p id="section-7.6.1-4"><strong>Relay interaction example:</strong><a href="#section-7.6.1-4" class="pilcrow">¶</a></p>
@@ -3528,14 +3534,17 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 </div>
 </section>
 </div>
-<div id="interaction-response">
+<div id="interaction-response-poll-authority">
 <section id="section-7.6.2">
           <h4 id="name-interaction-response">
 <a href="#section-7.6.2" class="section-number selfRef">7.6.2. </a><a href="#name-interaction-response" class="section-name selfRef">Interaction Response</a>
           </h4>
-<p id="section-7.6.2-1">For <code>interaction</code> and <code>payment</code> types, the PS relays the interaction to the user and returns a deferred response <a href="#deferred-responses" class="auto internal xref">Section 12.4</a>. The agent polls until the user completes the interaction.<a href="#section-7.6.2-1" class="pilcrow">¶</a></p>
-<p id="section-7.6.2-2">For <code>question</code> type, the PS delivers the question to the user and returns the answer:<a href="#section-7.6.2-2" class="pilcrow">¶</a></p>
-<div class="lang-http sourcecode" id="section-7.6.2-3">
+<p id="section-7.6.2-1">For <code>interaction</code> and <code>payment</code> types, the PS relays the interaction to the user and returns a deferred response <a href="#deferred-responses" class="auto internal xref">Section 12.4</a>.<a href="#section-7.6.2-1" class="pilcrow">¶</a></p>
+<p id="section-7.6.2-2">When the interaction URL is hosted by the <strong>PS itself</strong>, the PS's deferred response is authoritative for completion: the agent polls it until the user completes the interaction.<a href="#section-7.6.2-2" class="pilcrow">¶</a></p>
+<p id="section-7.6.2-3">When the interaction URL is hosted by a <strong>resource</strong> — the common case for a relayed <code>interaction</code>, such as a proxy's OAuth bootstrap page or a merchant's payment-confirmation page — the user completes the interaction at the resource, not at the PS. The agent then holds two pending URLs: the resource's original <code>Location</code> (from the resource's <code>202</code>) and the PS's relay <code>Location</code>. The <strong>resource's</strong> pending URL is authoritative for completion. The PS's relay deferred response reports only that the relay reached the user: it returns <code>status: "interacting"</code> <a href="#deferred-responses" class="auto internal xref">Section 12.4</a> once the user has engaged, and a terminal response when the PS has done all it can — the user engaged, the agent's <code>max_wait</code> window elapsed, or the PS can make no further progress. The agent MUST treat the resource's pending URL as the signal that the interaction is complete, and continues polling it after the PS relay resolves.<a href="#section-7.6.2-3" class="pilcrow">¶</a></p>
+<p id="section-7.6.2-4">If the PS has no channel available to relay an <code>interaction</code> or <code>payment</code> to the user, it returns <code>interaction_unavailable</code> <a href="#interaction-endpoint-errors" class="auto internal xref">Section 7.6.3</a>. This is the PS declining to relay this specific interaction; the agent falls back to directing the user to the <code>url</code>/<code>code</code> itself <a href="#interaction-relay" class="auto internal xref">Section 12.3.3.1</a>. It is distinct from <code>user_unreachable</code>: <code>interaction_unavailable</code> is non-terminal — the agent can still drive the interaction — whereas <code>user_unreachable</code> <a href="#token-endpoint-error-codes" class="auto internal xref">Section 12.5.3</a> is terminal, meaning no party can reach the user.<a href="#section-7.6.2-4" class="pilcrow">¶</a></p>
+<p id="section-7.6.2-5">For <code>question</code> type, the PS delivers the question to the user and returns the answer:<a href="#section-7.6.2-5" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-7.6.2-6">
 <pre>HTTP/1.1 200 OK
 Content-Type: application/json
 
@@ -3543,10 +3552,37 @@ Content-Type: application/json
   "answer": "Yes, go ahead with the refundable option."
 }
 
-</pre><a href="#section-7.6.2-3" class="pilcrow">¶</a>
+</pre><a href="#section-7.6.2-6" class="pilcrow">¶</a>
 </div>
-<p id="section-7.6.2-4">For <code>completion</code> type, the PS presents the summary to the user. The user either accepts — the PS terminates the mission and returns <code>200 OK</code> — or responds with follow-up questions via clarification <a href="#clarification-chat" class="auto internal xref">Section 7.3</a>, keeping the mission active. The PS returns a deferred response while the user reviews.<a href="#section-7.6.2-4" class="pilcrow">¶</a></p>
-<p id="section-7.6.2-5">If the PS cannot reach the user and the agent does not have the <code>interaction</code> capability, the PS returns <code>interaction_required</code>. If the mission is no longer active, the PS returns a mission status error <a href="#mission-status-errors" class="auto internal xref">Section 8.6</a>. The PS SHOULD record all interaction requests and responses. When a mission is active, the PS records the interaction in the mission log.<a href="#section-7.6.2-5" class="pilcrow">¶</a></p>
+<p id="section-7.6.2-7">For <code>completion</code> type, the PS presents the summary to the user. The user either accepts — the PS terminates the mission and returns <code>200 OK</code> — or responds with follow-up questions via clarification <a href="#clarification-chat" class="auto internal xref">Section 7.3</a>, keeping the mission active. The PS returns a deferred response while the user reviews.<a href="#section-7.6.2-7" class="pilcrow">¶</a></p>
+<p id="section-7.6.2-8">If the PS cannot reach the user and the agent does not have the <code>interaction</code> capability, the PS returns <code>user_unreachable</code> <a href="#token-endpoint-error-codes" class="auto internal xref">Section 12.5.3</a> — a terminal error, since no party can reach the user. If the mission is no longer active, the PS returns a mission status error <a href="#mission-status-errors" class="auto internal xref">Section 8.6</a>. The PS SHOULD record all interaction requests and responses. When a mission is active, the PS records the interaction in the mission log.<a href="#section-7.6.2-8" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="interaction-endpoint-errors">
+<section id="section-7.6.3">
+          <h4 id="name-interaction-endpoint-errors">
+<a href="#section-7.6.3" class="section-number selfRef">7.6.3. </a><a href="#name-interaction-endpoint-errors" class="section-name selfRef">Interaction Endpoint Errors</a>
+          </h4>
+<p id="section-7.6.3-1">Errors use the token endpoint error response format <a href="#error-response-format" class="auto internal xref">Section 12.5.2</a>.<a href="#section-7.6.3-1" class="pilcrow">¶</a></p>
+<table class="center" id="table-4">
+            <caption><a href="#table-4" class="selfRef">Table 4</a></caption>
+<thead>
+              <tr>
+                <th class="text-left" rowspan="1" colspan="1">Error</th>
+                <th class="text-left" rowspan="1" colspan="1">Status</th>
+                <th class="text-left" rowspan="1" colspan="1">Meaning</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="text-left" rowspan="1" colspan="1">
+                  <code>interaction_unavailable</code>
+</td>
+                <td class="text-left" rowspan="1" colspan="1">424</td>
+                <td class="text-left" rowspan="1" colspan="1">The PS has no channel available to relay this <code>interaction</code> or <code>payment</code> to the user. Non-terminal: the agent falls back to directing the user to the <code>url</code>/<code>code</code> itself <a href="#interaction-relay" class="auto internal xref">Section 12.3.3.1</a>. Distinct from the terminal <code>user_unreachable</code> <a href="#token-endpoint-error-codes" class="auto internal xref">Section 12.5.3</a>.</td>
+              </tr>
+            </tbody>
+          </table>
 </section>
 </div>
 </section>
@@ -3721,8 +3757,8 @@ Content-Type: application/json
 
 </pre><a href="#section-8.6-2" class="pilcrow">¶</a>
 </div>
-<table class="center" id="table-4">
-          <caption><a href="#table-4" class="selfRef">Table 4</a></caption>
+<table class="center" id="table-5">
+          <caption><a href="#table-5" class="selfRef">Table 5</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">Error</th>
@@ -4364,8 +4400,8 @@ Content-Type: application/json
 </pre><a href="#section-12.1-3" class="pilcrow">¶</a>
 </div>
 <p id="section-12.1-4">This specification defines the following capability values:<a href="#section-12.1-4" class="pilcrow">¶</a></p>
-<table class="center" id="table-5">
-          <caption><a href="#table-5" class="selfRef">Table 5</a></caption>
+<table class="center" id="table-6">
+          <caption><a href="#table-6" class="selfRef">Table 6</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">Value</th>
@@ -4461,8 +4497,8 @@ Content-Type: application/json
 <a href="#section-12.3.2" class="section-number selfRef">12.3.2. </a><a href="#name-requirement-values" class="section-name selfRef">Requirement Values</a>
           </h4>
 <p id="section-12.3.2-1">The <code>requirement</code> value is an extension point. This document defines the following values:<a href="#section-12.3.2-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-6">
-            <caption><a href="#table-6" class="selfRef">Table 6</a></caption>
+<table class="center" id="table-7">
+            <caption><a href="#table-7" class="selfRef">Table 7</a></caption>
 <thead>
               <tr>
                 <th class="text-left" rowspan="1" colspan="1">Value</th>
@@ -4574,17 +4610,33 @@ Retry-After: 0
               <code>Retry-After</code>: Recommended polling interval in seconds.<a href="#section-12.3.3-6.2" class="pilcrow">¶</a>
 </li>
           </ul>
-<p id="section-12.3.3-7">The agent constructs a user-facing URL by appending the code as a query parameter: <code>{url}?code={code}</code>. The agent then directs the user to this URL using one of:<a href="#section-12.3.3-7" class="pilcrow">¶</a></p>
+<div id="interaction-relay">
+<section id="section-12.3.3.1">
+            <h5 id="name-relaying-through-the-person">
+<a href="#section-12.3.3.1" class="section-number selfRef">12.3.3.1. </a><a href="#name-relaying-through-the-person" class="section-name selfRef">Relaying Through the Person Server</a>
+            </h5>
+<p id="section-12.3.3.1-1">When the agent has a PS, it SHOULD relay the interaction to the PS's <code>interaction_endpoint</code> <a href="#interaction-endpoint" class="auto internal xref">Section 7.6</a> before directing the user itself. The PS may have a lower-friction channel to the user — an active web session, a registered mobile app — than the agent opening a browser or rendering a QR code.<a href="#section-12.3.3.1-1" class="pilcrow">¶</a></p>
+<p id="section-12.3.3.1-2">To relay, the agent POSTs <code>{ "type": "interaction", "url": "...", "code": "..." }</code> to the PS's <code>interaction_endpoint</code> <a href="#interaction-endpoint" class="auto internal xref">Section 7.6</a>. The PS attempts to reach the user through its own channels and responds:<a href="#section-12.3.3.1-2" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-12.3.3-8.1">
-              <strong>Browser redirect</strong>: The agent opens the URL in the user's browser.<a href="#section-12.3.3-8.1" class="pilcrow">¶</a>
+<li class="compact" id="section-12.3.3.1-3.1">
+                <strong>PS can relay</strong>: it returns a <code>202</code> deferred response, and the agent polls for completion as described in <a href="#interaction-endpoint" class="auto internal xref">Section 7.6</a>.<a href="#section-12.3.3.1-3.1" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-12.3.3-8.2">
-              <strong>Display code</strong>: The agent displays the <code>url</code> and <code>code</code> for the user to enter manually. The agent MAY also render the constructed URL as a QR code for the user to scan with their phone.<a href="#section-12.3.3-8.2" class="pilcrow">¶</a>
+              <li class="compact" id="section-12.3.3.1-3.2">
+                <strong>PS cannot relay</strong>: it returns <code>interaction_unavailable</code> <a href="#interaction-endpoint-errors" class="auto internal xref">Section 7.6.3</a>. This is non-terminal — the agent falls back to directing the user itself.<a href="#section-12.3.3.1-3.2" class="pilcrow">¶</a>
 </li>
-          </ul>
-<p id="section-12.3.3-9">After directing the user, the agent polls the <code>Location</code> URL with GET requests, respecting the <code>Retry-After</code> interval. A <code>202</code> response means the request is still pending. A non-<code>202</code> response is terminal — <code>200</code> indicates success, <code>403</code> indicates denial, and <code>408</code> indicates timeout.<a href="#section-12.3.3-9" class="pilcrow">¶</a></p>
-<div class="lang-ascii-art sourcecode" id="section-12.3.3-10">
+            </ul>
+<p id="section-12.3.3.1-4">The agent directs the user itself — using the methods below — when it has no PS, or when the PS returns <code>interaction_unavailable</code>.<a href="#section-12.3.3.1-4" class="pilcrow">¶</a></p>
+<p id="section-12.3.3.1-5">To direct the user, the agent constructs a user-facing URL by appending the code as a query parameter: <code>{url}?code={code}</code>. The agent then directs the user to this URL using one of:<a href="#section-12.3.3.1-5" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-12.3.3.1-6.1">
+                <strong>Browser redirect</strong>: The agent opens the URL in the user's browser.<a href="#section-12.3.3.1-6.1" class="pilcrow">¶</a>
+</li>
+              <li class="compact" id="section-12.3.3.1-6.2">
+                <strong>Display code</strong>: The agent displays the <code>url</code> and <code>code</code> for the user to enter manually. The agent MAY also render the constructed URL as a QR code for the user to scan with their phone.<a href="#section-12.3.3.1-6.2" class="pilcrow">¶</a>
+</li>
+            </ul>
+<p id="section-12.3.3.1-7">After directing the user, the agent polls the <code>Location</code> URL with GET requests, respecting the <code>Retry-After</code> interval. A <code>202</code> response means the request is still pending. A non-<code>202</code> response is terminal — <code>200</code> indicates success, <code>403</code> indicates denial, and <code>408</code> indicates timeout.<a href="#section-12.3.3.1-7" class="pilcrow">¶</a></p>
+<div class="lang-ascii-art sourcecode" id="section-12.3.3.1-8">
 <pre>Agent                        User                         Server
   |                            |                             |
   |  202 Accepted                                            |
@@ -4610,9 +4662,11 @@ Retry-After: 0
   |  200 OK                                                  |
   |&lt;---------------------------------------------------------|
 
-</pre><a href="#section-12.3.3-10" class="pilcrow">¶</a>
+</pre><a href="#section-12.3.3.1-8" class="pilcrow">¶</a>
 </div>
-<p id="section-12.3.3-11"><strong>Use cases:</strong> User login, consent, payment confirmation, document review, CAPTCHA, any workflow requiring human action.<a href="#section-12.3.3-11" class="pilcrow">¶</a></p>
+<p id="section-12.3.3.1-9"><strong>Use cases:</strong> User login, consent, payment confirmation, document review, CAPTCHA, any workflow requiring human action.<a href="#section-12.3.3.1-9" class="pilcrow">¶</a></p>
+</section>
+</div>
 </section>
 </div>
 <div id="approval-pending">
@@ -4788,8 +4842,8 @@ Content-Type: application/json
           <h4 id="name-token-endpoint-error-codes">
 <a href="#section-12.5.3" class="section-number selfRef">12.5.3. </a><a href="#name-token-endpoint-error-codes" class="section-name selfRef">Token Endpoint Error Codes</a>
           </h4>
-<table class="center" id="table-7">
-            <caption><a href="#table-7" class="selfRef">Table 7</a></caption>
+<table class="center" id="table-8">
+            <caption><a href="#table-8" class="selfRef">Table 8</a></caption>
 <thead>
               <tr>
                 <th class="text-left" rowspan="1" colspan="1">Error</th>
@@ -4835,10 +4889,10 @@ Content-Type: application/json
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">
-                  <code>interaction_required</code>
+                  <code>user_unreachable</code>
 </td>
                 <td class="text-left" rowspan="1" colspan="1">403</td>
-                <td class="text-left" rowspan="1" colspan="1">User interaction is needed but no interaction channel is available — the PS cannot reach the user and the agent does not have the <code>interaction</code> capability</td>
+                <td class="text-left" rowspan="1" colspan="1">Terminal. The PS has no channel to reach the user and the agent did not declare the <code>interaction</code> capability, so the user cannot be reached at all. The non-terminal "user action is needed" case uses a <code>202</code> with <code>requirement=interaction</code> <a href="#requirement-responses" class="auto internal xref">Section 12.3</a>, not this error.</td>
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">
@@ -4856,8 +4910,8 @@ Content-Type: application/json
           <h4 id="name-polling-error-codes">
 <a href="#section-12.5.4" class="section-number selfRef">12.5.4. </a><a href="#name-polling-error-codes" class="section-name selfRef">Polling Error Codes</a>
           </h4>
-<table class="center" id="table-8">
-            <caption><a href="#table-8" class="selfRef">Table 8</a></caption>
+<table class="center" id="table-9">
+            <caption><a href="#table-9" class="selfRef">Table 9</a></caption>
 <thead>
               <tr>
                 <th class="text-left" rowspan="1" colspan="1">Error</th>
@@ -5428,8 +5482,8 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
         <h3 id="name-adoption-matrix">
 <a href="#section-13.3" class="section-number selfRef">13.3. </a><a href="#name-adoption-matrix" class="section-name selfRef">Adoption Matrix</a>
         </h3>
-<table class="center" id="table-9">
-          <caption><a href="#table-9" class="selfRef">Table 9</a></caption>
+<table class="center" id="table-10">
+          <caption><a href="#table-10" class="selfRef">Table 10</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">Agent</th>
@@ -5748,8 +5802,8 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <a href="#section-16.3" class="section-number selfRef">16.3. </a><a href="#name-well-known-uri-registration" class="section-name selfRef">Well-Known URI Registrations</a>
         </h3>
 <p id="section-16.3-1">This specification registers the following well-known URIs per <span>[<a href="#RFC8615" class="cite xref">RFC8615</a>]</span>:<a href="#section-16.3-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-10">
-          <caption><a href="#table-10" class="selfRef">Table 10</a></caption>
+<table class="center" id="table-11">
+          <caption><a href="#table-11" class="selfRef">Table 11</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">URI Suffix</th>
@@ -5895,8 +5949,8 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <a href="#section-16.5" class="section-number selfRef">16.5. </a><a href="#name-jwt-type-registrations" class="section-name selfRef">JWT Type Registrations</a>
         </h3>
 <p id="section-16.5-1">This specification registers the following JWT <code>typ</code> header parameter values in the "JSON Web Token Types" sub-registry:<a href="#section-16.5-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-11">
-          <caption><a href="#table-11" class="selfRef">Table 11</a></caption>
+<table class="center" id="table-12">
+          <caption><a href="#table-12" class="selfRef">Table 12</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">Type Value</th>
@@ -5935,8 +5989,8 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <a href="#section-16.6" class="section-number selfRef">16.6. </a><a href="#name-jwt-claims-registrations" class="section-name selfRef">JWT Claims Registrations</a>
         </h3>
 <p id="section-16.6-1">This specification registers the following claims in the IANA "JSON Web Token Claims" registry established by <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>:<a href="#section-16.6-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-12">
-          <caption><a href="#table-12" class="selfRef">Table 12</a></caption>
+<table class="center" id="table-13">
+          <caption><a href="#table-13" class="selfRef">Table 13</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">Claim Name</th>
@@ -5996,8 +6050,8 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <a href="#section-16.7" class="section-number selfRef">16.7. </a><a href="#name-aauth-requirement-value-reg" class="section-name selfRef">AAuth Requirement Value Registry</a>
         </h3>
 <p id="section-16.7-1">This specification establishes the AAuth Requirement Value Registry. The registry policy is Specification Required (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>).<a href="#section-16.7-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-13">
-          <caption><a href="#table-13" class="selfRef">Table 13</a></caption>
+<table class="center" id="table-14">
+          <caption><a href="#table-14" class="selfRef">Table 14</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">Value</th>
@@ -6045,8 +6099,8 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <a href="#section-16.8" class="section-number selfRef">16.8. </a><a href="#name-aauth-capability-value-regi" class="section-name selfRef">AAuth Capability Value Registry</a>
         </h3>
 <p id="section-16.8-1">This specification establishes the AAuth Capability Value Registry. The registry policy is Specification Required (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>).<a href="#section-16.8-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-14">
-          <caption><a href="#table-14" class="selfRef">Table 14</a></caption>
+<table class="center" id="table-15">
+          <caption><a href="#table-15" class="selfRef">Table 15</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">Value</th>
@@ -6082,8 +6136,8 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <a href="#section-16.9" class="section-number selfRef">16.9. </a><a href="#name-aauth-platform-value-regist" class="section-name selfRef">AAuth Platform Value Registry</a>
         </h3>
 <p id="section-16.9-1">This specification establishes the AAuth Platform Value Registry, used as values of the <code>platform</code> request parameter sent to the PS token endpoint <a href="#ps-token-endpoint" class="auto internal xref">Section 7.1</a>. The registry policy is Specification Required (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>).<a href="#section-16.9-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-15">
-          <caption><a href="#table-15" class="selfRef">Table 15</a></caption>
+<table class="center" id="table-16">
+          <caption><a href="#table-16" class="selfRef">Table 16</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">Value</th>

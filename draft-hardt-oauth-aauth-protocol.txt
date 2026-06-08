@@ -126,6 +126,7 @@ Table of Contents
      7.6.  Interaction Endpoint
        7.6.1.  Interaction Request
        7.6.2.  Interaction Response
+       7.6.3.  Interaction Endpoint Errors
      7.7.  Re-authorization
    8.  Mission
      8.1.  Mission Creation
@@ -1835,6 +1836,14 @@ Table of Contents
    *  url (OPTIONAL): The interaction URL to relay to the user (for
       interaction and payment types).
    *  code (OPTIONAL): The interaction code associated with the URL.
+   *  max_wait (OPTIONAL): Maximum seconds the PS SHOULD hold the
+      relay's deferred response before resolving it (for interaction and
+      payment types).  When the interaction URL is resource-hosted, the
+      PS resolves its deferred response once the user has engaged or
+      when this window elapses, whichever comes first; the agent then
+      relies on the resource's pending URL for completion Section 7.6.2.
+      Absent max_wait, the PS resolves the relay when the user has
+      engaged or it can make no further progress.
    *  question (OPTIONAL): A Markdown string containing a question for
       the user (for question type).
    *  summary (OPTIONAL): A Markdown string summarizing what the agent
@@ -1889,8 +1898,35 @@ Table of Contents
 7.6.2.  Interaction Response
 
    For interaction and payment types, the PS relays the interaction to
-   the user and returns a deferred response Section 12.4.  The agent
-   polls until the user completes the interaction.
+   the user and returns a deferred response Section 12.4.
+
+   When the interaction URL is hosted by the *PS itself*, the PS's
+   deferred response is authoritative for completion: the agent polls it
+   until the user completes the interaction.
+
+   When the interaction URL is hosted by a *resource* — the common case
+   for a relayed interaction, such as a proxy's OAuth bootstrap page or
+   a merchant's payment-confirmation page — the user completes the
+   interaction at the resource, not at the PS.  The agent then holds two
+   pending URLs: the resource's original Location (from the resource's
+   202) and the PS's relay Location.  The *resource's* pending URL is
+   authoritative for completion.  The PS's relay deferred response
+   reports only that the relay reached the user: it returns status:
+   "interacting" Section 12.4 once the user has engaged, and a terminal
+   response when the PS has done all it can — the user engaged, the
+   agent's max_wait window elapsed, or the PS can make no further
+   progress.  The agent MUST treat the resource's pending URL as the
+   signal that the interaction is complete, and continues polling it
+   after the PS relay resolves.
+
+   If the PS has no channel available to relay an interaction or payment
+   to the user, it returns interaction_unavailable Section 7.6.3.  This
+   is the PS declining to relay this specific interaction; the agent
+   falls back to directing the user to the url/code itself
+   Section 12.3.3.1.  It is distinct from user_unreachable:
+   interaction_unavailable is non-terminal — the agent can still drive
+   the interaction — whereas user_unreachable Section 12.5.3 is
+   terminal, meaning no party can reach the user.
 
    For question type, the PS delivers the question to the user and
    returns the answer:
@@ -1909,11 +1945,33 @@ Table of Contents
    response while the user reviews.
 
    If the PS cannot reach the user and the agent does not have the
-   interaction capability, the PS returns interaction_required.  If the
-   mission is no longer active, the PS returns a mission status error
-   Section 8.6.  The PS SHOULD record all interaction requests and
+   interaction capability, the PS returns user_unreachable
+   Section 12.5.3 — a terminal error, since no party can reach the user.
+   If the mission is no longer active, the PS returns a mission status
+   error Section 8.6.  The PS SHOULD record all interaction requests and
    responses.  When a mission is active, the PS records the interaction
    in the mission log.
+
+7.6.3.  Interaction Endpoint Errors
+
+   Errors use the token endpoint error response format Section 12.5.2.
+
+   +=========================+========+===============================+
+   | Error                   | Status | Meaning                       |
+   +=========================+========+===============================+
+   | interaction_unavailable | 424    | The PS has no channel         |
+   |                         |        | available to relay this       |
+   |                         |        | interaction or payment to the |
+   |                         |        | user.  Non-terminal: the      |
+   |                         |        | agent falls back to directing |
+   |                         |        | the user to the url/code      |
+   |                         |        | itself Section 12.3.3.1.      |
+   |                         |        | Distinct from the terminal    |
+   |                         |        | user_unreachable              |
+   |                         |        | Section 12.5.3.               |
+   +-------------------------+--------+-------------------------------+
+
+                                 Table 4
 
 7.7.  Re-authorization
 
@@ -2124,7 +2182,7 @@ Table of Contents
      |                    |            | acting on this mission.     |
      +--------------------+------------+-----------------------------+
 
-                                  Table 4
+                                  Table 5
 
 8.7.  AAuth-Mission Request Header
 
@@ -2797,7 +2855,7 @@ Table of Contents
          |               | interaction endpoint                 |
          +---------------+--------------------------------------+
 
-                                 Table 5
+                                 Table 6
 
    The agent determines its capabilities by combining what it can do
    directly with what its PS can do on its behalf.  When the agent has a
@@ -2918,7 +2976,7 @@ Table of Contents
      |               |        | required        |          |    |    |
      +---------------+--------+-----------------+----------+----+----+
 
-                                  Table 6
+                                  Table 7
 
    The auth-token requirement is defined in Section 6.5; the interaction
    and approval requirements are defined in this section; clarification
@@ -2952,9 +3010,30 @@ Table of Contents
       response.
    *  Retry-After: Recommended polling interval in seconds.
 
-   The agent constructs a user-facing URL by appending the code as a
-   query parameter: {url}?code={code}. The agent then directs the user
-   to this URL using one of:
+12.3.3.1.  Relaying Through the Person Server
+
+   When the agent has a PS, it SHOULD relay the interaction to the PS's
+   interaction_endpoint Section 7.6 before directing the user itself.
+   The PS may have a lower-friction channel to the user — an active web
+   session, a registered mobile app — than the agent opening a browser
+   or rendering a QR code.
+
+   To relay, the agent POSTs { "type": "interaction", "url": "...",
+   "code": "..." } to the PS's interaction_endpoint Section 7.6.  The PS
+   attempts to reach the user through its own channels and responds:
+
+   *  *PS can relay*: it returns a 202 deferred response, and the agent
+      polls for completion as described in Section 7.6.
+   *  *PS cannot relay*: it returns interaction_unavailable
+      Section 7.6.3.  This is non-terminal — the agent falls back to
+      directing the user itself.
+
+   The agent directs the user itself — using the methods below — when it
+   has no PS, or when the PS returns interaction_unavailable.
+
+   To direct the user, the agent constructs a user-facing URL by
+   appending the code as a query parameter: {url}?code={code}. The agent
+   then directs the user to this URL using one of:
 
    *  *Browser redirect*: The agent opens the URL in the user's browser.
    *  *Display code*: The agent displays the url and code for the user
@@ -3144,35 +3223,36 @@ Initial request (with Prefer: wait=N)
 
 12.5.3.  Token Endpoint Error Codes
 
-   +========================+========+=================================+
-   | Error                  | Status | Meaning                         |
-   +========================+========+=================================+
-   | invalid_request        | 400    | Malformed JSON, missing         |
-   |                        |        | required fields                 |
-   +------------------------+--------+---------------------------------+
-   | invalid_agent_token    | 400    | Agent token malformed or        |
-   |                        |        | signature verification          |
-   |                        |        | failed                          |
-   +------------------------+--------+---------------------------------+
-   | expired_agent_token    | 400    | Agent token has expired         |
-   +------------------------+--------+---------------------------------+
-   | invalid_resource_token | 400    | Resource token malformed        |
-   |                        |        | or signature verification       |
-   |                        |        | failed                          |
-   +------------------------+--------+---------------------------------+
-   | expired_resource_token | 400    | Resource token has expired      |
-   +------------------------+--------+---------------------------------+
-   | interaction_required   | 403    | User interaction is needed      |
-   |                        |        | but no interaction channel      |
-   |                        |        | is available — the PS           |
-   |                        |        | cannot reach the user and       |
-   |                        |        | the agent does not have         |
-   |                        |        | the interaction capability      |
-   +------------------------+--------+---------------------------------+
-   | server_error           | 500    | Internal error                  |
-   +------------------------+--------+---------------------------------+
+   +========================+========+================================+
+   | Error                  | Status | Meaning                        |
+   +========================+========+================================+
+   | invalid_request        | 400    | Malformed JSON, missing        |
+   |                        |        | required fields                |
+   +------------------------+--------+--------------------------------+
+   | invalid_agent_token    | 400    | Agent token malformed or       |
+   |                        |        | signature verification failed  |
+   +------------------------+--------+--------------------------------+
+   | expired_agent_token    | 400    | Agent token has expired        |
+   +------------------------+--------+--------------------------------+
+   | invalid_resource_token | 400    | Resource token malformed or    |
+   |                        |        | signature verification failed  |
+   +------------------------+--------+--------------------------------+
+   | expired_resource_token | 400    | Resource token has expired     |
+   +------------------------+--------+--------------------------------+
+   | user_unreachable       | 403    | Terminal.  The PS has no       |
+   |                        |        | channel to reach the user and  |
+   |                        |        | the agent did not declare the  |
+   |                        |        | interaction capability, so the |
+   |                        |        | user cannot be reached at all. |
+   |                        |        | The non-terminal "user action  |
+   |                        |        | is needed" case uses a 202     |
+   |                        |        | with requirement=interaction   |
+   |                        |        | Section 12.3, not this error.  |
+   +------------------------+--------+--------------------------------+
+   | server_error           | 500    | Internal error                 |
+   +------------------------+--------+--------------------------------+
 
-                                  Table 7
+                                 Table 8
 
 12.5.4.  Polling Error Codes
 
@@ -3196,7 +3276,7 @@ Initial request (with Prefer: wait=N)
         | server_error | 500    | Internal error                 |
         +--------------+--------+--------------------------------+
 
-                                 Table 8
+                                 Table 9
 
 12.6.  Token Revocation
 
@@ -3677,7 +3757,7 @@ Initial request (with Prefer: wait=N)
     |         |               |                  | access            |
     +---------+---------------+------------------+-------------------+
 
-                                 Table 9
+                                 Table 10
 
 14.  Security Considerations
 
@@ -3956,7 +4036,7 @@ Initial request (with Prefer: wait=N)
        |                     |                   | Section 12.10.4 |
        +---------------------+-------------------+-----------------+
 
-                                  Table 10
+                                  Table 11
 
 16.4.  Media Type Registrations
 
@@ -4021,7 +4101,7 @@ Initial request (with Prefer: wait=N)
              | aa-resource+jwt | This document, Section 6   |
              +-----------------+----------------------------+
 
-                                 Table 11
+                                 Table 12
 
 16.6.  JWT Claims Registrations
 
@@ -4049,7 +4129,7 @@ Initial request (with Prefer: wait=N)
     |           | and auth tokens           |            |           |
     +-----------+---------------------------+------------+-----------+
 
-                                 Table 12
+                                 Table 13
 
 16.7.  AAuth Requirement Value Registry
 
@@ -4070,7 +4150,7 @@ Initial request (with Prefer: wait=N)
                      | claims        | This document |
                      +---------------+---------------+
 
-                                  Table 13
+                                  Table 14
 
 16.8.  AAuth Capability Value Registry
 
@@ -4087,7 +4167,7 @@ Initial request (with Prefer: wait=N)
                      | payment       | This document |
                      +---------------+---------------+
 
-                                  Table 14
+                                  Table 15
 
 16.9.  AAuth Platform Value Registry
 
@@ -4117,7 +4197,7 @@ Initial request (with Prefer: wait=N)
        |             | controls                       |           |
        +-------------+--------------------------------+-----------+
 
-                                 Table 15
+                                 Table 16
 
 16.10.  URI Scheme Registration
 
