@@ -110,6 +110,14 @@ organization = "Hellō"
   </front>
 </reference>
 
+<reference anchor="Crockford.Base32" target="https://www.crockford.com/base32.html">
+  <front>
+    <title>Base 32</title>
+    <author initials="D." surname="Crockford" fullname="Douglas Crockford"/>
+    <date year="2019"/>
+  </front>
+</reference>
+
 .# Abstract
 
 This document defines the AAuth authorization protocol for agent-to-resource authorization and identity claim retrieval. The protocol supports four resource access modes — identity-based, resource-managed (two-party), PS-asserted (three-party), and federated (four-party) — with agent governance as an orthogonal layer. It builds on the HTTP Signature Keys specification ([@!I-D.hardt-httpbis-signature-key]) for HTTP Message Signatures and key discovery.
@@ -918,7 +926,7 @@ Location: /pending/abc123
 Retry-After: 0
 Cache-Control: no-store
 AAuth-Requirement: requirement=interaction;
-    url="https://ps.example/interaction"; code="ABCD1234"
+    url="https://ps.example/interaction"; code="A1B2-C3D4"
 Content-Type: application/json
 
 {
@@ -1986,12 +1994,30 @@ Retry-After: 0
 The `AAuth-Requirement` header MUST include the following parameters:
 
 - `url` (String): The interaction URL where the user completes the required action. MUST use the `https` scheme and MUST NOT contain query or fragment components.
-- `code` (String): An interaction code that links the agent's pending request to the user's session at the interaction URL.
+- `code` (String): An interaction code that links the agent's pending request to the user's session at the interaction URL. Generated and compared per (#interaction-code-format).
 
 The response MUST also include:
 
 - `Location`: A URL the agent polls (with GET) for a terminal response.
 - `Retry-After`: Recommended polling interval in seconds.
+
+#### Interaction Code Format {#interaction-code-format}
+
+The `code` is a Structured Field String ([@!RFC8941], Section 3.3.3). The user reads it out of band — the agent displays it (or renders it in a QR code) and the user visually compares it against the code shown on the interaction page — so it MUST be both unguessable and unambiguous to a human. Servers and agents MUST follow these rules.
+
+**Alphabet.** The code MUST be generated from Crockford base32 ([@?Crockford.Base32]) — the symbol set `0123456789ABCDEFGHJKMNPQRSTVWXYZ`, which omits the visually ambiguous letters `I`, `L`, `O`, and `U`. Every symbol is URL-safe, so the code requires no escaping when appended as `{url}?code={code}`. Servers MUST NOT emit codes containing characters outside this set (other than the optional grouping hyphen below).
+
+**Entropy and length.** A code MUST carry at least 40 bits of entropy — at least 8 Crockford base32 symbols, drawn from a cryptographically secure random source. Servers MAY use longer codes for higher-value interactions.
+
+**Hyphens.** A server MAY insert hyphen (`-`) characters into the displayed code purely for visual grouping (for example, `A1B2-C3D4`). The hyphen is presentational only: it carries no entropy and is not part of the code's value. Before comparison, both the server and any party validating the code MUST strip all hyphens.
+
+**Case.** Comparison MUST be case-insensitive. A server MUST accept the code regardless of the case the user enters, and on input MUST fold the Crockford decode aliases (`I`/`L` → `1`, `O` → `0`) before comparison so that a user who transcribes an ambiguous glyph still matches.
+
+**Single use.** A code MUST be single-use. Once the user arrives at the interaction URL with a valid code and the code is consumed, the server MUST reject any later presentation of the same code, returning `invalid_code` (#polling-error-codes).
+
+**Rate-limiting.** Because the code is the only secret guarding the interaction URL, the server MUST rate-limit code-validation attempts at the interaction URL. After a small number of failed attempts the server MUST treat the pending interaction as terminally failed and return `invalid_code` (#polling-error-codes) on subsequent attempts, bounding the brute-force window to far fewer guesses than the code's entropy would otherwise allow.
+
+**Lifetime.** A code MUST expire no later than the pending interaction it is bound to (#deferred-responses). Once the pending request has expired, presenting the code MUST fail with `expired` (#polling-error-codes); the agent MAY initiate a fresh request to obtain a new code.
 
 #### Relaying Through the Person Server {#interaction-relay}
 
@@ -2539,6 +2565,8 @@ All protocol inputs — JSON request bodies, clarification responses, justificat
 
 An attacker could attempt to trick a user into approving an authorization request by directing them to an interaction URL with the attacker's code. The PS mitigates this by displaying the full request context — the agent's identity, the resource being accessed, and the requested scope — so the user can recognize requests they did not initiate. A stronger mitigation is for the PS to interact directly with the user via a pre-established channel (push notification, email, or existing session) using `requirement=approval`, which eliminates the possibility of misdirection through attacker-supplied links entirely.
 
+The reverse threat — an attacker who knows a pending request's interaction URL but not its `code` and tries to guess it to drive the interaction — is bounded by the code-format rules in (#interaction-code-format). The minimum 40 bits of entropy make a single guess overwhelmingly likely to fail, and the mandatory rate-limit terminates the pending interaction after a few failed attempts, capping total guesses far below the entropy bound. These entropy and rate-limit requirements are the brute-force defense; they complement the user-recognition and pre-established-channel defenses above, which address misdirection of a legitimate code rather than recovery of an unknown one.
+
 ## Token Issuer Discovery
 
 The recipient of the resource token — and thus the issuer of the auth token — is identified by the `aud` claim. In three-party mode, `aud` identifies the agent's PS, which asserts identity and consent. In four-party mode, `aud` identifies the resource's AS, which evaluates resource policy. Federation mechanics for four-party are described in (#ps-as-federation).
@@ -2788,6 +2816,9 @@ The following implementations are known:
 # Document History
 
 *Note: This section is to be removed before publishing as an RFC.*
+
+- draft-hardt-oauth-aauth-protocol-03
+  - Specified the interaction `code` format: Crockford base32 alphabet, ≥40 bits of entropy, presentational hyphens stripped before case-insensitive comparison, single use, mandatory rate-limiting, and expiry bound to the pending interaction. Documented the entropy/rate-limit rules as the brute-force defense in Interaction Code Misdirection. Made the four `code` examples consistently hyphenated.
 
 - draft-hardt-oauth-aauth-protocol-02
   - Added sub-agents: agent token `parent_agent` claim, single-level depth, parent-mediated authorization with a `subagent_token` parameter, and the `+` sub-agent local-part delimiter; registered `parent_agent` in the JWT Claims registry.
