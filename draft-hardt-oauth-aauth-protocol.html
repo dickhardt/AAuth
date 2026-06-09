@@ -1691,9 +1691,6 @@ svg {
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.3">
                 <p id="section-toc.1-1.16.2.3.1"><a href="#section-16.3" class="auto internal xref">16.3</a>.  <a href="#name-mission-content-exposure" class="internal xref">Mission Content Exposure</a></p>
 </li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.4">
-                <p id="section-toc.1-1.16.2.4.1"><a href="#section-16.4" class="auto internal xref">16.4</a>.  <a href="#name-pseudonymous-access" class="internal xref">Pseudonymous Access</a></p>
-</li>
             </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17">
@@ -5242,13 +5239,8 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
           <h4 id="name-keying-material">
 <a href="#section-13.7.2" class="section-number selfRef">13.7.2. </a><a href="#name-keying-material" class="section-name selfRef">Keying Material</a>
           </h4>
-<p id="section-13.7.2-1">The signing key is conveyed in the <code>Signature-Key</code> header (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). The Signature-Key scheme determines how the server obtains the public key:<a href="#section-13.7.2-1" class="pilcrow">¶</a></p>
-<ul class="compact">
-<li class="compact" id="section-13.7.2-2.1">For <code>pseudonym</code>: the agent uses <code>scheme=hwk</code> (inline public key) or <code>scheme=jkt-jwt</code> (delegation from a hardware-backed key).<a href="#section-13.7.2-2.1" class="pilcrow">¶</a>
-</li>
-            <li class="compact" id="section-13.7.2-2.2">For <code>identity</code>: the agent uses <code>scheme=jwks_uri</code> (JWKS endpoint) or <code>scheme=jwt</code> (JWT with public key in <code>cnf</code> claim).<a href="#section-13.7.2-2.2" class="pilcrow">¶</a>
-</li>
-          </ul>
+<p id="section-13.7.2-1">The signing key is conveyed in the <code>Signature-Key</code> header (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). Because every AAuth agent holds an agent token <a href="#agent-tokens" class="auto internal xref">Section 5.2</a>, AAuth uses the <strong>identity</strong> Signature-Key schemes: the agent presents its agent token — or, after authorization, an auth token — via <code>scheme=jwt</code> (public key in the <code>cnf</code> claim), or a self-hosted agent uses <code>scheme=jwks_uri</code> (key discovered at the agent's JWKS endpoint).<a href="#section-13.7.2-1" class="pilcrow">¶</a></p>
+<p id="section-13.7.2-2">The Signature-Key specification also defines <code>pseudonym</code> schemes (<code>scheme=hwk</code> for a bare inline public key, <code>scheme=jkt-jwt</code> for hardware-key delegation). AAuth does not use bare <code>hwk</code> access — the agent token is the minimum AAuth credential. <code>scheme=jkt-jwt</code> is used only in the agent provider's key-refresh ceremony (see <span>[<a href="#I-D.hardt-aauth-bootstrap" class="cite xref">I-D.hardt-aauth-bootstrap</a>]</span>), not for protocol access to resources, PSes, or ASes.<a href="#section-13.7.2-2" class="pilcrow">¶</a></p>
 <p id="section-13.7.2-3">See the Signature-Key specification (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>) for scheme definitions, key discovery, and verification procedures.<a href="#section-13.7.2-3" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -6014,33 +6006,6 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <p id="section-16.3-1">The mission JSON is visible to the PS and, when included in resource tokens and auth tokens via the <code>s256</code> hash, its integrity is verifiable by any party that holds it. The approved mission JSON is shared between the agent and PS. Resources and ASes see only the <code>s256</code> hash and the approver URL, not the full mission content.<a href="#section-16.3-1" class="pilcrow">¶</a></p>
 </section>
 </div>
-<div id="pseudonymous-access">
-<section id="section-16.4">
-        <h3 id="name-pseudonymous-access">
-<a href="#section-16.4" class="section-number selfRef">16.4. </a><a href="#name-pseudonymous-access" class="section-name selfRef">Pseudonymous Access</a>
-        </h3>
-<p id="section-16.4-1">The HTTP Message Signatures profile <a href="#keying-material" class="auto internal xref">Section 13.7.2</a> supports pseudonymous keying — <code>scheme=hwk</code> (an inline public key) or <code>scheme=jkt-jwt</code> (delegation from a hardware-backed key) — in which the agent proves possession of a signing key without presenting an agent-provider-issued identity (<code>aauth:local@domain</code>). The agent is identified only by its key (its JWK thumbprint), with no stable, attested identity behind it.<a href="#section-16.4-1" class="pilcrow">¶</a></p>
-<p id="section-16.4-2">Pseudonymous access is appropriate where a resource needs proof-of-possession and continuity but not identity:<a href="#section-16.4-2" class="pilcrow">¶</a></p>
-<ul class="compact">
-<li class="compact" id="section-16.4-3.1">
-            <strong>Privacy-preserving access</strong>: the user or agent does not wish to present an attested, provider-linked identity — only a consistent key the resource can recognize across requests.<a href="#section-16.4-3.1" class="pilcrow">¶</a>
-</li>
-          <li class="compact" id="section-16.4-3.2">
-            <strong>Sybil resistance and rate limiting without identification</strong>: a resource can bind quotas, sessions, or reputation to a key thumbprint without learning who the caller is.<a href="#section-16.4-3.2" class="pilcrow">¶</a>
-</li>
-          <li class="compact" id="section-16.4-3.3">
-            <strong>Ephemeral or unenrolled agents</strong>: agents with no agent-provider relationship, or that are short-lived and do not warrant a durable identity, can still sign requests and hold key-bound grants.<a href="#section-16.4-3.3" class="pilcrow">¶</a>
-</li>
-          <li class="compact" id="section-16.4-3.4">
-            <strong>Capability-style access</strong>: where authorization is bound to a key (the key is the credential) and identity is irrelevant to the resource's policy.<a href="#section-16.4-3.4" class="pilcrow">¶</a>
-</li>
-          <li class="compact" id="section-16.4-3.5">
-            <strong>Hardware-anchored continuity</strong>: <code>scheme=jkt-jwt</code> anchors a key to a hardware-backed key (e.g., a TPM or secure enclave) for device-bound continuity while remaining pseudonymous.<a href="#section-16.4-3.5" class="pilcrow">¶</a>
-</li>
-        </ul>
-<p id="section-16.4-4">Pseudonymity has limits. A resource that requires an attributable, provider-vouched identity — for accountability, governance through a PS, or organizational policy — MUST require an <code>identity</code> scheme (<code>scheme=jwt</code> or <code>scheme=jwks_uri</code>) and reject pseudonymous keys. And a pseudonymous key still uniquely identifies its holder to a given resource across requests: it is pseudonymous, not anonymous. A holder that wants unlinkable interactions MUST use fresh keys.<a href="#section-16.4-4" class="pilcrow">¶</a></p>
-</section>
-</div>
 </section>
 </div>
 <div id="iana-considerations">
@@ -6591,7 +6556,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 </li>
             <li class="compact normal" id="section-19-2.1.2.8">HTTP Message Signatures profile: added rationale for the four mandated covered components (each closes a request-substitution attack and all are derivable at signing time on every platform, including browsers).<a href="#section-19-2.1.2.8" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.9">Added a Security Consideration on non-repudiation and audit after key rotation, and a Privacy Consideration on pseudonymous access (<code>scheme=hwk</code> / <code>scheme=jkt-jwt</code>).<a href="#section-19-2.1.2.9" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.9">Added a Security Consideration on non-repudiation and audit after key rotation. Clarified that the agent token is AAuth's minimum credential: AAuth uses only the identity Signature-Key schemes (<code>scheme=jwt</code> / <code>scheme=jwks_uri</code>); the pseudonym schemes (<code>hwk</code>/<code>jkt-jwt</code>) are not an AAuth access mode (<code>jkt-jwt</code> is used only in the agent provider's refresh ceremony).<a href="#section-19-2.1.2.9" class="pilcrow">¶</a>
 </li>
             <li class="compact normal" id="section-19-2.1.2.10">Bootstrapping: added a pointer noting that AP-side enrollment (key handling, attestation, refresh) is described in the informational AAuth Bootstrap document; noted that resources SHOULD publish <code>access_mode</code> and an R3 vocabulary to be discoverable, from identity-based access upward.<a href="#section-19-2.1.2.10" class="pilcrow">¶</a>
 </li>
@@ -7157,7 +7122,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
           <h4 id="name-why-not-dpop">
 <a href="#appendix-B.4.2" class="section-number selfRef">B.4.2. </a><a href="#name-why-not-dpop" class="section-name selfRef">Why Not DPoP?</a>
           </h4>
-<p id="appendix-B.4.2-1">DPoP (<span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span>) binds an existing OAuth access token to a key, preventing token theft. AAuth differs in that agents can establish identity from zero — no pre-existing token, no pre-registration. At the signature level (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>), AAuth requires no tokens at all, only a signed request. DPoP has a single mode (prove you hold the key bound to this token), while AAuth supports progressive requirements from pseudonymous access through verified identity to authorized access with interactive consent. DPoP is the right choice for adding proof-of-possession to existing OAuth deployments.<a href="#appendix-B.4.2-1" class="pilcrow">¶</a></p>
+<p id="appendix-B.4.2-1">DPoP (<span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span>) binds an existing OAuth access token to a key, preventing token theft. AAuth differs in that agents can establish identity from zero — no pre-existing token, no pre-registration. The agent signs with its own agent token <a href="#agent-tokens" class="auto internal xref">Section 5.2</a>, which it obtains from its agent provider without any resource-side registration; no resource- or AS-issued token is needed to make the first identified call. DPoP has a single mode (prove you hold the key bound to this token), while AAuth supports progressive requirements from verified agent identity through authorized access with interactive consent. DPoP is the right choice for adding proof-of-possession to existing OAuth deployments.<a href="#appendix-B.4.2-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="why-not-extend-gnap">

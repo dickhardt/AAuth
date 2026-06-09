@@ -226,7 +226,6 @@ Table of Contents
      16.1.  Directed Identifiers
      16.2.  PS Visibility
      16.3.  Mission Content Exposure
-     16.4.  Pseudonymous Access
    17. IANA Considerations
      17.1.  HTTP Header Field Registration
      17.2.  HTTP Authentication Scheme Registration
@@ -3624,13 +3623,20 @@ Initial request (with Prefer: wait=N)
 13.7.2.  Keying Material
 
    The signing key is conveyed in the Signature-Key header
-   ([I-D.hardt-httpbis-signature-key]).  The Signature-Key scheme
-   determines how the server obtains the public key:
+   ([I-D.hardt-httpbis-signature-key]).  Because every AAuth agent holds
+   an agent token Section 5.2, AAuth uses the *identity* Signature-Key
+   schemes: the agent presents its agent token — or, after
+   authorization, an auth token — via scheme=jwt (public key in the cnf
+   claim), or a self-hosted agent uses scheme=jwks_uri (key discovered
+   at the agent's JWKS endpoint).
 
-   *  For pseudonym: the agent uses scheme=hwk (inline public key) or
-      scheme=jkt-jwt (delegation from a hardware-backed key).
-   *  For identity: the agent uses scheme=jwks_uri (JWKS endpoint) or
-      scheme=jwt (JWT with public key in cnf claim).
+   The Signature-Key specification also defines pseudonym schemes
+   (scheme=hwk for a bare inline public key, scheme=jkt-jwt for
+   hardware-key delegation).  AAuth does not use bare hwk access — the
+   agent token is the minimum AAuth credential. scheme=jkt-jwt is used
+   only in the agent provider's key-refresh ceremony (see
+   [I-D.hardt-aauth-bootstrap]), not for protocol access to resources,
+   PSes, or ASes.
 
    See the Signature-Key specification
    ([I-D.hardt-httpbis-signature-key]) for scheme definitions, key
@@ -4386,43 +4392,6 @@ Initial request (with Prefer: wait=N)
    between the agent and PS.  Resources and ASes see only the s256 hash
    and the approver URL, not the full mission content.
 
-16.4.  Pseudonymous Access
-
-   The HTTP Message Signatures profile Section 13.7.2 supports
-   pseudonymous keying — scheme=hwk (an inline public key) or
-   scheme=jkt-jwt (delegation from a hardware-backed key) — in which the
-   agent proves possession of a signing key without presenting an agent-
-   provider-issued identity (aauth:local@domain).  The agent is
-   identified only by its key (its JWK thumbprint), with no stable,
-   attested identity behind it.
-
-   Pseudonymous access is appropriate where a resource needs proof-of-
-   possession and continuity but not identity:
-
-   *  *Privacy-preserving access*: the user or agent does not wish to
-      present an attested, provider-linked identity — only a consistent
-      key the resource can recognize across requests.
-   *  *Sybil resistance and rate limiting without identification*: a
-      resource can bind quotas, sessions, or reputation to a key
-      thumbprint without learning who the caller is.
-   *  *Ephemeral or unenrolled agents*: agents with no agent-provider
-      relationship, or that are short-lived and do not warrant a durable
-      identity, can still sign requests and hold key-bound grants.
-   *  *Capability-style access*: where authorization is bound to a key
-      (the key is the credential) and identity is irrelevant to the
-      resource's policy.
-   *  *Hardware-anchored continuity*: scheme=jkt-jwt anchors a key to a
-      hardware-backed key (e.g., a TPM or secure enclave) for device-
-      bound continuity while remaining pseudonymous.
-
-   Pseudonymity has limits.  A resource that requires an attributable,
-   provider-vouched identity — for accountability, governance through a
-   PS, or organizational policy — MUST require an identity scheme
-   (scheme=jwt or scheme=jwks_uri) and reject pseudonymous keys.  And a
-   pseudonymous key still uniquely identifies its holder to a given
-   resource across requests: it is pseudonymous, not anonymous.  A
-   holder that wants unlinkable interactions MUST use fresh keys.
-
 17.  IANA Considerations
 
 17.1.  HTTP Header Field Registration
@@ -4771,8 +4740,11 @@ Initial request (with Prefer: wait=N)
          attack and all are derivable at signing time on every platform,
          including browsers).
       -  Added a Security Consideration on non-repudiation and audit
-         after key rotation, and a Privacy Consideration on pseudonymous
-         access (scheme=hwk / scheme=jkt-jwt).
+         after key rotation.  Clarified that the agent token is AAuth's
+         minimum credential: AAuth uses only the identity Signature-Key
+         schemes (scheme=jwt / scheme=jwks_uri); the pseudonym schemes
+         (hwk/jkt-jwt) are not an AAuth access mode (jkt-jwt is used
+         only in the agent provider's refresh ceremony).
       -  Bootstrapping: added a pointer noting that AP-side enrollment
          (key handling, attestation, refresh) is described in the
          informational AAuth Bootstrap document; noted that resources
@@ -5404,12 +5376,13 @@ B.4.2.  Why Not DPoP?
 
    DPoP ([RFC9449]) binds an existing OAuth access token to a key,
    preventing token theft.  AAuth differs in that agents can establish
-   identity from zero — no pre-existing token, no pre-registration.  At
-   the signature level ([I-D.hardt-httpbis-signature-key]), AAuth
-   requires no tokens at all, only a signed request.  DPoP has a single
-   mode (prove you hold the key bound to this token), while AAuth
-   supports progressive requirements from pseudonymous access through
-   verified identity to authorized access with interactive consent.
+   identity from zero — no pre-existing token, no pre-registration.  The
+   agent signs with its own agent token Section 5.2, which it obtains
+   from its agent provider without any resource-side registration; no
+   resource- or AS-issued token is needed to make the first identified
+   call.  DPoP has a single mode (prove you hold the key bound to this
+   token), while AAuth supports progressive requirements from verified
+   agent identity through authorized access with interactive consent.
    DPoP is the right choice for adding proof-of-possession to existing
    OAuth deployments.
 
