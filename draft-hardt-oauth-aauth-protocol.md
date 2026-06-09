@@ -119,7 +119,9 @@ This document defines the AAuth authorization protocol for agent-to-resource aut
 *Note: This section is to be removed before publishing as an RFC.*
 
 
-This document is part of the AAuth specification family. Source for this draft and an issue tracker can be found at https://github.com/dickhardt/AAuth.
+This document is part of the AAuth specification family. 
+Related documents and open issues can be found at https://github.com/dickhardt/AAuth.
+Raw markdown source is at https://raw.githubusercontent.com/dickhardt/AAuth/refs/heads/main/draft-hardt-oauth-aauth-protocol.md  
 
 {mainmatter}
 
@@ -169,7 +171,7 @@ AAuth builds on existing standards and design patterns:
 
 The HTTP Signature Keys specification ([@!I-D.hardt-httpbis-signature-key]) defines how signing keys are bound to JWTs and discovered via well-known metadata, and how agents present cryptographic identity using HTTP Message Signatures ([@!RFC9421]). This specification defines the `AAuth-Requirement`, `AAuth-Access`, and `AAuth-Capabilities` headers, and the authorization protocol across four resource access modes.
 
-Because agent identity is independent and self-contained, AAuth is designed for incremental adoption — each party can add support independently, and rollout does not need to be coordinated. A resource that verifies an agent's signature can manage access by identity alone, with no other infrastructure. When a resource manages its own authorization — via interaction, consent, or existing infrastructure — it operates in resource-managed access (two-party). Issuing resource tokens to the agent's person server enables PS-asserted access (three-party): the PS asserts identity claims about the user (`sub`, optionally `email`, `tenant`, `groups`, `roles`) and confirms user consent for the scope the resource requested; the resource applies its own policy on the resulting claims. Any PS can assert identity claims to any resource without bilateral setup; the resource namespaces those claims by the asserting PS. Deploying an access server enables federated access (four-party) with cross-domain policy enforcement. Agent governance — missions, plus per-action permission, audit, and interaction relay through a PS — is an orthogonal layer that any agent with a PS can add, from a simple prompt to full autonomous agent oversight. See (#incremental-adoption) for details.
+Because agent identity is independent and self-contained, AAuth is designed for incremental adoption: each party can add support independently, and rollout does not need to be coordinated. A resource that verifies an agent's signature can manage access by identity alone, with no other infrastructure; adding a person server and an access server is additive. The four resource access modes and the orthogonal agent-governance layer are introduced in (#protocol-overview) and detailed in (#incremental-adoption).
 
 # Conventions and Definitions
 
@@ -182,9 +184,9 @@ In HTTP examples throughout this document, line breaks and indentation are added
 Parties:
 
 - **Person**: A user or organization — the legal person — on whose behalf an agent acts and who is accountable for the agent's actions.
-- **Agent**: An HTTP client ([@!RFC9110], Section 3.5) acting on behalf of a person. Identified by an agent identifier URIs using the `aauth` scheme, of the form `aauth:local@domain` (#agent-identifiers). An agent MAY have a person server, declared via the `ps` claim in the agent token.
+- **Agent**: An HTTP client ([@!RFC9110], Section 3.5) acting on behalf of a person. Identified by an agent identifier URI using the `aauth` scheme, of the form `aauth:local@domain` (#agent-identifiers). An agent MAY have a person server, declared via the `ps` claim in the agent token.
 - **Agent Provider (AP)**: A server that manages agent identity and issues agent tokens to agents. Trusted by the person to issue agent tokens only to authorized agents. Identified by an HTTPS URL (#server-identifiers) and publishes metadata at `/.well-known/aauth-agent.json`.
-- **Resource**: A server that requires authentication and/or authorization to protect access to its APIs and data. A resource MAY enforce access policy itself or delegate policy evaluation to an access server. Identified by an HTTPS URL (#server-identifiers) and publishes metadata at `/.well-known/aauth-resource.json`. A mission-aware resource includes the mission object from the `AAuth-Mission` header in the resource tokens it issues.
+- **Resource**: A server that requires authentication and/or authorization to protect access to its APIs and data. A resource MAY enforce access policy itself or delegate policy evaluation to an access server. Identified by an HTTPS URL (#server-identifiers) and publishes metadata at `/.well-known/aauth-resource.json`. A mission-aware resource includes the mission reference from the `AAuth-Mission` header in the resource tokens it issues.
 - **Person Server (PS)**: A server that represents the person to the rest of the protocol. The person chooses their PS; it is not imposed by any other party. The PS manages missions, handles consent, asserts user identity, and brokers authorization on behalf of agents. Identified by an HTTPS URL (#server-identifiers) and publishes metadata at `/.well-known/aauth-person.json`.
 - **Access Server (AS)**: A policy engine that evaluates token requests, applies resource policy, and issues auth tokens on behalf of a resource. Identified by an HTTPS URL (#server-identifiers) and publishes metadata at `/.well-known/aauth-access.json`.
 
@@ -197,6 +199,7 @@ Tokens:
 Protocol concepts:
 
 - **Mission**: A scoped authorization context for agent governance (#missions). Required when the person's PS requires governance over the agent's actions. A mission is a JSON object containing structured fields (approver, agent, approved_at, approved tools) and a Markdown description. Identified by the PS and SHA-256 hash of the mission JSON (`s256`). Missions are proposed by agents and approved by the PS and person.
+- **Mission Reference**: The pair of the `approver` URL and the `s256` hash that identifies a mission in the `AAuth-Mission` header and in the `mission` claim of resource tokens and auth tokens, without carrying the mission's content. Distinct from the full mission JSON (the **mission blob**), which only the agent and PS hold (#mission-approval).
 - **Mission Log**: The ordered record of all agent↔PS interactions within a mission — token requests, permission requests, audit records, interaction requests, and clarification chats. The PS maintains the log and uses it to evaluate whether each new request is consistent with the mission's intent (#mission-log).
 - **HTTP Sig**: An HTTP Message Signature ([@!RFC9421]) created per the AAuth HTTP Message Signatures profile defined in this specification (#http-message-signatures-profile), using a key conveyed via the `Signature-Key` header ([@!I-D.hardt-httpbis-signature-key]).
 - **Markdown**: AAuth uses Markdown ([@CommonMark]) as the human-readable content format for mission descriptions, justifications, clarifications, and scope descriptions. Implementations MUST sanitize Markdown before rendering to users.
@@ -212,7 +215,7 @@ AAuth has two dimensions: **resource access modes** and **agent governance**. Re
 
 ## Resource Access Modes
 
-AAuth supports four resource access modes, each adding parties and capabilities. The protocol works in every mode — adoption does not require coordination between parties.
+AAuth supports four resource access modes, each adding parties and capabilities. The protocol works in every mode — adoption does not require coordination between parties. Identity-based and resource-managed access both involve only the agent and the resource; the "(two-party)" label is shorthand for resource-managed access, where the resource runs an authorization flow rather than deciding on identity alone.
 
 | Mode | Parties | Description |
 |------|---------|-------------|
@@ -305,7 +308,7 @@ Figure: Resource-Managed Access (Two-Party) {#fig-resource-managed}
 
 ### PS-Asserted Access (Three-Party)
 
-The resource has no separate access server — it accepts identity claims from whichever PS the agent declares, and applies its own policy on the resulting claims. The resource discovers the agent's PS from the `ps` claim in the agent token and issues a resource token (#resource-tokens) with `aud` = PS URL. The agent obtains the resource token either by calling the resource's `authorization_endpoint` (if published in resource metadata) or by receiving a `401` challenge with `requirement=auth-token` when calling the resource directly (#requirement-auth-token). The agent sends the resource token to the PS's token endpoint (#ps-token-endpoint), and the PS returns an auth token (#auth-tokens) asserting identity claims about the user (`sub`, optionally `email`, `tenant`, `groups`, `roles`) and confirming user consent for the scope the resource requested. The resource applies its own access policy on the resulting claims. Any agent's PS can assert identity claims to any resource without bilateral setup; the resource namespaces those claims by the asserting PS — the same `sub` value from a different PS is a different subject. As in many OIDC deployments, registration and login share a single flow: the resource follows the same flow whether the user is new or returning, and creates or matches a user record based on whether it has seen this `(iss, sub)` before.
+The resource has no separate access server — it accepts identity claims from whichever PS the agent declares, and applies its own policy on the resulting claims. The resource discovers the agent's PS from the `ps` claim in the agent token and issues a resource token (#resource-tokens) with `aud` = PS URL. The agent obtains the resource token either by calling the resource's `authorization_endpoint` (if published in resource metadata) or by receiving a `401` challenge with `requirement=auth-token` when calling the resource directly (#requirement-auth-token). The agent sends the resource token to the PS's token endpoint (#ps-token-endpoint), and the PS returns an auth token (#auth-tokens) asserting identity claims about the user (`sub`, optionally `email`, `tenant`, `groups`, `roles`) and confirming user consent for the scope the resource requested. The resource applies its own access policy on the resulting claims. Any agent's PS can assert identity claims to any resource without bilateral setup; the resource namespaces those claims by the asserting PS — the same `sub` value from a different PS is a different subject. As in many OIDC deployments, registration and login share a single flow (see (#trust-posture-in-ps-asserted-access) for how the resource matches or creates a user record from `(iss, sub)`).
 
 ~~~ ascii-art
 Agent                                 Resource       PS
@@ -406,7 +409,7 @@ Agent governance is orthogonal to resource access modes. Any agent with a person
 
 When the person's PS requires governance over the agent's actions, the agent creates a mission — a Markdown description of what it intends to accomplish. The PS and user review, clarify, and approve the mission. The approved mission is immutable — bound by its `s256` hash. Missions evolve through the **mission log** (#mission-log): the ordered record of all agent↔PS interactions within the mission. Missions are not required for all PS interactions — an agent can get auth tokens without a mission. See (#missions) for normative requirements.
 
-#### Mission Creation
+#### Mission Creation {#mission-creation-overview}
 
 The agent proposes a mission at the PS. The PS and user may clarify and refine before approving.
 
@@ -430,7 +433,7 @@ Figure: Mission Creation and Approval {#fig-mission}
 
 #### Mission Context at Resources
 
-The agent includes the `AAuth-Mission` header when sending requests to resources, unless the mission is already conveyed in an auth token. The resource includes the mission object in the resource token it issues:
+The agent includes the `AAuth-Mission` header when sending requests to resources, unless the mission is already conveyed in an auth token. The resource includes the mission reference in the resource token it issues:
 
 ~~~ ascii-art
 Agent                                        Resource
@@ -441,7 +444,7 @@ Agent                                        Resource
   |-------------------------------------------->|
   |                                             |
   | resource_token                              |
-  | (mission object included)                   |
+  | (mission reference included)                |
   |<--------------------------------------------|
 ~~~
 Figure: Mission Context at Resource {#fig-mission-context}
@@ -519,7 +522,7 @@ This section defines agent identity — how agents are identified and how that i
 
 Agent identifiers are URIs using the `aauth` scheme, of the form `aauth:local@domain` where `domain` is the agent provider's domain. The `local` part MUST consist of lowercase ASCII letters (`a-z`), digits (`0-9`), hyphen (`-`), underscore (`_`), plus (`+`), and period (`.`). The `local` part MUST NOT be empty and MUST NOT exceed 255 characters. The `domain` part MUST be a valid domain name conforming to the server identifier requirements (#server-identifiers) (without scheme).
 
-The plus character (`+`) is RESERVED as the sub-agent delimiter (#sub-agents). A top-level agent's `local` part MUST NOT contain `+`. A sub-agent's `local` part MUST be its parent's `local` part, followed by `+`, followed by a non-empty discriminator (for example, `planner.7f3c+search1`). This naming is for operational readability only — a sub-agent's identifier shows its parent at a glance in logs. Parties MUST NOT parse the `local` part for protocol decisions; the `parent_agent` claim (#sub-agents) is the authoritative sub-agent marker, and the parent is conveyed authoritatively by the `parent_agent` claim and the `subagent_token` (#sub-agents).
+The plus character (`+`) is RESERVED as the sub-agent delimiter (#sub-agents). A top-level agent's `local` part MUST NOT contain `+`. A sub-agent's `local` part MUST be its parent's `local` part, followed by `+`, followed by a non-empty discriminator (for example, `planner.7f3c+search1`). This naming is for operational readability only — a sub-agent's identifier shows its parent at a glance in logs. Parties MUST NOT parse the `local` part for protocol decisions; the `parent_agent` claim (#sub-agents) is the authoritative sub-agent marker and names the parent.
 
 Valid agent identifiers:
 
@@ -697,7 +700,7 @@ Alternatively, the resource MAY return a resource token. The resource sets the `
 - If the resource has its own AS: `aud` = AS URL (four-party)
 - If the resource has no AS but the agent has a PS (`ps` claim): `aud` = PS URL (three-party)
 
-When the `AAuth-Mission` header is present, the resource includes the mission object (`approver` and `s256`) in the resource token.
+When the `AAuth-Mission` header is present, the resource includes the mission reference (`approver` and `s256`) in the resource token.
 
 ```json
 {
@@ -807,7 +810,7 @@ Payload:
 - `scope`: Requested scopes, as a space-separated string of scope values. Companion specifications MAY define alternative authorization claims that replace `scope`.
 
 Optional payload claims:
-- `mission`: Mission object (present when the resource is mission-aware and the agent sent an `AAuth-Mission` header). Contains:
+- `mission`: Mission reference (present when the resource is mission-aware and the agent sent an `AAuth-Mission` header). Contains:
   - `approver`: HTTPS URL of the entity that approved the mission
   - `s256`: SHA-256 hash of the approved mission JSON (base64url)
 
@@ -927,7 +930,7 @@ In four-party mode, the PS may also pass through a clarification from the AS to 
 
 ## User Interaction
 
-When a server responds with `202` and `AAuth-Requirement: requirement=interaction`, the `url` and `code` parameters in the header tell the agent where to send the user (#requirement-responses). The agent constructs the user-facing URL as `{url}?code={code}` and directs the user using one of the methods defined in (#requirement-responses) (browser redirect, QR code, or display code).
+When a server responds with `202` and `AAuth-Requirement: requirement=interaction`, the agent directs the user to the interaction `url`/`code` — optionally relaying through its PS first — using the mechanics defined in (#requirement-responses) and (#interaction-relay). Two details specific to the agent directing the user itself:
 
 When the agent has a browser, it MAY append a `callback` parameter:
 ```
@@ -970,10 +973,6 @@ Body fields:
 - `options` (OPTIONAL): An array of string values when the question has discrete choices.
 
 The recipient MUST respond with one of the actions defined in (#agent-response-to-clarification): a clarification response, an updated request, or a cancellation. This requirement is used by both PSes (delivering user questions to agents) and ASes (requesting clarification from PSes).
-
-### Clarification Flow
-
-When the user asks a question during consent, the PS returns a `202` with `AAuth-Requirement: requirement=clarification`.
 
 ### Agent Response to Clarification
 
@@ -1060,7 +1059,7 @@ The agent MUST make a signed POST to the PS's `permission_endpoint`. The request
 - `action` (REQUIRED): A string identifying the action the agent wants to perform (e.g., a tool name).
 - `description` (OPTIONAL): A Markdown string describing what the action will do and why.
 - `parameters` (OPTIONAL): A JSON object containing the parameters the agent intends to pass to the action.
-- `mission` (OPTIONAL): Mission object with `approver` and `s256` fields, binding the request to a mission. When present, the PS evaluates the request against the mission context and log history.
+- `mission` (OPTIONAL): Mission reference with `approver` and `s256` fields, binding the request to a mission. When present, the PS evaluates the request against the mission context and log history.
 
 ```http
 POST /permission HTTP/1.1
@@ -1119,7 +1118,7 @@ The agent MUST make a signed POST to the PS's `audit_endpoint`. The request MUST
 
 **Request parameters:**
 
-- `mission` (REQUIRED): Mission object with `approver` and `s256` fields.
+- `mission` (REQUIRED): Mission reference with `approver` and `s256` fields.
 - `action` (REQUIRED): A string identifying the action that was performed.
 - `description` (OPTIONAL): A Markdown string describing what was done and the outcome.
 - `parameters` (OPTIONAL): A JSON object containing the parameters that were used.
@@ -1180,7 +1179,7 @@ The agent MUST make a signed POST to the PS's `interaction_endpoint`. The reques
 - `max_wait` (OPTIONAL): Maximum seconds the PS SHOULD hold the relay's deferred response before resolving it (for `interaction` and `payment` types). When the interaction URL is resource-hosted, the PS resolves its deferred response once the user has engaged or when this window elapses, whichever comes first; the agent then relies on the resource's pending URL for completion (#interaction-response-poll-authority). Absent `max_wait`, the PS resolves the relay when the user has engaged or it can make no further progress.
 - `question` (OPTIONAL): A Markdown string containing a question for the user (for `question` type).
 - `summary` (OPTIONAL): A Markdown string summarizing what the agent accomplished (for `completion` type).
-- `mission` (OPTIONAL): Mission object with `approver` and `s256` fields, binding the request to a mission.
+- `mission` (OPTIONAL): Mission reference with `approver` and `s256` fields, binding the request to a mission.
 
 **Relay interaction example:**
 
@@ -1275,7 +1274,7 @@ Agents SHOULD proactively obtain a new agent token and refresh all auth tokens b
 
 Missions are OPTIONAL. The protocol operates in all modes without missions. When used, missions provide scoped authorization contexts that guide an agent's work across multiple resource accesses — enabling scope pre-approval, reduced consent fatigue, and centralized audit. A mission is a natural-language description of what the agent intends to accomplish, proposed by the agent and approved by the PS. The PS uses the mission to evaluate every subsequent request in context — it is the only party with the mission content, the user relationship, and the full history of the agent's actions. Once approved, the mission's `s256` identifier is included in subsequent resource interactions via the `AAuth-Mission` header.
 
-## Mission Creation
+## Mission Creation {#mission-creation}
 
 The agent creates a mission by sending a proposal to the PS's `mission_endpoint`. The agent MUST make a signed POST with an HTTP Sig (#http-message-signatures-profile), presenting its agent token via the `Signature-Key` header using `scheme=jwt`.
 
@@ -1353,7 +1352,7 @@ The mission blob MAY include:
 - `approved_tools`: Array of tool objects (each with `name` and `description`) that the agent may use without per-call permission at the PS's permission endpoint (#permission-endpoint).
 - `capabilities`: Array of capability strings (e.g., `interaction`, `payment`) that the PS can provide on behalf of the user for this session. The PS determines these based on whether it can reach the specific user — for example, via push notification, email, or an active session. The agent unions these with its own capabilities when constructing the `AAuth-Capabilities` request header (#aauth-capabilities).
 
-The `s256` in the `AAuth-Mission` header is the base64url-encoded SHA-256 hash of the response body bytes. The agent verifies the hash by computing SHA-256 over the exact response body bytes. The agent MUST store the mission body bytes exactly as received — no re-serialization.
+The response body — the mission blob — is the mission JSON that `s256` hashes everywhere it appears (the `AAuth-Mission` header and the `mission` reference in resource and auth tokens). The `s256` is the base64url-encoded SHA-256 hash of the response body bytes. The agent verifies the hash by computing SHA-256 over the exact response body bytes, and MUST store those bytes exactly as received — no re-serialization.
 
 The approved description MAY differ from the proposal — the PS or user may refine, constrain, or expand the mission during review. The approved tools MAY be a subset of the proposed tools. The agent MUST use the `approver` and `s256` from the `AAuth-Mission` header in all subsequent `AAuth-Mission` request headers.
 
@@ -1411,7 +1410,7 @@ Parameters:
 - `approver`: The HTTPS URL of the entity that approved the mission
 - `s256`: The base64url-encoded SHA-256 hash of the approved mission JSON
 
-When a mission-aware resource receives a request with the `AAuth-Mission` header, it includes the mission object (`approver` and `s256`) in the resource token it issues. When a resource does not support missions, it ignores the header.
+When a mission-aware resource receives a request with the `AAuth-Mission` header, it includes the mission reference (`approver` and `s256`) in the resource token it issues. When a resource does not support missions, it ignores the header.
 
 Agents operating in a mission context MUST include the `AAuth-Mission` header on requests to resources that do not include an auth token containing a `mission` claim.
 
@@ -1637,7 +1636,7 @@ Conditional payload claims (at least one MUST be present):
 At least one of `sub` or `scope` MUST be present.
 
 Optional payload claims:
-- `mission`: Mission object. Present when the auth token was issued in the context of a mission. Contains:
+- `mission`: Mission reference. Present when the auth token was issued in the context of a mission. Contains:
   - `approver`: HTTPS URL of the entity that approved the mission
   - `s256`: SHA-256 hash of the approved mission JSON (base64url)
 - `tenant`: Tenant identifier per OpenID Connect Enterprise Extensions 1.0 [@OpenID.Enterprise]. When present, `(iss, tenant, sub)` identifies a user within an organization, and `(iss, tenant)` identifies the organization itself.
@@ -1935,9 +1934,9 @@ The PS evaluates requested scopes against mission context (if present) and user 
 
 ## Requirement Responses {#requirement-responses}
 
-Servers use the `AAuth-Requirement` response header to indicate protocol-level requirements to agents. The header MAY be sent with `401 Unauthorized` or `202 Accepted` responses. A `401` response indicates that authorization is required. A `202` response indicates that the request is pending and additional action is required — either user interaction (`requirement=interaction`) or third-party approval (`requirement=approval`).
+Servers use the `AAuth-Requirement` response header to indicate protocol-level requirements to agents. The header MAY be sent with `401 Unauthorized` or `202 Accepted` responses. A `401` response indicates that authorization is required. A `202` response indicates that the request is pending and additional action is required — user interaction (`requirement=interaction`), third-party approval (`requirement=approval`), a clarification answer (`requirement=clarification`), or identity claims (`requirement=claims`).
 
-`AAuth-Requirement` and `WWW-Authenticate` are independent header fields; a response MAY include both. A client that understands AAuth processes `AAuth-Requirement`; a legacy client processes `WWW-Authenticate`. Neither header's presence invalidates the other.
+`AAuth-Requirement` and `WWW-Authenticate` are independent header fields; a response MAY include both. A client that understands AAuth processes `AAuth-Requirement`; a legacy client processes `WWW-Authenticate`. Neither header's presence invalidates the other. AAuth never conveys its own requirements via `WWW-Authenticate`; a resource's existing `WWW-Authenticate` challenges (e.g., `Bearer`, `Payment`) therefore remain fully available alongside `AAuth-Requirement`.
 
 The header MAY also be sent with `402 Payment Required` when a server requires both authorization and payment. The `AAuth-Requirement` conveys the authorization requirement; the payment requirement is conveyed by a separate mechanism such as x402 [@x402] or the Machine Payment Protocol (MPP) ([@I-D.ryan-httpauth-payment]).
 
@@ -2723,7 +2722,7 @@ This specification registers the following claims in the IANA "JSON Web Token Cl
 | `agent` | Agent identifier | IETF | This document |
 | `agent_jkt` | JWK Thumbprint of the agent's signing key | IETF | This document |
 | `parent_agent` | Parent agent identifier in a sub-agent's agent token | IETF | This document |
-| `mission` | Mission object (approver, s256) in resource tokens and auth tokens | IETF | This document |
+| `mission` | Mission reference (approver, s256) in resource tokens and auth tokens | IETF | This document |
 
 ## AAuth Requirement Value Registry
 
@@ -2771,7 +2770,7 @@ This specification registers the `aauth` URI scheme in the "Uniform Resource Ide
 - Change controller: IETF
 - Reference: This document, (#agent-identifiers)
 
-The `aauth` URI scheme follows the pattern established by the `acct` scheme ([@RFC7565]). An `aauth` URI identifies an agent instance and has the syntax `aauth:local@domain`, where `local` is the agent-specific part and `domain` is the agent provider's domain name. The `aauth` URI is used in the `sub` claim of agent tokens, the `agent` field of resource tokens and mission objects, and the `act.sub` claim of auth tokens.
+The `aauth` URI scheme follows the pattern established by the `acct` scheme ([@RFC7565]). An `aauth` URI identifies an agent instance and has the syntax `aauth:local@domain`, where `local` is the agent-specific part and `domain` is the agent provider's domain name. The `aauth` URI is used in the `sub` claim of agent tokens, the `agent` field of resource tokens and the mission blob, and the `act.sub` claim of auth tokens.
 
 # Implementation Status
 
@@ -2803,6 +2802,9 @@ The following implementations are known:
   - Added a Security Consideration on non-repudiation after key rotation; clarified that the agent token is AAuth's minimum credential (identity Signature-Key schemes only; pseudonym `hwk`/`jkt-jwt` not an AAuth mode).
   - Bootstrapping: pointer to the AAuth Bootstrap document; resources SHOULD publish `access_mode` and an R3 vocabulary.
   - Diagrams: use snake_case `agent_token` and `auth_token`.
+  - Named the `{approver, s256}` pair the "mission reference" and used it consistently for the `mission` claim in resource and auth tokens, distinct from the full mission blob.
+  - Stated that AAuth never conveys its own requirements via `WWW-Authenticate`, leaving a resource's existing challenges available alongside `AAuth-Requirement`.
+  - Editorial consistency pass: trimmed redundant mode walkthroughs, removed the empty "Clarification Flow" subsection, and added distinct anchors to the appendix flow diagrams.
 
 - draft-hardt-oauth-aauth-protocol-01
   - Renamed PS-managed access to PS-asserted access throughout, reflecting the trust posture: the resource accepts identity claims and consent from the agent's PS while applying its own access policy.
@@ -2829,7 +2831,7 @@ The author would like to thank reviewers for their feedback on concepts and earl
 
 This appendix provides flow diagrams for the chaining patterns defined in the main specification, where the choreography is hard to follow from prose alone.
 
-## Four-Party: Call Chaining
+## Four-Party: Call Chaining {#flow-call-chaining}
 
 See (#call-chaining) for normative requirements. Resource 1 acts as an agent, sending the downstream resource token plus its own agent token and the upstream auth token to the PS.
 
@@ -2872,7 +2874,7 @@ Agent        Resource 1       Resource 2          PS
   |<-------------|                |                 |
 ~~~
 
-## Interaction Chaining
+## Interaction Chaining {#flow-interaction-chaining}
 
 See (#interaction-chaining) for normative requirements. When the PS requires user interaction for the downstream access, Resource 1 chains the interaction back to the original agent.
 
@@ -2999,7 +3001,7 @@ AAuth reuses OpenID Connect scope values, identity claims, and enterprise parame
 
 The PS is distinct from the AS because they serve different parties with different concerns. The PS represents the agent and its user — it handles consent, identity, mission governance, and audit. The AS represents the resource — it evaluates policy and issues tokens. Combining these into a single entity would conflate the interests of the requesting party with the interests of the resource owner, which is the same conflation that makes OAuth insufficient for cross-domain agent ecosystems.
 
-### Why Four Adoption Modes
+### Why Four Resource Access Modes
 
 The protocol supports identity-based, resource-managed (two-party), PS-asserted (three-party), and federated (four-party) resource access modes, with agent governance as an orthogonal layer. A resource that only verifies agent signatures can start using AAuth today without deploying a PS or AS. As the ecosystem matures, the same resource can accept identity claims from any agent's PS (three-party) and eventually deploy its own AS (four-party). Each mode is self-contained and useful — not a stepping stone to the "real" protocol. Agent governance (missions plus permission, audit, and interaction relay) works independently of resource access modes.
 
