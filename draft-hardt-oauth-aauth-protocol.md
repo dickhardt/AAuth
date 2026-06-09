@@ -2791,18 +2791,18 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-02
-  - Added Sub-Agents (#sub-agents): an agent token MAY carry a `parent_agent` claim marking it as a sub-agent of the named parent agent; single-level depth (a sub-agent MUST NOT spawn its own sub-agents), enforced at the PS and AP; parent-mediated authorization in which the parent signs and submits the sub-agent's `resource_token` plus a new `subagent_token` parameter at the PS and AS token endpoints; the `+` character reserved as the sub-agent local-part delimiter. Registered `parent_agent` in the JWT Claims registry. Added worked delegation-chain examples.
-  - Interaction: renamed the terminal "no channel" token-endpoint error from `interaction_required` to `user_unreachable`; added `interaction_unavailable` (424) and a SHOULD that an agent relay an interaction to the PS's `interaction_endpoint` before driving the URL itself, falling back on `interaction_unavailable`; clarified that for resource-hosted interaction URLs the resource's pending URL is authoritative for completion; added the optional `max_wait` interaction request parameter.
-  - PS token endpoint: added `capabilities` as a request-body parameter (the body equivalent of the `AAuth-Capabilities` header, used to convey capabilities when there is no mission), and the OIDC `prompt` parameter (`none`, `login`, `consent`, `select_account`).
-  - Added `requirement=agent-token` (`401`) for identity-only access, with a corresponding AAuth Requirement Value Registry entry, and ordered the resource-access challenge sections weakest-to-strongest (agent-token, then resource-managed/`AAuth-Access`, then auth-token).
-  - Added an `access_mode` field to resource metadata (`agent-token` / `aauth-access-token` / `auth-token`, default `agent-token`) advertising the credential flow an agent should expect; advisory, with the runtime `AAuth-Requirement` authoritative. Added a "Drop-In Replacement for API Keys and OAuth" framing and a "Consuming a Resource End to End" walkthrough to Incremental Adoption, covering metadata-driven discovery (access_mode plus an R3 vocabulary), learning the API, and bringing the user in per mode. Relaxed resource-metadata `jwks_uri` to be required only when the resource issues resource tokens or makes signed calls, so an identity-only resource can publish discovery metadata without a keyset.
-  - Metadata: require the returned `issuer` to match the URL the metadata was fetched from; a redirect MUST NOT change the issuer.
-  - Call chaining: clarified that the intermediary signs the downstream request with its own key, and the `upstream_token` is a body parameter (proof of the upstream authorization) — neither presented via `Signature-Key` nor used as the signing key.
-  - HTTP Message Signatures profile: added rationale for the four mandated covered components (each closes a request-substitution attack and all are derivable at signing time on every platform, including browsers).
-  - Added a Security Consideration on non-repudiation and audit after key rotation. Clarified that the agent token is AAuth's minimum credential: AAuth uses only the identity Signature-Key schemes (`scheme=jwt` / `scheme=jwks_uri`); the pseudonym schemes (`hwk`/`jkt-jwt`) are not an AAuth access mode (`jkt-jwt` is used only in the agent provider's refresh ceremony).
-  - Bootstrapping: added a pointer noting that AP-side enrollment (key handling, attestation, refresh) is described in the informational AAuth Bootstrap document; noted that resources SHOULD publish `access_mode` and an R3 vocabulary to be discoverable, from identity-based access upward.
-  - Added an OPTIONAL Markdown `description` field to each well-known metadata document (`aauth-agent.json`, `aauth-resource.json`, `aauth-person.json`, `aauth-access.json`) for display to users.
-  - Diagrams: use snake_case `agent_token` and `auth_token` consistently.
+  - Added sub-agents: agent token `parent_agent` claim, single-level depth, parent-mediated authorization with a `subagent_token` parameter, and the `+` sub-agent local-part delimiter; registered `parent_agent` in the JWT Claims registry.
+  - Renamed the terminal `interaction_required` error to `user_unreachable`; added `interaction_unavailable` (424) and PS-first interaction relay; clarified completion polling for resource-hosted interactions; added the `max_wait` interaction parameter.
+  - Added `capabilities` and OIDC `prompt` request parameters to the PS token endpoint.
+  - Added `requirement=agent-token` (`401`); ordered the resource-access challenge sections weakest-to-strongest.
+  - Added an `access_mode` resource-metadata field, a "Drop-In Replacement for API Keys and OAuth" section, and a "Consuming a Resource End to End" walkthrough; relaxed `jwks_uri` to be required only when the resource issues resource tokens or makes signed calls.
+  - Added an OPTIONAL Markdown `description` field to each well-known metadata document.
+  - Metadata: require the returned `issuer` to match the URL it was fetched from.
+  - Call chaining: clarified that the intermediary signs with its own key and `upstream_token` is a body parameter.
+  - Added rationale for the mandated covered components in the HTTP Message Signatures profile.
+  - Added a Security Consideration on non-repudiation after key rotation; clarified that the agent token is AAuth's minimum credential (identity Signature-Key schemes only; pseudonym `hwk`/`jkt-jwt` not an AAuth mode).
+  - Bootstrapping: pointer to the AAuth Bootstrap document; resources SHOULD publish `access_mode` and an R3 vocabulary.
+  - Diagrams: use snake_case `agent_token` and `auth_token`.
 
 - draft-hardt-oauth-aauth-protocol-01
   - Renamed PS-managed access to PS-asserted access throughout, reflecting the trust posture: the resource accepts identity claims and consent from the agent's PS while applying its own access policy.
