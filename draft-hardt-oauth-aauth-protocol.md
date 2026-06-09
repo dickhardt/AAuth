@@ -12,7 +12,7 @@ name = "Internet-Draft"
 value = "draft-hardt-oauth-aauth-protocol-latest"
 stream = "IETF"
 
-date = 2026-05-06T00:00:00Z
+date = 2026-06-08T00:00:00Z
 
 [[author]]
 initials = "D."
@@ -75,6 +75,16 @@ organization = "Hellō"
 <reference anchor="I-D.hardt-aauth-bootstrap" target="https://github.com/dickhardt/AAuth">
   <front>
     <title>AAuth Bootstrap Guidance</title>
+    <author initials="D." surname="Hardt" fullname="Dick Hardt">
+      <organization>Hellō</organization>
+    </author>
+    <date year="2026"/>
+  </front>
+</reference>
+
+<reference anchor="I-D.hardt-aauth-r3" target="https://github.com/dickhardt/AAuth">
+  <front>
+    <title>AAuth Rich Resource Requests (R3)</title>
     <author initials="D." surname="Hardt" fullname="Dick Hardt">
       <organization>Hellō</organization>
     </author>
@@ -483,9 +493,9 @@ Acquiring the agent token — the AP-side enrollment ceremony, including per-pla
 - Agent obtains an agent token from its agent provider, binding its signing key to its identifier (`aauth:local@domain`). See [@?I-D.hardt-aauth-bootstrap].
 - Agent providers publish metadata at `/.well-known/aauth-agent.json` (#agent-provider-metadata).
 
-**Resource-managed access (two-party) and above:**
+**Identity-based access and above:**
 
-- Resources MAY publish metadata at `/.well-known/aauth-resource.json` (#resource-metadata). Resources that do not publish metadata can still issue resource tokens and interaction requirements via `401` responses.
+- Resources MAY publish metadata at `/.well-known/aauth-resource.json` (#resource-metadata) to be discoverable. The metadata SHOULD declare `access_mode` (the credential flow agents should expect) and SHOULD advertise an R3 vocabulary (`r3_vocabularies`, [@?I-D.hardt-aauth-r3]) describing the resource's operations, so that an agent that knows only the resource's hostname can learn the API and begin using it (#consuming-a-resource). Resources that do not publish metadata can still verify identity-based access, and issue resource tokens and interaction requirements via `401` responses.
 
 **PS-asserted access (three-party) and above:**
 
@@ -708,6 +718,19 @@ The agent sends the resource token to its PS's token endpoint.
 
 Error responses use the same format as the token endpoint (#error-response-format).
 
+## Agent Token Required {#requirement-agent-token}
+
+A resource that requires only the agent's identity — identity-based access, with no user auth token — uses `requirement=agent-token` with a `401 Unauthorized` response when the request did not present an AAuth agent token. This signals that the resource specifically requires an AAuth agent token (`typ: aa-agent+jwt`), as distinct from any other URI-identified signing key.
+
+```http
+HTTP/1.1 401 Unauthorized
+AAuth-Requirement: requirement=agent-token
+```
+
+The header carries no additional parameters: the agent already holds its agent token and need only present it. The agent retries the request, signing it per (#http-message-signatures-profile) and presenting its agent token via the `Signature-Key` header using `sig=jwt;jwt="<agent-token>"`.
+
+`requirement=agent-token` is distinct from `requirement=auth-token`: the former asks for the agent's own identity token, with no PS or AS involved; the latter asks the agent to obtain an auth token from its PS using the enclosed resource token. It is also more specific than an `Accept-Signature` challenge ([@!I-D.hardt-httpbis-signature-key]), which accepts any URI-identified key — `requirement=agent-token` tells the agent that an AAuth agent token in particular is required.
+
 ## AAuth-Access Response Header {#aauth-access}
 
 The `AAuth-Access` response header carries an opaque access token from a resource to an agent. The token is opaque to the agent — the resource wraps its internal authorization state (which MAY be an existing OAuth access token or other credential). The agent passes the token back to the resource via the `Authorization` header on subsequent requests:
@@ -760,19 +783,6 @@ AAuth-Requirement: requirement=auth-token; resource-token="eyJ..."
 The agent MUST extract the `resource-token` parameter, verify the resource token (#resource-challenge-verification), and present it to its PS's token endpoint to obtain an auth token (#ps-token-endpoint). A resource MAY also use `402 Payment Required` with the same `AAuth-Requirement` header when payment is additionally required (#requirement-responses).
 
 A resource MAY return `requirement=auth-token` with a new resource token to a request that already includes an auth token — for example, when the request requires a higher level of authorization than the current token provides. Agents MUST be prepared for this step-up authorization at any time.
-
-## Agent Token Required {#requirement-agent-token}
-
-A resource that requires only the agent's identity — identity-based access, with no user auth token — uses `requirement=agent-token` with a `401 Unauthorized` response when the request did not present an AAuth agent token. This signals that the resource specifically requires an AAuth agent token (`typ: aa-agent+jwt`), as distinct from any other URI-identified signing key.
-
-```http
-HTTP/1.1 401 Unauthorized
-AAuth-Requirement: requirement=agent-token
-```
-
-The header carries no additional parameters: the agent already holds its agent token and need only present it. The agent retries the request, signing it per (#http-message-signatures-profile) and presenting its agent token via the `Signature-Key` header using `sig=jwt;jwt="<agent-token>"`.
-
-`requirement=agent-token` is distinct from `requirement=auth-token`: the former asks for the agent's own identity token, with no PS or AS involved; the latter asks the agent to obtain an auth token from its PS using the enclosed resource token. It is also more specific than an `Accept-Signature` challenge ([@!I-D.hardt-httpbis-signature-key]), which accepts any URI-identified key — `requirement=agent-token` tells the agent that an AAuth agent token in particular is required.
 
 ## Resource Token
 
@@ -2403,6 +2413,7 @@ Published at `/.well-known/aauth-resource.json`:
 {
   "issuer": "https://resource.example",
   "jwks_uri": "https://resource.example/.well-known/jwks.json",
+  "access_mode": "auth-token",
   "client_name": "Example Data Service",
   "logo_uri": "https://resource.example/logo.png",
   "logo_dark_uri": "https://resource.example/logo-dark.png",
@@ -2419,7 +2430,8 @@ Published at `/.well-known/aauth-resource.json`:
 Fields:
 
 - `issuer` (REQUIRED): The resource's HTTPS URL. This is the value placed in the `iss` claim of resource tokens.
-- `jwks_uri` (REQUIRED): URL to the resource's JSON Web Key Set
+- `jwks_uri` (REQUIRED when the resource issues resource tokens or makes signed calls): URL to the resource's JSON Web Key Set. A resource that only verifies agent signatures for identity-based access — issuing no resource tokens and making no signed requests of its own (e.g., as an agent in multi-hop, #multi-hop) — has no keys to publish and MAY omit `jwks_uri`.
+- `access_mode` (OPTIONAL): The credential flow the resource expects, letting an agent plan its first call without a speculative challenge. One of `agent-token` (identity-only — the agent signs with its agent token), `aauth-access-token` (resource-managed — the agent completes the resource's interaction/consent flow and receives an opaque token via `AAuth-Access`), or `auth-token` (the agent obtains an auth token from its PS using a resource token). Default: `agent-token`. The declaration is advisory: a resource MAY return any `AAuth-Requirement` at runtime regardless of the declared mode (#requirement-responses), and MAY apply different modes to different endpoints. An agent MAY use `access_mode` to skip resources its setup cannot satisfy — for example, a PS-less agent (no `ps` claim in its agent token) cannot complete the `auth-token` flow.
 - `client_name` (OPTIONAL): Human-readable resource name (per [@RFC7591])
 - `logo_uri` (OPTIONAL): URL to resource logo (per [@RFC7591])
 - `logo_dark_uri` (OPTIONAL): URL to resource logo for dark backgrounds
@@ -2433,6 +2445,34 @@ Fields:
 # Incremental Adoption {#incremental-adoption}
 
 AAuth is designed for incremental adoption. Each party — agent, resource, PS, AS — can independently add support. The system works at every partial adoption state. No coordination is required between parties.
+
+## Drop-In Replacement for API Keys and OAuth {#drop-in-migration}
+
+The first two resource steps require neither a person server nor an access server. They map directly onto what resources already do today:
+
+- **Identity-based access drops in where you use API keys.** A resource that verifies the agent's HTTP Message Signature gets a cryptographic, per-agent identity in place of a shared secret — nothing to copy and leak, no pre-registration, no authorization flow. The agent signs, the resource recognizes who it is and applies its existing access control. This is identity-based access (#overview-identity-access); it involves no PS and no AS.
+- **Resource-managed access drops in where you use OAuth.** A resource keeps its existing authorization — consent screens, OAuth access tokens, or session tokens — and wraps it: it returns its existing token opaquely via the `AAuth-Access` header (#aauth-access), bound to the agent's signature so it cannot be stolen and replayed as a standalone bearer token. The resource talks directly to the agent. This is resource-managed (two-party) access (#overview-resource-managed); it too involves no PS and no AS.
+
+Both modes are complete and useful on their own. Adding a PS (PS-asserted, three-party) and an AS (federated, four-party) is additive — it brings cross-domain identity assertion and policy federation — but neither is a prerequisite for the value a resource gets from the first two steps.
+
+### Consuming a Resource End to End {#consuming-a-resource}
+
+A resource that wants agents to discover and use it with no prior integration publishes two things in its `aauth-resource.json` (#resource-metadata):
+
+- **`access_mode`** — the credential flow the agent should expect: `agent-token`, `aauth-access-token`, or `auth-token`.
+- **An R3 vocabulary.** Resources SHOULD advertise an R3 vocabulary (`r3_vocabularies`, [@?I-D.hardt-aauth-r3]) describing their operations, so that an agent that knows only the resource's hostname can learn the API and begin using it. The R3 document itself is fetched only by the AS and PS, not the agent; the vocabulary (an OpenAPI, MCP, gRPC, or similar API description) is the agent-facing surface.
+
+An agent onboards as follows:
+
+1. Fetch `aauth-resource.json`; read `access_mode` and the advertised vocabulary.
+2. Fetch the vocabulary to learn the resource's operations, then construct calls.
+3. If `access_mode` is `auth-token` and the agent has no PS, it cannot complete that flow and SHOULD skip the resource.
+4. Make the call and satisfy whatever the resource requires, bringing the user in only where the mode calls for it:
+   - **`agent-token`** — the agent signs with its agent token and calls. If the resource needs to bind the agent to a user account (the equivalent of associating an API key with an account), it returns a `202` with `requirement=interaction` (#requirement-responses) pointing at a login or account-link page; the agent brings the user there, directly or via the PS's interaction endpoint (#interaction-endpoint). Once bound, subsequent calls with the same agent token are recognized with no further interaction. No token is issued — the account-bound agent token is the durable credential.
+   - **`aauth-access-token`** — the agent's call, or a request to the `authorization_endpoint`, triggers a `202` with `requirement=interaction` pointing at the resource's existing consent or login flow. After the user completes it, the resource returns an opaque token via the `AAuth-Access` header (#aauth-access); the agent presents that token in `Authorization: AAuth ...`, bound to its signature, on subsequent calls.
+   - **`auth-token`** — the resource issues a resource token via the `authorization_endpoint` or a `401` (#requirement-auth-token). The agent sends it to its PS, which runs consent — bringing the user in at the PS, not the resource — and returns an auth token the agent signs with. Whether the PS asserts identity directly (three-party) or federates with the resource's AS (four-party) is invisible to the agent.
+
+Throughout, the agent runs a single loop: make the request, read any `AAuth-Requirement`, satisfy it — bringing in the user where the requirement directs — and retry. The `access_mode` declaration lets the agent anticipate the flow; the runtime `AAuth-Requirement` remains authoritative, so a resource can mix modes across endpoints or escalate at any time.
 
 ## Agent Adoption Path
 
@@ -2755,6 +2795,19 @@ The following implementations are known:
 # Document History
 
 *Note: This section is to be removed before publishing as an RFC.*
+
+- draft-hardt-oauth-aauth-protocol-02
+  - Added Sub-Agents (#sub-agents): an agent token MAY carry a `parent_agent` claim marking it as a sub-agent of the named parent agent; single-level depth (a sub-agent MUST NOT spawn its own sub-agents), enforced at the PS and AP; parent-mediated authorization in which the parent signs and submits the sub-agent's `resource_token` plus a new `subagent_token` parameter at the PS and AS token endpoints; the `+` character reserved as the sub-agent local-part delimiter. Registered `parent_agent` in the JWT Claims registry. Added worked delegation-chain examples.
+  - Interaction: renamed the terminal "no channel" token-endpoint error from `interaction_required` to `user_unreachable`; added `interaction_unavailable` (424) and a SHOULD that an agent relay an interaction to the PS's `interaction_endpoint` before driving the URL itself, falling back on `interaction_unavailable`; clarified that for resource-hosted interaction URLs the resource's pending URL is authoritative for completion; added the optional `max_wait` interaction request parameter.
+  - PS token endpoint: added `capabilities` as a request-body parameter (the body equivalent of the `AAuth-Capabilities` header, used to convey capabilities when there is no mission), and the OIDC `prompt` parameter (`none`, `login`, `consent`, `select_account`).
+  - Added `requirement=agent-token` (`401`) for identity-only access, with a corresponding AAuth Requirement Value Registry entry, and ordered the resource-access challenge sections weakest-to-strongest (agent-token, then resource-managed/`AAuth-Access`, then auth-token).
+  - Added an `access_mode` field to resource metadata (`agent-token` / `aauth-access-token` / `auth-token`, default `agent-token`) advertising the credential flow an agent should expect; advisory, with the runtime `AAuth-Requirement` authoritative. Added a "Drop-In Replacement for API Keys and OAuth" framing and a "Consuming a Resource End to End" walkthrough to Incremental Adoption, covering metadata-driven discovery (access_mode plus an R3 vocabulary), learning the API, and bringing the user in per mode. Relaxed resource-metadata `jwks_uri` to be required only when the resource issues resource tokens or makes signed calls, so an identity-only resource can publish discovery metadata without a keyset.
+  - Metadata: require the returned `issuer` to match the URL the metadata was fetched from; a redirect MUST NOT change the issuer.
+  - Call chaining: clarified that the intermediary signs the downstream request with its own key, and the `upstream_token` is a body parameter (proof of the upstream authorization) — neither presented via `Signature-Key` nor used as the signing key.
+  - HTTP Message Signatures profile: added rationale for the four mandated covered components (each closes a request-substitution attack and all are derivable at signing time on every platform, including browsers).
+  - Added a Security Consideration on non-repudiation and audit after key rotation, and a Privacy Consideration on pseudonymous access (`scheme=hwk` / `scheme=jkt-jwt`).
+  - Bootstrapping: added a pointer noting that AP-side enrollment (key handling, attestation, refresh) is described in the informational AAuth Bootstrap document; noted that resources SHOULD publish `access_mode` and an R3 vocabulary to be discoverable, from identity-based access upward.
+  - Diagrams: use snake_case `agent_token` and `auth_token` consistently.
 
 - draft-hardt-oauth-aauth-protocol-01
   - Renamed PS-managed access to PS-asserted access throughout, reflecting the trust posture: the resource accepts identity claims and consent from the agent's PS while applying its own access policy.
