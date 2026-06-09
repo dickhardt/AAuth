@@ -127,9 +127,9 @@ This document defines the AAuth authorization protocol for agent-to-resource aut
 *Note: This section is to be removed before publishing as an RFC.*
 
 
-This document is part of the AAuth specification family. 
+This document is part of the AAuth specification family.
 Related documents and open issues can be found at https://github.com/dickhardt/AAuth.
-Raw markdown source is at https://raw.githubusercontent.com/dickhardt/AAuth/refs/heads/main/draft-hardt-oauth-aauth-protocol.md  
+Raw markdown source is at https://raw.githubusercontent.com/dickhardt/AAuth/refs/heads/main/draft-hardt-oauth-aauth-protocol.md
 
 {mainmatter}
 
@@ -2817,9 +2817,6 @@ The following implementations are known:
 
 *Note: This section is to be removed before publishing as an RFC.*
 
-- draft-hardt-oauth-aauth-protocol-03
-  - Specified the interaction `code` format: Crockford base32 alphabet, ≥40 bits of entropy, presentational hyphens stripped before case-insensitive comparison, single use, mandatory rate-limiting, and expiry bound to the pending interaction. Documented the entropy/rate-limit rules as the brute-force defense in Interaction Code Misdirection. Made the four `code` examples consistently hyphenated.
-
 - draft-hardt-oauth-aauth-protocol-02
   - Added sub-agents: agent token `parent_agent` claim, single-level depth, parent-mediated authorization with a `subagent_token` parameter, and the `+` sub-agent local-part delimiter; registered `parent_agent` in the JWT Claims registry.
   - Renamed the terminal `interaction_required` error to `user_unreachable`; added `interaction_unavailable` (424) and PS-first interaction relay; clarified completion polling for resource-hosted interactions; added the `max_wait` interaction parameter.
@@ -2835,6 +2832,7 @@ The following implementations are known:
   - Diagrams: use snake_case `agent_token` and `auth_token`.
   - Named the `{approver, s256}` pair the "mission reference" and used it consistently for the `mission` claim in resource and auth tokens, distinct from the full mission blob.
   - Stated that AAuth never conveys its own requirements via `WWW-Authenticate`, leaving a resource's existing challenges available alongside `AAuth-Requirement`.
+  - Specified the interaction `code` format: Crockford base32 alphabet, ≥40 bits of entropy, presentational hyphens stripped before case-insensitive comparison, single use, mandatory rate-limiting, and expiry bound to the pending interaction; documented the entropy/rate-limit rules as the brute-force defense in Interaction Code Misdirection and made the four `code` examples consistently hyphenated.
   - Editorial consistency pass: trimmed redundant mode walkthroughs, removed the empty "Clarification Flow" subsection, and added distinct anchors to the appendix flow diagrams.
 
 - draft-hardt-oauth-aauth-protocol-01
