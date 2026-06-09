@@ -3811,6 +3811,7 @@ Initial request (with Prefer: wait=N)
      "issuer": "https://agent.example",
      "jwks_uri": "https://agent.example/.well-known/jwks.json",
      "client_name": "Example AI Assistant",
+     "description": "**Example AI Assistant** drafts and sends email on your behalf.",
      "logo_uri": "https://agent.example/logo.png",
      "logo_dark_uri": "https://agent.example/logo-dark.png",
      "callback_endpoint": "https://agent.example/callback",
@@ -3826,6 +3827,10 @@ Initial request (with Prefer: wait=N)
       claim of agent tokens.
    *  jwks_uri (REQUIRED): URL to the agent provider's JSON Web Key Set
    *  client_name (OPTIONAL): Human-readable agent name (per [RFC7591])
+   *  description (OPTIONAL): A Markdown string describing the agent or
+      its provider, for display to users (for example, at a PS consent
+      screen or connected-agents dashboard).  Implementations MUST
+      sanitize the Markdown before rendering to users.
    *  logo_uri (OPTIONAL): URL to agent logo (per [RFC7591])
    *  logo_dark_uri (OPTIONAL): URL to agent logo for dark backgrounds
    *  callback_endpoint (OPTIONAL): The agent's HTTPS callback endpoint
@@ -3842,6 +3847,7 @@ Initial request (with Prefer: wait=N)
 
    {
      "issuer": "https://ps.example",
+     "description": "**Example Person Server** — manage which agents act for you and review what they do.",
      "token_endpoint": "https://ps.example/token",
      "mission_endpoint": "https://ps.example/mission",
      "permission_endpoint": "https://ps.example/permission",
@@ -3856,6 +3862,9 @@ Initial request (with Prefer: wait=N)
    *  issuer (REQUIRED): The PS's HTTPS URL.  MUST match the URL used to
       fetch the metadata document.  This is the value placed in the iss
       claim of JWTs issued by the PS.
+   *  description (OPTIONAL): A Markdown string describing the person
+      server, for display to users.  Implementations MUST sanitize the
+      Markdown before rendering to users.
    *  token_endpoint (REQUIRED): URL where agents send token requests
    *  mission_endpoint (OPTIONAL): URL for mission lifecycle operations
       (proposal, status).  Present when the PS supports missions.
@@ -3883,6 +3892,7 @@ Initial request (with Prefer: wait=N)
 
    {
      "issuer": "https://as.resource.example",
+     "description": "**Example Access Server** — issues access for the Example resource.",
      "token_endpoint": "https://as.resource.example/token",
      "jwks_uri": "https://as.resource.example/.well-known/jwks.json"
    }
@@ -3892,6 +3902,9 @@ Initial request (with Prefer: wait=N)
    *  issuer (REQUIRED): The AS's HTTPS URL.  MUST match the URL used to
       fetch the metadata document.  This is the value placed in the iss
       claim of auth tokens.
+   *  description (OPTIONAL): A Markdown string describing the access
+      server, for display to users.  Implementations MUST sanitize the
+      Markdown before rendering to users.
    *  token_endpoint (REQUIRED): URL where PSes send token requests
    *  revocation_endpoint (OPTIONAL): URL where authorized parties can
       revoke tokens Section 13.6
@@ -3906,6 +3919,7 @@ Initial request (with Prefer: wait=N)
      "jwks_uri": "https://resource.example/.well-known/jwks.json",
      "access_mode": "auth-token",
      "client_name": "Example Data Service",
+     "description": "**Example Data Service** stores and serves your documents.",
      "logo_uri": "https://resource.example/logo.png",
      "logo_dark_uri": "https://resource.example/logo-dark.png",
      "authorization_endpoint": "https://resource.example/authorize",
@@ -3942,6 +3956,10 @@ Initial request (with Prefer: wait=N)
       in its agent token) cannot complete the auth-token flow.
    *  client_name (OPTIONAL): Human-readable resource name (per
       [RFC7591])
+   *  description (OPTIONAL): A Markdown string describing the resource,
+      for display to users (for example, at a consent screen).
+      Implementations MUST sanitize the Markdown before rendering to
+      users.
    *  logo_uri (OPTIONAL): URL to resource logo (per [RFC7591])
    *  logo_dark_uri (OPTIONAL): URL to resource logo for dark
       backgrounds
@@ -4672,6 +4690,13 @@ Initial request (with Prefer: wait=N)
       Coverage: agent token issuance, HTTP Message Signatures, resource
       token exchange, PS token endpoint.  Level of maturity:
       exploratory.
+   *  *.NET* — github.com/aauth-dev/dotnet-samples (https://github.com/
+      aauth-dev/dotnet-samples) (NuGet: AAuth).  Contact: Dasith
+      Wijesiriwardena.  Coverage: SDK spanning all four access modes,
+      the three-party challenge/exchange flow (autonomous and deferred
+      consent), signature verification middleware, resource and auth
+      token builders, and JWKS/metadata discovery, plus Blazor sample
+      apps.  Level of maturity: exploratory.
    *  *Python* — github.com/christian-posta/aauth-full-demo
       (https://github.com/christian-posta/aauth-full-demo).  Contact:
       Christian Posta.  Coverage: agent-to-resource flows with Keycloak
@@ -4750,6 +4775,9 @@ Initial request (with Prefer: wait=N)
          informational AAuth Bootstrap document; noted that resources
          SHOULD publish access_mode and an R3 vocabulary to be
          discoverable, from identity-based access upward.
+      -  Added an OPTIONAL Markdown description field to each well-known
+         metadata document (aauth-agent.json, aauth-resource.json,
+         aauth-person.json, aauth-access.json) for display to users.
       -  Diagrams: use snake_case agent_token and auth_token
          consistently.
 
@@ -4798,9 +4826,12 @@ Initial request (with Prefer: wait=N)
 20.  Acknowledgments
 
    The author would like to thank reviewers for their feedback on
-   concepts and earlier drafts: Aaron Pareki, Christian Posta, Frederik
-   Krogsdal Jacobsen, Jared Hanson, Karl McGuinness, Mark Hendrickson,
-   Nate Barbettini, Scott Motte, Wils Dawson.
+   concepts and earlier drafts, and contributors who raised issues and
+   pull requests: Aaron Parecki, Christian Posta, Dasith
+   Wijesiriwardena, Frederik Krogsdal Jacobsen, Jared Hanson, Jeoffrey
+   Haeyaert, João André Marques, Karl McGuinness, Mark Hendrickson, Nate
+   Barbettini, Nick Gamb, Paul Carleton, Rohan Harikumar, Scott Motte,
+   Wils Dawson.
 
 21.  References
 
