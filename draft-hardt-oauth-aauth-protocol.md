@@ -2224,10 +2224,9 @@ Agents and resources MUST support EdDSA using Ed25519 ([@!RFC8032]). Agents and 
 
 ### Keying Material {#keying-material}
 
-The signing key is conveyed in the `Signature-Key` header ([@!I-D.hardt-httpbis-signature-key]). The Signature-Key scheme determines how the server obtains the public key:
+The signing key is conveyed in the `Signature-Key` header ([@!I-D.hardt-httpbis-signature-key]). Because every AAuth agent holds an agent token (#agent-tokens), AAuth uses the **identity** Signature-Key schemes: the agent presents its agent token — or, after authorization, an auth token — via `scheme=jwt` (public key in the `cnf` claim), or a self-hosted agent uses `scheme=jwks_uri` (key discovered at the agent's JWKS endpoint).
 
-- For `pseudonym`: the agent uses `scheme=hwk` (inline public key) or `scheme=jkt-jwt` (delegation from a hardware-backed key).
-- For `identity`: the agent uses `scheme=jwks_uri` (JWKS endpoint) or `scheme=jwt` (JWT with public key in `cnf` claim).
+The Signature-Key specification also defines `pseudonym` schemes (`scheme=hwk` for a bare inline public key, `scheme=jkt-jwt` for hardware-key delegation). AAuth does not use bare `hwk` access — the agent token is the minimum AAuth credential. `scheme=jkt-jwt` is used only in the agent provider's key-refresh ceremony (see [@?I-D.hardt-aauth-bootstrap]), not for protocol access to resources, PSes, or ASes.
 
 See the Signature-Key specification ([@!I-D.hardt-httpbis-signature-key]) for scheme definitions, key discovery, and verification procedures.
 
@@ -2608,20 +2607,6 @@ In two-party mode, no PS is involved and there is no centralized visibility — 
 
 The mission JSON is visible to the PS and, when included in resource tokens and auth tokens via the `s256` hash, its integrity is verifiable by any party that holds it. The approved mission JSON is shared between the agent and PS. Resources and ASes see only the `s256` hash and the approver URL, not the full mission content.
 
-## Pseudonymous Access {#pseudonymous-access}
-
-The HTTP Message Signatures profile (#keying-material) supports pseudonymous keying — `scheme=hwk` (an inline public key) or `scheme=jkt-jwt` (delegation from a hardware-backed key) — in which the agent proves possession of a signing key without presenting an agent-provider-issued identity (`aauth:local@domain`). The agent is identified only by its key (its JWK thumbprint), with no stable, attested identity behind it.
-
-Pseudonymous access is appropriate where a resource needs proof-of-possession and continuity but not identity:
-
-- **Privacy-preserving access**: the user or agent does not wish to present an attested, provider-linked identity — only a consistent key the resource can recognize across requests.
-- **Sybil resistance and rate limiting without identification**: a resource can bind quotas, sessions, or reputation to a key thumbprint without learning who the caller is.
-- **Ephemeral or unenrolled agents**: agents with no agent-provider relationship, or that are short-lived and do not warrant a durable identity, can still sign requests and hold key-bound grants.
-- **Capability-style access**: where authorization is bound to a key (the key is the credential) and identity is irrelevant to the resource's policy.
-- **Hardware-anchored continuity**: `scheme=jkt-jwt` anchors a key to a hardware-backed key (e.g., a TPM or secure enclave) for device-bound continuity while remaining pseudonymous.
-
-Pseudonymity has limits. A resource that requires an attributable, provider-vouched identity — for accountability, governance through a PS, or organizational policy — MUST require an `identity` scheme (`scheme=jwt` or `scheme=jwks_uri`) and reject pseudonymous keys. And a pseudonymous key still uniquely identifies its holder to a given resource across requests: it is pseudonymous, not anonymous. A holder that wants unlinkable interactions MUST use fresh keys.
-
 # IANA Considerations
 
 ## HTTP Header Field Registration
@@ -2805,7 +2790,7 @@ The following implementations are known:
   - Metadata: require the returned `issuer` to match the URL the metadata was fetched from; a redirect MUST NOT change the issuer.
   - Call chaining: clarified that the intermediary signs the downstream request with its own key, and the `upstream_token` is a body parameter (proof of the upstream authorization) — neither presented via `Signature-Key` nor used as the signing key.
   - HTTP Message Signatures profile: added rationale for the four mandated covered components (each closes a request-substitution attack and all are derivable at signing time on every platform, including browsers).
-  - Added a Security Consideration on non-repudiation and audit after key rotation, and a Privacy Consideration on pseudonymous access (`scheme=hwk` / `scheme=jkt-jwt`).
+  - Added a Security Consideration on non-repudiation and audit after key rotation. Clarified that the agent token is AAuth's minimum credential: AAuth uses only the identity Signature-Key schemes (`scheme=jwt` / `scheme=jwks_uri`); the pseudonym schemes (`hwk`/`jkt-jwt`) are not an AAuth access mode (`jkt-jwt` is used only in the agent provider's refresh ceremony).
   - Bootstrapping: added a pointer noting that AP-side enrollment (key handling, attestation, refresh) is described in the informational AAuth Bootstrap document; noted that resources SHOULD publish `access_mode` and an R3 vocabulary to be discoverable, from identity-based access upward.
   - Diagrams: use snake_case `agent_token` and `auth_token` consistently.
 
@@ -3048,7 +3033,7 @@ Mutual TLS (mTLS) authenticates the TLS connection, not individual HTTP requests
 
 ### Why Not DPoP?
 
-DPoP ([@RFC9449]) binds an existing OAuth access token to a key, preventing token theft. AAuth differs in that agents can establish identity from zero — no pre-existing token, no pre-registration. At the signature level ([@!I-D.hardt-httpbis-signature-key]), AAuth requires no tokens at all, only a signed request. DPoP has a single mode (prove you hold the key bound to this token), while AAuth supports progressive requirements from pseudonymous access through verified identity to authorized access with interactive consent. DPoP is the right choice for adding proof-of-possession to existing OAuth deployments.
+DPoP ([@RFC9449]) binds an existing OAuth access token to a key, preventing token theft. AAuth differs in that agents can establish identity from zero — no pre-existing token, no pre-registration. The agent signs with its own agent token (#agent-tokens), which it obtains from its agent provider without any resource-side registration; no resource- or AS-issued token is needed to make the first identified call. DPoP has a single mode (prove you hold the key bound to this token), while AAuth supports progressive requirements from verified agent identity through authorized access with interactive consent. DPoP is the right choice for adding proof-of-possession to existing OAuth deployments.
 
 ### Why Not Extend GNAP
 
