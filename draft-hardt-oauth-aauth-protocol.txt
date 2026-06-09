@@ -26,10 +26,14 @@ Discussion Venues
 
    _Note: This section is to be removed before publishing as an RFC._
 
-   This document is part of the AAuth specification family.  Source for
-   this draft and an issue tracker can be found at
+   This document is part of the AAuth specification family.  Related
+   documents and open issues can be found at
    https://github.com/dickhardt/AAuth (https://github.com/dickhardt/
-   AAuth).
+   AAuth).  Raw markdown source is at
+   https://raw.githubusercontent.com/dickhardt/AAuth/refs/heads/main/
+   draft-hardt-oauth-aauth-protocol.md
+   (https://raw.githubusercontent.com/dickhardt/AAuth/refs/heads/main/
+   draft-hardt-oauth-aauth-protocol.md)
 
 Status of This Memo
 
@@ -115,9 +119,8 @@ Table of Contents
      7.2.  User Interaction
      7.3.  Clarification Chat
        7.3.1.  Clarification Required
-       7.3.2.  Clarification Flow
-       7.3.3.  Agent Response to Clarification
-       7.3.4.  Clarification Limits
+       7.3.2.  Agent Response to Clarification
+       7.3.3.  Clarification Limits
      7.4.  Permission Endpoint
        7.4.1.  Permission Request
        7.4.2.  Permission Response
@@ -265,7 +268,7 @@ Table of Contents
        B.2.7.  Why Reuse OpenID Connect Vocabulary
      B.3.  Architecture
        B.3.1.  Why a Separate Person Server
-       B.3.2.  Why Four Adoption Modes
+       B.3.2.  Why Four Resource Access Modes
        B.3.3.  Why Resource Tokens
        B.3.4.  Why Opaque AAuth-Access Tokens
        B.3.5.  Why Missions Are Not a Policy Language
@@ -398,25 +401,13 @@ Table of Contents
    protocol across four resource access modes.
 
    Because agent identity is independent and self-contained, AAuth is
-   designed for incremental adoption — each party can add support
+   designed for incremental adoption: each party can add support
    independently, and rollout does not need to be coordinated.  A
    resource that verifies an agent's signature can manage access by
-   identity alone, with no other infrastructure.  When a resource
-   manages its own authorization — via interaction, consent, or existing
-   infrastructure — it operates in resource-managed access (two-party).
-   Issuing resource tokens to the agent's person server enables PS-
-   asserted access (three-party): the PS asserts identity claims about
-   the user (sub, optionally email, tenant, groups, roles) and confirms
-   user consent for the scope the resource requested; the resource
-   applies its own policy on the resulting claims.  Any PS can assert
-   identity claims to any resource without bilateral setup; the resource
-   namespaces those claims by the asserting PS.  Deploying an access
-   server enables federated access (four-party) with cross-domain policy
-   enforcement.  Agent governance — missions, plus per-action
-   permission, audit, and interaction relay through a PS — is an
-   orthogonal layer that any agent with a PS can add, from a simple
-   prompt to full autonomous agent oversight.  See Section 14 for
-   details.
+   identity alone, with no other infrastructure; adding a person server
+   and an access server is additive.  The four resource access modes and
+   the orthogonal agent-governance layer are introduced in Section 4 and
+   detailed in Section 14.
 
 2.  Conventions and Definitions
 
@@ -434,7 +425,7 @@ Table of Contents
       behalf an agent acts and who is accountable for the agent's
       actions.
    *  *Agent*: An HTTP client ([RFC9110], Section 3.5) acting on behalf
-      of a person.  Identified by an agent identifier URIs using the
+      of a person.  Identified by an agent identifier URI using the
       aauth scheme, of the form aauth:local@domain Section 5.1.  An
       agent MAY have a person server, declared via the ps claim in the
       agent token.
@@ -448,8 +439,8 @@ Table of Contents
       MAY enforce access policy itself or delegate policy evaluation to
       an access server.  Identified by an HTTPS URL Section 13.9.1 and
       publishes metadata at /.well-known/aauth-resource.json.  A
-      mission-aware resource includes the mission object from the AAuth-
-      Mission header in the resource tokens it issues.
+      mission-aware resource includes the mission reference from the
+      AAuth-Mission header in the resource tokens it issues.
    *  *Person Server (PS)*: A server that represents the person to the
       rest of the protocol.  The person chooses their PS; it is not
       imposed by any other party.  The PS manages missions, handles
@@ -481,6 +472,12 @@ Table of Contents
       and a Markdown description.  Identified by the PS and SHA-256 hash
       of the mission JSON (s256).  Missions are proposed by agents and
       approved by the PS and person.
+   *  *Mission Reference*: The pair of the approver URL and the s256
+      hash that identifies a mission in the AAuth-Mission header and in
+      the mission claim of resource tokens and auth tokens, without
+      carrying the mission's content.  Distinct from the full mission
+      JSON (the *mission blob*), which only the agent and PS hold
+      Section 8.2.
    *  *Mission Log*: The ordered record of all agent↔PS interactions
       within a mission — token requests, permission requests, audit
       records, interaction requests, and clarification chats.  The PS
@@ -521,7 +518,11 @@ Table of Contents
 
    AAuth supports four resource access modes, each adding parties and
    capabilities.  The protocol works in every mode — adoption does not
-   require coordination between parties.
+   require coordination between parties.  Identity-based and resource-
+   managed access both involve only the agent and the resource; the
+   "(two-party)" label is shorthand for resource-managed access, where
+   the resource runs an authorization flow rather than deciding on
+   identity alone.
 
      +==================+==========+=================================+
      | Mode             | Parties  | Description                     |
@@ -660,9 +661,8 @@ Table of Contents
    any resource without bilateral setup; the resource namespaces those
    claims by the asserting PS — the same sub value from a different PS
    is a different subject.  As in many OIDC deployments, registration
-   and login share a single flow: the resource follows the same flow
-   whether the user is new or returning, and creates or matches a user
-   record based on whether it has seen this (iss, sub) before.
+   and login share a single flow (see Section 15.9 for how the resource
+   matches or creates a user record from (iss, sub)).
 
    Agent                                 Resource       PS
      |                                      |            |
@@ -853,7 +853,7 @@ Table of Contents
 
    The agent includes the AAuth-Mission header when sending requests to
    resources, unless the mission is already conveyed in an auth token.
-   The resource includes the mission object in the resource token it
+   The resource includes the mission reference in the resource token it
    issues:
 
    Agent                                        Resource
@@ -864,7 +864,7 @@ Table of Contents
      |-------------------------------------------->|
      |                                             |
      | resource_token                              |
-     | (mission object included)                   |
+     | (mission reference included)                |
      |<--------------------------------------------|
 
                    Figure 7: Mission Context at Resource
@@ -1014,9 +1014,8 @@ Table of Contents
    planner.7f3c+search1).  This naming is for operational readability
    only — a sub-agent's identifier shows its parent at a glance in logs.
    Parties MUST NOT parse the local part for protocol decisions; the
-   parent_agent claim Section 11 is the authoritative sub-agent marker,
-   and the parent is conveyed authoritatively by the parent_agent claim
-   and the subagent_token Section 11.
+   parent_agent claim Section 11 is the authoritative sub-agent marker
+   and names the parent.
 
    Valid agent identifiers:
 
@@ -1243,7 +1242,7 @@ Table of Contents
       PS URL (three-party)
 
    When the AAuth-Mission header is present, the resource includes the
-   mission object (approver and s256) in the resource token.
+   mission reference (approver and s256) in the resource token.
 
    {
      "resource_token": "eyJhbGc..."
@@ -1397,8 +1396,8 @@ Table of Contents
    string of scope values.  Companion specifications MAY define
    alternative authorization claims that replace scope.
 
-   Optional payload claims: - mission: Mission object (present when the
-   resource is mission-aware and the agent sent an AAuth-Mission
+   Optional payload claims: - mission: Mission reference (present when
+   the resource is mission-aware and the agent sent an AAuth-Mission
    header).  Contains: - approver: HTTPS URL of the entity that approved
    the mission - s256: SHA-256 hash of the approved mission JSON
    (base64url)
@@ -1594,7 +1593,7 @@ Table of Contents
    Retry-After: 0
    Cache-Control: no-store
    AAuth-Requirement: requirement=interaction;
-       url="https://ps.example/interaction"; code="ABCD1234"
+       url="https://ps.example/interaction"; code="A1B2-C3D4"
    Content-Type: application/json
 
    {
@@ -1607,11 +1606,10 @@ Table of Contents
 7.2.  User Interaction
 
    When a server responds with 202 and AAuth-Requirement:
-   requirement=interaction, the url and code parameters in the header
-   tell the agent where to send the user Section 13.3.  The agent
-   constructs the user-facing URL as {url}?code={code} and directs the
-   user using one of the methods defined in Section 13.3 (browser
-   redirect, QR code, or display code).
+   requirement=interaction, the agent directs the user to the
+   interaction url/code — optionally relaying through its PS first —
+   using the mechanics defined in Section 13.3 and Section 13.3.3.2.
+   Two details specific to the agent directing the user itself:
 
    When the agent has a browser, it MAY append a callback parameter:
 
@@ -1667,16 +1665,11 @@ Table of Contents
       has discrete choices.
 
    The recipient MUST respond with one of the actions defined in
-   Section 7.3.3: a clarification response, an updated request, or a
+   Section 7.3.2: a clarification response, an updated request, or a
    cancellation.  This requirement is used by both PSes (delivering user
    questions to agents) and ASes (requesting clarification from PSes).
 
-7.3.2.  Clarification Flow
-
-   When the user asks a question during consent, the PS returns a 202
-   with AAuth-Requirement: requirement=clarification.
-
-7.3.3.  Agent Response to Clarification
+7.3.2.  Agent Response to Clarification
 
    The agent MUST respond to a clarification with one of:
 
@@ -1686,7 +1679,7 @@ Table of Contents
        replacing the original request with updated scope or parameters.
    3.  *Cancel request*: DELETE the pending URL to withdraw the request.
 
-7.3.3.1.  Clarification Response
+7.3.2.1.  Clarification Response
 
    The agent responds by POSTing JSON with clarification_response to the
    pending URL:
@@ -1709,7 +1702,7 @@ Table of Contents
    recommended sections.  After posting, the agent resumes polling with
    GET.
 
-7.3.3.2.  Updated Request
+7.3.2.2.  Updated Request
 
    The agent MAY obtain a new resource token from the resource (e.g.,
    with reduced scope) and POST it to the pending URL:
@@ -1732,7 +1725,7 @@ Table of Contents
    justification is OPTIONAL but RECOMMENDED to explain the change to
    the user.
 
-7.3.3.3.  Cancel Request
+7.3.2.3.  Cancel Request
 
    The agent MAY cancel the request by sending DELETE to the pending
    URL:
@@ -1748,7 +1741,7 @@ Table of Contents
    agent withdrew its request.  Subsequent requests to the pending URL
    return 410 Gone.
 
-7.3.4.  Clarification Limits
+7.3.3.  Clarification Limits
 
    PSes SHOULD enforce limits on clarification rounds (recommended: 5
    rounds maximum).  Clarification responses from agents are untrusted
@@ -1782,9 +1775,9 @@ Table of Contents
       action will do and why.
    *  parameters (OPTIONAL): A JSON object containing the parameters the
       agent intends to pass to the action.
-   *  mission (OPTIONAL): Mission object with approver and s256 fields,
-      binding the request to a mission.  When present, the PS evaluates
-      the request against the mission context and log history.
+   *  mission (OPTIONAL): Mission reference with approver and s256
+      fields, binding the request to a mission.  When present, the PS
+      evaluates the request against the mission context and log history.
 
    POST /permission HTTP/1.1
    Host: ps.example
@@ -1851,7 +1844,8 @@ Table of Contents
 
    *Request parameters:*
 
-   *  mission (REQUIRED): Mission object with approver and s256 fields.
+   *  mission (REQUIRED): Mission reference with approver and s256
+      fields.
    *  action (REQUIRED): A string identifying the action that was
       performed.
    *  description (OPTIONAL): A Markdown string describing what was done
@@ -1936,8 +1930,8 @@ Table of Contents
       the user (for question type).
    *  summary (OPTIONAL): A Markdown string summarizing what the agent
       accomplished (for completion type).
-   *  mission (OPTIONAL): Mission object with approver and s256 fields,
-      binding the request to a mission.
+   *  mission (OPTIONAL): Mission reference with approver and s256
+      fields, binding the request to a mission.
 
    *Relay interaction example:*
 
@@ -2011,7 +2005,7 @@ Table of Contents
    to the user, it returns interaction_unavailable Section 7.6.3.  This
    is the PS declining to relay this specific interaction; the agent
    falls back to directing the user to the url/code itself
-   Section 13.3.3.1.  It is distinct from user_unreachable:
+   Section 13.3.3.2.  It is distinct from user_unreachable:
    interaction_unavailable is non-terminal — the agent can still drive
    the interaction — whereas user_unreachable Section 13.5.3 is
    terminal, meaning no party can reach the user.
@@ -2053,7 +2047,7 @@ Table of Contents
    |                         |        | user.  Non-terminal: the      |
    |                         |        | agent falls back to directing |
    |                         |        | the user to the url/code      |
-   |                         |        | itself Section 13.3.3.1.      |
+   |                         |        | itself Section 13.3.3.2.      |
    |                         |        | Distinct from the terminal    |
    |                         |        | user_unreachable              |
    |                         |        | Section 13.5.3.               |
@@ -2195,10 +2189,12 @@ Table of Contents
       capabilities when constructing the AAuth-Capabilities request
       header Section 13.1.
 
-   The s256 in the AAuth-Mission header is the base64url-encoded SHA-256
-   hash of the response body bytes.  The agent verifies the hash by
-   computing SHA-256 over the exact response body bytes.  The agent MUST
-   store the mission body bytes exactly as received — no re-
+   The response body — the mission blob — is the mission JSON that s256
+   hashes everywhere it appears (the AAuth-Mission header and the
+   mission reference in resource and auth tokens).  The s256 is the
+   base64url-encoded SHA-256 hash of the response body bytes.  The agent
+   verifies the hash by computing SHA-256 over the exact response body
+   bytes, and MUST store those bytes exactly as received — no re-
    serialization.
 
    The approved description MAY differ from the proposal — the PS or
@@ -2290,8 +2286,8 @@ Table of Contents
       JSON
 
    When a mission-aware resource receives a request with the AAuth-
-   Mission header, it includes the mission object (approver and s256) in
-   the resource token it issues.  When a resource does not support
+   Mission header, it includes the mission reference (approver and s256)
+   in the resource token it issues.  When a resource does not support
    missions, it ignores the header.
 
    Agents operating in a mission context MUST include the AAuth-Mission
@@ -2639,8 +2635,8 @@ Table of Contents
 
    At least one of sub or scope MUST be present.
 
-   Optional payload claims: - mission: Mission object.  Present when the
-   auth token was issued in the context of a mission.  Contains: -
+   Optional payload claims: - mission: Mission reference.  Present when
+   the auth token was issued in the context of a mission.  Contains: -
    approver: HTTPS URL of the entity that approved the mission - s256:
    SHA-256 hash of the approved mission JSON (base64url) - tenant:
    Tenant identifier per OpenID Connect Enterprise Extensions 1.0
@@ -3173,14 +3169,19 @@ Table of Contents
    protocol-level requirements to agents.  The header MAY be sent with
    401 Unauthorized or 202 Accepted responses.  A 401 response indicates
    that authorization is required.  A 202 response indicates that the
-   request is pending and additional action is required — either user
-   interaction (requirement=interaction) or third-party approval
-   (requirement=approval).
+   request is pending and additional action is required — user
+   interaction (requirement=interaction), third-party approval
+   (requirement=approval), a clarification answer
+   (requirement=clarification), or identity claims (requirement=claims).
 
    AAuth-Requirement and WWW-Authenticate are independent header fields;
    a response MAY include both.  A client that understands AAuth
    processes AAuth-Requirement; a legacy client processes WWW-
    Authenticate.  Neither header's presence invalidates the other.
+   AAuth never conveys its own requirements via WWW-Authenticate; a
+   resource's existing WWW-Authenticate challenges (e.g., Bearer,
+   Payment) therefore remain fully available alongside AAuth-
+   Requirement.
 
    The header MAY also be sent with 402 Payment Required when a server
    requires both authorization and payment.  The AAuth-Requirement
@@ -3267,7 +3268,8 @@ Table of Contents
       required action.  MUST use the https scheme and MUST NOT contain
       query or fragment components.
    *  code (String): An interaction code that links the agent's pending
-      request to the user's session at the interaction URL.
+      request to the user's session at the interaction URL.  Generated
+      and compared per Section 13.3.3.1.
 
    The response MUST also include:
 
@@ -3275,7 +3277,57 @@ Table of Contents
       response.
    *  Retry-After: Recommended polling interval in seconds.
 
-13.3.3.1.  Relaying Through the Person Server
+13.3.3.1.  Interaction Code Format
+
+   The code is a Structured Field String ([RFC8941], Section 3.3.3).
+   The user reads it out of band — the agent displays it (or renders it
+   in a QR code) and the user visually compares it against the code
+   shown on the interaction page — so it MUST be both unguessable and
+   unambiguous to a human.  Servers and agents MUST follow these rules.
+
+   *Alphabet.* The code MUST be generated from Crockford base32
+   ([Crockford.Base32]) — the symbol set
+   0123456789ABCDEFGHJKMNPQRSTVWXYZ, which omits the visually ambiguous
+   letters I, L, O, and U.  Every symbol is URL-safe, so the code
+   requires no escaping when appended as {url}?code={code}. Servers MUST
+   NOT emit codes containing characters outside this set (other than the
+   optional grouping hyphen below).
+
+   *Entropy and length.* A code MUST carry at least 40 bits of entropy —
+   at least 8 Crockford base32 symbols, drawn from a cryptographically
+   secure random source.  Servers MAY use longer codes for higher-value
+   interactions.
+
+   *Hyphens.* A server MAY insert hyphen (-) characters into the
+   displayed code purely for visual grouping (for example, A1B2-C3D4).
+   The hyphen is presentational only: it carries no entropy and is not
+   part of the code's value.  Before comparison, both the server and any
+   party validating the code MUST strip all hyphens.
+
+   *Case.* Comparison MUST be case-insensitive.  A server MUST accept
+   the code regardless of the case the user enters, and on input MUST
+   fold the Crockford decode aliases (I/L → 1, O → 0) before comparison
+   so that a user who transcribes an ambiguous glyph still matches.
+
+   *Single use.* A code MUST be single-use.  Once the user arrives at
+   the interaction URL with a valid code and the code is consumed, the
+   server MUST reject any later presentation of the same code, returning
+   invalid_code Section 13.5.4.
+
+   *Rate-limiting.* Because the code is the only secret guarding the
+   interaction URL, the server MUST rate-limit code-validation attempts
+   at the interaction URL.  After a small number of failed attempts the
+   server MUST treat the pending interaction as terminally failed and
+   return invalid_code Section 13.5.4 on subsequent attempts, bounding
+   the brute-force window to far fewer guesses than the code's entropy
+   would otherwise allow.
+
+   *Lifetime.* A code MUST expire no later than the pending interaction
+   it is bound to Section 13.4.  Once the pending request has expired,
+   presenting the code MUST fail with expired Section 13.5.4; the agent
+   MAY initiate a fresh request to obtain a new code.
+
+13.3.3.2.  Relaying Through the Person Server
 
    When the agent has a PS, it SHOULD relay the interaction to the PS's
    interaction_endpoint Section 7.6 before directing the user itself.
@@ -4220,6 +4272,18 @@ Initial request (with Prefer: wait=N)
    which eliminates the possibility of misdirection through attacker-
    supplied links entirely.
 
+   The reverse threat — an attacker who knows a pending request's
+   interaction URL but not its code and tries to guess it to drive the
+   interaction — is bounded by the code-format rules in
+   Section 13.3.3.1.  The minimum 40 bits of entropy make a single guess
+   overwhelmingly likely to fail, and the mandatory rate-limit
+   terminates the pending interaction after a few failed attempts,
+   capping total guesses far below the entropy bound.  These entropy and
+   rate-limit requirements are the brute-force defense; they complement
+   the user-recognition and pre-established-channel defenses above,
+   which address misdirection of a legitimate code rather than recovery
+   of an unknown one.
+
 15.7.  Token Issuer Discovery
 
    The recipient of the resource token — and thus the issuer of the auth
@@ -4554,34 +4618,34 @@ Initial request (with Prefer: wait=N)
    This specification registers the following claims in the IANA "JSON
    Web Token Claims" registry established by [RFC7519]:
 
-   +==============+===========================+============+===========+
-   | Claim Name   | Claim Description         | Change     | Reference |
-   |              |                           | Controller |           |
-   +==============+===========================+============+===========+
-   | dwk          | Discovery Well-Known      | IETF       | This      |
-   |              | document name             |            | document  |
-   +--------------+---------------------------+------------+-----------+
-   | ps           | Person Server URL         | IETF       | This      |
-   |              |                           |            | document  |
-   +--------------+---------------------------+------------+-----------+
-   | agent        | Agent identifier          | IETF       | This      |
-   |              |                           |            | document  |
-   +--------------+---------------------------+------------+-----------+
-   | agent_jkt    | JWK Thumbprint of         | IETF       | This      |
-   |              | the agent's signing       |            | document  |
-   |              | key                       |            |           |
-   +--------------+---------------------------+------------+-----------+
-   | parent_agent | Parent agent              | IETF       | This      |
-   |              | identifier in a sub-      |            | document  |
-   |              | agent's agent token       |            |           |
-   +--------------+---------------------------+------------+-----------+
-   | mission      | Mission object            | IETF       | This      |
-   |              | (approver, s256) in       |            | document  |
-   |              | resource tokens and       |            |           |
-   |              | auth tokens               |            |           |
-   +--------------+---------------------------+------------+-----------+
+     +==============+======================+============+===========+
+     | Claim Name   | Claim Description    | Change     | Reference |
+     |              |                      | Controller |           |
+     +==============+======================+============+===========+
+     | dwk          | Discovery Well-Known | IETF       | This      |
+     |              | document name        |            | document  |
+     +--------------+----------------------+------------+-----------+
+     | ps           | Person Server URL    | IETF       | This      |
+     |              |                      |            | document  |
+     +--------------+----------------------+------------+-----------+
+     | agent        | Agent identifier     | IETF       | This      |
+     |              |                      |            | document  |
+     +--------------+----------------------+------------+-----------+
+     | agent_jkt    | JWK Thumbprint of    | IETF       | This      |
+     |              | the agent's signing  |            | document  |
+     |              | key                  |            |           |
+     +--------------+----------------------+------------+-----------+
+     | parent_agent | Parent agent         | IETF       | This      |
+     |              | identifier in a sub- |            | document  |
+     |              | agent's agent token  |            |           |
+     +--------------+----------------------+------------+-----------+
+     | mission      | Mission reference    | IETF       | This      |
+     |              | (approver, s256) in  |            | document  |
+     |              | resource tokens and  |            |           |
+     |              | auth tokens          |            |           |
+     +--------------+----------------------+------------+-----------+
 
-                                  Table 13
+                                 Table 13
 
 17.7.  AAuth Requirement Value Registry
 
@@ -4670,7 +4734,7 @@ Initial request (with Prefer: wait=N)
    has the syntax aauth:local@domain, where local is the agent-specific
    part and domain is the agent provider's domain name.  The aauth URI
    is used in the sub claim of agent tokens, the agent field of resource
-   tokens and mission objects, and the act.sub claim of auth tokens.
+   tokens and the mission blob, and the act.sub claim of auth tokens.
 
 18.  Implementation Status
 
@@ -4746,6 +4810,23 @@ Initial request (with Prefer: wait=N)
       -  Bootstrapping: pointer to the AAuth Bootstrap document;
          resources SHOULD publish access_mode and an R3 vocabulary.
       -  Diagrams: use snake_case agent_token and auth_token.
+      -  Named the {approver, s256} pair the "mission reference" and
+         used it consistently for the mission claim in resource and auth
+         tokens, distinct from the full mission blob.
+      -  Stated that AAuth never conveys its own requirements via WWW-
+         Authenticate, leaving a resource's existing challenges
+         available alongside AAuth-Requirement.
+      -  Specified the interaction code format: Crockford base32
+         alphabet, ≥40 bits of entropy, presentational hyphens stripped
+         before case-insensitive comparison, single use, mandatory rate-
+         limiting, and expiry bound to the pending interaction;
+         documented the entropy/rate-limit rules as the brute-force
+         defense in Interaction Code Misdirection and made the four code
+         examples consistently hyphenated.
+      -  Editorial consistency pass: trimmed redundant mode
+         walkthroughs, removed the empty "Clarification Flow"
+         subsection, and added distinct anchors to the appendix flow
+         diagrams.
 
    *  draft-hardt-oauth-aauth-protocol-01
 
@@ -4916,6 +4997,10 @@ Initial request (with Prefer: wait=N)
    [CommonMark]
               MacFarlane, J., "CommonMark Spec", 2024,
               <https://spec.commonmark.org/0.31.2/>.
+
+   [Crockford.Base32]
+              Crockford, D., "Base 32", 2019,
+              <https://www.crockford.com/base32.html>.
 
    [I-D.hardt-aauth-bootstrap]
               Hardt, D., "AAuth Bootstrap Guidance", 2026,
@@ -5224,7 +5309,7 @@ B.3.1.  Why a Separate Person Server
    is the same conflation that makes OAuth insufficient for cross-domain
    agent ecosystems.
 
-B.3.2.  Why Four Adoption Modes
+B.3.2.  Why Four Resource Access Modes
 
    The protocol supports identity-based, resource-managed (two-party),
    PS-asserted (three-party), and federated (four-party) resource access

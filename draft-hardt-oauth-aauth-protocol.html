@@ -1089,7 +1089,9 @@ svg {
 <a href="#name-discussion-venues" class="section-name selfRef">Discussion Venues</a>
       </h2>
 <p id="section-note.1-1"><em>Note: This section is to be removed before publishing as an RFC.</em><a href="#section-note.1-1" class="pilcrow">¶</a></p>
-<p id="section-note.1-2">This document is part of the AAuth specification family. Source for this draft and an issue tracker can be found at <a href="https://github.com/dickhardt/AAuth">https://github.com/dickhardt/AAuth</a>.<a href="#section-note.1-2" class="pilcrow">¶</a></p>
+<p id="section-note.1-2">This document is part of the AAuth specification family.
+Related documents and open issues can be found at <a href="https://github.com/dickhardt/AAuth">https://github.com/dickhardt/AAuth</a>.
+Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/AAuth/refs/heads/main/draft-hardt-oauth-aauth-protocol.md">https://raw.githubusercontent.com/dickhardt/AAuth/refs/heads/main/draft-hardt-oauth-aauth-protocol.md</a><a href="#section-note.1-2" class="pilcrow">¶</a></p>
 </section>
 <div id="status-of-memo">
 <section id="section-boilerplate.1">
@@ -1313,13 +1315,10 @@ svg {
                     <p id="section-toc.1-1.7.2.3.2.1.1"><a href="#section-7.3.1" class="auto internal xref">7.3.1</a>.  <a href="#name-clarification-required" class="internal xref">Clarification Required</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.3.2.2">
-                    <p id="section-toc.1-1.7.2.3.2.2.1"><a href="#section-7.3.2" class="auto internal xref">7.3.2</a>.  <a href="#name-clarification-flow" class="internal xref">Clarification Flow</a></p>
+                    <p id="section-toc.1-1.7.2.3.2.2.1"><a href="#section-7.3.2" class="auto internal xref">7.3.2</a>.  <a href="#name-agent-response-to-clarifica" class="internal xref">Agent Response to Clarification</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.3.2.3">
-                    <p id="section-toc.1-1.7.2.3.2.3.1"><a href="#section-7.3.3" class="auto internal xref">7.3.3</a>.  <a href="#name-agent-response-to-clarifica" class="internal xref">Agent Response to Clarification</a></p>
-</li>
-                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.3.2.4">
-                    <p id="section-toc.1-1.7.2.3.2.4.1"><a href="#section-7.3.4" class="auto internal xref">7.3.4</a>.  <a href="#name-clarification-limits" class="internal xref">Clarification Limits</a></p>
+                    <p id="section-toc.1-1.7.2.3.2.3.1"><a href="#section-7.3.3" class="auto internal xref">7.3.3</a>.  <a href="#name-clarification-limits" class="internal xref">Clarification Limits</a></p>
 </li>
                 </ul>
 </li>
@@ -1823,7 +1822,7 @@ svg {
                     <p id="section-toc.1-1.23.2.3.2.1.1"><a href="#appendix-B.3.1" class="auto internal xref">B.3.1</a>.  <a href="#name-why-a-separate-person-serve" class="internal xref">Why a Separate Person Server</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23.2.3.2.2">
-                    <p id="section-toc.1-1.23.2.3.2.2.1"><a href="#appendix-B.3.2" class="auto internal xref">B.3.2</a>.  <a href="#name-why-four-adoption-modes" class="internal xref">Why Four Adoption Modes</a></p>
+                    <p id="section-toc.1-1.23.2.3.2.2.1"><a href="#appendix-B.3.2" class="auto internal xref">B.3.2</a>.  <a href="#name-why-four-resource-access-mo" class="internal xref">Why Four Resource Access Modes</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23.2.3.2.3">
                     <p id="section-toc.1-1.23.2.3.2.3.1"><a href="#appendix-B.3.3" class="auto internal xref">B.3.3</a>.  <a href="#name-why-resource-tokens" class="internal xref">Why Resource Tokens</a></p>
@@ -1965,7 +1964,7 @@ svg {
 </li>
         </ul>
 <p id="section-1.5-3">The HTTP Signature Keys specification (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>) defines how signing keys are bound to JWTs and discovered via well-known metadata, and how agents present cryptographic identity using HTTP Message Signatures (<span>[<a href="#RFC9421" class="cite xref">RFC9421</a>]</span>). This specification defines the <code>AAuth-Requirement</code>, <code>AAuth-Access</code>, and <code>AAuth-Capabilities</code> headers, and the authorization protocol across four resource access modes.<a href="#section-1.5-3" class="pilcrow">¶</a></p>
-<p id="section-1.5-4">Because agent identity is independent and self-contained, AAuth is designed for incremental adoption — each party can add support independently, and rollout does not need to be coordinated. A resource that verifies an agent's signature can manage access by identity alone, with no other infrastructure. When a resource manages its own authorization — via interaction, consent, or existing infrastructure — it operates in resource-managed access (two-party). Issuing resource tokens to the agent's person server enables PS-asserted access (three-party): the PS asserts identity claims about the user (<code>sub</code>, optionally <code>email</code>, <code>tenant</code>, <code>groups</code>, <code>roles</code>) and confirms user consent for the scope the resource requested; the resource applies its own policy on the resulting claims. Any PS can assert identity claims to any resource without bilateral setup; the resource namespaces those claims by the asserting PS. Deploying an access server enables federated access (four-party) with cross-domain policy enforcement. Agent governance — missions, plus per-action permission, audit, and interaction relay through a PS — is an orthogonal layer that any agent with a PS can add, from a simple prompt to full autonomous agent oversight. See <a href="#incremental-adoption" class="auto internal xref">Section 14</a> for details.<a href="#section-1.5-4" class="pilcrow">¶</a></p>
+<p id="section-1.5-4">Because agent identity is independent and self-contained, AAuth is designed for incremental adoption: each party can add support independently, and rollout does not need to be coordinated. A resource that verifies an agent's signature can manage access by identity alone, with no other infrastructure; adding a person server and an access server is additive. The four resource access modes and the orthogonal agent-governance layer are introduced in <a href="#protocol-overview" class="auto internal xref">Section 4</a> and detailed in <a href="#incremental-adoption" class="auto internal xref">Section 14</a>.<a href="#section-1.5-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -1990,13 +1989,13 @@ svg {
           <strong>Person</strong>: A user or organization — the legal person — on whose behalf an agent acts and who is accountable for the agent's actions.<a href="#section-3-2.1" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-3-2.2">
-          <strong>Agent</strong>: An HTTP client (<span>[<a href="#RFC9110" class="cite xref">RFC9110</a>]</span>, Section 3.5) acting on behalf of a person. Identified by an agent identifier URIs using the <code>aauth</code> scheme, of the form <code>aauth:local@domain</code> <a href="#agent-identifiers" class="auto internal xref">Section 5.1</a>. An agent MAY have a person server, declared via the <code>ps</code> claim in the agent token.<a href="#section-3-2.2" class="pilcrow">¶</a>
+          <strong>Agent</strong>: An HTTP client (<span>[<a href="#RFC9110" class="cite xref">RFC9110</a>]</span>, Section 3.5) acting on behalf of a person. Identified by an agent identifier URI using the <code>aauth</code> scheme, of the form <code>aauth:local@domain</code> <a href="#agent-identifiers" class="auto internal xref">Section 5.1</a>. An agent MAY have a person server, declared via the <code>ps</code> claim in the agent token.<a href="#section-3-2.2" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-3-2.3">
           <strong>Agent Provider (AP)</strong>: A server that manages agent identity and issues agent tokens to agents. Trusted by the person to issue agent tokens only to authorized agents. Identified by an HTTPS URL <a href="#server-identifiers" class="auto internal xref">Section 13.9.1</a> and publishes metadata at <code>/.well-known/aauth-agent.json</code>.<a href="#section-3-2.3" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-3-2.4">
-          <strong>Resource</strong>: A server that requires authentication and/or authorization to protect access to its APIs and data. A resource MAY enforce access policy itself or delegate policy evaluation to an access server. Identified by an HTTPS URL <a href="#server-identifiers" class="auto internal xref">Section 13.9.1</a> and publishes metadata at <code>/.well-known/aauth-resource.json</code>. A mission-aware resource includes the mission object from the <code>AAuth-Mission</code> header in the resource tokens it issues.<a href="#section-3-2.4" class="pilcrow">¶</a>
+          <strong>Resource</strong>: A server that requires authentication and/or authorization to protect access to its APIs and data. A resource MAY enforce access policy itself or delegate policy evaluation to an access server. Identified by an HTTPS URL <a href="#server-identifiers" class="auto internal xref">Section 13.9.1</a> and publishes metadata at <code>/.well-known/aauth-resource.json</code>. A mission-aware resource includes the mission reference from the <code>AAuth-Mission</code> header in the resource tokens it issues.<a href="#section-3-2.4" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-3-2.5">
           <strong>Person Server (PS)</strong>: A server that represents the person to the rest of the protocol. The person chooses their PS; it is not imposed by any other party. The PS manages missions, handles consent, asserts user identity, and brokers authorization on behalf of agents. Identified by an HTTPS URL <a href="#server-identifiers" class="auto internal xref">Section 13.9.1</a> and publishes metadata at <code>/.well-known/aauth-person.json</code>.<a href="#section-3-2.5" class="pilcrow">¶</a>
@@ -2023,22 +2022,25 @@ svg {
           <strong>Mission</strong>: A scoped authorization context for agent governance <a href="#missions" class="auto internal xref">Section 8</a>. Required when the person's PS requires governance over the agent's actions. A mission is a JSON object containing structured fields (approver, agent, approved_at, approved tools) and a Markdown description. Identified by the PS and SHA-256 hash of the mission JSON (<code>s256</code>). Missions are proposed by agents and approved by the PS and person.<a href="#section-3-6.1" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-3-6.2">
-          <strong>Mission Log</strong>: The ordered record of all agent↔PS interactions within a mission — token requests, permission requests, audit records, interaction requests, and clarification chats. The PS maintains the log and uses it to evaluate whether each new request is consistent with the mission's intent <a href="#mission-log" class="auto internal xref">Section 8.3</a>.<a href="#section-3-6.2" class="pilcrow">¶</a>
+          <strong>Mission Reference</strong>: The pair of the <code>approver</code> URL and the <code>s256</code> hash that identifies a mission in the <code>AAuth-Mission</code> header and in the <code>mission</code> claim of resource tokens and auth tokens, without carrying the mission's content. Distinct from the full mission JSON (the <strong>mission blob</strong>), which only the agent and PS hold <a href="#mission-approval" class="auto internal xref">Section 8.2</a>.<a href="#section-3-6.2" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-3-6.3">
-          <strong>HTTP Sig</strong>: An HTTP Message Signature (<span>[<a href="#RFC9421" class="cite xref">RFC9421</a>]</span>) created per the AAuth HTTP Message Signatures profile defined in this specification <a href="#http-message-signatures-profile" class="auto internal xref">Section 13.7</a>, using a key conveyed via the <code>Signature-Key</code> header (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>).<a href="#section-3-6.3" class="pilcrow">¶</a>
+          <strong>Mission Log</strong>: The ordered record of all agent↔PS interactions within a mission — token requests, permission requests, audit records, interaction requests, and clarification chats. The PS maintains the log and uses it to evaluate whether each new request is consistent with the mission's intent <a href="#mission-log" class="auto internal xref">Section 8.3</a>.<a href="#section-3-6.3" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-3-6.4">
-          <strong>Markdown</strong>: AAuth uses Markdown (<span>[<a href="#CommonMark" class="cite xref">CommonMark</a>]</span>) as the human-readable content format for mission descriptions, justifications, clarifications, and scope descriptions. Implementations MUST sanitize Markdown before rendering to users.<a href="#section-3-6.4" class="pilcrow">¶</a>
+          <strong>HTTP Sig</strong>: An HTTP Message Signature (<span>[<a href="#RFC9421" class="cite xref">RFC9421</a>]</span>) created per the AAuth HTTP Message Signatures profile defined in this specification <a href="#http-message-signatures-profile" class="auto internal xref">Section 13.7</a>, using a key conveyed via the <code>Signature-Key</code> header (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>).<a href="#section-3-6.4" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-3-6.5">
-          <strong>Interaction</strong>: User authentication, consent, or other action at an interaction endpoint <a href="#user-interaction" class="auto internal xref">Section 7.2</a>. Triggered when a server returns <code>202 Accepted</code> with <code>requirement=interaction</code>.<a href="#section-3-6.5" class="pilcrow">¶</a>
+          <strong>Markdown</strong>: AAuth uses Markdown (<span>[<a href="#CommonMark" class="cite xref">CommonMark</a>]</span>) as the human-readable content format for mission descriptions, justifications, clarifications, and scope descriptions. Implementations MUST sanitize Markdown before rendering to users.<a href="#section-3-6.5" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-3-6.6">
-          <strong>Justification</strong>: A Markdown string provided by the agent declaring why access is needed, presented to the user by the PS during consent <a href="#ps-token-endpoint" class="auto internal xref">Section 7.1</a>.<a href="#section-3-6.6" class="pilcrow">¶</a>
+          <strong>Interaction</strong>: User authentication, consent, or other action at an interaction endpoint <a href="#user-interaction" class="auto internal xref">Section 7.2</a>. Triggered when a server returns <code>202 Accepted</code> with <code>requirement=interaction</code>.<a href="#section-3-6.6" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-3-6.7">
-          <strong>Clarification</strong>: A Markdown string containing a question posed to the agent by the user during consent via the PS <a href="#clarification-chat" class="auto internal xref">Section 7.3</a>. The agent may respond with an explanation or an updated request.<a href="#section-3-6.7" class="pilcrow">¶</a>
+          <strong>Justification</strong>: A Markdown string provided by the agent declaring why access is needed, presented to the user by the PS during consent <a href="#ps-token-endpoint" class="auto internal xref">Section 7.1</a>.<a href="#section-3-6.7" class="pilcrow">¶</a>
+</li>
+        <li class="compact" id="section-3-6.8">
+          <strong>Clarification</strong>: A Markdown string containing a question posed to the agent by the user during consent via the PS <a href="#clarification-chat" class="auto internal xref">Section 7.3</a>. The agent may respond with an explanation or an updated request.<a href="#section-3-6.8" class="pilcrow">¶</a>
 </li>
       </ul>
 </section>
@@ -2055,7 +2057,7 @@ svg {
         <h3 id="name-resource-access-modes">
 <a href="#section-4.1" class="section-number selfRef">4.1. </a><a href="#name-resource-access-modes" class="section-name selfRef">Resource Access Modes</a>
         </h3>
-<p id="section-4.1-1">AAuth supports four resource access modes, each adding parties and capabilities. The protocol works in every mode — adoption does not require coordination between parties.<a href="#section-4.1-1" class="pilcrow">¶</a></p>
+<p id="section-4.1-1">AAuth supports four resource access modes, each adding parties and capabilities. The protocol works in every mode — adoption does not require coordination between parties. Identity-based and resource-managed access both involve only the agent and the resource; the "(two-party)" label is shorthand for resource-managed access, where the resource runs an authorization flow rather than deciding on identity alone.<a href="#section-4.1-1" class="pilcrow">¶</a></p>
 <table class="center" id="table-1">
           <caption><a href="#table-1" class="selfRef">Table 1</a></caption>
 <thead>
@@ -2223,7 +2225,7 @@ svg {
           <h4 id="name-ps-asserted-access-three-pa">
 <a href="#section-4.1.3" class="section-number selfRef">4.1.3. </a><a href="#name-ps-asserted-access-three-pa" class="section-name selfRef">PS-Asserted Access (Three-Party)</a>
           </h4>
-<p id="section-4.1.3-1">The resource has no separate access server — it accepts identity claims from whichever PS the agent declares, and applies its own policy on the resulting claims. The resource discovers the agent's PS from the <code>ps</code> claim in the agent token and issues a resource token <a href="#resource-tokens" class="auto internal xref">Section 6</a> with <code>aud</code> = PS URL. The agent obtains the resource token either by calling the resource's <code>authorization_endpoint</code> (if published in resource metadata) or by receiving a <code>401</code> challenge with <code>requirement=auth-token</code> when calling the resource directly <a href="#requirement-auth-token" class="auto internal xref">Section 6.6</a>. The agent sends the resource token to the PS's token endpoint <a href="#ps-token-endpoint" class="auto internal xref">Section 7.1</a>, and the PS returns an auth token <a href="#auth-tokens" class="auto internal xref">Section 9.4</a> asserting identity claims about the user (<code>sub</code>, optionally <code>email</code>, <code>tenant</code>, <code>groups</code>, <code>roles</code>) and confirming user consent for the scope the resource requested. The resource applies its own access policy on the resulting claims. Any agent's PS can assert identity claims to any resource without bilateral setup; the resource namespaces those claims by the asserting PS — the same <code>sub</code> value from a different PS is a different subject. As in many OIDC deployments, registration and login share a single flow: the resource follows the same flow whether the user is new or returning, and creates or matches a user record based on whether it has seen this <code>(iss, sub)</code> before.<a href="#section-4.1.3-1" class="pilcrow">¶</a></p>
+<p id="section-4.1.3-1">The resource has no separate access server — it accepts identity claims from whichever PS the agent declares, and applies its own policy on the resulting claims. The resource discovers the agent's PS from the <code>ps</code> claim in the agent token and issues a resource token <a href="#resource-tokens" class="auto internal xref">Section 6</a> with <code>aud</code> = PS URL. The agent obtains the resource token either by calling the resource's <code>authorization_endpoint</code> (if published in resource metadata) or by receiving a <code>401</code> challenge with <code>requirement=auth-token</code> when calling the resource directly <a href="#requirement-auth-token" class="auto internal xref">Section 6.6</a>. The agent sends the resource token to the PS's token endpoint <a href="#ps-token-endpoint" class="auto internal xref">Section 7.1</a>, and the PS returns an auth token <a href="#auth-tokens" class="auto internal xref">Section 9.4</a> asserting identity claims about the user (<code>sub</code>, optionally <code>email</code>, <code>tenant</code>, <code>groups</code>, <code>roles</code>) and confirming user consent for the scope the resource requested. The resource applies its own access policy on the resulting claims. Any agent's PS can assert identity claims to any resource without bilateral setup; the resource namespaces those claims by the asserting PS — the same <code>sub</code> value from a different PS is a different subject. As in many OIDC deployments, registration and login share a single flow (see <a href="#trust-posture-in-ps-asserted-access" class="auto internal xref">Section 15.9</a> for how the resource matches or creates a user record from <code>(iss, sub)</code>).<a href="#section-4.1.3-1" class="pilcrow">¶</a></p>
 <span id="name-ps-asserted-access-three-par"></span><div id="fig-ps-asserted">
 <figure id="figure-4">
             <div class="lang-ascii-art sourcecode" id="section-4.1.3-2.1">
@@ -2372,7 +2374,7 @@ svg {
 <a href="#section-4.4.1" class="section-number selfRef">4.4.1. </a><a href="#name-missions" class="section-name selfRef">Missions</a>
           </h4>
 <p id="section-4.4.1-1">When the person's PS requires governance over the agent's actions, the agent creates a mission — a Markdown description of what it intends to accomplish. The PS and user review, clarify, and approve the mission. The approved mission is immutable — bound by its <code>s256</code> hash. Missions evolve through the <strong>mission log</strong> <a href="#mission-log" class="auto internal xref">Section 8.3</a>: the ordered record of all agent↔PS interactions within the mission. Missions are not required for all PS interactions — an agent can get auth tokens without a mission. See <a href="#missions" class="auto internal xref">Section 8</a> for normative requirements.<a href="#section-4.4.1-1" class="pilcrow">¶</a></p>
-<div id="mission-creation">
+<div id="mission-creation-overview">
 <section id="section-4.4.1.1">
             <h5 id="name-mission-creation">
 <a href="#section-4.4.1.1" class="section-number selfRef">4.4.1.1. </a><a href="#name-mission-creation" class="section-name selfRef">Mission Creation</a>
@@ -2409,7 +2411,7 @@ svg {
             <h5 id="name-mission-context-at-resource">
 <a href="#section-4.4.1.2" class="section-number selfRef">4.4.1.2. </a><a href="#name-mission-context-at-resource" class="section-name selfRef">Mission Context at Resources</a>
             </h5>
-<p id="section-4.4.1.2-1">The agent includes the <code>AAuth-Mission</code> header when sending requests to resources, unless the mission is already conveyed in an auth token. The resource includes the mission object in the resource token it issues:<a href="#section-4.4.1.2-1" class="pilcrow">¶</a></p>
+<p id="section-4.4.1.2-1">The agent includes the <code>AAuth-Mission</code> header when sending requests to resources, unless the mission is already conveyed in an auth token. The resource includes the mission reference in the resource token it issues:<a href="#section-4.4.1.2-1" class="pilcrow">¶</a></p>
 <span id="name-mission-context-at-resource-2"></span><div id="fig-mission-context">
 <figure id="figure-7">
               <div class="lang-ascii-art sourcecode" id="section-4.4.1.2-2.1">
@@ -2421,7 +2423,7 @@ svg {
   |--------------------------------------------&gt;|
   |                                             |
   | resource_token                              |
-  | (mission object included)                   |
+  | (mission reference included)                |
   |&lt;--------------------------------------------|
 
 </pre>
@@ -2554,7 +2556,7 @@ svg {
 <a href="#section-5.1" class="section-number selfRef">5.1. </a><a href="#name-agent-identifiers" class="section-name selfRef">Agent Identifiers</a>
         </h3>
 <p id="section-5.1-1">Agent identifiers are URIs using the <code>aauth</code> scheme, of the form <code>aauth:local@domain</code> where <code>domain</code> is the agent provider's domain. The <code>local</code> part MUST consist of lowercase ASCII letters (<code>a-z</code>), digits (<code>0-9</code>), hyphen (<code>-</code>), underscore (<code>_</code>), plus (<code>+</code>), and period (<code>.</code>). The <code>local</code> part MUST NOT be empty and MUST NOT exceed 255 characters. The <code>domain</code> part MUST be a valid domain name conforming to the server identifier requirements <a href="#server-identifiers" class="auto internal xref">Section 13.9.1</a> (without scheme).<a href="#section-5.1-1" class="pilcrow">¶</a></p>
-<p id="section-5.1-2">The plus character (<code>+</code>) is RESERVED as the sub-agent delimiter <a href="#sub-agents" class="auto internal xref">Section 11</a>. A top-level agent's <code>local</code> part MUST NOT contain <code>+</code>. A sub-agent's <code>local</code> part MUST be its parent's <code>local</code> part, followed by <code>+</code>, followed by a non-empty discriminator (for example, <code>planner.7f3c+search1</code>). This naming is for operational readability only — a sub-agent's identifier shows its parent at a glance in logs. Parties MUST NOT parse the <code>local</code> part for protocol decisions; the <code>parent_agent</code> claim <a href="#sub-agents" class="auto internal xref">Section 11</a> is the authoritative sub-agent marker, and the parent is conveyed authoritatively by the <code>parent_agent</code> claim and the <code>subagent_token</code> <a href="#sub-agents" class="auto internal xref">Section 11</a>.<a href="#section-5.1-2" class="pilcrow">¶</a></p>
+<p id="section-5.1-2">The plus character (<code>+</code>) is RESERVED as the sub-agent delimiter <a href="#sub-agents" class="auto internal xref">Section 11</a>. A top-level agent's <code>local</code> part MUST NOT contain <code>+</code>. A sub-agent's <code>local</code> part MUST be its parent's <code>local</code> part, followed by <code>+</code>, followed by a non-empty discriminator (for example, <code>planner.7f3c+search1</code>). This naming is for operational readability only — a sub-agent's identifier shows its parent at a glance in logs. Parties MUST NOT parse the <code>local</code> part for protocol decisions; the <code>parent_agent</code> claim <a href="#sub-agents" class="auto internal xref">Section 11</a> is the authoritative sub-agent marker and names the parent.<a href="#section-5.1-2" class="pilcrow">¶</a></p>
 <p id="section-5.1-3">Valid agent identifiers:<a href="#section-5.1-3" class="pilcrow">¶</a></p>
 <ul class="compact">
 <li class="compact" id="section-5.1-4.1">
@@ -2800,7 +2802,7 @@ Content-Type: application/json
             <li class="compact" id="section-6.2.2-2.2">If the resource has no AS but the agent has a PS (<code>ps</code> claim): <code>aud</code> = PS URL (three-party)<a href="#section-6.2.2-2.2" class="pilcrow">¶</a>
 </li>
           </ul>
-<p id="section-6.2.2-3">When the <code>AAuth-Mission</code> header is present, the resource includes the mission object (<code>approver</code> and <code>s256</code>) in the resource token.<a href="#section-6.2.2-3" class="pilcrow">¶</a></p>
+<p id="section-6.2.2-3">When the <code>AAuth-Mission</code> header is present, the resource includes the mission reference (<code>approver</code> and <code>s256</code>) in the resource token.<a href="#section-6.2.2-3" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="section-6.2.2-4">
 <pre>{
   "resource_token": "eyJhbGc..."
@@ -2965,7 +2967,7 @@ AAuth-Requirement: requirement=auth-token; resource-token="eyJ..."
 - <code>exp</code>: Expiration timestamp
 - <code>scope</code>: Requested scopes, as a space-separated string of scope values. Companion specifications MAY define alternative authorization claims that replace <code>scope</code>.<a href="#section-6.7.1-3" class="pilcrow">¶</a></p>
 <p id="section-6.7.1-4">Optional payload claims:
-- <code>mission</code>: Mission object (present when the resource is mission-aware and the agent sent an <code>AAuth-Mission</code> header). Contains:
+- <code>mission</code>: Mission reference (present when the resource is mission-aware and the agent sent an <code>AAuth-Mission</code> header). Contains:
   - <code>approver</code>: HTTPS URL of the entity that approved the mission
   - <code>s256</code>: SHA-256 hash of the approved mission JSON (base64url)<a href="#section-6.7.1-4" class="pilcrow">¶</a></p>
 <p id="section-6.7.1-5">Resource tokens SHOULD NOT have a lifetime exceeding 5 minutes. The <code>jti</code> claim provides an audit trail for token requests; ASes are not required to enforce replay detection on resource tokens. If a resource token expires before the PS presents it to the AS (e.g., because user interaction was required), the agent MUST obtain a fresh resource token from the resource and submit a new token request to the PS. The PS SHOULD remember prior consent decisions within a mission so the user is not re-prompted when the agent resubmits a request for the same resource and scope.<a href="#section-6.7.1-5" class="pilcrow">¶</a></p>
@@ -3167,7 +3169,7 @@ Location: /pending/abc123
 Retry-After: 0
 Cache-Control: no-store
 AAuth-Requirement: requirement=interaction;
-    url="https://ps.example/interaction"; code="ABCD1234"
+    url="https://ps.example/interaction"; code="A1B2-C3D4"
 Content-Type: application/json
 
 {
@@ -3186,7 +3188,7 @@ Content-Type: application/json
         <h3 id="name-user-interaction">
 <a href="#section-7.2" class="section-number selfRef">7.2. </a><a href="#name-user-interaction" class="section-name selfRef">User Interaction</a>
         </h3>
-<p id="section-7.2-1">When a server responds with <code>202</code> and <code>AAuth-Requirement: requirement=interaction</code>, the <code>url</code> and <code>code</code> parameters in the header tell the agent where to send the user <a href="#requirement-responses" class="auto internal xref">Section 13.3</a>. The agent constructs the user-facing URL as <code>{url}?code={code}</code> and directs the user using one of the methods defined in <a href="#requirement-responses" class="auto internal xref">Section 13.3</a> (browser redirect, QR code, or display code).<a href="#section-7.2-1" class="pilcrow">¶</a></p>
+<p id="section-7.2-1">When a server responds with <code>202</code> and <code>AAuth-Requirement: requirement=interaction</code>, the agent directs the user to the interaction <code>url</code>/<code>code</code> — optionally relaying through its PS first — using the mechanics defined in <a href="#requirement-responses" class="auto internal xref">Section 13.3</a> and <a href="#interaction-relay" class="auto internal xref">Section 13.3.3.2</a>. Two details specific to the agent directing the user itself:<a href="#section-7.2-1" class="pilcrow">¶</a></p>
 <p id="section-7.2-2">When the agent has a browser, it MAY append a <code>callback</code> parameter:<a href="#section-7.2-2" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="section-7.2-3">
 <pre>{url}?code={code}&amp;callback={callback_url}
@@ -3238,41 +3240,33 @@ Content-Type: application/json
               <code>options</code> (OPTIONAL): An array of string values when the question has discrete choices.<a href="#section-7.3.1-4.3" class="pilcrow">¶</a>
 </li>
           </ul>
-<p id="section-7.3.1-5">The recipient MUST respond with one of the actions defined in <a href="#agent-response-to-clarification" class="auto internal xref">Section 7.3.3</a>: a clarification response, an updated request, or a cancellation. This requirement is used by both PSes (delivering user questions to agents) and ASes (requesting clarification from PSes).<a href="#section-7.3.1-5" class="pilcrow">¶</a></p>
-</section>
-</div>
-<div id="clarification-flow">
-<section id="section-7.3.2">
-          <h4 id="name-clarification-flow">
-<a href="#section-7.3.2" class="section-number selfRef">7.3.2. </a><a href="#name-clarification-flow" class="section-name selfRef">Clarification Flow</a>
-          </h4>
-<p id="section-7.3.2-1">When the user asks a question during consent, the PS returns a <code>202</code> with <code>AAuth-Requirement: requirement=clarification</code>.<a href="#section-7.3.2-1" class="pilcrow">¶</a></p>
+<p id="section-7.3.1-5">The recipient MUST respond with one of the actions defined in <a href="#agent-response-to-clarification" class="auto internal xref">Section 7.3.2</a>: a clarification response, an updated request, or a cancellation. This requirement is used by both PSes (delivering user questions to agents) and ASes (requesting clarification from PSes).<a href="#section-7.3.1-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="agent-response-to-clarification">
-<section id="section-7.3.3">
+<section id="section-7.3.2">
           <h4 id="name-agent-response-to-clarifica">
-<a href="#section-7.3.3" class="section-number selfRef">7.3.3. </a><a href="#name-agent-response-to-clarifica" class="section-name selfRef">Agent Response to Clarification</a>
+<a href="#section-7.3.2" class="section-number selfRef">7.3.2. </a><a href="#name-agent-response-to-clarifica" class="section-name selfRef">Agent Response to Clarification</a>
           </h4>
-<p id="section-7.3.3-1">The agent MUST respond to a clarification with one of:<a href="#section-7.3.3-1" class="pilcrow">¶</a></p>
-<ol start="1" type="1" class="compact type-1" id="section-7.3.3-2">
-<li id="section-7.3.3-2.1">
-              <strong>Clarification response</strong>: POST a <code>clarification_response</code> to the pending URL.<a href="#section-7.3.3-2.1" class="pilcrow">¶</a>
+<p id="section-7.3.2-1">The agent MUST respond to a clarification with one of:<a href="#section-7.3.2-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="compact type-1" id="section-7.3.2-2">
+<li id="section-7.3.2-2.1">
+              <strong>Clarification response</strong>: POST a <code>clarification_response</code> to the pending URL.<a href="#section-7.3.2-2.1" class="pilcrow">¶</a>
 </li>
-            <li id="section-7.3.3-2.2">
-              <strong>Updated request</strong>: POST a new <code>resource_token</code> to the pending URL, replacing the original request with updated scope or parameters.<a href="#section-7.3.3-2.2" class="pilcrow">¶</a>
+            <li id="section-7.3.2-2.2">
+              <strong>Updated request</strong>: POST a new <code>resource_token</code> to the pending URL, replacing the original request with updated scope or parameters.<a href="#section-7.3.2-2.2" class="pilcrow">¶</a>
 </li>
-            <li id="section-7.3.3-2.3">
-              <strong>Cancel request</strong>: DELETE the pending URL to withdraw the request.<a href="#section-7.3.3-2.3" class="pilcrow">¶</a>
+            <li id="section-7.3.2-2.3">
+              <strong>Cancel request</strong>: DELETE the pending URL to withdraw the request.<a href="#section-7.3.2-2.3" class="pilcrow">¶</a>
 </li>
           </ol>
 <div id="clarification-response">
-<section id="section-7.3.3.1">
+<section id="section-7.3.2.1">
             <h5 id="name-clarification-response">
-<a href="#section-7.3.3.1" class="section-number selfRef">7.3.3.1. </a><a href="#name-clarification-response" class="section-name selfRef">Clarification Response</a>
+<a href="#section-7.3.2.1" class="section-number selfRef">7.3.2.1. </a><a href="#name-clarification-response" class="section-name selfRef">Clarification Response</a>
             </h5>
-<p id="section-7.3.3.1-1">The agent responds by POSTing JSON with <code>clarification_response</code> to the pending URL:<a href="#section-7.3.3.1-1" class="pilcrow">¶</a></p>
-<div class="lang-http sourcecode" id="section-7.3.3.1-2">
+<p id="section-7.3.2.1-1">The agent responds by POSTing JSON with <code>clarification_response</code> to the pending URL:<a href="#section-7.3.2.1-1" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-7.3.2.1-2">
 <pre>POST /pending/abc123 HTTP/1.1
 Host: ps.example
 Content-Type: application/json
@@ -3287,18 +3281,18 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
      for the participants you listed."
 }
 
-</pre><a href="#section-7.3.3.1-2" class="pilcrow">¶</a>
+</pre><a href="#section-7.3.2.1-2" class="pilcrow">¶</a>
 </div>
-<p id="section-7.3.3.1-3">The <code>clarification_response</code> value is a Markdown string. <strong>TODO:</strong> Define recommended sections. After posting, the agent resumes polling with <code>GET</code>.<a href="#section-7.3.3.1-3" class="pilcrow">¶</a></p>
+<p id="section-7.3.2.1-3">The <code>clarification_response</code> value is a Markdown string. <strong>TODO:</strong> Define recommended sections. After posting, the agent resumes polling with <code>GET</code>.<a href="#section-7.3.2.1-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="updated-request">
-<section id="section-7.3.3.2">
+<section id="section-7.3.2.2">
             <h5 id="name-updated-request">
-<a href="#section-7.3.3.2" class="section-number selfRef">7.3.3.2. </a><a href="#name-updated-request" class="section-name selfRef">Updated Request</a>
+<a href="#section-7.3.2.2" class="section-number selfRef">7.3.2.2. </a><a href="#name-updated-request" class="section-name selfRef">Updated Request</a>
             </h5>
-<p id="section-7.3.3.2-1">The agent MAY obtain a new resource token from the resource (e.g., with reduced scope) and POST it to the pending URL:<a href="#section-7.3.3.2-1" class="pilcrow">¶</a></p>
-<div class="lang-http sourcecode" id="section-7.3.3.2-2">
+<p id="section-7.3.2.2-1">The agent MAY obtain a new resource token from the resource (e.g., with reduced scope) and POST it to the pending URL:<a href="#section-7.3.2.2-1" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-7.3.2.2-2">
 <pre>POST /pending/abc123 HTTP/1.1
 Host: ps.example
 Content-Type: application/json
@@ -3312,18 +3306,18 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
   "justification": "I've reduced my request to read-only access."
 }
 
-</pre><a href="#section-7.3.3.2-2" class="pilcrow">¶</a>
+</pre><a href="#section-7.3.2.2-2" class="pilcrow">¶</a>
 </div>
-<p id="section-7.3.3.2-3">The new resource token MUST have the same <code>iss</code>, <code>agent</code>, and <code>agent_jkt</code> as the original. The PS presents the updated request to the user. A <code>justification</code> is OPTIONAL but RECOMMENDED to explain the change to the user.<a href="#section-7.3.3.2-3" class="pilcrow">¶</a></p>
+<p id="section-7.3.2.2-3">The new resource token MUST have the same <code>iss</code>, <code>agent</code>, and <code>agent_jkt</code> as the original. The PS presents the updated request to the user. A <code>justification</code> is OPTIONAL but RECOMMENDED to explain the change to the user.<a href="#section-7.3.2.2-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="cancel-request">
-<section id="section-7.3.3.3">
+<section id="section-7.3.2.3">
             <h5 id="name-cancel-request">
-<a href="#section-7.3.3.3" class="section-number selfRef">7.3.3.3. </a><a href="#name-cancel-request" class="section-name selfRef">Cancel Request</a>
+<a href="#section-7.3.2.3" class="section-number selfRef">7.3.2.3. </a><a href="#name-cancel-request" class="section-name selfRef">Cancel Request</a>
             </h5>
-<p id="section-7.3.3.3-1">The agent MAY cancel the request by sending DELETE to the pending URL:<a href="#section-7.3.3.3-1" class="pilcrow">¶</a></p>
-<div class="lang-http sourcecode" id="section-7.3.3.3-2">
+<p id="section-7.3.2.3-1">The agent MAY cancel the request by sending DELETE to the pending URL:<a href="#section-7.3.2.3-1" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-7.3.2.3-2">
 <pre>DELETE /pending/abc123 HTTP/1.1
 Host: ps.example
 Signature-Input: sig=("@method" "@authority"
@@ -3331,19 +3325,19 @@ Signature-Input: sig=("@method" "@authority"
 Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
-</pre><a href="#section-7.3.3.3-2" class="pilcrow">¶</a>
+</pre><a href="#section-7.3.2.3-2" class="pilcrow">¶</a>
 </div>
-<p id="section-7.3.3.3-3">The PS terminates the consent session and informs the user that the agent withdrew its request. Subsequent requests to the pending URL return <code>410 Gone</code>.<a href="#section-7.3.3.3-3" class="pilcrow">¶</a></p>
+<p id="section-7.3.2.3-3">The PS terminates the consent session and informs the user that the agent withdrew its request. Subsequent requests to the pending URL return <code>410 Gone</code>.<a href="#section-7.3.2.3-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
 </div>
 <div id="clarification-limits">
-<section id="section-7.3.4">
+<section id="section-7.3.3">
           <h4 id="name-clarification-limits">
-<a href="#section-7.3.4" class="section-number selfRef">7.3.4. </a><a href="#name-clarification-limits" class="section-name selfRef">Clarification Limits</a>
+<a href="#section-7.3.3" class="section-number selfRef">7.3.3. </a><a href="#name-clarification-limits" class="section-name selfRef">Clarification Limits</a>
           </h4>
-<p id="section-7.3.4-1">PSes SHOULD enforce limits on clarification rounds (recommended: 5 rounds maximum). Clarification responses from agents are untrusted input and MUST be sanitized before display to the user.<a href="#section-7.3.4-1" class="pilcrow">¶</a></p>
+<p id="section-7.3.3-1">PSes SHOULD enforce limits on clarification rounds (recommended: 5 rounds maximum). Clarification responses from agents are untrusted input and MUST be sanitized before display to the user.<a href="#section-7.3.3-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -3373,7 +3367,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
               <code>parameters</code> (OPTIONAL): A JSON object containing the parameters the agent intends to pass to the action.<a href="#section-7.4.1-3.3" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-7.4.1-3.4">
-              <code>mission</code> (OPTIONAL): Mission object with <code>approver</code> and <code>s256</code> fields, binding the request to a mission. When present, the PS evaluates the request against the mission context and log history.<a href="#section-7.4.1-3.4" class="pilcrow">¶</a>
+              <code>mission</code> (OPTIONAL): Mission reference with <code>approver</code> and <code>s256</code> fields, binding the request to a mission. When present, the PS evaluates the request against the mission context and log history.<a href="#section-7.4.1-3.4" class="pilcrow">¶</a>
 </li>
           </ul>
 <div class="lang-http sourcecode" id="section-7.4.1-4">
@@ -3449,7 +3443,7 @@ Content-Type: application/json
 <p id="section-7.5.1-2"><strong>Request parameters:</strong><a href="#section-7.5.1-2" class="pilcrow">¶</a></p>
 <ul class="compact">
 <li class="compact" id="section-7.5.1-3.1">
-              <code>mission</code> (REQUIRED): Mission object with <code>approver</code> and <code>s256</code> fields.<a href="#section-7.5.1-3.1" class="pilcrow">¶</a>
+              <code>mission</code> (REQUIRED): Mission reference with <code>approver</code> and <code>s256</code> fields.<a href="#section-7.5.1-3.1" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-7.5.1-3.2">
               <code>action</code> (REQUIRED): A string identifying the action that was performed.<a href="#section-7.5.1-3.2" class="pilcrow">¶</a>
@@ -3546,7 +3540,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
               <code>summary</code> (OPTIONAL): A Markdown string summarizing what the agent accomplished (for <code>completion</code> type).<a href="#section-7.6.1-3.7" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-7.6.1-3.8">
-              <code>mission</code> (OPTIONAL): Mission object with <code>approver</code> and <code>s256</code> fields, binding the request to a mission.<a href="#section-7.6.1-3.8" class="pilcrow">¶</a>
+              <code>mission</code> (OPTIONAL): Mission reference with <code>approver</code> and <code>s256</code> fields, binding the request to a mission.<a href="#section-7.6.1-3.8" class="pilcrow">¶</a>
 </li>
           </ul>
 <p id="section-7.6.1-4"><strong>Relay interaction example:</strong><a href="#section-7.6.1-4" class="pilcrow">¶</a></p>
@@ -3607,7 +3601,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <p id="section-7.6.2-1">For <code>interaction</code> and <code>payment</code> types, the PS relays the interaction to the user and returns a deferred response <a href="#deferred-responses" class="auto internal xref">Section 13.4</a>.<a href="#section-7.6.2-1" class="pilcrow">¶</a></p>
 <p id="section-7.6.2-2">When the interaction URL is hosted by the <strong>PS itself</strong>, the PS's deferred response is authoritative for completion: the agent polls it until the user completes the interaction.<a href="#section-7.6.2-2" class="pilcrow">¶</a></p>
 <p id="section-7.6.2-3">When the interaction URL is hosted by a <strong>resource</strong> — the common case for a relayed <code>interaction</code>, such as a proxy's OAuth bootstrap page or a merchant's payment-confirmation page — the user completes the interaction at the resource, not at the PS. The agent then holds two pending URLs: the resource's original <code>Location</code> (from the resource's <code>202</code>) and the PS's relay <code>Location</code>. The <strong>resource's</strong> pending URL is authoritative for completion. The PS's relay deferred response reports only that the relay reached the user: it returns <code>status: "interacting"</code> <a href="#deferred-responses" class="auto internal xref">Section 13.4</a> once the user has engaged, and a terminal response when the PS has done all it can — the user engaged, the agent's <code>max_wait</code> window elapsed, or the PS can make no further progress. The agent MUST treat the resource's pending URL as the signal that the interaction is complete, and continues polling it after the PS relay resolves.<a href="#section-7.6.2-3" class="pilcrow">¶</a></p>
-<p id="section-7.6.2-4">If the PS has no channel available to relay an <code>interaction</code> or <code>payment</code> to the user, it returns <code>interaction_unavailable</code> <a href="#interaction-endpoint-errors" class="auto internal xref">Section 7.6.3</a>. This is the PS declining to relay this specific interaction; the agent falls back to directing the user to the <code>url</code>/<code>code</code> itself <a href="#interaction-relay" class="auto internal xref">Section 13.3.3.1</a>. It is distinct from <code>user_unreachable</code>: <code>interaction_unavailable</code> is non-terminal — the agent can still drive the interaction — whereas <code>user_unreachable</code> <a href="#token-endpoint-error-codes" class="auto internal xref">Section 13.5.3</a> is terminal, meaning no party can reach the user.<a href="#section-7.6.2-4" class="pilcrow">¶</a></p>
+<p id="section-7.6.2-4">If the PS has no channel available to relay an <code>interaction</code> or <code>payment</code> to the user, it returns <code>interaction_unavailable</code> <a href="#interaction-endpoint-errors" class="auto internal xref">Section 7.6.3</a>. This is the PS declining to relay this specific interaction; the agent falls back to directing the user to the <code>url</code>/<code>code</code> itself <a href="#interaction-relay" class="auto internal xref">Section 13.3.3.2</a>. It is distinct from <code>user_unreachable</code>: <code>interaction_unavailable</code> is non-terminal — the agent can still drive the interaction — whereas <code>user_unreachable</code> <a href="#token-endpoint-error-codes" class="auto internal xref">Section 13.5.3</a> is terminal, meaning no party can reach the user.<a href="#section-7.6.2-4" class="pilcrow">¶</a></p>
 <p id="section-7.6.2-5">For <code>question</code> type, the PS delivers the question to the user and returns the answer:<a href="#section-7.6.2-5" class="pilcrow">¶</a></p>
 <div class="lang-http sourcecode" id="section-7.6.2-6">
 <pre>HTTP/1.1 200 OK
@@ -3644,7 +3638,7 @@ Content-Type: application/json
                   <code>interaction_unavailable</code>
 </td>
                 <td class="text-left" rowspan="1" colspan="1">424</td>
-                <td class="text-left" rowspan="1" colspan="1">The PS has no channel available to relay this <code>interaction</code> or <code>payment</code> to the user. Non-terminal: the agent falls back to directing the user to the <code>url</code>/<code>code</code> itself <a href="#interaction-relay" class="auto internal xref">Section 13.3.3.1</a>. Distinct from the terminal <code>user_unreachable</code> <a href="#token-endpoint-error-codes" class="auto internal xref">Section 13.5.3</a>.</td>
+                <td class="text-left" rowspan="1" colspan="1">The PS has no channel available to relay this <code>interaction</code> or <code>payment</code> to the user. Non-terminal: the agent falls back to directing the user to the <code>url</code>/<code>code</code> itself <a href="#interaction-relay" class="auto internal xref">Section 13.3.3.2</a>. Distinct from the terminal <code>user_unreachable</code> <a href="#token-endpoint-error-codes" class="auto internal xref">Section 13.5.3</a>.</td>
               </tr>
             </tbody>
           </table>
@@ -3670,7 +3664,7 @@ Content-Type: application/json
 <a href="#section-8" class="section-number selfRef">8. </a><a href="#name-mission" class="section-name selfRef">Mission</a>
       </h2>
 <p id="section-8-1">Missions are OPTIONAL. The protocol operates in all modes without missions. When used, missions provide scoped authorization contexts that guide an agent's work across multiple resource accesses — enabling scope pre-approval, reduced consent fatigue, and centralized audit. A mission is a natural-language description of what the agent intends to accomplish, proposed by the agent and approved by the PS. The PS uses the mission to evaluate every subsequent request in context — it is the only party with the mission content, the user relationship, and the full history of the agent's actions. Once approved, the mission's <code>s256</code> identifier is included in subsequent resource interactions via the <code>AAuth-Mission</code> header.<a href="#section-8-1" class="pilcrow">¶</a></p>
-<div id="mission-creation-1">
+<div id="mission-creation">
 <section id="section-8.1">
         <h3 id="name-mission-creation-2">
 <a href="#section-8.1" class="section-number selfRef">8.1. </a><a href="#name-mission-creation-2" class="section-name selfRef">Mission Creation</a>
@@ -3766,7 +3760,7 @@ AAuth-Mission: approver="https://ps.example";
             <code>capabilities</code>: Array of capability strings (e.g., <code>interaction</code>, <code>payment</code>) that the PS can provide on behalf of the user for this session. The PS determines these based on whether it can reach the specific user — for example, via push notification, email, or an active session. The agent unions these with its own capabilities when constructing the <code>AAuth-Capabilities</code> request header <a href="#aauth-capabilities" class="auto internal xref">Section 13.1</a>.<a href="#section-8.2-6.2" class="pilcrow">¶</a>
 </li>
         </ul>
-<p id="section-8.2-7">The <code>s256</code> in the <code>AAuth-Mission</code> header is the base64url-encoded SHA-256 hash of the response body bytes. The agent verifies the hash by computing SHA-256 over the exact response body bytes. The agent MUST store the mission body bytes exactly as received — no re-serialization.<a href="#section-8.2-7" class="pilcrow">¶</a></p>
+<p id="section-8.2-7">The response body — the mission blob — is the mission JSON that <code>s256</code> hashes everywhere it appears (the <code>AAuth-Mission</code> header and the <code>mission</code> reference in resource and auth tokens). The <code>s256</code> is the base64url-encoded SHA-256 hash of the response body bytes. The agent verifies the hash by computing SHA-256 over the exact response body bytes, and MUST store those bytes exactly as received — no re-serialization.<a href="#section-8.2-7" class="pilcrow">¶</a></p>
 <p id="section-8.2-8">The approved description MAY differ from the proposal — the PS or user may refine, constrain, or expand the mission during review. The approved tools MAY be a subset of the proposed tools. The agent MUST use the <code>approver</code> and <code>s256</code> from the <code>AAuth-Mission</code> header in all subsequent <code>AAuth-Mission</code> request headers.<a href="#section-8.2-8" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -3867,7 +3861,7 @@ Content-Type: application/json
             <code>s256</code>: The base64url-encoded SHA-256 hash of the approved mission JSON<a href="#section-8.7-4.2" class="pilcrow">¶</a>
 </li>
         </ul>
-<p id="section-8.7-5">When a mission-aware resource receives a request with the <code>AAuth-Mission</code> header, it includes the mission object (<code>approver</code> and <code>s256</code>) in the resource token it issues. When a resource does not support missions, it ignores the header.<a href="#section-8.7-5" class="pilcrow">¶</a></p>
+<p id="section-8.7-5">When a mission-aware resource receives a request with the <code>AAuth-Mission</code> header, it includes the mission reference (<code>approver</code> and <code>s256</code>) in the resource token it issues. When a resource does not support missions, it ignores the header.<a href="#section-8.7-5" class="pilcrow">¶</a></p>
 <p id="section-8.7-6">Agents operating in a mission context MUST include the <code>AAuth-Mission</code> header on requests to resources that do not include an auth token containing a <code>mission</code> claim.<a href="#section-8.7-6" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -4188,7 +4182,7 @@ Content-Type: application/json
 - <code>scope</code>: Authorized scopes, as a space-separated string of scope values consistent with <span>[<a href="#RFC9068" class="cite xref">RFC9068</a>]</span> Section 2.2.3<a href="#section-9.4.1-4" class="pilcrow">¶</a></p>
 <p id="section-9.4.1-5">At least one of <code>sub</code> or <code>scope</code> MUST be present.<a href="#section-9.4.1-5" class="pilcrow">¶</a></p>
 <p id="section-9.4.1-6">Optional payload claims:
-- <code>mission</code>: Mission object. Present when the auth token was issued in the context of a mission. Contains:
+- <code>mission</code>: Mission reference. Present when the auth token was issued in the context of a mission. Contains:
   - <code>approver</code>: HTTPS URL of the entity that approved the mission
   - <code>s256</code>: SHA-256 hash of the approved mission JSON (base64url)
 - <code>tenant</code>: Tenant identifier per OpenID Connect Enterprise Extensions 1.0 <span>[<a href="#OpenID.Enterprise" class="cite xref">OpenID.Enterprise</a>]</span>. When present, <code>(iss, tenant, sub)</code> identifies a user within an organization, and <code>(iss, tenant)</code> identifies the organization itself.<a href="#section-9.4.1-6" class="pilcrow">¶</a></p>
@@ -4663,8 +4657,8 @@ Content-Type: application/json
         <h3 id="name-requirement-responses">
 <a href="#section-13.3" class="section-number selfRef">13.3. </a><a href="#name-requirement-responses" class="section-name selfRef">Requirement Responses</a>
         </h3>
-<p id="section-13.3-1">Servers use the <code>AAuth-Requirement</code> response header to indicate protocol-level requirements to agents. The header MAY be sent with <code>401 Unauthorized</code> or <code>202 Accepted</code> responses. A <code>401</code> response indicates that authorization is required. A <code>202</code> response indicates that the request is pending and additional action is required — either user interaction (<code>requirement=interaction</code>) or third-party approval (<code>requirement=approval</code>).<a href="#section-13.3-1" class="pilcrow">¶</a></p>
-<p id="section-13.3-2"><code>AAuth-Requirement</code> and <code>WWW-Authenticate</code> are independent header fields; a response MAY include both. A client that understands AAuth processes <code>AAuth-Requirement</code>; a legacy client processes <code>WWW-Authenticate</code>. Neither header's presence invalidates the other.<a href="#section-13.3-2" class="pilcrow">¶</a></p>
+<p id="section-13.3-1">Servers use the <code>AAuth-Requirement</code> response header to indicate protocol-level requirements to agents. The header MAY be sent with <code>401 Unauthorized</code> or <code>202 Accepted</code> responses. A <code>401</code> response indicates that authorization is required. A <code>202</code> response indicates that the request is pending and additional action is required — user interaction (<code>requirement=interaction</code>), third-party approval (<code>requirement=approval</code>), a clarification answer (<code>requirement=clarification</code>), or identity claims (<code>requirement=claims</code>).<a href="#section-13.3-1" class="pilcrow">¶</a></p>
+<p id="section-13.3-2"><code>AAuth-Requirement</code> and <code>WWW-Authenticate</code> are independent header fields; a response MAY include both. A client that understands AAuth processes <code>AAuth-Requirement</code>; a legacy client processes <code>WWW-Authenticate</code>. Neither header's presence invalidates the other. AAuth never conveys its own requirements via <code>WWW-Authenticate</code>; a resource's existing <code>WWW-Authenticate</code> challenges (e.g., <code>Bearer</code>, <code>Payment</code>) therefore remain fully available alongside <code>AAuth-Requirement</code>.<a href="#section-13.3-2" class="pilcrow">¶</a></p>
 <p id="section-13.3-3">The header MAY also be sent with <code>402 Payment Required</code> when a server requires both authorization and payment. The <code>AAuth-Requirement</code> conveys the authorization requirement; the payment requirement is conveyed by a separate mechanism such as x402 <span>[<a href="#x402" class="cite xref">x402</a>]</span> or the Machine Payment Protocol (MPP) (<span>[<a href="#I-D.ryan-httpauth-payment" class="cite xref">I-D.ryan-httpauth-payment</a>]</span>).<a href="#section-13.3-3" class="pilcrow">¶</a></p>
 <div id="aauth-requirement-header-structure">
 <section id="section-13.3.1">
@@ -4805,7 +4799,7 @@ Retry-After: 0
               <code>url</code> (String): The interaction URL where the user completes the required action. MUST use the <code>https</code> scheme and MUST NOT contain query or fragment components.<a href="#section-13.3.3-4.1" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.3.3-4.2">
-              <code>code</code> (String): An interaction code that links the agent's pending request to the user's session at the interaction URL.<a href="#section-13.3.3-4.2" class="pilcrow">¶</a>
+              <code>code</code> (String): An interaction code that links the agent's pending request to the user's session at the interaction URL. Generated and compared per <a href="#interaction-code-format" class="auto internal xref">Section 13.3.3.1</a>.<a href="#section-13.3.3-4.2" class="pilcrow">¶</a>
 </li>
           </ul>
 <p id="section-13.3.3-5">The response MUST also include:<a href="#section-13.3.3-5" class="pilcrow">¶</a></p>
@@ -4817,33 +4811,48 @@ Retry-After: 0
               <code>Retry-After</code>: Recommended polling interval in seconds.<a href="#section-13.3.3-6.2" class="pilcrow">¶</a>
 </li>
           </ul>
-<div id="interaction-relay">
+<div id="interaction-code-format">
 <section id="section-13.3.3.1">
-            <h5 id="name-relaying-through-the-person">
-<a href="#section-13.3.3.1" class="section-number selfRef">13.3.3.1. </a><a href="#name-relaying-through-the-person" class="section-name selfRef">Relaying Through the Person Server</a>
+            <h5 id="name-interaction-code-format">
+<a href="#section-13.3.3.1" class="section-number selfRef">13.3.3.1. </a><a href="#name-interaction-code-format" class="section-name selfRef">Interaction Code Format</a>
             </h5>
-<p id="section-13.3.3.1-1">When the agent has a PS, it SHOULD relay the interaction to the PS's <code>interaction_endpoint</code> <a href="#interaction-endpoint" class="auto internal xref">Section 7.6</a> before directing the user itself. The PS may have a lower-friction channel to the user — an active web session, a registered mobile app — than the agent opening a browser or rendering a QR code.<a href="#section-13.3.3.1-1" class="pilcrow">¶</a></p>
-<p id="section-13.3.3.1-2">To relay, the agent POSTs <code>{ "type": "interaction", "url": "...", "code": "..." }</code> to the PS's <code>interaction_endpoint</code> <a href="#interaction-endpoint" class="auto internal xref">Section 7.6</a>. The PS attempts to reach the user through its own channels and responds:<a href="#section-13.3.3.1-2" class="pilcrow">¶</a></p>
+<p id="section-13.3.3.1-1">The <code>code</code> is a Structured Field String (<span>[<a href="#RFC8941" class="cite xref">RFC8941</a>]</span>, Section 3.3.3). The user reads it out of band — the agent displays it (or renders it in a QR code) and the user visually compares it against the code shown on the interaction page — so it MUST be both unguessable and unambiguous to a human. Servers and agents MUST follow these rules.<a href="#section-13.3.3.1-1" class="pilcrow">¶</a></p>
+<p id="section-13.3.3.1-2"><strong>Alphabet.</strong> The code MUST be generated from Crockford base32 (<span>[<a href="#Crockford.Base32" class="cite xref">Crockford.Base32</a>]</span>) — the symbol set <code>0123456789ABCDEFGHJKMNPQRSTVWXYZ</code>, which omits the visually ambiguous letters <code>I</code>, <code>L</code>, <code>O</code>, and <code>U</code>. Every symbol is URL-safe, so the code requires no escaping when appended as <code>{url}?code={code}</code>. Servers MUST NOT emit codes containing characters outside this set (other than the optional grouping hyphen below).<a href="#section-13.3.3.1-2" class="pilcrow">¶</a></p>
+<p id="section-13.3.3.1-3"><strong>Entropy and length.</strong> A code MUST carry at least 40 bits of entropy — at least 8 Crockford base32 symbols, drawn from a cryptographically secure random source. Servers MAY use longer codes for higher-value interactions.<a href="#section-13.3.3.1-3" class="pilcrow">¶</a></p>
+<p id="section-13.3.3.1-4"><strong>Hyphens.</strong> A server MAY insert hyphen (<code>-</code>) characters into the displayed code purely for visual grouping (for example, <code>A1B2-C3D4</code>). The hyphen is presentational only: it carries no entropy and is not part of the code's value. Before comparison, both the server and any party validating the code MUST strip all hyphens.<a href="#section-13.3.3.1-4" class="pilcrow">¶</a></p>
+<p id="section-13.3.3.1-5"><strong>Case.</strong> Comparison MUST be case-insensitive. A server MUST accept the code regardless of the case the user enters, and on input MUST fold the Crockford decode aliases (<code>I</code>/<code>L</code> → <code>1</code>, <code>O</code> → <code>0</code>) before comparison so that a user who transcribes an ambiguous glyph still matches.<a href="#section-13.3.3.1-5" class="pilcrow">¶</a></p>
+<p id="section-13.3.3.1-6"><strong>Single use.</strong> A code MUST be single-use. Once the user arrives at the interaction URL with a valid code and the code is consumed, the server MUST reject any later presentation of the same code, returning <code>invalid_code</code> <a href="#polling-error-codes" class="auto internal xref">Section 13.5.4</a>.<a href="#section-13.3.3.1-6" class="pilcrow">¶</a></p>
+<p id="section-13.3.3.1-7"><strong>Rate-limiting.</strong> Because the code is the only secret guarding the interaction URL, the server MUST rate-limit code-validation attempts at the interaction URL. After a small number of failed attempts the server MUST treat the pending interaction as terminally failed and return <code>invalid_code</code> <a href="#polling-error-codes" class="auto internal xref">Section 13.5.4</a> on subsequent attempts, bounding the brute-force window to far fewer guesses than the code's entropy would otherwise allow.<a href="#section-13.3.3.1-7" class="pilcrow">¶</a></p>
+<p id="section-13.3.3.1-8"><strong>Lifetime.</strong> A code MUST expire no later than the pending interaction it is bound to <a href="#deferred-responses" class="auto internal xref">Section 13.4</a>. Once the pending request has expired, presenting the code MUST fail with <code>expired</code> <a href="#polling-error-codes" class="auto internal xref">Section 13.5.4</a>; the agent MAY initiate a fresh request to obtain a new code.<a href="#section-13.3.3.1-8" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="interaction-relay">
+<section id="section-13.3.3.2">
+            <h5 id="name-relaying-through-the-person">
+<a href="#section-13.3.3.2" class="section-number selfRef">13.3.3.2. </a><a href="#name-relaying-through-the-person" class="section-name selfRef">Relaying Through the Person Server</a>
+            </h5>
+<p id="section-13.3.3.2-1">When the agent has a PS, it SHOULD relay the interaction to the PS's <code>interaction_endpoint</code> <a href="#interaction-endpoint" class="auto internal xref">Section 7.6</a> before directing the user itself. The PS may have a lower-friction channel to the user — an active web session, a registered mobile app — than the agent opening a browser or rendering a QR code.<a href="#section-13.3.3.2-1" class="pilcrow">¶</a></p>
+<p id="section-13.3.3.2-2">To relay, the agent POSTs <code>{ "type": "interaction", "url": "...", "code": "..." }</code> to the PS's <code>interaction_endpoint</code> <a href="#interaction-endpoint" class="auto internal xref">Section 7.6</a>. The PS attempts to reach the user through its own channels and responds:<a href="#section-13.3.3.2-2" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-13.3.3.1-3.1">
-                <strong>PS can relay</strong>: it returns a <code>202</code> deferred response, and the agent polls for completion as described in <a href="#interaction-endpoint" class="auto internal xref">Section 7.6</a>.<a href="#section-13.3.3.1-3.1" class="pilcrow">¶</a>
+<li class="compact" id="section-13.3.3.2-3.1">
+                <strong>PS can relay</strong>: it returns a <code>202</code> deferred response, and the agent polls for completion as described in <a href="#interaction-endpoint" class="auto internal xref">Section 7.6</a>.<a href="#section-13.3.3.2-3.1" class="pilcrow">¶</a>
 </li>
-              <li class="compact" id="section-13.3.3.1-3.2">
-                <strong>PS cannot relay</strong>: it returns <code>interaction_unavailable</code> <a href="#interaction-endpoint-errors" class="auto internal xref">Section 7.6.3</a>. This is non-terminal — the agent falls back to directing the user itself.<a href="#section-13.3.3.1-3.2" class="pilcrow">¶</a>
+              <li class="compact" id="section-13.3.3.2-3.2">
+                <strong>PS cannot relay</strong>: it returns <code>interaction_unavailable</code> <a href="#interaction-endpoint-errors" class="auto internal xref">Section 7.6.3</a>. This is non-terminal — the agent falls back to directing the user itself.<a href="#section-13.3.3.2-3.2" class="pilcrow">¶</a>
 </li>
             </ul>
-<p id="section-13.3.3.1-4">The agent directs the user itself — using the methods below — when it has no PS, or when the PS returns <code>interaction_unavailable</code>.<a href="#section-13.3.3.1-4" class="pilcrow">¶</a></p>
-<p id="section-13.3.3.1-5">To direct the user, the agent constructs a user-facing URL by appending the code as a query parameter: <code>{url}?code={code}</code>. The agent then directs the user to this URL using one of:<a href="#section-13.3.3.1-5" class="pilcrow">¶</a></p>
+<p id="section-13.3.3.2-4">The agent directs the user itself — using the methods below — when it has no PS, or when the PS returns <code>interaction_unavailable</code>.<a href="#section-13.3.3.2-4" class="pilcrow">¶</a></p>
+<p id="section-13.3.3.2-5">To direct the user, the agent constructs a user-facing URL by appending the code as a query parameter: <code>{url}?code={code}</code>. The agent then directs the user to this URL using one of:<a href="#section-13.3.3.2-5" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-13.3.3.1-6.1">
-                <strong>Browser redirect</strong>: The agent opens the URL in the user's browser.<a href="#section-13.3.3.1-6.1" class="pilcrow">¶</a>
+<li class="compact" id="section-13.3.3.2-6.1">
+                <strong>Browser redirect</strong>: The agent opens the URL in the user's browser.<a href="#section-13.3.3.2-6.1" class="pilcrow">¶</a>
 </li>
-              <li class="compact" id="section-13.3.3.1-6.2">
-                <strong>Display code</strong>: The agent displays the <code>url</code> and <code>code</code> for the user to enter manually. The agent MAY also render the constructed URL as a QR code for the user to scan with their phone.<a href="#section-13.3.3.1-6.2" class="pilcrow">¶</a>
+              <li class="compact" id="section-13.3.3.2-6.2">
+                <strong>Display code</strong>: The agent displays the <code>url</code> and <code>code</code> for the user to enter manually. The agent MAY also render the constructed URL as a QR code for the user to scan with their phone.<a href="#section-13.3.3.2-6.2" class="pilcrow">¶</a>
 </li>
             </ul>
-<p id="section-13.3.3.1-7">After directing the user, the agent polls the <code>Location</code> URL with GET requests, respecting the <code>Retry-After</code> interval. A <code>202</code> response means the request is still pending. A non-<code>202</code> response is terminal — <code>200</code> indicates success, <code>403</code> indicates denial, and <code>408</code> indicates timeout.<a href="#section-13.3.3.1-7" class="pilcrow">¶</a></p>
-<div class="lang-ascii-art sourcecode" id="section-13.3.3.1-8">
+<p id="section-13.3.3.2-7">After directing the user, the agent polls the <code>Location</code> URL with GET requests, respecting the <code>Retry-After</code> interval. A <code>202</code> response means the request is still pending. A non-<code>202</code> response is terminal — <code>200</code> indicates success, <code>403</code> indicates denial, and <code>408</code> indicates timeout.<a href="#section-13.3.3.2-7" class="pilcrow">¶</a></p>
+<div class="lang-ascii-art sourcecode" id="section-13.3.3.2-8">
 <pre>Agent                        User                         Server
   |                            |                             |
   |  202 Accepted                                            |
@@ -4869,9 +4878,9 @@ Retry-After: 0
   |  200 OK                                                  |
   |&lt;---------------------------------------------------------|
 
-</pre><a href="#section-13.3.3.1-8" class="pilcrow">¶</a>
+</pre><a href="#section-13.3.3.2-8" class="pilcrow">¶</a>
 </div>
-<p id="section-13.3.3.1-9"><strong>Use cases:</strong> User login, consent, payment confirmation, document review, CAPTCHA, any workflow requiring human action.<a href="#section-13.3.3.1-9" class="pilcrow">¶</a></p>
+<p id="section-13.3.3.2-9"><strong>Use cases:</strong> User login, consent, payment confirmation, document review, CAPTCHA, any workflow requiring human action.<a href="#section-13.3.3.2-9" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -5884,6 +5893,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <a href="#section-15.6" class="section-number selfRef">15.6. </a><a href="#name-interaction-code-misdirecti" class="section-name selfRef">Interaction Code Misdirection</a>
         </h3>
 <p id="section-15.6-1">An attacker could attempt to trick a user into approving an authorization request by directing them to an interaction URL with the attacker's code. The PS mitigates this by displaying the full request context — the agent's identity, the resource being accessed, and the requested scope — so the user can recognize requests they did not initiate. A stronger mitigation is for the PS to interact directly with the user via a pre-established channel (push notification, email, or existing session) using <code>requirement=approval</code>, which eliminates the possibility of misdirection through attacker-supplied links entirely.<a href="#section-15.6-1" class="pilcrow">¶</a></p>
+<p id="section-15.6-2">The reverse threat — an attacker who knows a pending request's interaction URL but not its <code>code</code> and tries to guess it to drive the interaction — is bounded by the code-format rules in <a href="#interaction-code-format" class="auto internal xref">Section 13.3.3.1</a>. The minimum 40 bits of entropy make a single guess overwhelmingly likely to fail, and the mandatory rate-limit terminates the pending interaction after a few failed attempts, capping total guesses far below the entropy bound. These entropy and rate-limit requirements are the brute-force defense; they complement the user-recognition and pre-established-channel defenses above, which address misdirection of a legitimate code rather than recovery of an unknown one.<a href="#section-15.6-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="token-issuer-discovery">
@@ -6345,7 +6355,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
               <td class="text-left" rowspan="1" colspan="1">
                 <code>mission</code>
 </td>
-              <td class="text-left" rowspan="1" colspan="1">Mission object (approver, s256) in resource tokens and auth tokens</td>
+              <td class="text-left" rowspan="1" colspan="1">Mission reference (approver, s256) in resource tokens and auth tokens</td>
               <td class="text-left" rowspan="1" colspan="1">IETF</td>
               <td class="text-left" rowspan="1" colspan="1">This document</td>
             </tr>
@@ -6520,7 +6530,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
           <li class="compact" id="section-17.10-2.6">Reference: This document, <a href="#agent-identifiers" class="auto internal xref">Section 5.1</a><a href="#section-17.10-2.6" class="pilcrow">¶</a>
 </li>
         </ul>
-<p id="section-17.10-3">The <code>aauth</code> URI scheme follows the pattern established by the <code>acct</code> scheme (<span>[<a href="#RFC7565" class="cite xref">RFC7565</a>]</span>). An <code>aauth</code> URI identifies an agent instance and has the syntax <code>aauth:local@domain</code>, where <code>local</code> is the agent-specific part and <code>domain</code> is the agent provider's domain name. The <code>aauth</code> URI is used in the <code>sub</code> claim of agent tokens, the <code>agent</code> field of resource tokens and mission objects, and the <code>act.sub</code> claim of auth tokens.<a href="#section-17.10-3" class="pilcrow">¶</a></p>
+<p id="section-17.10-3">The <code>aauth</code> URI scheme follows the pattern established by the <code>acct</code> scheme (<span>[<a href="#RFC7565" class="cite xref">RFC7565</a>]</span>). An <code>aauth</code> URI identifies an agent instance and has the syntax <code>aauth:local@domain</code>, where <code>local</code> is the agent-specific part and <code>domain</code> is the agent provider's domain name. The <code>aauth</code> URI is used in the <code>sub</code> claim of agent tokens, the <code>agent</code> field of resource tokens and the mission blob, and the <code>act.sub</code> claim of auth tokens.<a href="#section-17.10-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -6582,6 +6592,14 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
             <li class="compact normal" id="section-19-2.1.2.11">Bootstrapping: pointer to the AAuth Bootstrap document; resources SHOULD publish <code>access_mode</code> and an R3 vocabulary.<a href="#section-19-2.1.2.11" class="pilcrow">¶</a>
 </li>
             <li class="compact normal" id="section-19-2.1.2.12">Diagrams: use snake_case <code>agent_token</code> and <code>auth_token</code>.<a href="#section-19-2.1.2.12" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-19-2.1.2.13">Named the <code>{approver, s256}</code> pair the "mission reference" and used it consistently for the <code>mission</code> claim in resource and auth tokens, distinct from the full mission blob.<a href="#section-19-2.1.2.13" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-19-2.1.2.14">Stated that AAuth never conveys its own requirements via <code>WWW-Authenticate</code>, leaving a resource's existing challenges available alongside <code>AAuth-Requirement</code>.<a href="#section-19-2.1.2.14" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-19-2.1.2.15">Specified the interaction <code>code</code> format: Crockford base32 alphabet, ≥40 bits of entropy, presentational hyphens stripped before case-insensitive comparison, single use, mandatory rate-limiting, and expiry bound to the pending interaction; documented the entropy/rate-limit rules as the brute-force defense in Interaction Code Misdirection and made the four <code>code</code> examples consistently hyphenated.<a href="#section-19-2.1.2.15" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-19-2.1.2.16">Editorial consistency pass: trimmed redundant mode walkthroughs, removed the empty "Clarification Flow" subsection, and added distinct anchors to the appendix flow diagrams.<a href="#section-19-2.1.2.16" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
@@ -6740,6 +6758,10 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
         <dd>
 <span class="refAuthor">MacFarlane, J.</span>, <span class="refTitle">"CommonMark Spec"</span>, <time datetime="2024" class="refDate">2024</time>, <span>&lt;<a href="https://spec.commonmark.org/0.31.2/">https://spec.commonmark.org/0.31.2/</a>&gt;</span>. </dd>
 <dd class="break"></dd>
+<dt id="Crockford.Base32">[Crockford.Base32]</dt>
+        <dd>
+<span class="refAuthor">Crockford, D.</span>, <span class="refTitle">"Base 32"</span>, <time datetime="2019" class="refDate">2019</time>, <span>&lt;<a href="https://www.crockford.com/base32.html">https://www.crockford.com/base32.html</a>&gt;</span>. </dd>
+<dd class="break"></dd>
 <dt id="I-D.hardt-aauth-bootstrap">[I-D.hardt-aauth-bootstrap]</dt>
         <dd>
 <span class="refAuthor">Hardt, D.</span>, <span class="refTitle">"AAuth Bootstrap Guidance"</span>, <time datetime="2026" class="refDate">2026</time>, <span>&lt;<a href="https://github.com/dickhardt/AAuth">https://github.com/dickhardt/AAuth</a>&gt;</span>. </dd>
@@ -6817,7 +6839,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <a href="#appendix-A" class="section-number selfRef">Appendix A. </a><a href="#name-detailed-flows" class="section-name selfRef">Detailed Flows</a>
       </h2>
 <p id="appendix-A-1">This appendix provides flow diagrams for the chaining patterns defined in the main specification, where the choreography is hard to follow from prose alone.<a href="#appendix-A-1" class="pilcrow">¶</a></p>
-<div id="four-party-call-chaining">
+<div id="flow-call-chaining">
 <section id="appendix-A.1">
         <h3 id="name-four-party-call-chaining">
 <a href="#appendix-A.1" class="section-number selfRef">A.1. </a><a href="#name-four-party-call-chaining" class="section-name selfRef">Four-Party: Call Chaining</a>
@@ -6865,7 +6887,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 </div>
 </section>
 </div>
-<div id="interaction-chaining-1">
+<div id="flow-interaction-chaining">
 <section id="appendix-A.2">
         <h3 id="name-interaction-chaining-2">
 <a href="#appendix-A.2" class="section-number selfRef">A.2. </a><a href="#name-interaction-chaining-2" class="section-name selfRef">Interaction Chaining</a>
@@ -7063,10 +7085,10 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <p id="appendix-B.3.1-1">The PS is distinct from the AS because they serve different parties with different concerns. The PS represents the agent and its user — it handles consent, identity, mission governance, and audit. The AS represents the resource — it evaluates policy and issues tokens. Combining these into a single entity would conflate the interests of the requesting party with the interests of the resource owner, which is the same conflation that makes OAuth insufficient for cross-domain agent ecosystems.<a href="#appendix-B.3.1-1" class="pilcrow">¶</a></p>
 </section>
 </div>
-<div id="why-four-adoption-modes">
+<div id="why-four-resource-access-modes">
 <section id="appendix-B.3.2">
-          <h4 id="name-why-four-adoption-modes">
-<a href="#appendix-B.3.2" class="section-number selfRef">B.3.2. </a><a href="#name-why-four-adoption-modes" class="section-name selfRef">Why Four Adoption Modes</a>
+          <h4 id="name-why-four-resource-access-mo">
+<a href="#appendix-B.3.2" class="section-number selfRef">B.3.2. </a><a href="#name-why-four-resource-access-mo" class="section-name selfRef">Why Four Resource Access Modes</a>
           </h4>
 <p id="appendix-B.3.2-1">The protocol supports identity-based, resource-managed (two-party), PS-asserted (three-party), and federated (four-party) resource access modes, with agent governance as an orthogonal layer. A resource that only verifies agent signatures can start using AAuth today without deploying a PS or AS. As the ecosystem matures, the same resource can accept identity claims from any agent's PS (three-party) and eventually deploy its own AS (four-party). Each mode is self-contained and useful — not a stepping stone to the "real" protocol. Agent governance (missions plus permission, audit, and interaction relay) works independently of resource access modes.<a href="#appendix-B.3.2-1" class="pilcrow">¶</a></p>
 </section>
