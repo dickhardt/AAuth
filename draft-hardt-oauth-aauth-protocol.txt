@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                             9 June 2026
-Expires: 11 December 2026
+Intended status: Standards Track                            14 June 2026
+Expires: 16 December 2026
 
 
                              AAuth Protocol
@@ -50,7 +50,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 11 December 2026.
+   This Internet-Draft will expire on 16 December 2026.
 
 Copyright Notice
 
@@ -3862,7 +3862,7 @@ Initial request (with Prefer: wait=N)
    {
      "issuer": "https://agent.example",
      "jwks_uri": "https://agent.example/.well-known/jwks.json",
-     "client_name": "Example AI Assistant",
+     "name": "Example AI Assistant",
      "description": "**Example AI Assistant** drafts and sends email on your behalf.",
      "logo_uri": "https://agent.example/logo.png",
      "logo_dark_uri": "https://agent.example/logo-dark.png",
@@ -3878,7 +3878,7 @@ Initial request (with Prefer: wait=N)
       agent identifiers it issues).  This is the value placed in the iss
       claim of agent tokens.
    *  jwks_uri (REQUIRED): URL to the agent provider's JSON Web Key Set
-   *  client_name (OPTIONAL): Human-readable agent name (per [RFC7591])
+   *  name (OPTIONAL): Human-readable agent name
    *  description (OPTIONAL): A Markdown string describing the agent or
       its provider, for display to users (for example, at a PS consent
       screen or connected-agents dashboard).  Implementations MUST
@@ -3899,7 +3899,12 @@ Initial request (with Prefer: wait=N)
 
    {
      "issuer": "https://ps.example",
+     "name": "Example Person Server",
      "description": "**Example Person Server** — manage which agents act for you and review what they do.",
+     "logo_uri": "https://ps.example/logo.png",
+     "logo_dark_uri": "https://ps.example/logo-dark.png",
+     "tos_uri": "https://ps.example/tos",
+     "policy_uri": "https://ps.example/privacy",
      "token_endpoint": "https://ps.example/token",
      "mission_endpoint": "https://ps.example/mission",
      "permission_endpoint": "https://ps.example/permission",
@@ -3914,9 +3919,15 @@ Initial request (with Prefer: wait=N)
    *  issuer (REQUIRED): The PS's HTTPS URL.  MUST match the URL used to
       fetch the metadata document.  This is the value placed in the iss
       claim of JWTs issued by the PS.
+   *  name (OPTIONAL): Human-readable person server name
    *  description (OPTIONAL): A Markdown string describing the person
       server, for display to users.  Implementations MUST sanitize the
       Markdown before rendering to users.
+   *  logo_uri (OPTIONAL): URL to person server logo
+   *  logo_dark_uri (OPTIONAL): URL to person server logo for dark
+      backgrounds
+   *  tos_uri (OPTIONAL): URL to terms of service
+   *  policy_uri (OPTIONAL): URL to privacy policy
    *  token_endpoint (REQUIRED): URL where agents send token requests
    *  mission_endpoint (OPTIONAL): URL for mission lifecycle operations
       (proposal, status).  Present when the PS supports missions.
@@ -3944,7 +3955,12 @@ Initial request (with Prefer: wait=N)
 
    {
      "issuer": "https://as.resource.example",
+     "name": "Example Access Server",
      "description": "**Example Access Server** — issues access for the Example resource.",
+     "logo_uri": "https://as.resource.example/logo.png",
+     "logo_dark_uri": "https://as.resource.example/logo-dark.png",
+     "tos_uri": "https://as.resource.example/tos",
+     "policy_uri": "https://as.resource.example/privacy",
      "token_endpoint": "https://as.resource.example/token",
      "jwks_uri": "https://as.resource.example/.well-known/jwks.json"
    }
@@ -3954,9 +3970,15 @@ Initial request (with Prefer: wait=N)
    *  issuer (REQUIRED): The AS's HTTPS URL.  MUST match the URL used to
       fetch the metadata document.  This is the value placed in the iss
       claim of auth tokens.
+   *  name (OPTIONAL): Human-readable access server name
    *  description (OPTIONAL): A Markdown string describing the access
       server, for display to users.  Implementations MUST sanitize the
       Markdown before rendering to users.
+   *  logo_uri (OPTIONAL): URL to access server logo
+   *  logo_dark_uri (OPTIONAL): URL to access server logo for dark
+      backgrounds
+   *  tos_uri (OPTIONAL): URL to terms of service
+   *  policy_uri (OPTIONAL): URL to privacy policy
    *  token_endpoint (REQUIRED): URL where PSes send token requests
    *  revocation_endpoint (OPTIONAL): URL where authorized parties can
       revoke tokens Section 13.6
@@ -3970,10 +3992,13 @@ Initial request (with Prefer: wait=N)
      "issuer": "https://resource.example",
      "jwks_uri": "https://resource.example/.well-known/jwks.json",
      "access_mode": "auth-token",
-     "client_name": "Example Data Service",
+     "name": "Example Data Service",
      "description": "**Example Data Service** stores and serves your documents.",
      "logo_uri": "https://resource.example/logo.png",
      "logo_dark_uri": "https://resource.example/logo-dark.png",
+     "documentation_uri": "https://resource.example/docs",
+     "tos_uri": "https://resource.example/tos",
+     "policy_uri": "https://resource.example/privacy",
      "authorization_endpoint": "https://resource.example/authorize",
      "scope_descriptions": {
        "data.read": "Read access to your data and documents",
@@ -4006,15 +4031,18 @@ Initial request (with Prefer: wait=N)
       endpoints.  An agent MAY use access_mode to skip resources its
       setup cannot satisfy — for example, a PS-less agent (no ps claim
       in its agent token) cannot complete the auth-token flow.
-   *  client_name (OPTIONAL): Human-readable resource name (per
-      [RFC7591])
+   *  name (OPTIONAL): Human-readable resource name
    *  description (OPTIONAL): A Markdown string describing the resource,
       for display to users (for example, at a consent screen).
       Implementations MUST sanitize the Markdown before rendering to
       users.
-   *  logo_uri (OPTIONAL): URL to resource logo (per [RFC7591])
+   *  logo_uri (OPTIONAL): URL to resource logo
    *  logo_dark_uri (OPTIONAL): URL to resource logo for dark
       backgrounds
+   *  documentation_uri (OPTIONAL): URL with developer documentation for
+      the resource
+   *  tos_uri (OPTIONAL): URL to terms of service
+   *  policy_uri (OPTIONAL): URL to privacy policy
    *  authorization_endpoint (OPTIONAL): URL where agents request
       authorization Section 6.1.  When absent, the resource issues
       resource tokens and interaction requirements via 401 responses

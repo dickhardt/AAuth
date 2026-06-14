@@ -1051,7 +1051,7 @@ svg {
 </tr></thead>
 <tfoot><tr>
 <td class="left">Hardt</td>
-<td class="center">Expires 11 December 2026</td>
+<td class="center">Expires 16 December 2026</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1064,12 +1064,12 @@ svg {
 <dd class="internet-draft">draft-hardt-oauth-aauth-protocol-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-06-09" class="published">9 June 2026</time>
+<time datetime="2026-06-14" class="published">14 June 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Standards Track</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2026-12-11">11 December 2026</time></dd>
+<dd class="expires"><time datetime="2026-12-16">16 December 2026</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1112,7 +1112,7 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 11 December 2026.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 16 December 2026.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -5440,7 +5440,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <pre>{
   "issuer": "https://agent.example",
   "jwks_uri": "https://agent.example/.well-known/jwks.json",
-  "client_name": "Example AI Assistant",
+  "name": "Example AI Assistant",
   "description": "**Example AI Assistant** drafts and sends email on your behalf.",
   "logo_uri": "https://agent.example/logo.png",
   "logo_dark_uri": "https://agent.example/logo-dark.png",
@@ -5461,7 +5461,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
               <code>jwks_uri</code> (REQUIRED): URL to the agent provider's JSON Web Key Set<a href="#section-13.10.1-4.2" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.1-4.3">
-              <code>client_name</code> (OPTIONAL): Human-readable agent name (per <span>[<a href="#RFC7591" class="cite xref">RFC7591</a>]</span>)<a href="#section-13.10.1-4.3" class="pilcrow">¶</a>
+              <code>name</code> (OPTIONAL): Human-readable agent name<a href="#section-13.10.1-4.3" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.1-4.4">
               <code>description</code> (OPTIONAL): A Markdown string describing the agent or its provider, for display to users (for example, at a PS consent screen or connected-agents dashboard). Implementations MUST sanitize the Markdown before rendering to users.<a href="#section-13.10.1-4.4" class="pilcrow">¶</a>
@@ -5499,7 +5499,12 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <div class="lang-json sourcecode" id="section-13.10.2-2">
 <pre>{
   "issuer": "https://ps.example",
+  "name": "Example Person Server",
   "description": "**Example Person Server** — manage which agents act for you and review what they do.",
+  "logo_uri": "https://ps.example/logo.png",
+  "logo_dark_uri": "https://ps.example/logo-dark.png",
+  "tos_uri": "https://ps.example/tos",
+  "policy_uri": "https://ps.example/privacy",
   "token_endpoint": "https://ps.example/token",
   "mission_endpoint": "https://ps.example/mission",
   "permission_endpoint": "https://ps.example/permission",
@@ -5517,37 +5522,52 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
               <code>issuer</code> (REQUIRED): The PS's HTTPS URL. MUST match the URL used to fetch the metadata document. This is the value placed in the <code>iss</code> claim of JWTs issued by the PS.<a href="#section-13.10.2-4.1" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.2-4.2">
-              <code>description</code> (OPTIONAL): A Markdown string describing the person server, for display to users. Implementations MUST sanitize the Markdown before rendering to users.<a href="#section-13.10.2-4.2" class="pilcrow">¶</a>
+              <code>name</code> (OPTIONAL): Human-readable person server name<a href="#section-13.10.2-4.2" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.2-4.3">
-              <code>token_endpoint</code> (REQUIRED): URL where agents send token requests<a href="#section-13.10.2-4.3" class="pilcrow">¶</a>
+              <code>description</code> (OPTIONAL): A Markdown string describing the person server, for display to users. Implementations MUST sanitize the Markdown before rendering to users.<a href="#section-13.10.2-4.3" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.2-4.4">
-              <code>mission_endpoint</code> (OPTIONAL): URL for mission lifecycle operations (proposal, status). Present when the PS supports missions.<a href="#section-13.10.2-4.4" class="pilcrow">¶</a>
+              <code>logo_uri</code> (OPTIONAL): URL to person server logo<a href="#section-13.10.2-4.4" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.2-4.5">
-              <code>permission_endpoint</code> (OPTIONAL): URL where agents request permission for actions not governed by a remote resource <a href="#permission-endpoint" class="auto internal xref">Section 7.4</a><a href="#section-13.10.2-4.5" class="pilcrow">¶</a>
+              <code>logo_dark_uri</code> (OPTIONAL): URL to person server logo for dark backgrounds<a href="#section-13.10.2-4.5" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.2-4.6">
-              <code>audit_endpoint</code> (OPTIONAL): URL where agents log actions performed <a href="#audit-endpoint" class="auto internal xref">Section 7.5</a><a href="#section-13.10.2-4.6" class="pilcrow">¶</a>
+              <code>tos_uri</code> (OPTIONAL): URL to terms of service<a href="#section-13.10.2-4.6" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.2-4.7">
-              <code>interaction_endpoint</code> (OPTIONAL): URL where agents relay interactions to the user through the PS <a href="#interaction-endpoint" class="auto internal xref">Section 7.6</a><a href="#section-13.10.2-4.7" class="pilcrow">¶</a>
+              <code>policy_uri</code> (OPTIONAL): URL to privacy policy<a href="#section-13.10.2-4.7" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.2-4.8">
-              <code>mission_control_endpoint</code> (OPTIONAL): URL for mission administrative interface<a href="#section-13.10.2-4.8" class="pilcrow">¶</a>
+              <code>token_endpoint</code> (REQUIRED): URL where agents send token requests<a href="#section-13.10.2-4.8" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.2-4.9">
-              <code>revocation_endpoint</code> (OPTIONAL): URL where authorized parties can revoke tokens <a href="#token-revocation" class="auto internal xref">Section 13.6</a><a href="#section-13.10.2-4.9" class="pilcrow">¶</a>
+              <code>mission_endpoint</code> (OPTIONAL): URL for mission lifecycle operations (proposal, status). Present when the PS supports missions.<a href="#section-13.10.2-4.9" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.2-4.10">
-              <code>jwks_uri</code> (REQUIRED): URL to the PS's JSON Web Key Set<a href="#section-13.10.2-4.10" class="pilcrow">¶</a>
+              <code>permission_endpoint</code> (OPTIONAL): URL where agents request permission for actions not governed by a remote resource <a href="#permission-endpoint" class="auto internal xref">Section 7.4</a><a href="#section-13.10.2-4.10" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.2-4.11">
-              <code>scopes_supported</code> (RECOMMENDED): Array of scope values the PS supports, including identity scopes (e.g., <code>openid</code>, <code>profile</code>, <code>email</code>) and enterprise scopes (e.g., <code>tenant</code>, <code>groups</code>, <code>roles</code>)<a href="#section-13.10.2-4.11" class="pilcrow">¶</a>
+              <code>audit_endpoint</code> (OPTIONAL): URL where agents log actions performed <a href="#audit-endpoint" class="auto internal xref">Section 7.5</a><a href="#section-13.10.2-4.11" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.2-4.12">
-              <code>claims_supported</code> (RECOMMENDED): Array of identity claim names the PS can provide (e.g., <code>sub</code>, <code>email</code>, <code>name</code>, <code>tenant</code>)<a href="#section-13.10.2-4.12" class="pilcrow">¶</a>
+              <code>interaction_endpoint</code> (OPTIONAL): URL where agents relay interactions to the user through the PS <a href="#interaction-endpoint" class="auto internal xref">Section 7.6</a><a href="#section-13.10.2-4.12" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-13.10.2-4.13">
+              <code>mission_control_endpoint</code> (OPTIONAL): URL for mission administrative interface<a href="#section-13.10.2-4.13" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-13.10.2-4.14">
+              <code>revocation_endpoint</code> (OPTIONAL): URL where authorized parties can revoke tokens <a href="#token-revocation" class="auto internal xref">Section 13.6</a><a href="#section-13.10.2-4.14" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-13.10.2-4.15">
+              <code>jwks_uri</code> (REQUIRED): URL to the PS's JSON Web Key Set<a href="#section-13.10.2-4.15" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-13.10.2-4.16">
+              <code>scopes_supported</code> (RECOMMENDED): Array of scope values the PS supports, including identity scopes (e.g., <code>openid</code>, <code>profile</code>, <code>email</code>) and enterprise scopes (e.g., <code>tenant</code>, <code>groups</code>, <code>roles</code>)<a href="#section-13.10.2-4.16" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-13.10.2-4.17">
+              <code>claims_supported</code> (RECOMMENDED): Array of identity claim names the PS can provide (e.g., <code>sub</code>, <code>email</code>, <code>name</code>, <code>tenant</code>)<a href="#section-13.10.2-4.17" class="pilcrow">¶</a>
 </li>
           </ul>
 </section>
@@ -5561,7 +5581,12 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <div class="lang-json sourcecode" id="section-13.10.3-2">
 <pre>{
   "issuer": "https://as.resource.example",
+  "name": "Example Access Server",
   "description": "**Example Access Server** — issues access for the Example resource.",
+  "logo_uri": "https://as.resource.example/logo.png",
+  "logo_dark_uri": "https://as.resource.example/logo-dark.png",
+  "tos_uri": "https://as.resource.example/tos",
+  "policy_uri": "https://as.resource.example/privacy",
   "token_endpoint": "https://as.resource.example/token",
   "jwks_uri": "https://as.resource.example/.well-known/jwks.json"
 }
@@ -5574,16 +5599,31 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
               <code>issuer</code> (REQUIRED): The AS's HTTPS URL. MUST match the URL used to fetch the metadata document. This is the value placed in the <code>iss</code> claim of auth tokens.<a href="#section-13.10.3-4.1" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.3-4.2">
-              <code>description</code> (OPTIONAL): A Markdown string describing the access server, for display to users. Implementations MUST sanitize the Markdown before rendering to users.<a href="#section-13.10.3-4.2" class="pilcrow">¶</a>
+              <code>name</code> (OPTIONAL): Human-readable access server name<a href="#section-13.10.3-4.2" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.3-4.3">
-              <code>token_endpoint</code> (REQUIRED): URL where PSes send token requests<a href="#section-13.10.3-4.3" class="pilcrow">¶</a>
+              <code>description</code> (OPTIONAL): A Markdown string describing the access server, for display to users. Implementations MUST sanitize the Markdown before rendering to users.<a href="#section-13.10.3-4.3" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.3-4.4">
-              <code>revocation_endpoint</code> (OPTIONAL): URL where authorized parties can revoke tokens <a href="#token-revocation" class="auto internal xref">Section 13.6</a><a href="#section-13.10.3-4.4" class="pilcrow">¶</a>
+              <code>logo_uri</code> (OPTIONAL): URL to access server logo<a href="#section-13.10.3-4.4" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.3-4.5">
-              <code>jwks_uri</code> (REQUIRED): URL to the AS's JSON Web Key Set<a href="#section-13.10.3-4.5" class="pilcrow">¶</a>
+              <code>logo_dark_uri</code> (OPTIONAL): URL to access server logo for dark backgrounds<a href="#section-13.10.3-4.5" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-13.10.3-4.6">
+              <code>tos_uri</code> (OPTIONAL): URL to terms of service<a href="#section-13.10.3-4.6" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-13.10.3-4.7">
+              <code>policy_uri</code> (OPTIONAL): URL to privacy policy<a href="#section-13.10.3-4.7" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-13.10.3-4.8">
+              <code>token_endpoint</code> (REQUIRED): URL where PSes send token requests<a href="#section-13.10.3-4.8" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-13.10.3-4.9">
+              <code>revocation_endpoint</code> (OPTIONAL): URL where authorized parties can revoke tokens <a href="#token-revocation" class="auto internal xref">Section 13.6</a><a href="#section-13.10.3-4.9" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-13.10.3-4.10">
+              <code>jwks_uri</code> (REQUIRED): URL to the AS's JSON Web Key Set<a href="#section-13.10.3-4.10" class="pilcrow">¶</a>
 </li>
           </ul>
 </section>
@@ -5599,10 +5639,13 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
   "issuer": "https://resource.example",
   "jwks_uri": "https://resource.example/.well-known/jwks.json",
   "access_mode": "auth-token",
-  "client_name": "Example Data Service",
+  "name": "Example Data Service",
   "description": "**Example Data Service** stores and serves your documents.",
   "logo_uri": "https://resource.example/logo.png",
   "logo_dark_uri": "https://resource.example/logo-dark.png",
+  "documentation_uri": "https://resource.example/docs",
+  "tos_uri": "https://resource.example/tos",
+  "policy_uri": "https://resource.example/privacy",
   "authorization_endpoint": "https://resource.example/authorize",
   "scope_descriptions": {
     "data.read": "Read access to your data and documents",
@@ -5626,34 +5669,43 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
               <code>access_mode</code> (OPTIONAL): The credential flow the resource expects, letting an agent plan its first call without a speculative challenge. One of <code>agent-token</code> (identity-only — the agent signs with its agent token), <code>aauth-access-token</code> (resource-managed — the agent completes the resource's interaction/consent flow and receives an opaque token via <code>AAuth-Access</code>), or <code>auth-token</code> (the agent obtains an auth token from its PS using a resource token). Default: <code>agent-token</code>. The declaration is advisory: a resource MAY return any <code>AAuth-Requirement</code> at runtime regardless of the declared mode <a href="#requirement-responses" class="auto internal xref">Section 13.3</a>, and MAY apply different modes to different endpoints. An agent MAY use <code>access_mode</code> to skip resources its setup cannot satisfy — for example, a PS-less agent (no <code>ps</code> claim in its agent token) cannot complete the <code>auth-token</code> flow.<a href="#section-13.10.4-4.3" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.4-4.4">
-              <code>client_name</code> (OPTIONAL): Human-readable resource name (per <span>[<a href="#RFC7591" class="cite xref">RFC7591</a>]</span>)<a href="#section-13.10.4-4.4" class="pilcrow">¶</a>
+              <code>name</code> (OPTIONAL): Human-readable resource name<a href="#section-13.10.4-4.4" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.4-4.5">
               <code>description</code> (OPTIONAL): A Markdown string describing the resource, for display to users (for example, at a consent screen). Implementations MUST sanitize the Markdown before rendering to users.<a href="#section-13.10.4-4.5" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.4-4.6">
-              <code>logo_uri</code> (OPTIONAL): URL to resource logo (per <span>[<a href="#RFC7591" class="cite xref">RFC7591</a>]</span>)<a href="#section-13.10.4-4.6" class="pilcrow">¶</a>
+              <code>logo_uri</code> (OPTIONAL): URL to resource logo<a href="#section-13.10.4-4.6" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.4-4.7">
               <code>logo_dark_uri</code> (OPTIONAL): URL to resource logo for dark backgrounds<a href="#section-13.10.4-4.7" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.4-4.8">
-              <code>authorization_endpoint</code> (OPTIONAL): URL where agents request authorization <a href="#authorization-endpoint-request" class="auto internal xref">Section 6.1</a>. When absent, the resource issues resource tokens and interaction requirements via <code>401</code> responses (#requirement-auth-token, #resource-managed-auth).<a href="#section-13.10.4-4.8" class="pilcrow">¶</a>
+              <code>documentation_uri</code> (OPTIONAL): URL with developer documentation for the resource<a href="#section-13.10.4-4.8" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.4-4.9">
-              <code>login_endpoint</code> (OPTIONAL): URL where third parties can direct users to initiate authentication <a href="#third-party-login" class="auto internal xref">Section 12</a><a href="#section-13.10.4-4.9" class="pilcrow">¶</a>
+              <code>tos_uri</code> (OPTIONAL): URL to terms of service<a href="#section-13.10.4-4.9" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.4-4.10">
-              <code>scope_descriptions</code> (OPTIONAL): Object mapping scope values to Markdown strings for consent display. Scope values are resource-specific; resources that already define OAuth scopes SHOULD use the same scope values in AAuth. Identity-related scopes (e.g., <code>openid</code>, <code>profile</code>, <code>email</code>) follow <span>[<a href="#OpenID.Core" class="cite xref">OpenID.Core</a>]</span>.<a href="#section-13.10.4-4.10" class="pilcrow">¶</a>
+              <code>policy_uri</code> (OPTIONAL): URL to privacy policy<a href="#section-13.10.4-4.10" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.4-4.11">
-              <code>signature_window</code> (OPTIONAL): Integer. The signature validity window in seconds for the <code>created</code> timestamp. Default: 60. Resources serving agents with poor clock synchronization (mobile, IoT) MAY advertise a larger value. High-security resources MAY advertise a smaller value.<a href="#section-13.10.4-4.11" class="pilcrow">¶</a>
+              <code>authorization_endpoint</code> (OPTIONAL): URL where agents request authorization <a href="#authorization-endpoint-request" class="auto internal xref">Section 6.1</a>. When absent, the resource issues resource tokens and interaction requirements via <code>401</code> responses (#requirement-auth-token, #resource-managed-auth).<a href="#section-13.10.4-4.11" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.4-4.12">
-              <code>additional_signature_components</code> (OPTIONAL): Array of HTTP message component identifiers (<span>[<a href="#RFC9421" class="cite xref">RFC9421</a>]</span>) that agents MUST include in the <code>Signature-Input</code> covered components when signing requests to this resource, in addition to the base components required by the HTTP Message Signatures profile (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>)<a href="#section-13.10.4-4.12" class="pilcrow">¶</a>
+              <code>login_endpoint</code> (OPTIONAL): URL where third parties can direct users to initiate authentication <a href="#third-party-login" class="auto internal xref">Section 12</a><a href="#section-13.10.4-4.12" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.10.4-4.13">
-              <code>revocation_endpoint</code> (OPTIONAL): URL where authorized parties can revoke auth tokens for this resource <a href="#token-revocation" class="auto internal xref">Section 13.6</a><a href="#section-13.10.4-4.13" class="pilcrow">¶</a>
+              <code>scope_descriptions</code> (OPTIONAL): Object mapping scope values to Markdown strings for consent display. Scope values are resource-specific; resources that already define OAuth scopes SHOULD use the same scope values in AAuth. Identity-related scopes (e.g., <code>openid</code>, <code>profile</code>, <code>email</code>) follow <span>[<a href="#OpenID.Core" class="cite xref">OpenID.Core</a>]</span>.<a href="#section-13.10.4-4.13" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-13.10.4-4.14">
+              <code>signature_window</code> (OPTIONAL): Integer. The signature validity window in seconds for the <code>created</code> timestamp. Default: 60. Resources serving agents with poor clock synchronization (mobile, IoT) MAY advertise a larger value. High-security resources MAY advertise a smaller value.<a href="#section-13.10.4-4.14" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-13.10.4-4.15">
+              <code>additional_signature_components</code> (OPTIONAL): Array of HTTP message component identifiers (<span>[<a href="#RFC9421" class="cite xref">RFC9421</a>]</span>) that agents MUST include in the <code>Signature-Input</code> covered components when signing requests to this resource, in addition to the base components required by the HTTP Message Signatures profile (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>)<a href="#section-13.10.4-4.15" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-13.10.4-4.16">
+              <code>revocation_endpoint</code> (OPTIONAL): URL where authorized parties can revoke auth tokens for this resource <a href="#token-revocation" class="auto internal xref">Section 13.6</a><a href="#section-13.10.4-4.16" class="pilcrow">¶</a>
 </li>
           </ul>
 </section>
