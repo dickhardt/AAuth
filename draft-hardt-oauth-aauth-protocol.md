@@ -2356,7 +2356,7 @@ Published at `/.well-known/aauth-agent.json`:
 {
   "issuer": "https://agent.example",
   "jwks_uri": "https://agent.example/.well-known/jwks.json",
-  "client_name": "Example AI Assistant",
+  "name": "Example AI Assistant",
   "description": "**Example AI Assistant** drafts and sends email on your behalf.",
   "logo_uri": "https://agent.example/logo.png",
   "logo_dark_uri": "https://agent.example/logo-dark.png",
@@ -2371,7 +2371,7 @@ Fields:
 
 - `issuer` (REQUIRED): The agent provider's HTTPS URL (the `domain` in agent identifiers it issues). This is the value placed in the `iss` claim of agent tokens.
 - `jwks_uri` (REQUIRED): URL to the agent provider's JSON Web Key Set
-- `client_name` (OPTIONAL): Human-readable agent name (per [@RFC7591])
+- `name` (OPTIONAL): Human-readable agent name
 - `description` (OPTIONAL): A Markdown string describing the agent or its provider, for display to users (for example, at a PS consent screen or connected-agents dashboard). Implementations MUST sanitize the Markdown before rendering to users.
 - `logo_uri` (OPTIONAL): URL to agent logo (per [@RFC7591])
 - `logo_dark_uri` (OPTIONAL): URL to agent logo for dark backgrounds
@@ -2388,7 +2388,12 @@ Published at `/.well-known/aauth-person.json`:
 ```json
 {
   "issuer": "https://ps.example",
+  "name": "Example Person Server",
   "description": "**Example Person Server** — manage which agents act for you and review what they do.",
+  "logo_uri": "https://ps.example/logo.png",
+  "logo_dark_uri": "https://ps.example/logo-dark.png",
+  "tos_uri": "https://ps.example/tos",
+  "policy_uri": "https://ps.example/privacy",
   "token_endpoint": "https://ps.example/token",
   "mission_endpoint": "https://ps.example/mission",
   "permission_endpoint": "https://ps.example/permission",
@@ -2402,7 +2407,12 @@ Published at `/.well-known/aauth-person.json`:
 Fields:
 
 - `issuer` (REQUIRED): The PS's HTTPS URL. MUST match the URL used to fetch the metadata document. This is the value placed in the `iss` claim of JWTs issued by the PS.
+- `name` (OPTIONAL): Human-readable person server name
 - `description` (OPTIONAL): A Markdown string describing the person server, for display to users. Implementations MUST sanitize the Markdown before rendering to users.
+- `logo_uri` (OPTIONAL): URL to person server logo
+- `logo_dark_uri` (OPTIONAL): URL to person server logo for dark backgrounds
+- `tos_uri` (OPTIONAL): URL to terms of service
+- `policy_uri` (OPTIONAL): URL to privacy policy
 - `token_endpoint` (REQUIRED): URL where agents send token requests
 - `mission_endpoint` (OPTIONAL): URL for mission lifecycle operations (proposal, status). Present when the PS supports missions.
 - `permission_endpoint` (OPTIONAL): URL where agents request permission for actions not governed by a remote resource (#permission-endpoint)
@@ -2421,7 +2431,12 @@ Published at `/.well-known/aauth-access.json`:
 ```json
 {
   "issuer": "https://as.resource.example",
+  "name": "Example Access Server",
   "description": "**Example Access Server** — issues access for the Example resource.",
+  "logo_uri": "https://as.resource.example/logo.png",
+  "logo_dark_uri": "https://as.resource.example/logo-dark.png",
+  "tos_uri": "https://as.resource.example/tos",
+  "policy_uri": "https://as.resource.example/privacy",
   "token_endpoint": "https://as.resource.example/token",
   "jwks_uri": "https://as.resource.example/.well-known/jwks.json"
 }
@@ -2430,7 +2445,12 @@ Published at `/.well-known/aauth-access.json`:
 Fields:
 
 - `issuer` (REQUIRED): The AS's HTTPS URL. MUST match the URL used to fetch the metadata document. This is the value placed in the `iss` claim of auth tokens.
+- `name` (OPTIONAL): Human-readable access server name
 - `description` (OPTIONAL): A Markdown string describing the access server, for display to users. Implementations MUST sanitize the Markdown before rendering to users.
+- `logo_uri` (OPTIONAL): URL to access server logo
+- `logo_dark_uri` (OPTIONAL): URL to access server logo for dark backgrounds
+- `tos_uri` (OPTIONAL): URL to terms of service
+- `policy_uri` (OPTIONAL): URL to privacy policy
 - `token_endpoint` (REQUIRED): URL where PSes send token requests
 - `revocation_endpoint` (OPTIONAL): URL where authorized parties can revoke tokens (#token-revocation)
 - `jwks_uri` (REQUIRED): URL to the AS's JSON Web Key Set
@@ -2444,10 +2464,13 @@ Published at `/.well-known/aauth-resource.json`:
   "issuer": "https://resource.example",
   "jwks_uri": "https://resource.example/.well-known/jwks.json",
   "access_mode": "auth-token",
-  "client_name": "Example Data Service",
+  "name": "Example Data Service",
   "description": "**Example Data Service** stores and serves your documents.",
   "logo_uri": "https://resource.example/logo.png",
   "logo_dark_uri": "https://resource.example/logo-dark.png",
+  "documentation_uri": "https://resource.example/docs",
+  "tos_uri": "https://resource.example/tos",
+  "policy_uri": "https://resource.example/privacy",
   "authorization_endpoint": "https://resource.example/authorize",
   "scope_descriptions": {
     "data.read": "Read access to your data and documents",
@@ -2463,10 +2486,13 @@ Fields:
 - `issuer` (REQUIRED): The resource's HTTPS URL. This is the value placed in the `iss` claim of resource tokens.
 - `jwks_uri` (REQUIRED when the resource issues resource tokens or makes signed calls): URL to the resource's JSON Web Key Set. A resource that only verifies agent signatures for identity-based access — issuing no resource tokens and making no signed requests of its own (e.g., as an agent in multi-hop, #multi-hop) — has no keys to publish and MAY omit `jwks_uri`.
 - `access_mode` (OPTIONAL): The credential flow the resource expects, letting an agent plan its first call without a speculative challenge. One of `agent-token` (identity-only — the agent signs with its agent token), `aauth-access-token` (resource-managed — the agent completes the resource's interaction/consent flow and receives an opaque token via `AAuth-Access`), or `auth-token` (the agent obtains an auth token from its PS using a resource token). Default: `agent-token`. The declaration is advisory: a resource MAY return any `AAuth-Requirement` at runtime regardless of the declared mode (#requirement-responses), and MAY apply different modes to different endpoints. An agent MAY use `access_mode` to skip resources its setup cannot satisfy — for example, a PS-less agent (no `ps` claim in its agent token) cannot complete the `auth-token` flow.
-- `client_name` (OPTIONAL): Human-readable resource name (per [@RFC7591])
+- `name` (OPTIONAL): Human-readable resource name
 - `description` (OPTIONAL): A Markdown string describing the resource, for display to users (for example, at a consent screen). Implementations MUST sanitize the Markdown before rendering to users.
-- `logo_uri` (OPTIONAL): URL to resource logo (per [@RFC7591])
+- `logo_uri` (OPTIONAL): URL to resource logo
 - `logo_dark_uri` (OPTIONAL): URL to resource logo for dark backgrounds
+- `documentation_uri` (OPTIONAL): URL with developer documentation for the resource
+- `tos_uri` (OPTIONAL): URL to terms of service
+- `policy_uri` (OPTIONAL): URL to privacy policy
 - `authorization_endpoint` (OPTIONAL): URL where agents request authorization (#authorization-endpoint-request). When absent, the resource issues resource tokens and interaction requirements via `401` responses (#requirement-auth-token, #resource-managed-auth).
 - `login_endpoint` (OPTIONAL): URL where third parties can direct users to initiate authentication (#third-party-login)
 - `scope_descriptions` (OPTIONAL): Object mapping scope values to Markdown strings for consent display. Scope values are resource-specific; resources that already define OAuth scopes SHOULD use the same scope values in AAuth. Identity-related scopes (e.g., `openid`, `profile`, `email`) follow [@!OpenID.Core].
