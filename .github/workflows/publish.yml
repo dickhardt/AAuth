@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: "Checkout"
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         # Needed for tracing file history for replacement status
         fetch-depth: 0
@@ -32,7 +32,7 @@ jobs:
       run: date -u "+date=%FT%T" >>"$GITHUB_OUTPUT"
 
     - name: "Caching"
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: |
           .refcache
@@ -56,7 +56,7 @@ jobs:
         UPLOAD_EMAIL: ${{ inputs.email }}
 
     - name: "Archive Submitted Drafts"
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: published
         path: "versioned/draft-*-[0-9][0-9].*"
