@@ -12,7 +12,7 @@ name = "Internet-Draft"
 value = "draft-hardt-oauth-aauth-protocol-latest"
 stream = "IETF"
 
-date = 2026-06-08T00:00:00Z
+date = 2026-06-15T00:00:00Z
 
 [[author]]
 initials = "D."
@@ -110,13 +110,6 @@ organization = "Hellō"
   </front>
 </reference>
 
-<reference anchor="Crockford.Base32" target="https://www.crockford.com/base32.html">
-  <front>
-    <title>Base 32</title>
-    <author initials="D." surname="Crockford" fullname="Douglas Crockford"/>
-    <date year="2019"/>
-  </front>
-</reference>
 
 .# Abstract
 
@@ -2005,7 +1998,7 @@ The response MUST also include:
 
 The `code` is a Structured Field String ([@!RFC8941], Section 3.3.3). The user reads it out of band — the agent displays it (or renders it in a QR code) and the user visually compares it against the code shown on the interaction page — so it MUST be both unguessable and unambiguous to a human. Servers and agents MUST follow these rules.
 
-**Alphabet.** The code MUST be generated from Crockford base32 ([@?Crockford.Base32]) — the symbol set `0123456789ABCDEFGHJKMNPQRSTVWXYZ`, which omits the visually ambiguous letters `I`, `L`, `O`, and `U`. Every symbol is URL-safe, so the code requires no escaping when appended as `{url}?code={code}`. Servers MUST NOT emit codes containing characters outside this set (other than the optional grouping hyphen below).
+**Alphabet.** The code MUST be generated from Crockford base32 ([@?I-D.crockford-davis-base32-for-humans]) — the symbol set `0123456789ABCDEFGHJKMNPQRSTVWXYZ`, which omits the visually ambiguous letters `I`, `L`, `O`, and `U`. Every symbol is URL-safe, so the code requires no escaping when appended as `{url}?code={code}`. Servers MUST NOT emit codes containing characters outside this set (other than the optional grouping hyphen below).
 
 **Entropy and length.** A code MUST carry at least 40 bits of entropy — at least 8 Crockford base32 symbols, drawn from a cryptographically secure random source. Servers MAY use longer codes for higher-value interactions.
 
@@ -2348,6 +2341,24 @@ When fetching a metadata document, implementations MUST verify that the `issuer`
 
 This check prevents host-poisoned metadata: an attacker hosting a metadata document at one domain that claims an `issuer` of a different domain. Without it, a permissive verifier following the `jwks_uri` in such a document could end up trusting attacker-controlled keys for tokens claiming the impersonated issuer.
 
+The following fields are defined identically across all four metadata documents (`aauth-agent.json`, `aauth-resource.json`, `aauth-person.json`, `aauth-access.json`):
+
+| Field | Requirement | Description |
+|-------|-------------|-------------|
+| `issuer` | REQUIRED | The server's HTTPS URL. MUST match the URL the document was fetched from. Placed in the `iss` claim of JWTs issued by this server. Required by any Signature-Key verifier to confirm the document belongs to the claimed signer ([@!I-D.hardt-httpbis-signature-key]). |
+| `jwks_uri` | REQUIRED (see per-role) | URL to the server's JSON Web Key Set. |
+| `name` | OPTIONAL | Human-readable display name. |
+| `description` | OPTIONAL | Markdown string describing the server, for display at consent screens or dashboards. Implementations MUST sanitize before rendering. |
+| `logo_uri` | OPTIONAL | URL to the server's logo. MUST use `https`. |
+| `logo_dark_uri` | OPTIONAL | URL to the server's logo for dark backgrounds. MUST use `https`. |
+| `documentation_uri` | OPTIONAL | URL with developer documentation. MUST use `https`. |
+| `tos_uri` | OPTIONAL | URL to terms of service. MUST use `https`. |
+| `policy_uri` | OPTIONAL | URL to privacy policy. MUST use `https`. |
+
+AAuth intentionally diverges from RFC 9728 on two points: AAuth uses `issuer` (not `resource`) as the primary identifier field so that a generic Signature-Key verifier can extract the signer identity uniformly from any dwk document without knowing which role it represents; and AAuth uses unprefixed field names (`name`, `tos_uri`, `policy_uri`, `documentation_uri`) rather than the `resource_`-prefixed forms in RFC 9728, for consistency across all four roles.
+
+Per-role sections below list these common fields in their examples and note any role-specific REQUIRED/conditional differences (e.g., `jwks_uri` is conditionally REQUIRED for resources). Role-specific fields are listed after the common fields.
+
 ### Agent Provider Metadata
 
 Published at `/.well-known/aauth-agent.json`:
@@ -2360,6 +2371,7 @@ Published at `/.well-known/aauth-agent.json`:
   "description": "**Example AI Assistant** drafts and sends email on your behalf.",
   "logo_uri": "https://agent.example/logo.png",
   "logo_dark_uri": "https://agent.example/logo-dark.png",
+  "documentation_uri": "https://agent.example/docs",
   "callback_endpoint": "https://agent.example/callback",
   "localhost_callback_allowed": true,
   "tos_uri": "https://agent.example/tos",
@@ -2375,6 +2387,7 @@ Fields:
 - `description` (OPTIONAL): A Markdown string describing the agent or its provider, for display to users (for example, at a PS consent screen or connected-agents dashboard). Implementations MUST sanitize the Markdown before rendering to users.
 - `logo_uri` (OPTIONAL): URL to agent logo (per [@RFC7591])
 - `logo_dark_uri` (OPTIONAL): URL to agent logo for dark backgrounds
+- `documentation_uri` (OPTIONAL): URL with developer documentation for the agent provider
 - `callback_endpoint` (OPTIONAL): The agent's HTTPS callback endpoint URL
 - `login_endpoint` (OPTIONAL): URL where third parties can direct users to initiate authentication (#third-party-login)
 - `localhost_callback_allowed` (OPTIONAL): Boolean. Default: `false`.
@@ -2392,6 +2405,7 @@ Published at `/.well-known/aauth-person.json`:
   "description": "**Example Person Server** — manage which agents act for you and review what they do.",
   "logo_uri": "https://ps.example/logo.png",
   "logo_dark_uri": "https://ps.example/logo-dark.png",
+  "documentation_uri": "https://ps.example/docs",
   "tos_uri": "https://ps.example/tos",
   "policy_uri": "https://ps.example/privacy",
   "token_endpoint": "https://ps.example/token",
@@ -2411,6 +2425,7 @@ Fields:
 - `description` (OPTIONAL): A Markdown string describing the person server, for display to users. Implementations MUST sanitize the Markdown before rendering to users.
 - `logo_uri` (OPTIONAL): URL to person server logo
 - `logo_dark_uri` (OPTIONAL): URL to person server logo for dark backgrounds
+- `documentation_uri` (OPTIONAL): URL with developer documentation for the person server
 - `tos_uri` (OPTIONAL): URL to terms of service
 - `policy_uri` (OPTIONAL): URL to privacy policy
 - `token_endpoint` (REQUIRED): URL where agents send token requests
@@ -2435,6 +2450,7 @@ Published at `/.well-known/aauth-access.json`:
   "description": "**Example Access Server** — issues access for the Example resource.",
   "logo_uri": "https://as.resource.example/logo.png",
   "logo_dark_uri": "https://as.resource.example/logo-dark.png",
+  "documentation_uri": "https://as.resource.example/docs",
   "tos_uri": "https://as.resource.example/tos",
   "policy_uri": "https://as.resource.example/privacy",
   "token_endpoint": "https://as.resource.example/token",
@@ -2449,6 +2465,7 @@ Fields:
 - `description` (OPTIONAL): A Markdown string describing the access server, for display to users. Implementations MUST sanitize the Markdown before rendering to users.
 - `logo_uri` (OPTIONAL): URL to access server logo
 - `logo_dark_uri` (OPTIONAL): URL to access server logo for dark backgrounds
+- `documentation_uri` (OPTIONAL): URL with developer documentation for the access server
 - `tos_uri` (OPTIONAL): URL to terms of service
 - `policy_uri` (OPTIONAL): URL to privacy policy
 - `token_endpoint` (REQUIRED): URL where PSes send token requests
@@ -2842,6 +2859,11 @@ The following implementations are known:
 # Document History
 
 *Note: This section is to be removed before publishing as an RFC.*
+
+- draft-hardt-oauth-aauth-protocol-03
+  - Metadata: added a "Common Metadata Fields" table at the top of the Metadata Documents section, listing the fields shared across all four well-known documents (`issuer`, `jwks_uri`, `name`, `description`, `logo_uri`, `logo_dark_uri`, `documentation_uri`, `tos_uri`, `policy_uri`) and documenting the intentional divergences from RFC 9728 (`issuer` instead of `resource`; unprefixed field names).
+  - Metadata: added `documentation_uri` to `aauth-agent.json`, `aauth-person.json`, and `aauth-access.json` for consistency with `aauth-resource.json`.
+  - Interaction code: updated Crockford base32 reference from a manual entry to the IETF I-D `[@?I-D.crockford-davis-base32-for-humans]`.
 
 - draft-hardt-oauth-aauth-protocol-02
   - Added sub-agents: agent token `parent_agent` claim, single-level depth, parent-mediated authorization with a `subagent_token` parameter, and the `+` sub-agent local-part delimiter; registered `parent_agent` in the JWT Claims registry.
