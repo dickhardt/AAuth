@@ -12,7 +12,7 @@ name = "Internet-Draft"
 value = "draft-hardt-oauth-aauth-protocol-latest"
 stream = "IETF"
 
-date = 2026-06-16T00:00:00Z
+date = 2026-06-17T00:00:00Z
 
 [[author]]
 initials = "D."
@@ -1494,7 +1494,7 @@ When the AS issues an auth token (`200` response), the PS MUST verify the auth t
 3. Verify `aud` matches the resource identified by the resource token's `iss`.
 4. Verify `agent` matches the agent that submitted the token request.
 5. Verify `cnf.jwk` matches the agent's signing key.
-6. Verify `act` is present and accurately reflects the delegation chain — `act.agent` identifies the requesting agent, and any nested `act` claims match the upstream delegation context.
+6. If `act` is present, verify `act.agent` identifies the upstream agent that delegated to the requesting agent, and any nested `act` claims accurately reflect the upstream delegation context.
 7. Verify `scope` is consistent with what was requested — not broader than the scope in the resource token.
 
 After verification, the PS returns the auth token to the agent. The agent presents the auth token to the resource via the `Signature-Key` header (#auth-token-usage). The resource verifies the auth token against the AS's JWKS (#auth-token-verification).
@@ -1626,7 +1626,7 @@ Required payload claims:
 - `jti`: Unique token identifier for replay detection, audit, and revocation
 - `agent`: Agent identifier
 - `cnf`: Confirmation claim with `jwk` containing the agent's public key
-- `act`: Actor claim ([@!RFC8693], Section 4.1) identifying the entity that requested this auth token. AAuth uses `agent` (not `sub`) as the identifier field within each `act` node, making explicit that the value is an AAuth agent identifier in `aauth:` URI form (see [#47](https://github.com/dickhardt/AAuth/issues/47) for rationale). In direct authorization, `act.agent` is the requesting agent's identifier. In call chaining, `act` nests to record the full delegation chain — each intermediary's identity is preserved as a nested `act` claim within the outer `act`. This enables resources to see the complete chain of delegation and make authorization decisions accordingly.
+- `act`: Delegation chain ([@!RFC8693], Section 4.1). OPTIONAL. See (#delegation-chain).
 - `iat`: Issued at timestamp
 - `exp`: Expiration timestamp. Auth tokens MUST NOT have a lifetime exceeding 1 hour.
 
@@ -1666,7 +1666,7 @@ When a resource receives an auth token, verify per [@!RFC7515] and [@!RFC7519]:
 5. Verify `aud` matches the resource's own identifier.
 6. Verify `agent` matches the agent identifier from the request's signing context.
 7. Verify `cnf.jwk` matches the key used to sign the HTTP request.
-8. Verify `act` is present and `act.agent` matches the agent identifier from the request's signing context.
+8. If `act` is present, verify `act.agent` is a valid AAuth agent identifier and accurately reflects the upstream delegation context.
 9. Verify that at least one of `sub` or `scope` is present.
 
 ### Auth Token Response Verification {#auth-token-response-verification}
@@ -1678,7 +1678,7 @@ When an agent receives an auth token:
 3. Verify `aud` matches the resource the agent intends to access.
 4. Verify `cnf.jwk` matches the agent's own signing key.
 5. Verify `agent` matches the agent's own identifier.
-6. Verify `act.agent` matches the agent's own identifier.
+6. If `act` is present, verify `act.agent` identifies the upstream agent that delegated to this agent.
 
 ### Upstream Token Verification {#upstream-token-verification}
 
@@ -1687,14 +1687,18 @@ When the PS receives an `upstream_token` parameter in a call chaining request:
 1. Perform Auth Token Verification (#auth-token-verification) on the upstream token.
 2. Verify `iss` is a trusted AS (an AS whose auth token the PS previously brokered).
 3. Verify the `aud` in the upstream token matches the resource that is now acting as an agent (i.e., the upstream token was issued for the intermediary resource).
-4. The PS constructs the `act` claim for the downstream auth token by nesting the upstream token's `act` claim inside a new `act` object identifying the intermediary resource's agent identity. This preserves the complete delegation chain.
+4. The PS constructs the `act` claim for the downstream auth token: `act.agent` is set to the intermediary resource's agent identifier, and if the upstream token contained an `act` claim, it is nested inside as the new `act.act`. This preserves the complete upstream delegation chain.
 5. The PS evaluates its mission and governance policy based on the upstream token's claims and mission context. The resulting downstream authorization is not required to be a subset of the upstream scopes — see (#call-chaining).
 
-# Multi-Hop Resource Access {#multi-hop}
+# Agent Delegation {#agent-delegation}
+
+Agent delegation covers the scenarios where more than one agent is involved in fulfilling a request: a resource that acts as an agent to call a downstream resource (call chaining), an orchestrating agent that spawns sub-agents, and the delegation chain recorded in auth tokens that spans both.
+
+## Multi-Hop Resource Access {#multi-hop}
 
 This section defines how resources act as agents (an instance of role collocation, see (#roles)) to access downstream resources on behalf of the original caller. In multi-hop scenarios, a resource that receives an authorized request needs to access another resource to fulfill that request. The resource acts as an agent — it has its own agent identity and signing key — and routes the downstream authorization to obtain an auth token for the downstream resource.
 
-## Call Chaining {#call-chaining}
+### Call Chaining {#call-chaining}
 
 When a resource needs to access a downstream resource on behalf of the caller, it acts as an agent. The resource determines where to send the downstream token request based on the upstream auth token it received:
 
@@ -1712,17 +1716,17 @@ Note that downstream authorization is not required to be a subset of the upstrea
 
 Because the resource acts as an agent, it MUST have its own agent identity — it MUST publish agent metadata at `/.well-known/aauth-agent.json` so that downstream resources and ASes can verify its identity.
 
-## Interaction Chaining {#interaction-chaining}
+### Interaction Chaining {#interaction-chaining}
 
 When the PS or AS requires user interaction for the downstream access, it returns a `202` with `requirement=interaction`. Resource 1 chains the interaction back to the original agent by returning its own `202`.
 
 When a resource acting as an agent receives a `202 Accepted` response with `AAuth-Requirement: requirement=interaction`, and the resource needs to propagate this interaction requirement to its caller, it MUST return a `202 Accepted` response to the original agent with its own `AAuth-Requirement` header containing `requirement=interaction` and its own interaction code. The resource MUST provide its own `Location` URL for the original agent to poll. When the user completes interaction and the resource obtains the downstream auth token, the resource completes the original request and returns the result at its pending URL.
 
-# Sub-Agents {#sub-agents}
+## Sub-Agents {#sub-agents}
 
 Agent platforms increasingly spawn short-lived sub-agents — workers or tool-specific helpers — under an orchestrating parent agent. AAuth represents a sub-agent as an agent whose agent token carries a `parent_agent` claim identifying its parent. The user consents to the parent; sub-agents operate under that consent without per-spawn re-prompting, while remaining individually identifiable for audit and revocation.
 
-## Sub-Agent Identity
+### Sub-Agent Identity
 
 A sub-agent has its own agent identity — its own `aauth:local@domain` identifier and signing key, issued by the agent provider, exactly like a top-level agent. Two things distinguish it:
 
@@ -1742,7 +1746,7 @@ A sub-agent has its own agent identity — its own `aauth:local@domain` identifi
 
 Acquisition of a sub-agent token from the agent provider is platform-dependent and is described in [@?I-D.hardt-aauth-bootstrap], parallel to top-level agent token acquisition.
 
-## Single-Level Depth
+### Single-Level Depth
 
 The delegation chain is at most one level deep: a top-level agent may have sub-agents, but a sub-agent MUST NOT have sub-agents of its own. Two rules enforce this:
 
@@ -1751,7 +1755,7 @@ The delegation chain is at most one level deep: a top-level agent may have sub-a
 
 For genuinely deeper workflows, AAuth already provides chained top-level agents (#call-chaining): each hop is an independent principal with its own grant, rather than recursive sub-agent spawning.
 
-## Parent-Mediated Authorization
+### Parent-Mediated Authorization
 
 A sub-agent MUST NOT call the PS directly. Instead, the parent obtains auth tokens on the sub-agent's behalf:
 
@@ -1762,48 +1766,53 @@ A sub-agent MUST NOT call the PS directly. Instead, the parent obtains auth toke
    - It verifies the `subagent_token` (#agent-token-verification) and that its `parent_agent` names the parent — the agent that signed the request.
    - It verifies the `resource_token` is bound to the sub-agent's key: `agent_jkt` matches the `subagent_token`'s `cnf.jwk` (not the signing key) and `agent` matches the sub-agent's identifier (#resource-token-verification).
    - It evaluates the parent's grant for the requested scope, exactly as for a direct request from the parent. If the user has already consented, the response is immediate; otherwise consent surfaces for the parent as usual.
-4. On success the issuer — the PS in three-party, or the AS in four-party — issues an auth token bound to the sub-agent's key (`cnf` = the sub-agent's `jwk`, `agent` = the sub-agent's identifier), with `act` recording the delegation chain: `act.agent` is the sub-agent, and a nested `act.agent` is the parent. The parent is taken from the `subagent_token`'s `parent_agent`. In four-party, the PS federates by passing the parent as `agent_token` and the sub-agent as `subagent_token` to the AS (#as-token-endpoint), so the AS records the parent authoritatively from those tokens. The parent passes the auth token to the sub-agent, which presents it to the resource signing with its own key.
+4. On success the issuer — the PS in three-party, or the AS in four-party — issues an auth token bound to the sub-agent's key (`cnf` = the sub-agent's `jwk`, `agent` = the sub-agent's identifier), with `act.agent` set to the parent agent's identifier (taken from the `subagent_token`'s `parent_agent`). If the parent was itself in a delegation chain (e.g., the parent received an `upstream_token`), the parent's upstream `act` chain is nested inside. In four-party, the PS federates by passing the parent as `agent_token` and the sub-agent as `subagent_token` to the AS (#as-token-endpoint), so the AS records the parent authoritatively from those tokens. The parent passes the auth token to the sub-agent, which presents it to the resource signing with its own key.
 
 Because every sub-agent authorization passes through the parent, the parent retains control — it can refuse, attenuate, or rate-limit — and revocation propagates naturally: revoking the parent's grant causes the next sub-agent authorization to fail, while existing auth tokens expire normally (≤1 hour).
 
-## Delegation Chain Examples {#delegation-chain-examples}
+## Delegation Chain {#delegation-chain}
 
-These examples show how the auth token's `act` claim records delegation. In all cases the rule is uniform: `act.agent` is the agent presenting the token (self), and the prior actor is nested inside. Sub-agents and call chaining ({#call-chaining}) use the same nesting; a sub-agent simply means the first nested actor is the parent.
+The `act` claim records the upstream delegation chain in an auth token. It is OPTIONAL — absent when the agent obtained the auth token directly (no chaining, no sub-agent). When present:
+
+- `act.agent` is the `aauth:` URI of the immediate upstream agent: the intermediary resource in call chaining, or the parent agent in sub-agent authorization.
+- If that upstream agent was itself delegated to, its upstream is recorded as a nested `act` claim, and so on.
+- AAuth uses `agent` (not RFC 8693's `sub`) as the identifier field within each `act` node, making explicit that the value is an AAuth agent identifier.
+- The presenter's own identity is in the top-level `agent` claim and is not repeated inside `act`.
+
+The relationship type — call chain vs sub-agent — is distinguishable from the `+` delimiter in AAuth identifiers without a separate field.
+
+### Delegation Chain Examples {#delegation-chain-examples}
 
 **Just chaining.** A top-level agent `asst` calls `booking`, which acts as an agent to call `payments`. No sub-agents.
 
 ```json
-// auth token asst presents at booking
+// auth token asst presents at booking — direct auth, no act
 { "aud": "booking.example", "sub": "user:alice",
-  "agent": "aauth:asst@agent.example",
-  "act": { "agent": "aauth:asst@agent.example" } }
+  "agent": "aauth:asst@agent.example" }
 
-// auth token booking presents at payments
+// auth token booking presents at payments — booking was delegated by asst
 { "aud": "payments.example", "sub": "user:alice",
   "agent": "aauth:booking@booking.example",
-  "act": { "agent": "aauth:booking@booking.example",
-           "act": { "agent": "aauth:asst@agent.example" } } }
+  "act": { "agent": "aauth:asst@agent.example" } }
 ```
 
-**Just a sub-agent.** The parent mediates; the sub-agent `planner.7f3c+search1` calls `search`. The parent appears only as the agent token's `parent_agent`; in the auth token it is the first nested actor.
+**Just a sub-agent.** The parent `planner.7f3c` mediates; the sub-agent `planner.7f3c+search1` calls `search`. The `+` in the identifier marks the sub-agent relationship.
 
 ```json
-// auth token search1 presents at search
+// auth token search1 presents at search — delegated by its parent
 { "aud": "search.example", "sub": "user:alice",
   "agent": "aauth:planner.7f3c+search1@vendor.example",
-  "act": { "agent": "aauth:planner.7f3c+search1@vendor.example",
-           "act": { "agent": "aauth:planner.7f3c@vendor.example" } } }
+  "act": { "agent": "aauth:planner.7f3c@vendor.example" } }
 ```
 
-**A sub-agent and a chain.** The sub-agent `search1` calls `maps`, which acts as an agent to call `places`. The chain composes: each hop nests the prior actor.
+**A sub-agent inside a chain.** `asst` calls `booking`; `booking` spawns sub-agent `booking+search1`; `booking+search1` calls `maps`. The `act` chain records both the sub-agent relationship and the upstream call chain.
 
 ```json
-// auth token maps presents at places
-{ "aud": "places.example", "sub": "user:alice",
-  "agent": "aauth:maps@maps.example",
-  "act": { "agent": "aauth:maps@maps.example",
-           "act": { "agent": "aauth:planner.7f3c+search1@vendor.example",
-                    "act": { "agent": "aauth:planner.7f3c@vendor.example" } } } }
+// auth token booking+search1 presents at maps
+{ "aud": "maps.example", "sub": "user:alice",
+  "agent": "aauth:booking+search1@booking.example",
+  "act": { "agent": "aauth:booking@booking.example",
+           "act": { "agent": "aauth:asst@agent.example" } } }
 ```
 
 # Third-Party Login {#third-party-login}
@@ -2841,7 +2850,7 @@ This specification registers the `aauth` URI scheme in the "Uniform Resource Ide
 - Change controller: IETF
 - Reference: This document, (#agent-identifiers)
 
-The `aauth` URI scheme follows the pattern established by the `acct` scheme ([@RFC7565]). An `aauth` URI identifies an agent instance and has the syntax `aauth:local@domain`, where `local` is the agent-specific part and `domain` is the agent provider's domain name. The `aauth` URI is used in the `sub` claim of agent tokens, the `agent` field of resource tokens and the mission blob, and the `act.agent` field of auth tokens.
+The `aauth` URI scheme follows the pattern established by the `acct` scheme ([@RFC7565]). An `aauth` URI identifies an agent instance and has the syntax `aauth:local@domain`, where `local` is the agent-specific part and `domain` is the agent provider's domain name. The `aauth` URI is used in the `sub` claim of agent tokens, the `agent` field of resource tokens and the mission blob, and the `agent` and `act.agent` fields of auth tokens.
 
 # Implementation Status
 
@@ -2860,13 +2869,16 @@ The following implementations are known:
 
 *Note: This section is to be removed before publishing as an RFC.*
 
+- draft-hardt-oauth-aauth-protocol-05
+  - Auth tokens: `act` is OPTIONAL, absent in direct authorization; `act.agent` identifies the immediate upstream agent (the delegator), not the presenter; nesting records the full chain. Updated verification steps, sub-agent issuance, PS upstream token construction, and delegation chain examples accordingly. Replaced the "sub-agent calls a chained resource" example with "sub-agent inside a chain."
+
 - draft-hardt-oauth-aauth-protocol-04
-  - Auth tokens: replaced `act.sub` with `act.agent` throughout — the identifier field within each `act` node now explicitly names the value as an AAuth agent identifier in `aauth:` URI form, rather than reusing the generic JWT `sub` name. Applies uniformly to direct authorization, call chaining, and sub-agent delegation. See [issue #47](https://github.com/dickhardt/AAuth/issues/47) for rationale.
+  - Auth tokens: replaced `act.sub` with `act.agent` within each `act` node; see [issue #47](https://github.com/dickhardt/AAuth/issues/47).
 
 - draft-hardt-oauth-aauth-protocol-03
-  - Metadata: added a "Common Metadata Fields" table at the top of the Metadata Documents section, listing the fields shared across all four well-known documents (`issuer`, `jwks_uri`, `name`, `description`, `logo_uri`, `logo_dark_uri`, `documentation_uri`, `tos_uri`, `policy_uri`) and documenting the intentional divergences from RFC 9728 (`issuer` instead of `resource`; unprefixed field names).
-  - Metadata: added `documentation_uri` to `aauth-agent.json`, `aauth-person.json`, and `aauth-access.json` for consistency with `aauth-resource.json`.
-  - Interaction code: updated Crockford base32 reference from a manual entry to the IETF I-D `[@?I-D.crockford-davis-base32-for-humans]`.
+  - Metadata: added a common-fields table at the top of the Metadata Documents section covering all four well-known files; documented intentional RFC 9728 divergences (`issuer` not `resource`; unprefixed field names).
+  - Metadata: added `documentation_uri` to `aauth-agent.json`, `aauth-person.json`, and `aauth-access.json`.
+  - Interaction code: updated Crockford base32 citation to `[@?I-D.crockford-davis-base32-for-humans]`.
 
 - draft-hardt-oauth-aauth-protocol-02
   - Added sub-agents: agent token `parent_agent` claim, single-level depth, parent-mediated authorization with a `subagent_token` parameter, and the `+` sub-agent local-part delimiter; registered `parent_agent` in the JWT Claims registry.
