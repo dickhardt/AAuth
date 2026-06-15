@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                            14 June 2026
-Expires: 16 December 2026
+Intended status: Standards Track                            15 June 2026
+Expires: 17 December 2026
 
 
                              AAuth Protocol
@@ -50,7 +50,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 16 December 2026.
+   This Internet-Draft will expire on 17 December 2026.
 
 Copyright Notice
 
@@ -2416,7 +2416,7 @@ Table of Contents
    4.  Verify agent matches the agent that submitted the token request.
    5.  Verify cnf.jwk matches the agent's signing key.
    6.  Verify act is present and accurately reflects the delegation
-       chain — act.sub identifies the requesting agent, and any nested
+       chain — act.agent identifies the requesting agent, and any nested
        act claims match the upstream delegation context.
    7.  Verify scope is consistent with what was requested — not broader
        than the scope in the resource token.
@@ -2616,14 +2616,17 @@ Table of Contents
    identifier for replay detection, audit, and revocation - agent: Agent
    identifier - cnf: Confirmation claim with jwk containing the agent's
    public key - act: Actor claim ([RFC8693], Section 4.1) identifying
-   the entity that requested this auth token.  In direct authorization,
-   act.sub is the agent identifier.  In call chaining, act nests to
-   record the full delegation chain — each intermediary's identity is
-   preserved as a nested act claim within the outer act.  This enables
-   resources to see the complete chain of delegation and make
-   authorization decisions accordingly. - iat: Issued at timestamp -
-   exp: Expiration timestamp.  Auth tokens MUST NOT have a lifetime
-   exceeding 1 hour.
+   the entity that requested this auth token.  AAuth uses agent (not
+   sub) as the identifier field within each act node, making explicit
+   that the value is an AAuth agent identifier in aauth: URI form (see
+   #47 (https://github.com/dickhardt/AAuth/issues/47) for rationale).
+   In direct authorization, act.agent is the requesting agent's
+   identifier.  In call chaining, act nests to record the full
+   delegation chain — each intermediary's identity is preserved as a
+   nested act claim within the outer act.  This enables resources to see
+   the complete chain of delegation and make authorization decisions
+   accordingly. - iat: Issued at timestamp - exp: Expiration timestamp.
+   Auth tokens MUST NOT have a lifetime exceeding 1 hour.
 
    Conditional payload claims (at least one MUST be present): - sub:
    Directed user identifier.  An opaque string that identifies the user.
@@ -2680,7 +2683,7 @@ Table of Contents
    6.  Verify agent matches the agent identifier from the request's
        signing context.
    7.  Verify cnf.jwk matches the key used to sign the HTTP request.
-   8.  Verify act is present and act.sub matches the agent identifier
+   8.  Verify act is present and act.agent matches the agent identifier
        from the request's signing context.
    9.  Verify that at least one of sub or scope is present.
 
@@ -2696,7 +2699,7 @@ Table of Contents
    3.  Verify aud matches the resource the agent intends to access.
    4.  Verify cnf.jwk matches the agent's own signing key.
    5.  Verify agent matches the agent's own identifier.
-   6.  Verify act.sub matches the agent's own identifier.
+   6.  Verify act.agent matches the agent's own identifier.
 
 9.4.5.  Upstream Token Verification
 
@@ -2891,11 +2894,11 @@ Table of Contents
    4.  On success the issuer — the PS in three-party, or the AS in four-
        party — issues an auth token bound to the sub-agent's key (cnf =
        the sub-agent's jwk, agent = the sub-agent's identifier), with
-       act recording the delegation chain: act.sub is the sub-agent, and
-       a nested act.sub is the parent.  The parent is taken from the
-       subagent_token's parent_agent.  In four-party, the PS federates
-       by passing the parent as agent_token and the sub-agent as
-       subagent_token to the AS Section 9.1, so the AS records the
+       act recording the delegation chain: act.agent is the sub-agent,
+       and a nested act.agent is the parent.  The parent is taken from
+       the subagent_token's parent_agent.  In four-party, the PS
+       federates by passing the parent as agent_token and the sub-agent
+       as subagent_token to the AS Section 9.1, so the AS records the
        parent authoritatively from those tokens.  The parent passes the
        auth token to the sub-agent, which presents it to the resource
        signing with its own key.
@@ -2909,7 +2912,7 @@ Table of Contents
 11.4.  Delegation Chain Examples
 
    These examples show how the auth token's act claim records
-   delegation.  In all cases the rule is uniform: act.sub is the agent
+   delegation.  In all cases the rule is uniform: act.agent is the agent
    presenting the token (self), and the prior actor is nested inside.
    Sub-agents and call chaining ({#call-chaining}) use the same nesting;
    a sub-agent simply means the first nested actor is the parent.
@@ -2920,13 +2923,13 @@ Table of Contents
    // auth token asst presents at booking
    { "aud": "booking.example", "sub": "user:alice",
      "agent": "aauth:asst@agent.example",
-     "act": { "sub": "aauth:asst@agent.example" } }
+     "act": { "agent": "aauth:asst@agent.example" } }
 
    // auth token booking presents at payments
    { "aud": "payments.example", "sub": "user:alice",
      "agent": "aauth:booking@booking.example",
-     "act": { "sub": "aauth:booking@booking.example",
-              "act": { "sub": "aauth:asst@agent.example" } } }
+     "act": { "agent": "aauth:booking@booking.example",
+              "act": { "agent": "aauth:asst@agent.example" } } }
 
    *Just a sub-agent.* The parent mediates; the sub-agent
    planner.7f3c+search1 calls search.  The parent appears only as the
@@ -2936,8 +2939,8 @@ Table of Contents
    // auth token search1 presents at search
    { "aud": "search.example", "sub": "user:alice",
      "agent": "aauth:planner.7f3c+search1@vendor.example",
-     "act": { "sub": "aauth:planner.7f3c+search1@vendor.example",
-              "act": { "sub": "aauth:planner.7f3c@vendor.example" } } }
+     "act": { "agent": "aauth:planner.7f3c+search1@vendor.example",
+              "act": { "agent": "aauth:planner.7f3c@vendor.example" } } }
 
    *A sub-agent and a chain.* The sub-agent search1 calls maps, which
    acts as an agent to call places.  The chain composes: each hop nests
@@ -2946,9 +2949,9 @@ Table of Contents
    // auth token maps presents at places
    { "aud": "places.example", "sub": "user:alice",
      "agent": "aauth:maps@maps.example",
-     "act": { "sub": "aauth:maps@maps.example",
-              "act": { "sub": "aauth:planner.7f3c+search1@vendor.example",
-                       "act": { "sub": "aauth:planner.7f3c@vendor.example" } } } }
+     "act": { "agent": "aauth:maps@maps.example",
+              "act": { "agent": "aauth:planner.7f3c+search1@vendor.example",
+                       "act": { "agent": "aauth:planner.7f3c@vendor.example" } } } }
 
 12.  Third-Party Login
 
@@ -3286,7 +3289,7 @@ Table of Contents
    unambiguous to a human.  Servers and agents MUST follow these rules.
 
    *Alphabet.* The code MUST be generated from Crockford base32
-   ([Crockford.Base32]) — the symbol set
+   ([I-D.crockford-davis-base32-for-humans]) — the symbol set
    0123456789ABCDEFGHJKMNPQRSTVWXYZ, which omits the visually ambiguous
    letters I, L, O, and U.  Every symbol is URL-safe, so the code
    requires no escaping when appended as {url}?code={code}. Servers MUST
@@ -3855,6 +3858,65 @@ Initial request (with Prefer: wait=N)
    such a document could end up trusting attacker-controlled keys for
    tokens claiming the impersonated issuer.
 
+   The following fields are defined identically across all four metadata
+   documents (aauth-agent.json, aauth-resource.json, aauth-person.json,
+   aauth-access.json):
+
+   +=================+===========+====================================+
+   |Field            |Requirement|Description                         |
+   +=================+===========+====================================+
+   |issuer           |REQUIRED   |The server's HTTPS URL.  MUST match |
+   |                 |           |the URL the document was fetched    |
+   |                 |           |from.  Placed in the iss claim of   |
+   |                 |           |JWTs issued by this server.         |
+   |                 |           |Required by any Signature-Key       |
+   |                 |           |verifier to confirm the document    |
+   |                 |           |belongs to the claimed signer       |
+   |                 |           |([I-D.hardt-httpbis-signature-key]).|
+   +-----------------+-----------+------------------------------------+
+   |jwks_uri         |REQUIRED   |URL to the server's JSON Web Key    |
+   |                 |(see per-  |Set.                                |
+   |                 |role)      |                                    |
+   +-----------------+-----------+------------------------------------+
+   |name             |OPTIONAL   |Human-readable display name.        |
+   +-----------------+-----------+------------------------------------+
+   |description      |OPTIONAL   |Markdown string describing the      |
+   |                 |           |server, for display at consent      |
+   |                 |           |screens or dashboards.              |
+   |                 |           |Implementations MUST sanitize before|
+   |                 |           |rendering.                          |
+   +-----------------+-----------+------------------------------------+
+   |logo_uri         |OPTIONAL   |URL to the server's logo.  MUST use |
+   |                 |           |https.                              |
+   +-----------------+-----------+------------------------------------+
+   |logo_dark_uri    |OPTIONAL   |URL to the server's logo for dark   |
+   |                 |           |backgrounds.  MUST use https.       |
+   +-----------------+-----------+------------------------------------+
+   |documentation_uri|OPTIONAL   |URL with developer documentation.   |
+   |                 |           |MUST use https.                     |
+   +-----------------+-----------+------------------------------------+
+   |tos_uri          |OPTIONAL   |URL to terms of service.  MUST use  |
+   |                 |           |https.                              |
+   +-----------------+-----------+------------------------------------+
+   |policy_uri       |OPTIONAL   |URL to privacy policy.  MUST use    |
+   |                 |           |https.                              |
+   +-----------------+-----------+------------------------------------+
+
+                                 Table 10
+
+   AAuth intentionally diverges from RFC 9728 on two points: AAuth uses
+   issuer (not resource) as the primary identifier field so that a
+   generic Signature-Key verifier can extract the signer identity
+   uniformly from any dwk document without knowing which role it
+   represents; and AAuth uses unprefixed field names (name, tos_uri,
+   policy_uri, documentation_uri) rather than the resource_-prefixed
+   forms in RFC 9728, for consistency across all four roles.
+
+   Per-role sections below list these common fields in their examples
+   and note any role-specific REQUIRED/conditional differences (e.g.,
+   jwks_uri is conditionally REQUIRED for resources).  Role-specific
+   fields are listed after the common fields.
+
 13.10.1.  Agent Provider Metadata
 
    Published at /.well-known/aauth-agent.json:
@@ -3866,6 +3928,7 @@ Initial request (with Prefer: wait=N)
      "description": "**Example AI Assistant** drafts and sends email on your behalf.",
      "logo_uri": "https://agent.example/logo.png",
      "logo_dark_uri": "https://agent.example/logo-dark.png",
+     "documentation_uri": "https://agent.example/docs",
      "callback_endpoint": "https://agent.example/callback",
      "localhost_callback_allowed": true,
      "tos_uri": "https://agent.example/tos",
@@ -3885,6 +3948,8 @@ Initial request (with Prefer: wait=N)
       sanitize the Markdown before rendering to users.
    *  logo_uri (OPTIONAL): URL to agent logo (per [RFC7591])
    *  logo_dark_uri (OPTIONAL): URL to agent logo for dark backgrounds
+   *  documentation_uri (OPTIONAL): URL with developer documentation for
+      the agent provider
    *  callback_endpoint (OPTIONAL): The agent's HTTPS callback endpoint
       URL
    *  login_endpoint (OPTIONAL): URL where third parties can direct
@@ -3903,6 +3968,7 @@ Initial request (with Prefer: wait=N)
      "description": "**Example Person Server** — manage which agents act for you and review what they do.",
      "logo_uri": "https://ps.example/logo.png",
      "logo_dark_uri": "https://ps.example/logo-dark.png",
+     "documentation_uri": "https://ps.example/docs",
      "tos_uri": "https://ps.example/tos",
      "policy_uri": "https://ps.example/privacy",
      "token_endpoint": "https://ps.example/token",
@@ -3926,6 +3992,8 @@ Initial request (with Prefer: wait=N)
    *  logo_uri (OPTIONAL): URL to person server logo
    *  logo_dark_uri (OPTIONAL): URL to person server logo for dark
       backgrounds
+   *  documentation_uri (OPTIONAL): URL with developer documentation for
+      the person server
    *  tos_uri (OPTIONAL): URL to terms of service
    *  policy_uri (OPTIONAL): URL to privacy policy
    *  token_endpoint (REQUIRED): URL where agents send token requests
@@ -3959,6 +4027,7 @@ Initial request (with Prefer: wait=N)
      "description": "**Example Access Server** — issues access for the Example resource.",
      "logo_uri": "https://as.resource.example/logo.png",
      "logo_dark_uri": "https://as.resource.example/logo-dark.png",
+     "documentation_uri": "https://as.resource.example/docs",
      "tos_uri": "https://as.resource.example/tos",
      "policy_uri": "https://as.resource.example/privacy",
      "token_endpoint": "https://as.resource.example/token",
@@ -3977,6 +4046,8 @@ Initial request (with Prefer: wait=N)
    *  logo_uri (OPTIONAL): URL to access server logo
    *  logo_dark_uri (OPTIONAL): URL to access server logo for dark
       backgrounds
+   *  documentation_uri (OPTIONAL): URL with developer documentation for
+      the access server
    *  tos_uri (OPTIONAL): URL to terms of service
    *  policy_uri (OPTIONAL): URL to privacy policy
    *  token_endpoint (REQUIRED): URL where PSes send token requests
@@ -4243,7 +4314,7 @@ Initial request (with Prefer: wait=N)
     |         |               |                  | access            |
     +---------+---------------+------------------+-------------------+
 
-                                 Table 10
+                                 Table 11
 
 15.  Security Considerations
 
@@ -4574,7 +4645,7 @@ Initial request (with Prefer: wait=N)
        |                     |                   | Section 13.10.4 |
        +---------------------+-------------------+-----------------+
 
-                                  Table 11
+                                  Table 12
 
 17.4.  Media Type Registrations
 
@@ -4639,7 +4710,7 @@ Initial request (with Prefer: wait=N)
              | aa-resource+jwt | This document, Section 6   |
              +-----------------+----------------------------+
 
-                                 Table 12
+                                 Table 13
 
 17.6.  JWT Claims Registrations
 
@@ -4673,7 +4744,7 @@ Initial request (with Prefer: wait=N)
      |              | auth tokens          |            |           |
      +--------------+----------------------+------------+-----------+
 
-                                 Table 13
+                                 Table 14
 
 17.7.  AAuth Requirement Value Registry
 
@@ -4696,7 +4767,7 @@ Initial request (with Prefer: wait=N)
                      | claims        | This document |
                      +---------------+---------------+
 
-                                  Table 14
+                                  Table 15
 
 17.8.  AAuth Capability Value Registry
 
@@ -4713,7 +4784,7 @@ Initial request (with Prefer: wait=N)
                      | payment       | This document |
                      +---------------+---------------+
 
-                                  Table 15
+                                  Table 16
 
 17.9.  AAuth Platform Value Registry
 
@@ -4743,7 +4814,7 @@ Initial request (with Prefer: wait=N)
        |             | controls                       |           |
        +-------------+--------------------------------+-----------+
 
-                                 Table 16
+                                 Table 17
 
 17.10.  URI Scheme Registration
 
@@ -4762,7 +4833,7 @@ Initial request (with Prefer: wait=N)
    has the syntax aauth:local@domain, where local is the agent-specific
    part and domain is the agent provider's domain name.  The aauth URI
    is used in the sub claim of agent tokens, the agent field of resource
-   tokens and the mission blob, and the act.sub claim of auth tokens.
+   tokens and the mission blob, and the act.agent field of auth tokens.
 
 18.  Implementation Status
 
@@ -4802,6 +4873,32 @@ Initial request (with Prefer: wait=N)
 19.  Document History
 
    _Note: This section is to be removed before publishing as an RFC._
+
+   *  draft-hardt-oauth-aauth-protocol-04
+
+      -  Auth tokens: replaced act.sub with act.agent throughout — the
+         identifier field within each act node now explicitly names the
+         value as an AAuth agent identifier in aauth: URI form, rather
+         than reusing the generic JWT sub name.  Applies uniformly to
+         direct authorization, call chaining, and sub-agent delegation.
+         See issue #47 (https://github.com/dickhardt/AAuth/issues/47)
+         for rationale.
+
+   *  draft-hardt-oauth-aauth-protocol-03
+
+      -  Metadata: added a "Common Metadata Fields" table at the top of
+         the Metadata Documents section, listing the fields shared
+         across all four well-known documents (issuer, jwks_uri, name,
+         description, logo_uri, logo_dark_uri, documentation_uri,
+         tos_uri, policy_uri) and documenting the intentional
+         divergences from RFC 9728 (issuer instead of resource;
+         unprefixed field names).
+      -  Metadata: added documentation_uri to aauth-agent.json, aauth-
+         person.json, and aauth-access.json for consistency with aauth-
+         resource.json.
+      -  Interaction code: updated Crockford base32 reference from a
+         manual entry to the IETF I-D [@?I-D.crockford-davis-base32-for-
+         humans].
 
    *  draft-hardt-oauth-aauth-protocol-02
 
@@ -5026,9 +5123,12 @@ Initial request (with Prefer: wait=N)
               MacFarlane, J., "CommonMark Spec", 2024,
               <https://spec.commonmark.org/0.31.2/>.
 
-   [Crockford.Base32]
-              Crockford, D., "Base 32", 2019,
-              <https://www.crockford.com/base32.html>.
+   [I-D.crockford-davis-base32-for-humans]
+              Crockford, D. and K. R. Davis, "Base32 for Humans", Work
+              in Progress, Internet-Draft, draft-crockford-davis-base32-
+              for-humans-01, 10 April 2026,
+              <https://datatracker.ietf.org/doc/html/draft-crockford-
+              davis-base32-for-humans-01>.
 
    [I-D.hardt-aauth-bootstrap]
               Hardt, D., "AAuth Bootstrap Guidance", 2026,
