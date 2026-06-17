@@ -77,6 +77,12 @@ A standalone HTTP specification that AAuth builds on. Defines well-known key dis
 
 Rich Resource Requests. Vocabulary-based authorization using formats agents already understand (MCP, OpenAPI, gRPC, GraphQL). Content-addressed R3 documents provide human-readable consent display and permanent audit provenance.
 
+### Interoperability Demo Profile
+
+**[interop-demo-profile.md](interop-demo-profile.md)**
+
+Non-normative guidance for implementers on the minimum live pieces needed to demonstrate end-to-end AAuth interoperability. Describes five verifiable surfaces — PS mission approval, `AAuth-Mission` presentation, resource-token issuance, auth-token issuance and presentation, and parent-mediated sub-agent handling — and which surfaces require a live PS, AS, or resource.
+
 ### AAuth Bootstrap Guidance (Informational)
 
 **[draft-hardt-aauth-bootstrap](draft-hardt-aauth-bootstrap.md)**
