@@ -753,6 +753,8 @@ The agent MUST include `authorization` in the covered components of its HTTP sig
 
 A resource MAY return a new `AAuth-Access` header on any response, replacing the agent's current access token. This enables rolling refresh without an explicit refresh flow. When the agent receives a new `AAuth-Access` value, it MUST use the new value on subsequent requests.
 
+The `AAuth-Access` value, and the credential carried in `Authorization: AAuth`, is a `token68` ([@!RFC9110], Section 11.2). Recipients MUST reject empty values, values containing embedded whitespace or control characters, and responses carrying more than one credential.
+
 ## Resource-Managed Authorization {#resource-managed-auth}
 
 When a resource manages authorization itself and requires user interaction, it returns a `202 Accepted` response with an interaction requirement:
@@ -814,6 +816,9 @@ Optional payload claims:
 - `mission`: Mission reference (present when the resource is mission-aware and the agent sent an `AAuth-Mission` header). Contains:
   - `approver`: HTTPS URL of the entity that approved the mission
   - `s256`: SHA-256 hash of the approved mission JSON (base64url)
+- `interaction`: Present when the resource requires its own user-facing flow — for example, obtaining OAuth authorization from a third-party service — before the PS can issue an auth token. Contains:
+  - `url`: HTTPS URL of the resource's interaction endpoint
+  - `code`: Interaction code to present at that URL
 
 Resource tokens SHOULD NOT have a lifetime exceeding 5 minutes. The `jti` claim provides an audit trail for token requests; ASes are not required to enforce replay detection on resource tokens. If a resource token expires before the PS presents it to the AS (e.g., because user interaction was required), the agent MUST obtain a fresh resource token from the resource and submit a new token request to the PS. The PS SHOULD remember prior consent decisions within a mission so the user is not re-prompted when the agent resubmits a request for the same resource and scope.
 
@@ -928,6 +933,29 @@ Content-Type: application/json
 ```
 
 In four-party mode, the PS may also pass through a clarification from the AS to the agent via the `202` response (#as-token-endpoint).
+
+### Resource-Initiated Interaction {#resource-initiated-interaction}
+
+When the resource token contains an `interaction` claim, the resource requires its own user-facing flow — typically an OAuth authorization from a third-party service — before authorization can proceed. The PS coordinates this by chaining the resource's flow with its own consent step.
+
+The PS resolves the resource interaction before presenting its own consent: if the user declines the resource's underlying authorization, the PS authorization is vacuous, so it makes no sense to ask for PS consent first.
+
+**Flow:**
+
+1. The PS returns `202` to the agent with its own interaction URL — the same as for any consent interaction.
+2. The user arrives at the PS's interaction page. The PS shows an interstitial informing the user that the resource requires additional permissions before the PS can authorize access.
+3. The PS redirects the user to the resource's interaction endpoint using the standard callback pattern (see also (#user-interaction)):
+   ```
+   {interaction.url}?code={interaction.code}&callback={ps_callback_url}
+   ```
+   where `ps_callback_url` is a PS-generated, per-flow URL for this authorization.
+4. The resource completes its own OAuth or permission flow. The resource MUST redirect the user to the `callback` URL when its flow completes — either successfully or with an error.
+5. The PS receives the callback redirect and continues with its own consent step.
+6. Upon user approval, the PS issues the auth token and resolves the agent's pending request.
+
+A resource's interaction endpoint MUST support the standard `?code=...&callback=...` pattern regardless of whether the redirect comes from an agent or from a PS in a chained flow — the endpoint cannot and need not distinguish callers.
+
+The `interaction.url` MUST be an HTTPS URL. The PS MUST validate this before constructing the redirect and MUST apply its egress admission policy to the URL.
 
 ## User Interaction
 
@@ -1415,6 +1443,11 @@ When a mission-aware resource receives a request with the `AAuth-Mission` header
 
 Agents operating in a mission context MUST include the `AAuth-Mission` header on requests to resources that do not include an auth token containing a `mission` claim.
 
+`AAuth-Mission` carries a *mission reference* — the `{approver, s256}` pair — not the mission body. A resource or AS MUST NOT dereference the reference to fetch the mission blob; the full mission JSON is held only by the agent and the PS (#mission-approval). A mission-aware resource copies the reference into the resource token's `mission` claim unchanged; downstream parties receive mission semantics through resource/auth token claims and PS evaluation, never by resolving the blob.
+
+- `approver` MUST be an HTTPS URL conforming to the Server Identifier requirements (#server-identifiers) — scheme and host only, no port, path, query, or fragment — and is compared by exact string match.
+- `s256` MUST be the unpadded base64url encoding of the 32-byte SHA-256 digest of the approved mission JSON bytes (#mission-approval).
+
 # Access Server Federation {#access-server-federation}
 
 This section defines auth tokens and the mechanisms by which they are issued. The auth token is the end result of the authorization flow — a JWT issued by an access server that grants an agent access to a specific resource. This section covers the AS token endpoint, PS-AS federation, and the auth token structure.
@@ -1657,15 +1690,20 @@ Once an auth token has been issued for a resource, the agent presents the auth t
 
 ### Auth Token Verification
 
-When a resource receives an auth token, verify per [@!RFC7515] and [@!RFC7519]:
+When a resource receives an auth token, verify per [@!RFC7515] and [@!RFC7519]. A valid JWT signature alone is not a complete AAuth authorization check — both JWT trust and request-context binding must pass.
+
+#### JWT Trust Verification
 
 1. Decode the JWT header. Verify `typ` is `aa-auth+jwt`.
 2. Verify `dwk` is `aauth-access.json` (auth token from an AS) or `aauth-person.json` (auth token from a PS asserting identity). Discover the issuer's JWKS via `{iss}/.well-known/{dwk}` per the HTTP Signature Keys specification ([@!I-D.hardt-httpbis-signature-key]). Locate the key matching the JWT header `kid` and verify the JWT signature.
 3. Verify `exp` is in the future and `iat` is not in the future.
 4. Verify `iss` is a valid HTTPS URL.
+
+#### Request-Context Binding
+
 5. Verify `aud` matches the resource's own identifier.
 6. Verify `agent` matches the agent identifier from the request's signing context.
-7. Verify `cnf.jwk` matches the key used to sign the HTTP request.
+7. `cnf.jwk` is REQUIRED. If it is absent, or if its JWK is missing `kty` or the members required for that key type (e.g., `crv` and `x` for OKP keys; `crv`, `x`, and `y` for EC keys; `n` and `e` for RSA keys), reject the token as structurally incomplete before attempting key decoding. If present but not parseable as a supported public key, reject it as invalid key material. Otherwise verify `cnf.jwk` matches the key used to sign the HTTP request.
 8. If `act` is present, verify `act.agent` is a valid AAuth agent identifier and accurately reflects the upstream delegation context.
 9. Verify that at least one of `sub` or `scope` is present.
 
@@ -1925,6 +1963,8 @@ The agent determines its capabilities by combining what it can do directly with 
 
 Agents SHOULD include the `AAuth-Capabilities` header on signed requests to resources. The header is not used on requests to PS endpoints: on the PS token endpoint the agent conveys capabilities via the `capabilities` request parameter (#ps-token-endpoint), and within a mission the PS also has the capabilities captured at mission approval (#mission-approval). Recipients MUST ignore unrecognized capability values. When the header is absent, recipients MUST NOT assume any capabilities — the agent may not support interaction, clarification, or payment flows.
 
+Capability values are Tokens and currently carry no parameters. A future capability value MAY define parameters; recipients MUST ignore parameters they do not recognize on a capability item rather than rejecting the header.
+
 ## Scopes {#scopes}
 
 Scopes define what an agent is authorized to do at a resource. AAuth uses two categories of scope values:
@@ -1956,7 +1996,7 @@ The `AAuth-Requirement` header field is a Dictionary ([@!RFC8941], Section 3.2).
 
 - `requirement`: A Token ([@!RFC8941], Section 3.3.4) indicating the requirement type.
 
-Additional members are defined per requirement value. Recipients MUST ignore unknown members.
+Requirement-specific data are conveyed as parameters on the `requirement` member (for example, `resource-token`, `url`, `code`). Recipients MUST ignore unknown parameters.
 
 Example:
 
@@ -1978,6 +2018,8 @@ The `requirement` value is an extension point. This document defines the followi
 | `claims` | `202` | Identity claims required | | | Y |
 
 The `agent-token` requirement is defined in (#requirement-agent-token); the `auth-token` requirement in (#requirement-auth-token); the `interaction` and `approval` requirements are defined in this section;  `clarification` in (#requirement-clarification); and `claims` in (#requirement-claims).
+
+An agent that does not recognize the `requirement` value MUST NOT treat the response as satisfiable. It surfaces the unsupported requirement to the caller as an error. For a `202` response with an unrecognized `requirement`, the agent MAY continue polling the `Location` URL in case a later response carries a requirement value it does understand, rather than immediately abandoning the request.
 
 ### Interaction Required
 
@@ -2251,7 +2293,7 @@ Agents and resources MUST support EdDSA using Ed25519 ([@!RFC8032]). Agents and 
 
 ### Keying Material {#keying-material}
 
-The signing key is conveyed in the `Signature-Key` header ([@!I-D.hardt-httpbis-signature-key]). Because every AAuth agent holds an agent token (#agent-tokens), AAuth uses the **identity** Signature-Key schemes: the agent presents its agent token — or, after authorization, an auth token — via `scheme=jwt` (public key in the `cnf` claim), or a self-hosted agent uses `scheme=jwks_uri` (key discovered at the agent's JWKS endpoint).
+The signing key is conveyed in the `Signature-Key` header ([@!I-D.hardt-httpbis-signature-key]). Because every AAuth agent holds an agent token (#agent-tokens), AAuth uses the **identity** `scheme=jwt`: the agent presents its agent token — or, after authorization, an auth token — and the public key is taken from the token's `cnf` claim. Agents MUST use `scheme=jwt`; agents MUST NOT use `scheme=jwks_uri` or `scheme=hwk` for AAuth resource, PS, or AS requests.
 
 The Signature-Key specification also defines `pseudonym` schemes (`scheme=hwk` for a bare inline public key, `scheme=jkt-jwt` for hardware-key delegation). AAuth does not use bare `hwk` access — the agent token is the minimum AAuth credential. `scheme=jkt-jwt` is used only in the agent provider's key-refresh ceremony (see [@?I-D.hardt-aauth-bootstrap]), not for protocol access to resources, PSes, or ASes.
 
@@ -2278,6 +2320,20 @@ These four are mandated rather than advisory because each closes a request-subst
 
 Servers MAY require additional covered components (e.g., `content-digest` ([@RFC9530]) for request body integrity). The agent learns about additional requirements from server metadata or from an `invalid_input` error response that includes `required_input`.
 
+The following example shows a fully bound request combining an opaque `AAuth-Access` token, an `AAuth-Mission` reference, and an HTTP Message Signature. Token and key values are illustrative placeholders, not parseable test vectors. `Authorization: AAuth` carries the opaque resource access token; `Signature-Key` carries the auth token (four-party) or agent token, whose `cnf.jwk` is the signing key. A valid signature over these components proves request-component integrity; authorization still depends on auth-token claims and resource enforcement.
+
+```http
+GET /api/documents HTTP/1.1
+Host: resource.example
+Authorization: AAuth opaque-access-token-placeholder
+AAuth-Mission: approver="https://ps.example";
+    s256="dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+Signature-Input: sig=("@method" "@authority" "@path"
+    "authorization" "aauth-mission" "signature-key");created=1730217600
+Signature: sig=:BASE64URL-SIGNATURE-PLACEHOLDER:
+Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZERTQSJ9.PLACEHOLDER.PLACEHOLDER"
+```
+
 #### Signature Parameters
 
 The `Signature-Input` header ([@!RFC9421], Section 4.1) MUST include the following parameters:
@@ -2295,11 +2351,21 @@ When a server receives a signed request, it MUST perform the following steps. An
 5. Obtain the public key from the `Signature-Key` header according to the scheme, as specified in ([@!I-D.hardt-httpbis-signature-key]). Return `invalid_key` if the key cannot be parsed, `unknown_key` if the key is not found at the `jwks_uri`, `invalid_jwt` if a JWT scheme fails verification, or `expired_jwt` if the JWT has expired.
 6. Verify the HTTP Message Signature ([@!RFC9421]) using the obtained public key and determined algorithm. Return `invalid_signature` if verification fails.
 
+#### Freshness and Replay {#freshness-and-replay}
+
+The `created` parameter is the primary replay defense: the server rejects signatures whose `created` is outside the validity window (default 60 seconds), so a captured signature becomes unusable once the window closes. `expires` is OPTIONAL; servers MUST honor it when present and MUST reject requests where `expires` is in the past.
+
+Within the validity window, a captured signature could in principle be replayed. For state-changing requests where this matters, a verifier MAY maintain a short-lived cache keyed by `(signing-key-thumbprint, created, @method, @authority, @path)` for the duration of the window, rejecting duplicate tuples. `@authority` is included because it is a mandated covered component (#covered-components) and distinguishes requests across virtual hosts or tenants sharing the same path. Resources are NOT required to maintain replay caches for resource tokens (#resource-tokens), which are consumed in a single PS call. This profile defines no nonce mechanism.
+
 ## JWKS Discovery and Caching {#jwks-discovery}
 
 All AAuth token verification — agent tokens, resource tokens, and auth tokens — requires discovering the issuer's signing keys via the `{iss}/.well-known/{dwk}` pattern defined in the HTTP Signature Keys specification ([@!I-D.hardt-httpbis-signature-key]).
 
 Implementations MUST cache JWKS responses and SHOULD respect HTTP cache headers (`Cache-Control`, `Expires`) returned by the JWKS endpoint. When an implementation encounters an unknown `kid` in a JWT header, it SHOULD refresh the cached JWKS for that issuer to support key rotation. To prevent abuse, implementations MUST NOT fetch a given issuer's JWKS more frequently than once per minute. If a JWKS fetch fails, implementations SHOULD use the cached JWKS if available and SHOULD retry with exponential backoff. Cached JWKS entries SHOULD be discarded after a maximum of 24 hours regardless of cache headers, to ensure removed keys are no longer trusted.
+
+If a cached key matching the JWT `kid` fails signature verification, the verifier SHOULD refresh the issuer's JWKS once and retry before returning `unknown_key` (if the key is then absent from the refreshed JWKS) or `invalid_jwt` (if verification still fails), subject to the once-per-minute floor above. This covers silent re-keying where the issuer replaces key material under the same `kid` without changing the identifier.
+
+Before fetching any issuer metadata or `jwks_uri`, verifiers MUST apply egress admission per ([@!I-D.hardt-httpbis-signature-key]).
 
 ## Identifiers {#identifiers-and-discovery}
 
@@ -2635,6 +2701,12 @@ Because identity assertion does not require pre-registration, the resource follo
 
 The PS MUST protect its signing keys with appropriate rigor — compromise of a PS's signing key allows forgery of identity claims for every resource that accepts that PS.
 
+## PS Approval Endpoint Authentication {#ps-approval-endpoint-auth}
+
+When the PS approval/consent endpoint is reachable beyond a single-user local deployment, the PS MUST authenticate the approving party before acting on a consent or denial decision. Acceptable mechanisms include an operator session cookie, a signed request from an authenticated operator, or an equivalent out-of-band channel.
+
+An unauthenticated approval endpoint allows a remote party to consent on the user's behalf — a privilege escalation that breaks the agent-person binding invariant (#agent-person-binding). A locally-trusted PS (loopback only, no external network reachability) is exempt from this requirement provided it enforces OS-level access controls on the loopback interface.
+
 ## Agent-Person Binding {#agent-person-binding}
 
 The PS MUST ensure that each agent is associated with exactly one person. This one-to-one binding is a trust invariant — it ensures that every action an agent takes is attributable to a single accountable party.
@@ -2869,6 +2941,9 @@ The following implementations are known:
 
 *Note: This section is to be removed before publishing as an RFC.*
 
+- draft-hardt-oauth-aauth-protocol-06
+  - Implementation and interoperability clarity driven by feedback from Joshua Gay (sidecat): mission reference dereference boundary and `approver`/`s256` syntax rules; agent keying material restricted to `scheme=jwt`; `AAuth-Requirement` parameter shape and unknown-value behavior; `AAuth-Access` token grammar (`token68`); `AAuth-Capabilities` forward-compatibility; JWKS same-`kid` refresh and egress admission; auth token verification split into JWT trust and request-context binding with structured `cnf.jwk` failure ordering; PS approval endpoint authentication security consideration; freshness and replay policy subsection. Interoperability demo profile extracted to a standalone non-normative document.
+
 - draft-hardt-oauth-aauth-protocol-05
   - Auth tokens: `act` is OPTIONAL, absent in direct authorization; `act.agent` identifies the immediate upstream agent (the delegator), not the presenter; nesting records the full chain. Updated verification steps, sub-agent issuance, PS upstream token construction, and delegation chain examples accordingly. Replaced the "sub-agent calls a chained resource" example with "sub-agent inside a chain."
 
@@ -3048,6 +3123,10 @@ HTTPS URLs as agent identifiers enable dynamic ecosystems without pre-registrati
 ### Why Per-Instance Agent Identity
 
 OAuth's `client_id` identifies an application — every instance of the same app shares a single identifier and typically a single set of credentials. AAuth's `aauth:local@domain` agent identifier identifies a specific instance with its own signing key. This enables per-instance authorization (grant access to this specific agent process, not all instances of the app), per-instance revocation (revoke one compromised instance without affecting others), and per-instance audit (trace every action to the specific instance that performed it). The agent provider controls which instances receive agent tokens, providing centralized governance over a distributed agent fleet.
+
+### Why Agents Are Under an Agent Provider
+
+Placing agents under an agent provider rather than allowing each agent to self-certify its own identity serves two purposes. First, **scale**: a single agent provider can issue, rotate, and revoke agent tokens across a fleet of thousands of instances. Resources and PSes verify agent tokens by fetching the AP's JWKS — one trust anchor for all agents from that provider — rather than performing individual key management with each instance. Second, **policy enforcement**: the AP is a natural PEP for agents. It controls which agent instances receive tokens, what identity claims they carry, and when tokens are denied or revoked. An agent that is also its own AP would bypass this layer entirely, eliminating the governance point without gaining anything: the protocol complexity increases while the security properties weaken. AAuth therefore requires every agent to hold a token issued by a distinct AP, not self-signed.
 
 ### Why Every Agent Has a Person
 
