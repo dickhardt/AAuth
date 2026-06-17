@@ -945,8 +945,8 @@ The PS resolves the resource interaction before presenting its own consent: if t
 1. The PS returns `202` to the agent with its own interaction URL — the same as for any consent interaction.
 2. The user arrives at the PS's interaction page. The PS shows an interstitial informing the user that the resource requires additional permissions before the PS can authorize access.
 3. The PS redirects the user to the resource's interaction endpoint using the standard callback pattern, where `ps_callback_url` is a PS-generated, per-flow URL: `{interaction.url}?code={interaction.code}&callback={ps_callback_url}`
-4. The resource completes its own OAuth or permission flow. The resource MUST redirect the user to the `callback` URL when its flow completes — either successfully or with an error.
-5. The PS receives the callback redirect and continues with its own consent step.
+4. The resource completes its own OAuth or permission flow. The resource MUST redirect the user to the `callback` URL when its flow completes — either successfully or with an error per (#interaction-callback-errors).
+5. The PS receives the callback redirect. If the callback contains an `error` parameter, the PS abandons the authorization and returns the mapped polling error to the agent. Otherwise it continues with its own consent step.
 6. Upon user approval, the PS issues the auth token and resolves the agent's pending request.
 
 A resource's interaction endpoint MUST support the standard `?code=...&callback=...` pattern regardless of whether the redirect comes from an agent or from a PS in a chained flow — the endpoint cannot and need not distinguish callers.
@@ -965,6 +965,26 @@ When the agent has a browser, it MAY append a `callback` parameter:
 The `callback` URL is constructed from the agent's `callback_endpoint` metadata. When present, the server redirects the user's browser to the `callback` URL after the user completes the action. If no `callback` parameter is provided, the server displays a completion page and the agent relies on polling to detect completion.
 
 The `code` parameter is single-use: once the user arrives at the URL with a valid code, the code is consumed and cannot be reused.
+
+When the interaction completes with an error, the server redirects to the `callback` URL with an `error` query parameter instead of signaling success. See (#interaction-callback-errors).
+
+### Interaction Callback Errors {#interaction-callback-errors}
+
+When an interaction cannot be completed successfully, the server MUST redirect to the `callback` URL with an `error` query parameter:
+
+```
+{callback_url}?error={error_code}
+```
+
+| Error | Meaning |
+|---|---|
+| `access_denied` | The user explicitly declined the interaction. |
+| `user_abandoned` | The user opened the interaction but did not complete it — no explicit decision was made. |
+| `server_error` | The party handling the interaction encountered an internal failure. |
+| `temporarily_unavailable` | The interaction service is temporarily unavailable; the caller MAY retry. |
+| `interaction_expired` | The interaction session expired before the user completed the flow. |
+
+Recipients of a callback with an `error` parameter MUST NOT treat the pending request as completable and MUST surface the error to the caller. In the resource-initiated interaction flow (#resource-initiated-interaction), the PS maps the received callback error to a polling error returned to the agent: `access_denied` maps to `denied`; `user_abandoned` maps to `abandoned`; `interaction_expired` maps to `expired`; `server_error` and `temporarily_unavailable` map to `server_error`.
 
 ## Clarification Chat
 
@@ -2937,6 +2957,9 @@ The following implementations are known:
 
 *Note: This section is to be removed before publishing as an RFC.*
 
+- draft-hardt-oauth-aauth-protocol-07
+  - Added `Interaction Callback Errors` section defining the `?error=` wire format for callback redirects (`access_denied`, `user_abandoned`, `server_error`, `temporarily_unavailable`, `interaction_expired`) and the PS mapping to polling errors. Updated Resource-Initiated Interaction to reference the new section and specify PS behavior on error callbacks. Added Joshua Gay to Acknowledgments.
+
 - draft-hardt-oauth-aauth-protocol-06
   - Implementation and interoperability clarity driven by feedback from Joshua Gay (sidecat): mission reference dereference boundary and `approver`/`s256` syntax rules; agent keying material restricted to `scheme=jwt`; `AAuth-Requirement` parameter shape and unknown-value behavior; `AAuth-Access` token grammar (`token68`); `AAuth-Capabilities` forward-compatibility; JWKS same-`kid` refresh and egress admission; auth token verification split into JWT trust and request-context binding with structured `cnf.jwk` failure ordering; PS approval endpoint authentication security consideration; freshness and replay policy subsection. Interoperability demo profile extracted to a standalone non-normative document.
 
@@ -2986,7 +3009,7 @@ The following implementations are known:
 
 # Acknowledgments
 
-The author would like to thank reviewers for their feedback on concepts and earlier drafts, and contributors who raised issues and pull requests: Aaron Parecki, Christian Posta, Dasith Wijesiriwardena, Frederik Krogsdal Jacobsen, Jared Hanson, Jeoffrey Haeyaert, João André Marques, Karl McGuinness, Mark Hendrickson, Nate Barbettini, Nick Gamb, Paul Carleton, Rohan Harikumar, Scott Motte, Wils Dawson.
+The author would like to thank reviewers for their feedback on concepts and earlier drafts, and contributors who raised issues and pull requests: Aaron Parecki, Christian Posta, Dasith Wijesiriwardena, Frederik Krogsdal Jacobsen, Jared Hanson, Jeoffrey Haeyaert, João André Marques, Joshua Gay, Karl McGuinness, Mark Hendrickson, Nate Barbettini, Nick Gamb, Paul Carleton, Rohan Harikumar, Scott Motte, Wils Dawson.
 
 {backmatter}
 
