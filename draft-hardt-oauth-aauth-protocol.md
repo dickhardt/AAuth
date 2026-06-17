@@ -944,11 +944,7 @@ The PS resolves the resource interaction before presenting its own consent: if t
 
 1. The PS returns `202` to the agent with its own interaction URL — the same as for any consent interaction.
 2. The user arrives at the PS's interaction page. The PS shows an interstitial informing the user that the resource requires additional permissions before the PS can authorize access.
-3. The PS redirects the user to the resource's interaction endpoint using the standard callback pattern:
-   ```
-   {interaction.url}?code={interaction.code}&callback={ps_callback_url}
-   ```
-   where `ps_callback_url` is a PS-generated, per-flow URL for this authorization.
+3. The PS redirects the user to the resource's interaction endpoint using the standard callback pattern, where `ps_callback_url` is a PS-generated, per-flow URL: `{interaction.url}?code={interaction.code}&callback={ps_callback_url}`
 4. The resource completes its own OAuth or permission flow. The resource MUST redirect the user to the `callback` URL when its flow completes — either successfully or with an error.
 5. The PS receives the callback redirect and continues with its own consent step.
 6. Upon user approval, the PS issues the auth token and resolves the agent's pending request.
