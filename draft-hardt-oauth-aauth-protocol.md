@@ -1736,11 +1736,11 @@ When an agent receives an auth token:
 
 ### Upstream Token Verification {#upstream-token-verification}
 
-When the PS receives an `upstream_token` parameter in a call chaining request:
+When the PS or AS receives an `upstream_token` parameter in a call chaining request:
 
 1. Perform Auth Token Verification (#auth-token-verification) on the upstream token.
-2. Verify `iss` is a trusted AS (an AS whose auth token the PS previously brokered).
-3. Verify the `aud` in the upstream token matches the resource that is now acting as an agent (i.e., the upstream token was issued for the intermediary resource).
+2. Verify `iss` is a trusted issuer (a PS or AS whose auth token the recipient previously brokered or is authorized to extend).
+3. Verify the `aud` in the upstream token equals the `iss` of the intermediary's agent token (presented in the `Signature-Key` header). This binding confirms the upstream token was issued to the resource now making the downstream request.
 4. The PS constructs the `act` claim for the downstream auth token: `act.agent` is set to the intermediary resource's agent identifier, and if the upstream token contained an `act` claim, it is nested inside as the new `act.act`. This preserves the complete upstream delegation chain.
 5. The PS evaluates its mission and governance policy based on the upstream token's claims and mission context. The resulting downstream authorization is not required to be a subset of the upstream scopes — see (#call-chaining).
 
@@ -1754,13 +1754,15 @@ This section defines how resources act as agents (an instance of role collocatio
 
 ### Call Chaining {#call-chaining}
 
-When a resource needs to access a downstream resource on behalf of the caller, it acts as an agent. The resource determines where to send the downstream token request based on the upstream auth token it received:
+When a resource needs to access a downstream resource on behalf of the caller, it acts as an agent. The resource determines where to route the downstream token request from the upstream auth token it received — specifically from `mission.approver` (if a mission is present) or from `iss` (the identity of the PS or AS that issued the upstream token). The `ps` claim in the calling agent's agent token is NOT used for this routing; the upstream auth token is the authoritative source.
 
 - **Mission present** (`mission.approver` in the upstream auth token): The resource sends the downstream resource token to the PS identified by `mission.approver`, along with its own agent token and the upstream auth token as the `upstream_token`. The PS has mission context and evaluates the downstream request against the mission scope. This is the governed path — the PS sees the full delegation chain for audit.
 
-- **No mission, `iss` is a PS** (three-party upstream): The resource sends the downstream resource token to the PS identified by `iss`, along with its own agent token and the `upstream_token`. The PS evaluates the request without mission context.
+- **No mission, `iss` is a PS** (three-party upstream): The upstream auth token was issued directly by the PS (`iss` = PS URL). The resource sends the downstream resource token to that PS, along with its own agent token and the `upstream_token`. The PS evaluates the request without mission context.
 
 - **No mission, `iss` is an AS** (four-party upstream, no governance): The resource sends the downstream resource token to the AS identified by `iss`, along with its own agent token and the `upstream_token`. The AS evaluates the request based on resource policy. No PS is involved — no governance context is available.
+
+To ensure the PS is in the loop for every hop in a chain, the person's PS MUST require a mission. A mission puts `mission.approver` in the upstream auth token, giving every intermediary a PS URL to route to regardless of whether the upstream issuer was a PS or AS.
 
 In every case the intermediary signs the downstream token request with its **own** key, presenting its own agent token via the `Signature-Key` header (#http-message-signatures-profile). The `upstream_token` is a body parameter — it is neither presented via `Signature-Key` nor used as the signing key. It is the auth token previously issued to the intermediary (its `aud` is the intermediary and its `cnf` is the intermediary's key), and it serves only as proof of the upstream authorization that the recipient extends downstream. The signature the recipient verifies is therefore always the intermediary's, over its own key.
 
@@ -2073,9 +2075,11 @@ The `code` is a Structured Field String ([@!RFC8941], Section 3.3.3). The user r
 
 **Case.** Comparison MUST be case-insensitive. A server MUST accept the code regardless of the case the user enters, and on input MUST fold the Crockford decode aliases (`I`/`L` → `1`, `O` → `0`) before comparison so that a user who transcribes an ambiguous glyph still matches.
 
+**Correlation only.** The code is a correlation identifier — it ties the user's browser session to the pending interaction so the server can look up the correct request. It is NOT an authorization credential. The person's approve/deny decision MUST be recorded via an authenticated channel at the PS; how the PS authenticates the person is outside the scope of this specification. Because the agent relays the interaction URL and code to the user, the code is visible to the agent — the code alone MUST NOT authorize the decision.
+
 **Single use.** A code MUST be single-use. Once the user arrives at the interaction URL with a valid code and the code is consumed, the server MUST reject any later presentation of the same code, returning `invalid_code` (#polling-error-codes).
 
-**Rate-limiting.** Because the code is the only secret guarding the interaction URL, the server MUST rate-limit code-validation attempts at the interaction URL. After a small number of failed attempts the server MUST treat the pending interaction as terminally failed and return `invalid_code` (#polling-error-codes) on subsequent attempts, bounding the brute-force window to far fewer guesses than the code's entropy would otherwise allow.
+**Rate-limiting.** Because the code guards access to the interaction page, the server MUST rate-limit code-validation attempts at the interaction URL. After a small number of failed attempts the server MUST treat the pending interaction as terminally failed and return `invalid_code` (#polling-error-codes) on subsequent attempts, bounding the brute-force window to far fewer guesses than the code's entropy would otherwise allow.
 
 **Lifetime.** A code MUST expire no later than the pending interaction it is bound to (#deferred-responses). Once the pending request has expired, presenting the code MUST fail with `expired` (#polling-error-codes); the agent MAY initiate a fresh request to obtain a new code.
 
@@ -2956,6 +2960,10 @@ The following implementations are known:
 # Document History
 
 *Note: This section is to be removed before publishing as an RFC.*
+
+- draft-hardt-oauth-aauth-protocol-08
+  - Call chaining: upstream token `aud` MUST equal the `iss` of the intermediary's agent token; routing to PS or AS is derived from the upstream auth token (`mission.approver` or `iss`), not the calling agent's `ps` claim; PS MUST require a mission to remain in the loop for four-party upstream chains.
+  - Interaction code: added that the code is a correlation identifier, not an authorization credential; the code alone MUST NOT authorize the decision.
 
 - draft-hardt-oauth-aauth-protocol-07
   - Added `Interaction Callback Errors` section defining the `?error=` wire format for callback redirects (`access_denied`, `user_abandoned`, `server_error`, `temporarily_unavailable`, `interaction_expired`) and the PS mapping to polling errors. Updated Resource-Initiated Interaction to reference the new section and specify PS behavior on error callbacks. Added Joshua Gay to Acknowledgments.
