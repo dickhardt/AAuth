@@ -77,6 +77,14 @@ A standalone HTTP specification that AAuth builds on. Defines well-known key dis
 
 Rich Resource Requests. Vocabulary-based authorization using formats agents already understand (MCP, OpenAPI, gRPC, GraphQL). Content-addressed R3 documents provide human-readable consent display and permanent audit provenance.
 
+### AAuth Events (Exploratory)
+
+**[draft-hardt-aauth-events](draft-hardt-aauth-events.md)**
+
+Event subscription and delivery for agents. Defines the subscribe token agents use to register for events with resources, the event token resources deliver when events fire, and the delivery path through the Agent Provider (AP). Enables agents to receive asynchronous notifications — waitlist slots, order confirmations, inventory alerts — without requiring a public endpoint.
+
+* [Editor's Copy](https://dickhardt.github.io/AAuth/draft-hardt-aauth-events.html)
+
 ### Interoperability Demo Profile
 
 **[interop-demo-profile.md](interop-demo-profile.md)**

@@ -110,6 +110,16 @@ organization = "Hellō"
   </front>
 </reference>
 
+<reference anchor="I-D.hardt-aauth-events" target="https://github.com/dickhardt/AAuth">
+  <front>
+    <title>AAuth Events</title>
+    <author initials="D." surname="Hardt" fullname="Dick Hardt">
+      <organization>Hellō</organization>
+    </author>
+    <date year="2026"/>
+  </front>
+</reference>
+
 
 .# Abstract
 
@@ -155,6 +165,7 @@ Agents don't work this way. They discover resources at runtime. They execute lon
 - **Cross-domain federation**: The PS federates with access servers (AS) — the policy engines that guard resources — to enable access across trust domains without the agent needing to know about each one.
 - **Clarification chat**: Users can ask questions during consent; agents can explain or adjust their requests.
 - **Progressive adoption**: Each party can adopt independently; modes build on each other.
+- **Asynchronous event delivery**: Agents receive events from resources through the AP, without requiring a public endpoint. Resources post event tokens to the AP's event endpoint; the AP routes them to the agent. Defined in AAuth Events ([@?I-D.hardt-aauth-events]).
 
 ## What AAuth Does Not Do
 
@@ -388,6 +399,8 @@ Common collocations:
 - **AP + Resource**: An agent provider exposes its own services to the agents it issues tokens to — publishing metadata at `/.well-known/aauth-resource.json` and issuing resource tokens. This enables the agent to obtain auth tokens from its PS for the agent provider's own services or infrastructure, using the standard resource token flow. How the agent obtains the resource token from the agent provider is out of scope of this specification. No mission is required.
 - **Agent + AP**: A self-hosted agent is its own agent provider, self-issuing agent tokens signed by a JWKS-published key the user controls. See [@?I-D.hardt-aauth-bootstrap].
 - **Org-wide bundle**: A single organizational server may operate AP + PS + AS for employees and internal resources, with federation incurred only at the boundary when an internal agent accesses an external resource.
+
+An AP that supports AAuth Events ([@?I-D.hardt-aauth-events]) additionally acts as an event router — it receives event tokens from resources on behalf of agents and routes them to the appropriate agent instance. This is an extension of the AP role, not a new party.
 
 These are deployment choices that do not change the wire protocol. A receiver verifies each role's tokens and metadata identically whether the role is on its own server or collocated with others.
 
@@ -2468,6 +2481,7 @@ Published at `/.well-known/aauth-agent.json`:
   "logo_dark_uri": "https://agent.example/logo-dark.png",
   "documentation_uri": "https://agent.example/docs",
   "callback_endpoint": "https://agent.example/callback",
+  "event_endpoint": "https://agent.example/events",
   "localhost_callback_allowed": true,
   "tos_uri": "https://agent.example/tos",
   "policy_uri": "https://agent.example/privacy"
@@ -2484,6 +2498,7 @@ Fields:
 - `logo_dark_uri` (OPTIONAL): URL to agent logo for dark backgrounds
 - `documentation_uri` (OPTIONAL): URL with developer documentation for the agent provider
 - `callback_endpoint` (OPTIONAL): The agent's HTTPS callback endpoint URL
+- `event_endpoint` (OPTIONAL): HTTPS URL at which the AP receives event tokens from resources. Required if the AP supports AAuth Events ([@?I-D.hardt-aauth-events]).
 - `login_endpoint` (OPTIONAL): URL where third parties can direct users to initiate authentication (#third-party-login)
 - `localhost_callback_allowed` (OPTIONAL): Boolean. Default: `false`.
 - `tos_uri` (OPTIONAL): URL to terms of service (per [@RFC7591])
@@ -2882,6 +2897,13 @@ This specification registers the following JWT `typ` header parameter values in 
 | `aa-agent+jwt` | This document, (#agent-tokens) |
 | `aa-auth+jwt` | This document, (#auth-tokens) |
 | `aa-resource+jwt` | This document, (#resource-tokens) |
+
+The following JWT `typ` values are registered by AAuth Events ([@?I-D.hardt-aauth-events]):
+
+| Type Value | Reference |
+|---|---|
+| `aa-subscribe+jwt` | [@?I-D.hardt-aauth-events] |
+| `aa-event+jwt` | [@?I-D.hardt-aauth-events] |
 
 ## JWT Claims Registrations
 
