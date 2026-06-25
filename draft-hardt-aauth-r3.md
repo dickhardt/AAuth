@@ -34,6 +34,16 @@ organization = "Hellō"
   </front>
 </reference>
 
+<reference anchor="I-D.hardt-aauth-events" target="https://github.com/dickhardt/AAuth">
+  <front>
+    <title>AAuth Events</title>
+    <author initials="D." surname="Hardt" fullname="Dick Hardt">
+      <organization>Hellō</organization>
+    </author>
+    <date year="2026"/>
+  </front>
+</reference>
+
 
 .# Abstract
 
@@ -177,12 +187,12 @@ Each operation entry contains:
 
 ### AsyncAPI Vocabulary (`urn:aauth:vocabulary:asyncapi`) {#asyncapi-vocabulary}
 
-For resources that expose an event-driven interface described by AsyncAPI. The discovery endpoint is the AsyncAPI specification URL.
-
-Each operation entry contains:
+For resources that emit events described by AsyncAPI. The discovery endpoint is the AsyncAPI specification URL.
 
 - **`operationId`** (REQUIRED). The `operationId` as defined in the AsyncAPI specification.
-- **`action`** (REQUIRED). One of `send` or `receive`.
+- **`action`** (OPTIONAL). The AsyncAPI action type: `send` or `receive`. Agents subscribing to events use `receive`.
+
+When a resource grants an agent an AsyncAPI subscription operation via R3, the actual subscription registration and event delivery use the AAuth Events protocol ([@?I-D.hardt-aauth-events]). The resource issues a subscription ticket URL in response to the authenticated request; the agent then completes subscription registration using a subscribe token per AAuth Events.
 
 ```json
 {
