@@ -749,6 +749,10 @@ A web agent with a persistent session may receive events via a server-sent event
 
 ## Self-Hosted Agents
 
-A self-hosted agent that acts as its own AP ([@?I-D.hardt-aauth-bootstrap]) may expose an internal event endpoint. Events are delivered directly to this endpoint by the resource — the AP and agent are collocated.
+A self-hosted agent may receive events in two ways depending on whether it manages its own AP or delegates to an external one.
+
+If the agent acts as its own AP ([@?I-D.hardt-aauth-bootstrap]), it may expose an internal event endpoint. Events are delivered directly to this endpoint by the resource — the AP and agent are collocated.
+
+If the agent uses an external AP service, it maintains an outbound persistent connection (SSE, WebSocket, or a similar mechanism) to the AP's inbox service. The AP delivers event tokens and payloads over this connection as they arrive. The self-hosted agent does not need a public inbound endpoint — the outbound connection to the AP is sufficient.
 
 
