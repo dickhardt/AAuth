@@ -9,25 +9,26 @@
 <meta content="
        This document defines AAuth Rich Resource Requests (R3), an extension to the AAuth Protocol ( ) that enables structured, vocabulary-based authorization for resource access. Resources publish R3 documents (content-addressed authorization definitions) and advertise vocabularies describing their operations. Agents request access using those vocabularies. Auth tokens carry granted operations in the same vocabulary format, enabling resources to enforce authorization directly from the token. R3 provides human-displayable context for consent decisions and content-addressed audit provenance via the  r3_s256  hash in auth tokens. 
     " name="description">
-<meta content="xml2rfc 3.33.0" name="generator">
+<meta content="xml2rfc 3.34.0" name="generator">
 <meta content="agent" name="keyword">
 <meta content="authorization" name="keyword">
 <meta content="http" name="keyword">
 <meta content="resource" name="keyword">
 <meta content="draft-hardt-aauth-r3-latest" name="ietf.draft">
 <!-- Generator version information:
-  xml2rfc 3.33.0
-    Python 3.12.13
-    ConfigArgParse 1.7
+  xml2rfc 3.34.0
+    Python 3.14.5
+    ConfigArgParse 1.7.5
     google-i18n-address 3.1.1
     intervaltree 3.2.1
     Jinja2 3.1.6
-    lxml 6.0.2
-    platformdirs 4.9.6
+    lxml 6.1.1
+    natsort 8.4.0
+    platformdirs 4.10.0
     pycountry 24.6.1
     PyYAML 6.0.3
     requests 2.33.1
-    wcwidth 0.7.0
+    wcwidth 0.8.1
 -->
 <link href="draft-hardt-aauth-r3.xml" rel="alternate" type="application/rfc+xml">
 <link href="#copyright" rel="license">
@@ -1050,7 +1051,7 @@ svg {
 </tr></thead>
 <tfoot><tr>
 <td class="left">Hardt</td>
-<td class="center">Expires 19 December 2026</td>
+<td class="center">Expires 28 December 2026</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1063,12 +1064,12 @@ svg {
 <dd class="internet-draft">draft-hardt-aauth-r3-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-06-17" class="published">17 June 2026</time>
+<time datetime="2026-06-26" class="published">26 June 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Standards Track</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2026-12-19">19 December 2026</time></dd>
+<dd class="expires"><time datetime="2026-12-28">28 December 2026</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1109,7 +1110,7 @@ svg {
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 19 December 2026.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 28 December 2026.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -1519,16 +1520,16 @@ svg {
           <h4 id="name-asyncapi-vocabulary-urnaaut">
 <a href="#section-4.2.5" class="section-number selfRef">4.2.5. </a><a href="#name-asyncapi-vocabulary-urnaaut" class="section-name selfRef">AsyncAPI Vocabulary (<code>urn:aauth:vocabulary:asyncapi</code>)</a>
           </h4>
-<p id="section-4.2.5-1">For resources that expose an event-driven interface described by AsyncAPI. The discovery endpoint is the AsyncAPI specification URL.<a href="#section-4.2.5-1" class="pilcrow">¶</a></p>
-<p id="section-4.2.5-2">Each operation entry contains:<a href="#section-4.2.5-2" class="pilcrow">¶</a></p>
+<p id="section-4.2.5-1">For resources that emit events described by AsyncAPI. The discovery endpoint is the AsyncAPI specification URL.<a href="#section-4.2.5-1" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-4.2.5-3.1">
-              <strong><code>operationId</code></strong> (REQUIRED). The <code>operationId</code> as defined in the AsyncAPI specification.<a href="#section-4.2.5-3.1" class="pilcrow">¶</a>
+<li class="compact" id="section-4.2.5-2.1">
+              <strong><code>operationId</code></strong> (REQUIRED). The <code>operationId</code> as defined in the AsyncAPI specification.<a href="#section-4.2.5-2.1" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-4.2.5-3.2">
-              <strong><code>action</code></strong> (REQUIRED). One of <code>send</code> or <code>receive</code>.<a href="#section-4.2.5-3.2" class="pilcrow">¶</a>
+            <li class="compact" id="section-4.2.5-2.2">
+              <strong><code>action</code></strong> (OPTIONAL). The AsyncAPI action type: <code>send</code> or <code>receive</code>. Agents subscribing to events use <code>receive</code>.<a href="#section-4.2.5-2.2" class="pilcrow">¶</a>
 </li>
           </ul>
+<p id="section-4.2.5-3">When a resource grants an agent an AsyncAPI subscription operation via R3, the actual subscription registration and event delivery use the AAuth Events protocol (<span>[<a href="#I-D.hardt-aauth-events" class="cite xref">I-D.hardt-aauth-events</a>]</span>). The resource issues a subscription ticket URL in response to the authenticated request; the agent then completes subscription registration using a subscribe token per AAuth Events.<a href="#section-4.2.5-3" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="section-4.2.5-4">
 <pre>{
   "vocabulary": "urn:aauth:vocabulary:asyncapi",
@@ -2256,6 +2257,10 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <a href="#section-15.2" class="section-number selfRef">15.2. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
         </h3>
 <dl class="references">
+<dt id="I-D.hardt-aauth-events">[I-D.hardt-aauth-events]</dt>
+        <dd>
+<span class="refAuthor">Hardt, D.</span>, <span class="refTitle">"AAuth Events"</span>, <time datetime="2026" class="refDate">2026</time>, <span>&lt;<a href="https://github.com/dickhardt/AAuth">https://github.com/dickhardt/AAuth</a>&gt;</span>. </dd>
+<dd class="break"></dd>
 <dt id="RFC7942">[RFC7942]</dt>
         <dd>
 <span class="refAuthor">Sheffer, Y.</span> and <span class="refAuthor">A. Farrel</span>, <span class="refTitle">"Improving Awareness of Running Code: The Implementation Status Section"</span>, <span class="seriesInfo">BCP 205</span>, <span class="seriesInfo">RFC 7942</span>, <span class="seriesInfo">DOI 10.17487/RFC7942</span>, <time datetime="2016-07" class="refDate">July 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7942">https://www.rfc-editor.org/info/rfc7942</a>&gt;</span>. </dd>

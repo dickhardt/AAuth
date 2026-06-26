@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                            17 June 2026
-Expires: 19 December 2026
+Intended status: Standards Track                            26 June 2026
+Expires: 28 December 2026
 
 
                    AAuth Rich Resource Requests (R3)
@@ -48,7 +48,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 19 December 2026.
+   This Internet-Draft will expire on 28 December 2026.
 
 Copyright Notice
 
@@ -290,14 +290,20 @@ Table of Contents
 
 4.2.5.  AsyncAPI Vocabulary (urn:aauth:vocabulary:asyncapi)
 
-   For resources that expose an event-driven interface described by
-   AsyncAPI.  The discovery endpoint is the AsyncAPI specification URL.
-
-   Each operation entry contains:
+   For resources that emit events described by AsyncAPI.  The discovery
+   endpoint is the AsyncAPI specification URL.
 
    *  *operationId* (REQUIRED).  The operationId as defined in the
       AsyncAPI specification.
-   *  *action* (REQUIRED).  One of send or receive.
+   *  *action* (OPTIONAL).  The AsyncAPI action type: send or receive.
+      Agents subscribing to events use receive.
+
+   When a resource grants an agent an AsyncAPI subscription operation
+   via R3, the actual subscription registration and event delivery use
+   the AAuth Events protocol ([I-D.hardt-aauth-events]).  The resource
+   issues a subscription ticket URL in response to the authenticated
+   request; the agent then completes subscription registration using a
+   subscribe token per AAuth Events.
 
    {
      "vocabulary": "urn:aauth:vocabulary:asyncapi",
@@ -951,6 +957,10 @@ Table of Contents
               <https://www.rfc-editor.org/info/rfc8126>.
 
 15.2.  Informative References
+
+   [I-D.hardt-aauth-events]
+              Hardt, D., "AAuth Events", 2026,
+              <https://github.com/dickhardt/AAuth>.
 
    [RFC7942]  Sheffer, Y. and A. Farrel, "Improving Awareness of Running
               Code: The Implementation Status Section", BCP 205,

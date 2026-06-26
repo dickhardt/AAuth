@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                            17 June 2026
-Expires: 19 December 2026
+Intended status: Standards Track                            26 June 2026
+Expires: 28 December 2026
 
 
                              AAuth Protocol
@@ -50,7 +50,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 19 December 2026.
+   This Internet-Draft will expire on 28 December 2026.
 
 Copyright Notice
 
@@ -118,6 +118,7 @@ Table of Contents
        7.1.4.  PS Response
        7.1.5.  Resource-Initiated Interaction
      7.2.  User Interaction
+       7.2.1.  Interaction Callback Errors
      7.3.  Clarification Chat
        7.3.1.  Clarification Required
        7.3.2.  Agent Response to Clarification
@@ -368,6 +369,11 @@ Table of Contents
       agents can explain or adjust their requests.
    *  *Progressive adoption*: Each party can adopt independently; modes
       build on each other.
+   *  *Asynchronous event delivery*: Agents receive events from
+      resources through the AP, without requiring a public endpoint.
+      Resources post event tokens to the AP's event endpoint; the AP
+      routes them to the agent.  Defined in AAuth Events
+      ([I-D.hardt-aauth-events]).
 
 1.4.  What AAuth Does Not Do
 
@@ -774,6 +780,12 @@ Table of Contents
       PS + AS for employees and internal resources, with federation
       incurred only at the boundary when an internal agent accesses an
       external resource.
+
+   An AP that supports AAuth Events ([I-D.hardt-aauth-events])
+   additionally acts as an event router — it receives event tokens from
+   resources on behalf of agents and routes them to the appropriate
+   agent instance.  This is an extension of the AP role, not a new
+   party.
 
    These are deployment choices that do not change the wire protocol.  A
    receiver verifies each role's tokens and metadata identically whether
@@ -1644,9 +1656,12 @@ Table of Contents
        {interaction.url}?code={interaction.code}&callback={ps_callback_url}
    4.  The resource completes its own OAuth or permission flow.  The
        resource MUST redirect the user to the callback URL when its flow
-       completes — either successfully or with an error.
-   5.  The PS receives the callback redirect and continues with its own
-       consent step.
+       completes — either successfully or with an error per
+       Section 7.2.1.
+   5.  The PS receives the callback redirect.  If the callback contains
+       an error parameter, the PS abandons the authorization and returns
+       the mapped polling error to the agent.  Otherwise it continues
+       with its own consent step.
    6.  Upon user approval, the PS issues the auth token and resolves the
        agent's pending request.
 
@@ -1679,6 +1694,50 @@ Table of Contents
 
    The code parameter is single-use: once the user arrives at the URL
    with a valid code, the code is consumed and cannot be reused.
+
+   When the interaction completes with an error, the server redirects to
+   the callback URL with an error query parameter instead of signaling
+   success.  See Section 7.2.1.
+
+7.2.1.  Interaction Callback Errors
+
+   When an interaction cannot be completed successfully, the server MUST
+   redirect to the callback URL with an error query parameter:
+
+   {callback_url}?error={error_code}
+
+       +=========================+=================================+
+       | Error                   | Meaning                         |
+       +=========================+=================================+
+       | access_denied           | The user explicitly declined    |
+       |                         | the interaction.                |
+       +-------------------------+---------------------------------+
+       | user_abandoned          | The user opened the interaction |
+       |                         | but did not complete it — no    |
+       |                         | explicit decision was made.     |
+       +-------------------------+---------------------------------+
+       | server_error            | The party handling the          |
+       |                         | interaction encountered an      |
+       |                         | internal failure.               |
+       +-------------------------+---------------------------------+
+       | temporarily_unavailable | The interaction service is      |
+       |                         | temporarily unavailable; the    |
+       |                         | caller MAY retry.               |
+       +-------------------------+---------------------------------+
+       | interaction_expired     | The interaction session expired |
+       |                         | before the user completed the   |
+       |                         | flow.                           |
+       +-------------------------+---------------------------------+
+
+                                  Table 4
+
+   Recipients of a callback with an error parameter MUST NOT treat the
+   pending request as completable and MUST surface the error to the
+   caller.  In the resource-initiated interaction flow Section 7.1.5,
+   the PS maps the received callback error to a polling error returned
+   to the agent: access_denied maps to denied; user_abandoned maps to
+   abandoned; interaction_expired maps to expired; server_error and
+   temporarily_unavailable map to server_error.
 
 7.3.  Clarification Chat
 
@@ -2109,7 +2168,7 @@ Table of Contents
    |                         |        | Section 12.5.3.               |
    +-------------------------+--------+-------------------------------+
 
-                                 Table 4
+                                 Table 5
 
 7.7.  Re-authorization
 
@@ -2322,7 +2381,7 @@ Table of Contents
      |                    |            | acting on this mission.     |
      +--------------------+------------+-----------------------------+
 
-                                  Table 5
+                                  Table 6
 
 8.7.  AAuth-Mission Request Header
 
@@ -2781,16 +2840,17 @@ Table of Contents
 
 9.4.5.  Upstream Token Verification
 
-   When the PS receives an upstream_token parameter in a call chaining
-   request:
+   When the PS or AS receives an upstream_token parameter in a call
+   chaining request:
 
    1.  Perform Auth Token Verification Section 9.4.3 on the upstream
        token.
-   2.  Verify iss is a trusted AS (an AS whose auth token the PS
-       previously brokered).
-   3.  Verify the aud in the upstream token matches the resource that is
-       now acting as an agent (i.e., the upstream token was issued for
-       the intermediary resource).
+   2.  Verify iss is a trusted issuer (a PS or AS whose auth token the
+       recipient previously brokered or is authorized to extend).
+   3.  Verify the aud in the upstream token equals the iss of the
+       intermediary's agent token (presented in the Signature-Key
+       header).  This binding confirms the upstream token was issued to
+       the resource now making the downstream request.
    4.  The PS constructs the act claim for the downstream auth token:
        act.agent is set to the intermediary resource's agent identifier,
        and if the upstream token contained an act claim, it is nested
@@ -2823,8 +2883,12 @@ Table of Contents
 
    When a resource needs to access a downstream resource on behalf of
    the caller, it acts as an agent.  The resource determines where to
-   send the downstream token request based on the upstream auth token it
-   received:
+   route the downstream token request from the upstream auth token it
+   received — specifically from mission.approver (if a mission is
+   present) or from iss (the identity of the PS or AS that issued the
+   upstream token).  The ps claim in the calling agent's agent token is
+   NOT used for this routing; the upstream auth token is the
+   authoritative source.
 
    *  *Mission present* (mission.approver in the upstream auth token):
       The resource sends the downstream resource token to the PS
@@ -2834,16 +2898,22 @@ Table of Contents
       scope.  This is the governed path — the PS sees the full
       delegation chain for audit.
 
-   *  *No mission, iss is a PS* (three-party upstream): The resource
-      sends the downstream resource token to the PS identified by iss,
-      along with its own agent token and the upstream_token.  The PS
-      evaluates the request without mission context.
+   *  *No mission, iss is a PS* (three-party upstream): The upstream
+      auth token was issued directly by the PS (iss = PS URL).  The
+      resource sends the downstream resource token to that PS, along
+      with its own agent token and the upstream_token.  The PS evaluates
+      the request without mission context.
 
    *  *No mission, iss is an AS* (four-party upstream, no governance):
       The resource sends the downstream resource token to the AS
       identified by iss, along with its own agent token and the
       upstream_token.  The AS evaluates the request based on resource
       policy.  No PS is involved — no governance context is available.
+
+   To ensure the PS is in the loop for every hop in a chain, the
+   person's PS MUST require a mission.  A mission puts mission.approver
+   in the upstream auth token, giving every intermediary a PS URL to
+   route to regardless of whether the upstream issuer was a PS or AS.
 
    In every case the intermediary signs the downstream token request
    with its *own* key, presenting its own agent token via the Signature-
@@ -3206,7 +3276,7 @@ Table of Contents
          |               | interaction endpoint                 |
          +---------------+--------------------------------------+
 
-                                 Table 6
+                                 Table 7
 
    The agent determines its capabilities by combining what it can do
    directly with what its PS can do on its behalf.  When the agent has a
@@ -3347,7 +3417,7 @@ Table of Contents
      |               |        | required       |          |    |    |
      +---------------+--------+----------------+----------+----+----+
 
-                                 Table 7
+                                 Table 8
 
    The agent-token requirement is defined in Section 6.3; the auth-token
    requirement in Section 6.6; the interaction and approval requirements
@@ -3422,18 +3492,27 @@ Table of Contents
    fold the Crockford decode aliases (I/L → 1, O → 0) before comparison
    so that a user who transcribes an ambiguous glyph still matches.
 
+   *Correlation only.* The code is a correlation identifier — it ties
+   the user's browser session to the pending interaction so the server
+   can look up the correct request.  It is NOT an authorization
+   credential.  The person's approve/deny decision MUST be recorded via
+   an authenticated channel at the PS; how the PS authenticates the
+   person is outside the scope of this specification.  Because the agent
+   relays the interaction URL and code to the user, the code is visible
+   to the agent — the code alone MUST NOT authorize the decision.
+
    *Single use.* A code MUST be single-use.  Once the user arrives at
    the interaction URL with a valid code and the code is consumed, the
    server MUST reject any later presentation of the same code, returning
    invalid_code Section 12.5.4.
 
-   *Rate-limiting.* Because the code is the only secret guarding the
-   interaction URL, the server MUST rate-limit code-validation attempts
-   at the interaction URL.  After a small number of failed attempts the
-   server MUST treat the pending interaction as terminally failed and
-   return invalid_code Section 12.5.4 on subsequent attempts, bounding
-   the brute-force window to far fewer guesses than the code's entropy
-   would otherwise allow.
+   *Rate-limiting.* Because the code guards access to the interaction
+   page, the server MUST rate-limit code-validation attempts at the
+   interaction URL.  After a small number of failed attempts the server
+   MUST treat the pending interaction as terminally failed and return
+   invalid_code Section 12.5.4 on subsequent attempts, bounding the
+   brute-force window to far fewer guesses than the code's entropy would
+   otherwise allow.
 
    *Lifetime.* A code MUST expire no later than the pending interaction
    it is bound to Section 12.4.  Once the pending request has expired,
@@ -3682,7 +3761,7 @@ Initial request (with Prefer: wait=N)
    | server_error           | 500    | Internal error                 |
    +------------------------+--------+--------------------------------+
 
-                                 Table 8
+                                 Table 9
 
 12.5.4.  Polling Error Codes
 
@@ -3706,7 +3785,7 @@ Initial request (with Prefer: wait=N)
         | server_error | 500    | Internal error                 |
         +--------------+--------+--------------------------------+
 
-                                 Table 9
+                                 Table 10
 
 12.6.  Token Revocation
 
@@ -4062,7 +4141,7 @@ Initial request (with Prefer: wait=N)
    |                 |           |https.                              |
    +-----------------+-----------+------------------------------------+
 
-                                 Table 10
+                                 Table 11
 
    AAuth intentionally diverges from RFC 9728 on two points: AAuth uses
    issuer (not resource) as the primary identifier field so that a
@@ -4090,6 +4169,7 @@ Initial request (with Prefer: wait=N)
      "logo_dark_uri": "https://agent.example/logo-dark.png",
      "documentation_uri": "https://agent.example/docs",
      "callback_endpoint": "https://agent.example/callback",
+     "event_endpoint": "https://agent.example/events",
      "localhost_callback_allowed": true,
      "tos_uri": "https://agent.example/tos",
      "policy_uri": "https://agent.example/privacy"
@@ -4112,6 +4192,9 @@ Initial request (with Prefer: wait=N)
       the agent provider
    *  callback_endpoint (OPTIONAL): The agent's HTTPS callback endpoint
       URL
+   *  event_endpoint (OPTIONAL): HTTPS URL at which the AP receives
+      event tokens from resources.  Required if the AP supports AAuth
+      Events ([I-D.hardt-aauth-events]).
    *  login_endpoint (OPTIONAL): URL where third parties can direct
       users to initiate authentication Section 11
    *  localhost_callback_allowed (OPTIONAL): Boolean.  Default: false.
@@ -4474,7 +4557,7 @@ Initial request (with Prefer: wait=N)
     |         |               |                  | access            |
     +---------+---------------+------------------+-------------------+
 
-                                 Table 11
+                                 Table 12
 
 14.  Security Considerations
 
@@ -4820,7 +4903,7 @@ Initial request (with Prefer: wait=N)
        |                     |                   | Section 12.10.4 |
        +---------------------+-------------------+-----------------+
 
-                                  Table 12
+                                  Table 13
 
 16.4.  Media Type Registrations
 
@@ -4885,7 +4968,20 @@ Initial request (with Prefer: wait=N)
              | aa-resource+jwt | This document, Section 6   |
              +-----------------+----------------------------+
 
-                                 Table 13
+                                 Table 14
+
+   The following JWT typ values are registered by AAuth Events
+   ([I-D.hardt-aauth-events]):
+
+              +==================+==========================+
+              | Type Value       | Reference                |
+              +==================+==========================+
+              | aa-subscribe+jwt | [I-D.hardt-aauth-events] |
+              +------------------+--------------------------+
+              | aa-event+jwt     | [I-D.hardt-aauth-events] |
+              +------------------+--------------------------+
+
+                                  Table 15
 
 16.6.  JWT Claims Registrations
 
@@ -4919,7 +5015,7 @@ Initial request (with Prefer: wait=N)
      |              | auth tokens          |            |           |
      +--------------+----------------------+------------+-----------+
 
-                                 Table 14
+                                 Table 16
 
 16.7.  AAuth Requirement Value Registry
 
@@ -4942,7 +5038,7 @@ Initial request (with Prefer: wait=N)
                      | claims        | This document |
                      +---------------+---------------+
 
-                                  Table 15
+                                  Table 17
 
 16.8.  AAuth Capability Value Registry
 
@@ -4959,7 +5055,7 @@ Initial request (with Prefer: wait=N)
                      | payment       | This document |
                      +---------------+---------------+
 
-                                  Table 16
+                                  Table 18
 
 16.9.  AAuth Platform Value Registry
 
@@ -4989,7 +5085,7 @@ Initial request (with Prefer: wait=N)
        |             | controls                       |           |
        +-------------+--------------------------------+-----------+
 
-                                 Table 17
+                                 Table 19
 
 16.10.  URI Scheme Registration
 
@@ -5049,6 +5145,27 @@ Initial request (with Prefer: wait=N)
 18.  Document History
 
    _Note: This section is to be removed before publishing as an RFC._
+
+   *  draft-hardt-oauth-aauth-protocol-08
+
+      -  Call chaining: upstream token aud MUST equal the iss of the
+         intermediary's agent token; routing to PS or AS is derived from
+         the upstream auth token (mission.approver or iss), not the
+         calling agent's ps claim; PS MUST require a mission to remain
+         in the loop for four-party upstream chains.
+      -  Interaction code: added that the code is a correlation
+         identifier, not an authorization credential; the code alone
+         MUST NOT authorize the decision.
+
+   *  draft-hardt-oauth-aauth-protocol-07
+
+      -  Added Interaction Callback Errors section defining the ?error=
+         wire format for callback redirects (access_denied,
+         user_abandoned, server_error, temporarily_unavailable,
+         interaction_expired) and the PS mapping to polling errors.
+         Updated Resource-Initiated Interaction to reference the new
+         section and specify PS behavior on error callbacks.  Added
+         Joshua Gay to Acknowledgments.
 
    *  draft-hardt-oauth-aauth-protocol-06
 
@@ -5193,9 +5310,9 @@ Initial request (with Prefer: wait=N)
    concepts and earlier drafts, and contributors who raised issues and
    pull requests: Aaron Parecki, Christian Posta, Dasith
    Wijesiriwardena, Frederik Krogsdal Jacobsen, Jared Hanson, Jeoffrey
-   Haeyaert, João André Marques, Karl McGuinness, Mark Hendrickson, Nate
-   Barbettini, Nick Gamb, Paul Carleton, Rohan Harikumar, Scott Motte,
-   Wils Dawson.
+   Haeyaert, João André Marques, Joshua Gay, Karl McGuinness, Mark
+   Hendrickson, Nate Barbettini, Nick Gamb, Paul Carleton, Rohan
+   Harikumar, Scott Motte, Wils Dawson.
 
 20.  References
 
@@ -5324,6 +5441,10 @@ Initial request (with Prefer: wait=N)
 
    [I-D.hardt-aauth-bootstrap]
               Hardt, D., "AAuth Bootstrap Guidance", 2026,
+              <https://github.com/dickhardt/AAuth>.
+
+   [I-D.hardt-aauth-events]
+              Hardt, D., "AAuth Events", 2026,
               <https://github.com/dickhardt/AAuth>.
 
    [I-D.hardt-aauth-r3]
