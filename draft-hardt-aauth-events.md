@@ -163,7 +163,7 @@ Agent          AP                   Resource
   |           200 OK                     |
   |<-------------------------------------|
   |             |                        |
-  |             | ...   time passes ...  | 
+  |             | ... time passes ...    |
   |             |                        |
   |             |  (3) POST event token. |
   |             |  (+ optional payload)  |
@@ -395,7 +395,7 @@ Signature-Key: sig=jwt;
 }
 ```
 
-The event token in `Signature-Key` provides the resource's identity (`iss`) and routing and authorization claims (`eid`, `aud`, `exp`). Unlike agent tokens and subscribe tokens, no `cnf.jwk` is needed: the resource has a stable JWKS discoverable from `{iss}/.well-known/{dwk}`, and the AP uses the same key (identified by `kid` in the JWT header) to verify both the JWT signature and the HTTP signature. This is an extension to the `Signature-Key` JWT scheme: when a JWT has `dwk` but no `cnf`, the verifier resolves the HTTP signing key from `{iss}/.well-known/{dwk}` using `kid` rather than from an inline `cnf.jwk` (see (#http-sig-key-extension)). The request body structure is defined by the resource's AsyncAPI message schema for the event type (see (#event-discovery)). The AP forwards both the event token and the payload body to the agent.
+The event token in `Signature-Key` provides the resource's identity (`iss`) and routing and authorization claims (`eid`, `aud`, `exp`). Unlike agent tokens and subscribe tokens, no `cnf.jwk` is needed: the resource has a stable JWKS discoverable from `{iss}/.well-known/{dwk}`, and the AP uses the same key (identified by `kid` in the JWT header) to verify both the JWT signature and the HTTP signature. This is an extension to the `Signature-Key` JWT scheme: when a JWT has `dwk` but no `cnf`, the verifier resolves the HTTP signing key from `{iss}/.well-known/{dwk}` using `kid` rather than from an inline `cnf.jwk`. The request body structure is defined by the resource's AsyncAPI message schema for the event type (see (#event-discovery)). The AP forwards both the event token and the payload body to the agent.
 
 The resource resolves the AP's `event_endpoint` from `{iss}/.well-known/aauth-agent.json` at delivery time, using standard HTTP caching for the AP's well-known document.
 
@@ -405,7 +405,7 @@ The AP MUST validate the event delivery request as follows:
 
 1. Extract the event token JWT from the `Signature-Key` header. Verify `typ` is `aa-event+jwt`.
 2. Discover the resource's JWKS via `{iss}/.well-known/{dwk}`. Locate the key matching `kid` and verify the JWT signature.
-3. Verify the HTTP signature using the same key (matched by `kid`). This applies the `dwk`-without-`cnf` extension to the Signature-Key JWT scheme (see (#http-sig-key-extension)).
+3. Verify the HTTP signature using the same key (matched by `kid`). This applies the `dwk`-without-`cnf` extension to the Signature-Key JWT scheme: the JWT signing key and the HTTP signing key are the same key, discoverable from the resource's well-known document.
 4. Look up the subscription record by `eid`. If no active subscription exists for this `eid`, return `404`.
 5. Verify `iss` matches the resource recorded at subscription time (the `aud` of the subscribe token for this `eid`).
 6. Verify the event token `exp` is in the future.
