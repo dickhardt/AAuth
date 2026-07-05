@@ -733,7 +733,7 @@ The agent sends the resource token to its PS's token endpoint.
 | `invalid_scope` | 400 | Requested scope not recognized by the resource |
 | `server_error` | 500 | Internal error |
 
-Error responses use the same format as the token endpoint (#error-response-format).
+Error responses use the error response format (#error-response-format).
 
 ## Agent Token Required {#requirement-agent-token}
 
@@ -1318,7 +1318,7 @@ If the PS cannot reach the user and the agent does not have the `interaction` ca
 
 ### Interaction Endpoint Errors {#interaction-endpoint-errors}
 
-Errors use the token endpoint error response format (#error-response-format).
+Errors use the error response format (#error-response-format).
 
 | Error | Status | Meaning |
 |-------|--------|---------|
@@ -1445,7 +1445,7 @@ When an agent makes a request to any PS endpoint with a `mission` parameter refe
 
 ```http
 HTTP/1.1 403 Forbidden
-Content-Type: application/json
+Content-Type: application/problem+json
 
 {
   "error": "mission_terminated",
@@ -2256,12 +2256,14 @@ Initial request (with Prefer: wait=N)
 
 A `401` response from any AAuth endpoint uses the `Signature-Error` header as defined in ([@!I-D.hardt-httpbis-signature-key]).
 
-### Token Endpoint Error Response Format {#error-response-format}
+### Error Response Format {#error-response-format}
 
-Token endpoint errors use `Content-Type: application/json` ([@!RFC8259]) with the following members:
+Error response bodies use the HTTP problem details format ([@!RFC9457]) with `Content-Type: application/problem+json`. The body is a JSON object with the following members:
 
-- `error` (REQUIRED): String. A single error code.
-- `error_description` (OPTIONAL): String. A human-readable description.
+- `error` (REQUIRED): String. A single error code, as defined by the endpoint returning the error. This is an RFC 9457 extension member; receivers MUST determine how to proceed from this member.
+- `detail` (OPTIONAL): String. A human-readable explanation specific to this occurrence of the error.
+
+Other RFC 9457 members (`type`, `title`, `status`, `instance`) MAY be present with their RFC 9457 semantics. AAuth does not define problem type URIs; receivers MUST NOT rely on `type` to identify AAuth errors.
 
 ### Token Endpoint Error Codes {#token-endpoint-error-codes}
 
@@ -2275,6 +2277,19 @@ Token endpoint errors use `Content-Type: application/json` ([@!RFC8259]) with th
 | `user_unreachable` | 403 | Terminal. The PS has no channel to reach the user and the agent did not declare the `interaction` capability, so the user cannot be reached at all. The non-terminal "user action is needed" case uses a `202` with `requirement=interaction` (#requirement-responses), not this error. |
 | `server_error` | 500 | Internal error |
 
+Example — the resource token presented to the token endpoint has expired:
+
+```http
+HTTP/1.1 400 Bad Request
+Content-Type: application/problem+json
+
+{
+  "error": "expired_resource_token",
+  "detail": "The resource token expired; obtain a new
+    resource token from the resource and retry."
+}
+```
+
 ### Polling Error Codes
 
 | Error | Status | Meaning |
@@ -2285,6 +2300,18 @@ Token endpoint errors use `Content-Type: application/json` ([@!RFC8259]) with th
 | `invalid_code` | 410 | Interaction code not recognized or already consumed |
 | `slow_down` | 429 | Polling too frequently — increase interval by 5 seconds |
 | `server_error` | 500 | Internal error |
+
+Example — the user denied the pending request:
+
+```http
+HTTP/1.1 403 Forbidden
+Content-Type: application/problem+json
+
+{
+  "error": "denied",
+  "detail": "The user declined the request."
+}
+```
 
 ## Token Revocation {#token-revocation}
 
@@ -2989,6 +3016,7 @@ The following implementations are known:
 
 - draft-hardt-oauth-aauth-protocol-09
   - Clarification chat: added a required `action` discriminator (`clarification_response` / `updated_request`) to the agent's POST responses on the pending URL, so the response type is explicit rather than inferred from key presence.
+  - Error responses: adopted RFC 9457 problem details — error bodies use `Content-Type: application/problem+json` with the AAuth error code as a required `error` extension member; `error_description` replaced by the RFC 9457 `detail` member; added token endpoint and polling error examples.
 
 - draft-hardt-oauth-aauth-protocol-08
   - Call chaining: upstream token `aud` MUST equal the `iss` of the intermediary's agent token; routing to PS or AS is derived from the upstream auth token (`mission.approver` or `iss`), not the calling agent's `ps` claim; PS MUST require a mission to remain in the loop for four-party upstream chains.
@@ -3046,7 +3074,7 @@ The following implementations are known:
 
 # Acknowledgments
 
-The author would like to thank reviewers for their feedback on concepts and earlier drafts, and contributors who raised issues and pull requests: Aaron Parecki, Christian Posta, Dasith Wijesiriwardena, Frederik Krogsdal Jacobsen, Jared Hanson, Jeoffrey Haeyaert, João André Marques, Joshua Gay, Karl McGuinness, Lukas Friman, Mark Hendrickson, Nate Barbettini, Nick Gamb, Paul Carleton, Rohan Harikumar, Scott Motte, Wils Dawson.
+The author would like to thank reviewers for their feedback on concepts and earlier drafts, and contributors who raised issues and pull requests: Aaron Parecki, Christian Posta, Dasith Wijesiriwardena, Frederik Krogsdal Jacobsen, Jared Hanson, Jeoffrey Haeyaert, João André Marques, Joshua Gay, Karl McGuinness, Lukas Friman, Mark Hendrickson, Nate Barbettini, Nick Gamb, Paul Carleton, Rohan Harikumar, Sanjay Dalal, Scott Motte, Wils Dawson.
 
 {backmatter}
 
