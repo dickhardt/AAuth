@@ -1036,13 +1036,15 @@ The recipient MUST respond with one of the actions defined in (#agent-response-t
 
 The agent MUST respond to a clarification with one of:
 
-1. **Clarification response**: POST a `clarification_response` to the pending URL.
-2. **Updated request**: POST a new `resource_token` to the pending URL, replacing the original request with updated scope or parameters.
+1. **Clarification response**: POST an `action` of `clarification_response` to the pending URL.
+2. **Updated request**: POST an `action` of `updated_request` with a new `resource_token` to the pending URL, replacing the original request with updated scope or parameters.
 3. **Cancel request**: DELETE the pending URL to withdraw the request.
+
+A POST body MUST include an `action` member identifying the response type. A server MUST reject a POST with a missing or unrecognized `action` value with `400 Bad Request`. The `action` member makes each POST self-describing and keeps the pending route extensible for future response types.
 
 #### Clarification Response
 
-The agent responds by POSTing JSON with `clarification_response` to the pending URL:
+The agent responds by POSTing JSON with an `action` of `clarification_response` to the pending URL:
 
 ```http
 POST /pending/abc123 HTTP/1.1
@@ -1054,6 +1056,7 @@ Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
+  "action": "clarification_response",
   "clarification_response":
     "I need to create a meeting invite
      for the participants you listed."
@@ -1076,6 +1079,7 @@ Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
+  "action": "updated_request",
   "resource_token": "eyJ...",
   "justification": "I've reduced my request to read-only access."
 }
@@ -2983,6 +2987,9 @@ The following implementations are known:
 
 *Note: This section is to be removed before publishing as an RFC.*
 
+- draft-hardt-oauth-aauth-protocol-09
+  - Clarification chat: added a required `action` discriminator (`clarification_response` / `updated_request`) to the agent's POST responses on the pending URL, so the response type is explicit rather than inferred from key presence.
+
 - draft-hardt-oauth-aauth-protocol-08
   - Call chaining: upstream token `aud` MUST equal the `iss` of the intermediary's agent token; routing to PS or AS is derived from the upstream auth token (`mission.approver` or `iss`), not the calling agent's `ps` claim; PS MUST require a mission to remain in the loop for four-party upstream chains.
   - Interaction code: added that the code is a correlation identifier, not an authorization credential; the code alone MUST NOT authorize the decision.
@@ -3039,7 +3046,7 @@ The following implementations are known:
 
 # Acknowledgments
 
-The author would like to thank reviewers for their feedback on concepts and earlier drafts, and contributors who raised issues and pull requests: Aaron Parecki, Christian Posta, Dasith Wijesiriwardena, Frederik Krogsdal Jacobsen, Jared Hanson, Jeoffrey Haeyaert, João André Marques, Joshua Gay, Karl McGuinness, Mark Hendrickson, Nate Barbettini, Nick Gamb, Paul Carleton, Rohan Harikumar, Scott Motte, Wils Dawson.
+The author would like to thank reviewers for their feedback on concepts and earlier drafts, and contributors who raised issues and pull requests: Aaron Parecki, Christian Posta, Dasith Wijesiriwardena, Frederik Krogsdal Jacobsen, Jared Hanson, Jeoffrey Haeyaert, João André Marques, Joshua Gay, Karl McGuinness, Lukas Friman, Mark Hendrickson, Nate Barbettini, Nick Gamb, Paul Carleton, Rohan Harikumar, Scott Motte, Wils Dawson.
 
 {backmatter}
 
