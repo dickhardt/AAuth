@@ -59,29 +59,6 @@ organization = "Hellō"
   </front>
 </reference>
 
-<reference anchor="I-D.hardt-httpbis-signature-key" target="https://dickhardt.github.io/signature-key/draft-hardt-httpbis-signature-key.html">
-  <front>
-    <title>HTTP Signature Keys</title>
-    <author initials="D." surname="Hardt" fullname="Dick Hardt">
-      <organization>Hellō</organization>
-    </author>
-    <author initials="T." surname="Meunier" fullname="Thibault Meunier">
-      <organization>Cloudflare</organization>
-    </author>
-    <date year="2026"/>
-  </front>
-</reference>
-
-<reference anchor="I-D.hardt-aauth-bootstrap" target="https://github.com/dickhardt/AAuth">
-  <front>
-    <title>AAuth Bootstrap Guidance</title>
-    <author initials="D." surname="Hardt" fullname="Dick Hardt">
-      <organization>Hellō</organization>
-    </author>
-    <date year="2026"/>
-  </front>
-</reference>
-
 <reference anchor="I-D.hardt-aauth-r3" target="https://github.com/dickhardt/AAuth">
   <front>
     <title>AAuth Rich Resource Requests (R3)</title>
