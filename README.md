@@ -55,12 +55,45 @@ The authorization protocol for agent-to-resource access. Defines four resource a
 
 #### Implementations
 
-| Language | Repository |
-|----------|------------|
-| TypeScript | [github.com/aauth-dev/packages-js](https://github.com/aauth-dev/packages-js) |
-| Python | [github.com/christian-posta/aauth-full-demo](https://github.com/christian-posta/aauth-full-demo) |
-| Java (Keycloak) | [github.com/christian-posta/keycloak-aauth-extension](https://github.com/christian-posta/keycloak-aauth-extension) |
-| .NET | [github.com/aauth-dev/dotnet-samples](https://github.com/aauth-dev/dotnet-samples) |
+##### Libraries & SDKs
+
+| Language | Repository | Notes |
+|----------|------------|-------|
+| TypeScript | [github.com/aauth-dev/packages-js](https://github.com/aauth-dev/packages-js) | Reference SDK for agents and MCP servers |
+| Python | [github.com/christian-posta/aauth-python-library](https://github.com/christian-posta/aauth-python-library) | Request signing and verification |
+| Go | [github.com/christian-posta/aauth-go-library](https://github.com/christian-posta/aauth-go-library) | Request signing and verification |
+| Java (Keycloak) | [github.com/christian-posta/keycloak-aauth-extension](https://github.com/christian-posta/keycloak-aauth-extension) | Keycloak SPI extension (targets 26.2.5) |
+| .NET | [github.com/aauth-dev/dotnet-samples](https://github.com/aauth-dev/dotnet-samples) | Reference SDK and samples |
+
+##### Servers & Infrastructure
+
+| Project | Description |
+|---------|-------------|
+| [aauth-person-server](https://github.com/christian-posta/aauth-person-server) | Exploratory Person Server (PS) implementation with mission support |
+| [extauth-aauth-resource](https://github.com/christian-posta/extauth-aauth-resource) | Envoy / agentgateway ext-authz service that turns any HTTP, MCP, or A2A resource into an AAuth resource |
+| [whoami](https://github.com/aauth-dev/whoami) | Identity claims resource server |
+| [proxy](https://github.com/aauth-dev/proxy) | The user's AAuth agent in MCP form — discovery, identity, interaction relay |
+
+##### Demos
+
+| Demo | Description |
+|------|-------------|
+| [AAuth Web Agent](https://web-agent.aauth.dev) ([source](https://github.com/aauth-dev/web-agent-demo)) | Protocol playground — bootstrap a web agent from a person server and call AAuth resources |
+| [AAuth Explorer](https://explorer.aauth.dev) ([source](https://github.com/aauth-dev/explorer)) | Interactive walkthrough of the protocol flows |
+| [aauth-full-demo](https://github.com/christian-posta/aauth-full-demo) | End-to-end A2A multi-agent flow with Keycloak and user consent ([docs](https://blog.christianposta.com/aauth-full-demo/), [video](https://www.youtube.com/watch?v=-OUFPzWqxYk)) |
+| [AAuth knowledge graph](https://mcp-shark.github.io/aauth-explorer/) ([source](https://github.com/mcp-shark/aauth-explorer)) | Interactive knowledge graph visualizing the protocol flows |
+
+##### AAuth Night Demos
+
+Lightning demos presented at [AAuth Night](https://luma.com/a2h25m60) (San Francisco, July 2, 2026):
+
+| Demo | Presenter |
+|------|-----------|
+| [Vestauth](https://github.com/vestauth/vestauth) — auth for agents, from the creator of `dotenv` and `dotenvx` | Scott Motte (dotenvx) |
+| [LoginID](https://loginid.io) — strong authentication for agents acting on behalf of users | Jesse Ariss (LoginID) |
+| [MailChannels](https://www.mailchannels.com) — email sending for AI agents | Ken Simpson (MailChannels) |
+| [Keycard](https://www.keycard.ai) — identity and access platform for AI agents | Jared Hanson (Keycard) |
+| [AAuth Web Agent](https://web-agent.aauth.dev) — live AAuth protocol demo | Dick Hardt (AAuth) |
 
 ### HTTP Signature Keys (Foundation)
 
