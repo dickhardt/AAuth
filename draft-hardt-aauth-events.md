@@ -112,10 +112,16 @@ The AAuth Protocol establishes that every agent has an Agent Provider (AP) — a
 
 AAuth Events uses the AP as the agent's permanent event inbox. A resource that needs to notify an agent does not need to reach the agent directly — it posts the event to the AP's event endpoint. The AP delivers the event to the agent through whatever mechanism the AP and agent have established. The agent does not need a public URL. The AP is the public URL.
 
+## An Open Event Network
+
+The AP inbox and AAuth identity together form a decentralized event network: no central broker, no pre-registration between parties. A resource that has never seen an AP before can deliver to it by resolving the AP's event endpoint from its well-known metadata and signing the delivery with its own discoverable key. This is the federated reachability of email without its deliverability failure. Every delivery is cryptographically attributable to an identified resource, the AP accepts events only for subscriptions its agents established, and protected channels can require the person's identity before a subscription is created. There is no barrier to entry: an agent operator can run their own AP or use a hosted one with no difference in protocol, and any resource with a domain and a JWKS can deliver events.
+
 ## What AAuth Events Provides
 
 - **No public endpoint required**: The AP receives events on the agent's behalf. AP-to-agent delivery is platform-dependent and out of scope for this specification.
 - **Cryptographic authorization**: The subscribe token is AP-signed and restricts event delivery to a specific resource. No shared secrets.
+- **Deliverability through identity**: Every delivery is signed by an identified resource and accepted only against an active subscription. No spoofed events, no shared webhook secrets, no spam.
+- **Decentralized**: No central broker and no out-of-band registration. Resources discover AP event endpoints via well-known metadata, and APs can be self-hosted or outsourced interchangeably.
 - **Agent identity at subscription time**: The resource knows cryptographically which agent subscribed, via the `sub` claim in the subscribe token.
 - **Protected and public subscriptions**: Public event channels require only a subscribe token. Protected channels use a pre-authorized subscription URL issued by the resource during a prior authenticated interaction.
 - **Event discovery via AsyncAPI**: Resources describe their event channels using AsyncAPI ([@AsyncAPI]) as an AAuth R3 vocabulary ([@!I-D.hardt-aauth-r3]).
@@ -647,7 +653,7 @@ TBD
 
 # Acknowledgments
 
-TBD.
+The author would like to thank reviewers for their feedback on concepts and earlier drafts: Rohit Khare.
 
 {backmatter}
 
