@@ -1152,10 +1152,13 @@ svg {
                 <p id="section-toc.1-1.1.2.2.1" class="keepWithNext"><a href="#section-1.2" class="auto internal xref">1.2</a>.  <a href="#name-the-agent-provider-as-inbox" class="internal xref">The Agent Provider as Inbox</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.3">
-                <p id="section-toc.1-1.1.2.3.1" class="keepWithNext"><a href="#section-1.3" class="auto internal xref">1.3</a>.  <a href="#name-what-aauth-events-provides" class="internal xref">What AAuth Events Provides</a></p>
+                <p id="section-toc.1-1.1.2.3.1" class="keepWithNext"><a href="#section-1.3" class="auto internal xref">1.3</a>.  <a href="#name-an-open-event-network" class="internal xref">An Open Event Network</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.4">
-                <p id="section-toc.1-1.1.2.4.1"><a href="#section-1.4" class="auto internal xref">1.4</a>.  <a href="#name-relationship-to-existing-st" class="internal xref">Relationship to Existing Standards</a></p>
+                <p id="section-toc.1-1.1.2.4.1"><a href="#section-1.4" class="auto internal xref">1.4</a>.  <a href="#name-what-aauth-events-provides" class="internal xref">What AAuth Events Provides</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.5">
+                <p id="section-toc.1-1.1.2.5.1"><a href="#section-1.5" class="auto internal xref">1.5</a>.  <a href="#name-relationship-to-existing-st" class="internal xref">Relationship to Existing Standards</a></p>
 </li>
             </ul>
 </li>
@@ -1411,36 +1414,50 @@ svg {
 <p id="section-1.2-2">AAuth Events uses the AP as the agent's permanent event inbox. A resource that needs to notify an agent does not need to reach the agent directly — it posts the event to the AP's event endpoint. The AP delivers the event to the agent through whatever mechanism the AP and agent have established. The agent does not need a public URL. The AP is the public URL.<a href="#section-1.2-2" class="pilcrow">¶</a></p>
 </section>
 </div>
-<div id="what-aauth-events-provides">
+<div id="an-open-event-network">
 <section id="section-1.3">
+        <h3 id="name-an-open-event-network">
+<a href="#section-1.3" class="section-number selfRef">1.3. </a><a href="#name-an-open-event-network" class="section-name selfRef">An Open Event Network</a>
+        </h3>
+<p id="section-1.3-1">The AP inbox and AAuth identity together form a decentralized event network: no central broker, no pre-registration between parties. A resource that has never seen an AP before can deliver to it by resolving the AP's event endpoint from its well-known metadata and signing the delivery with its own discoverable key. This is the federated reachability of email without its deliverability failure. Every delivery is cryptographically attributable to an identified resource, the AP accepts events only for subscriptions its agents established, and protected channels can require the person's identity before a subscription is created. There is no barrier to entry: an agent operator can run their own AP or use a hosted one with no difference in protocol, and any resource with a domain and a JWKS can deliver events.<a href="#section-1.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="what-aauth-events-provides">
+<section id="section-1.4">
         <h3 id="name-what-aauth-events-provides">
-<a href="#section-1.3" class="section-number selfRef">1.3. </a><a href="#name-what-aauth-events-provides" class="section-name selfRef">What AAuth Events Provides</a>
+<a href="#section-1.4" class="section-number selfRef">1.4. </a><a href="#name-what-aauth-events-provides" class="section-name selfRef">What AAuth Events Provides</a>
         </h3>
 <ul class="compact">
-<li class="compact" id="section-1.3-1.1">
-            <strong>No public endpoint required</strong>: The AP receives events on the agent's behalf. AP-to-agent delivery is platform-dependent and out of scope for this specification.<a href="#section-1.3-1.1" class="pilcrow">¶</a>
+<li class="compact" id="section-1.4-1.1">
+            <strong>No public endpoint required</strong>: The AP receives events on the agent's behalf. AP-to-agent delivery is platform-dependent and out of scope for this specification.<a href="#section-1.4-1.1" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-1.3-1.2">
-            <strong>Cryptographic authorization</strong>: The subscribe token is AP-signed and restricts event delivery to a specific resource. No shared secrets.<a href="#section-1.3-1.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-1.4-1.2">
+            <strong>Cryptographic authorization</strong>: The subscribe token is AP-signed and restricts event delivery to a specific resource. No shared secrets.<a href="#section-1.4-1.2" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-1.3-1.3">
-            <strong>Agent identity at subscription time</strong>: The resource knows cryptographically which agent subscribed, via the <code>sub</code> claim in the subscribe token.<a href="#section-1.3-1.3" class="pilcrow">¶</a>
+          <li class="compact" id="section-1.4-1.3">
+            <strong>Deliverability through identity</strong>: Every delivery is signed by an identified resource and accepted only against an active subscription. No spoofed events, no shared webhook secrets, no spam.<a href="#section-1.4-1.3" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-1.3-1.4">
-            <strong>Protected and public subscriptions</strong>: Public event channels require only a subscribe token. Protected channels use a pre-authorized subscription URL issued by the resource during a prior authenticated interaction.<a href="#section-1.3-1.4" class="pilcrow">¶</a>
+          <li class="compact" id="section-1.4-1.4">
+            <strong>Decentralized</strong>: No central broker and no out-of-band registration. Resources discover AP event endpoints via well-known metadata, and APs can be self-hosted or outsourced interchangeably.<a href="#section-1.4-1.4" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-1.3-1.5">
-            <strong>Event discovery via AsyncAPI</strong>: Resources describe their event channels using AsyncAPI (<span>[<a href="#AsyncAPI" class="cite xref">AsyncAPI</a>]</span>) as an AAuth R3 vocabulary (<span>[<a href="#I-D.hardt-aauth-r3" class="cite xref">I-D.hardt-aauth-r3</a>]</span>).<a href="#section-1.3-1.5" class="pilcrow">¶</a>
+          <li class="compact" id="section-1.4-1.5">
+            <strong>Agent identity at subscription time</strong>: The resource knows cryptographically which agent subscribed, via the <code>sub</code> claim in the subscribe token.<a href="#section-1.4-1.5" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-1.4-1.6">
+            <strong>Protected and public subscriptions</strong>: Public event channels require only a subscribe token. Protected channels use a pre-authorized subscription URL issued by the resource during a prior authenticated interaction.<a href="#section-1.4-1.6" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-1.4-1.7">
+            <strong>Event discovery via AsyncAPI</strong>: Resources describe their event channels using AsyncAPI (<span>[<a href="#AsyncAPI" class="cite xref">AsyncAPI</a>]</span>) as an AAuth R3 vocabulary (<span>[<a href="#I-D.hardt-aauth-r3" class="cite xref">I-D.hardt-aauth-r3</a>]</span>).<a href="#section-1.4-1.7" class="pilcrow">¶</a>
 </li>
         </ul>
 </section>
 </div>
 <div id="relationship-to-existing-standards">
-<section id="section-1.4">
+<section id="section-1.5">
         <h3 id="name-relationship-to-existing-st">
-<a href="#section-1.4" class="section-number selfRef">1.4. </a><a href="#name-relationship-to-existing-st" class="section-name selfRef">Relationship to Existing Standards</a>
+<a href="#section-1.5" class="section-number selfRef">1.5. </a><a href="#name-relationship-to-existing-st" class="section-name selfRef">Relationship to Existing Standards</a>
         </h3>
-<p id="section-1.4-1">AAuth Events builds on the AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>) and HTTP Signature Keys (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). It provides the transport and subscription mechanisms that AsyncAPI (<span>[<a href="#AsyncAPI" class="cite xref">AsyncAPI</a>]</span>) describes: resources use AsyncAPI to document their event channels and payload schemas, while AAuth Events defines how agents subscribe and how events are delivered.<a href="#section-1.4-1" class="pilcrow">¶</a></p>
+<p id="section-1.5-1">AAuth Events builds on the AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>) and HTTP Signature Keys (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). It provides the transport and subscription mechanisms that AsyncAPI (<span>[<a href="#AsyncAPI" class="cite xref">AsyncAPI</a>]</span>) describes: resources use AsyncAPI to document their event channels and payload schemas, while AAuth Events defines how agents subscribe and how events are delivered.<a href="#section-1.5-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2248,7 +2265,7 @@ components:
       <h2 id="name-acknowledgments">
 <a href="#section-17" class="section-number selfRef">17. </a><a href="#name-acknowledgments" class="section-name selfRef">Acknowledgments</a>
       </h2>
-<p id="section-17-1">TBD.<a href="#section-17-1" class="pilcrow">¶</a></p>
+<p id="section-17-1">The author would like to thank reviewers for their feedback on concepts and earlier drafts: Rohit Khare.<a href="#section-17-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <section id="section-18">
