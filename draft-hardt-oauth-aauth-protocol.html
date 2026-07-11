@@ -29,7 +29,7 @@
     pycountry 24.6.1
     PyYAML 6.0.3
     requests 2.33.1
-    wcwidth 0.8.1
+    wcwidth 0.8.2
 -->
 <link href="draft-hardt-oauth-aauth-protocol.xml" rel="alternate" type="application/rfc+xml">
 <link href="#copyright" rel="license">
@@ -1048,11 +1048,11 @@ svg {
 <thead><tr>
 <td class="left">Internet-Draft</td>
 <td class="center">AAuth-Protocol</td>
-<td class="right">June 2026</td>
+<td class="right">July 2026</td>
 </tr></thead>
 <tfoot><tr>
 <td class="left">Hardt</td>
-<td class="center">Expires 28 December 2026</td>
+<td class="center">Expires 12 January 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1065,12 +1065,12 @@ svg {
 <dd class="internet-draft">draft-hardt-oauth-aauth-protocol-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-06-26" class="published">26 June 2026</time>
+<time datetime="2026-07-11" class="published">11 July 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Standards Track</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2026-12-28">28 December 2026</time></dd>
+<dd class="expires"><time datetime="2027-01-12">12 January 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1113,7 +1113,7 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 28 December 2026.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 12 January 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -1559,7 +1559,7 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
                     <p id="section-toc.1-1.12.2.5.2.1.1"><a href="#section-12.5.1" class="auto internal xref">12.5.1</a>.  <a href="#name-authentication-errors" class="internal xref">Authentication Errors</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.5.2.2">
-                    <p id="section-toc.1-1.12.2.5.2.2.1"><a href="#section-12.5.2" class="auto internal xref">12.5.2</a>.  <a href="#name-token-endpoint-error-respon" class="internal xref">Token Endpoint Error Response Format</a></p>
+                    <p id="section-toc.1-1.12.2.5.2.2.1"><a href="#section-12.5.2" class="auto internal xref">12.5.2</a>.  <a href="#name-error-response-format" class="internal xref">Error Response Format</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.5.2.3">
                     <p id="section-toc.1-1.12.2.5.2.3.1"><a href="#section-12.5.3" class="auto internal xref">12.5.3</a>.  <a href="#name-token-endpoint-error-codes" class="internal xref">Token Endpoint Error Codes</a></p>
@@ -2887,7 +2887,7 @@ Content-Type: application/json
               </tr>
             </tbody>
           </table>
-<p id="section-6.2.3-2">Error responses use the same format as the token endpoint <a href="#error-response-format" class="auto internal xref">Section 12.5.2</a>.<a href="#section-6.2.3-2" class="pilcrow">¶</a></p>
+<p id="section-6.2.3-2">Error responses use the error response format <a href="#error-response-format" class="auto internal xref">Section 12.5.2</a>.<a href="#section-6.2.3-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -3366,21 +3366,22 @@ Content-Type: application/json
 <p id="section-7.3.2-1">The agent MUST respond to a clarification with one of:<a href="#section-7.3.2-1" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="compact type-1" id="section-7.3.2-2">
 <li id="section-7.3.2-2.1">
-              <strong>Clarification response</strong>: POST a <code>clarification_response</code> to the pending URL.<a href="#section-7.3.2-2.1" class="pilcrow">¶</a>
+              <strong>Clarification response</strong>: POST an <code>action</code> of <code>clarification_response</code> to the pending URL.<a href="#section-7.3.2-2.1" class="pilcrow">¶</a>
 </li>
             <li id="section-7.3.2-2.2">
-              <strong>Updated request</strong>: POST a new <code>resource_token</code> to the pending URL, replacing the original request with updated scope or parameters.<a href="#section-7.3.2-2.2" class="pilcrow">¶</a>
+              <strong>Updated request</strong>: POST an <code>action</code> of <code>updated_request</code> with a new <code>resource_token</code> to the pending URL, replacing the original request with updated scope or parameters.<a href="#section-7.3.2-2.2" class="pilcrow">¶</a>
 </li>
             <li id="section-7.3.2-2.3">
               <strong>Cancel request</strong>: DELETE the pending URL to withdraw the request.<a href="#section-7.3.2-2.3" class="pilcrow">¶</a>
 </li>
           </ol>
+<p id="section-7.3.2-3">A POST body MUST include an <code>action</code> member identifying the response type. A server MUST reject a POST with a missing or unrecognized <code>action</code> value with <code>400 Bad Request</code>. The <code>action</code> member makes each POST self-describing and keeps the pending route extensible for future response types.<a href="#section-7.3.2-3" class="pilcrow">¶</a></p>
 <div id="clarification-response">
 <section id="section-7.3.2.1">
             <h5 id="name-clarification-response">
 <a href="#section-7.3.2.1" class="section-number selfRef">7.3.2.1. </a><a href="#name-clarification-response" class="section-name selfRef">Clarification Response</a>
             </h5>
-<p id="section-7.3.2.1-1">The agent responds by POSTing JSON with <code>clarification_response</code> to the pending URL:<a href="#section-7.3.2.1-1" class="pilcrow">¶</a></p>
+<p id="section-7.3.2.1-1">The agent responds by POSTing JSON with an <code>action</code> of <code>clarification_response</code> to the pending URL:<a href="#section-7.3.2.1-1" class="pilcrow">¶</a></p>
 <div class="lang-http sourcecode" id="section-7.3.2.1-2">
 <pre>POST /pending/abc123 HTTP/1.1
 Host: ps.example
@@ -3391,6 +3392,7 @@ Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
+  "action": "clarification_response",
   "clarification_response":
     "I need to create a meeting invite
      for the participants you listed."
@@ -3417,6 +3419,7 @@ Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
+  "action": "updated_request",
   "resource_token": "eyJ...",
   "justification": "I've reduced my request to read-only access."
 }
@@ -3737,7 +3740,7 @@ Content-Type: application/json
           <h4 id="name-interaction-endpoint-errors">
 <a href="#section-7.6.3" class="section-number selfRef">7.6.3. </a><a href="#name-interaction-endpoint-errors" class="section-name selfRef">Interaction Endpoint Errors</a>
           </h4>
-<p id="section-7.6.3-1">Errors use the token endpoint error response format <a href="#error-response-format" class="auto internal xref">Section 12.5.2</a>.<a href="#section-7.6.3-1" class="pilcrow">¶</a></p>
+<p id="section-7.6.3-1">Errors use the error response format <a href="#error-response-format" class="auto internal xref">Section 12.5.2</a>.<a href="#section-7.6.3-1" class="pilcrow">¶</a></p>
 <table class="center" id="table-5">
             <caption><a href="#table-5" class="selfRef">Table 5</a></caption>
 <thead>
@@ -3922,7 +3925,7 @@ AAuth-Mission: approver="https://ps.example";
 <p id="section-8.6-1">When an agent makes a request to any PS endpoint with a <code>mission</code> parameter referencing a mission that is no longer active, the PS MUST return an error:<a href="#section-8.6-1" class="pilcrow">¶</a></p>
 <div class="lang-http sourcecode" id="section-8.6-2">
 <pre>HTTP/1.1 403 Forbidden
-Content-Type: application/json
+Content-Type: application/problem+json
 
 {
   "error": "mission_terminated",
@@ -5207,18 +5210,19 @@ Content-Type: application/json
 </div>
 <div id="error-response-format">
 <section id="section-12.5.2">
-          <h4 id="name-token-endpoint-error-respon">
-<a href="#section-12.5.2" class="section-number selfRef">12.5.2. </a><a href="#name-token-endpoint-error-respon" class="section-name selfRef">Token Endpoint Error Response Format</a>
+          <h4 id="name-error-response-format">
+<a href="#section-12.5.2" class="section-number selfRef">12.5.2. </a><a href="#name-error-response-format" class="section-name selfRef">Error Response Format</a>
           </h4>
-<p id="section-12.5.2-1">Token endpoint errors use <code>Content-Type: application/json</code> (<span>[<a href="#RFC8259" class="cite xref">RFC8259</a>]</span>) with the following members:<a href="#section-12.5.2-1" class="pilcrow">¶</a></p>
+<p id="section-12.5.2-1">Error response bodies use the HTTP problem details format (<span>[<a href="#RFC9457" class="cite xref">RFC9457</a>]</span>) with <code>Content-Type: application/problem+json</code>. The body is a JSON object with the following members:<a href="#section-12.5.2-1" class="pilcrow">¶</a></p>
 <ul class="compact">
 <li class="compact" id="section-12.5.2-2.1">
-              <code>error</code> (REQUIRED): String. A single error code.<a href="#section-12.5.2-2.1" class="pilcrow">¶</a>
+              <code>error</code> (REQUIRED): String. A single error code, as defined by the endpoint returning the error. This is an RFC 9457 extension member; receivers MUST determine how to proceed from this member.<a href="#section-12.5.2-2.1" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-12.5.2-2.2">
-              <code>error_description</code> (OPTIONAL): String. A human-readable description.<a href="#section-12.5.2-2.2" class="pilcrow">¶</a>
+              <code>detail</code> (OPTIONAL): String. A human-readable explanation specific to this occurrence of the error.<a href="#section-12.5.2-2.2" class="pilcrow">¶</a>
 </li>
           </ul>
+<p id="section-12.5.2-3">Other RFC 9457 members (<code>type</code>, <code>title</code>, <code>status</code>, <code>instance</code>) MAY be present with their RFC 9457 semantics. AAuth does not define problem type URIs; receivers MUST NOT rely on <code>type</code> to identify AAuth errors.<a href="#section-12.5.2-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="token-endpoint-error-codes">
@@ -5287,6 +5291,19 @@ Content-Type: application/json
               </tr>
             </tbody>
           </table>
+<p id="section-12.5.3-2">Example — the resource token presented to the token endpoint has expired:<a href="#section-12.5.3-2" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-12.5.3-3">
+<pre>HTTP/1.1 400 Bad Request
+Content-Type: application/problem+json
+
+{
+  "error": "expired_resource_token",
+  "detail": "The resource token expired; obtain a new
+    resource token from the resource and retry."
+}
+
+</pre><a href="#section-12.5.3-3" class="pilcrow">¶</a>
+</div>
 </section>
 </div>
 <div id="polling-error-codes">
@@ -5348,6 +5365,18 @@ Content-Type: application/json
               </tr>
             </tbody>
           </table>
+<p id="section-12.5.4-2">Example — the user denied the pending request:<a href="#section-12.5.4-2" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-12.5.4-3">
+<pre>HTTP/1.1 403 Forbidden
+Content-Type: application/problem+json
+
+{
+  "error": "denied",
+  "detail": "The user declined the request."
+}
+
+</pre><a href="#section-12.5.4-3" class="pilcrow">¶</a>
+</div>
 </section>
 </div>
 </section>
@@ -6943,119 +6972,128 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZERTQSJ9.PLACEHOLDER.PLACEHOLDER"
 <p id="section-18-1"><em>Note: This section is to be removed before publishing as an RFC.</em><a href="#section-18-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-18-2.1">
-          <p id="section-18-2.1.1">draft-hardt-oauth-aauth-protocol-08<a href="#section-18-2.1.1" class="pilcrow">¶</a></p>
+          <p id="section-18-2.1.1">draft-hardt-oauth-aauth-protocol-09<a href="#section-18-2.1.1" class="pilcrow">¶</a></p>
 <ul class="compact normal">
-<li class="compact normal" id="section-18-2.1.2.1">Call chaining: upstream token <code>aud</code> MUST equal the <code>iss</code> of the intermediary's agent token; routing to PS or AS is derived from the upstream auth token (<code>mission.approver</code> or <code>iss</code>), not the calling agent's <code>ps</code> claim; PS MUST require a mission to remain in the loop for four-party upstream chains.<a href="#section-18-2.1.2.1" class="pilcrow">¶</a>
+<li class="compact normal" id="section-18-2.1.2.1">Clarification chat: added a required <code>action</code> discriminator (<code>clarification_response</code> / <code>updated_request</code>) to the agent's POST responses on the pending URL, so the response type is explicit rather than inferred from key presence.<a href="#section-18-2.1.2.1" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-18-2.1.2.2">Interaction code: added that the code is a correlation identifier, not an authorization credential; the code alone MUST NOT authorize the decision.<a href="#section-18-2.1.2.2" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-18-2.1.2.2">Error responses: adopted RFC 9457 problem details — error bodies use <code>Content-Type: application/problem+json</code> with the AAuth error code as a required <code>error</code> extension member; <code>error_description</code> replaced by the RFC 9457 <code>detail</code> member; added token endpoint and polling error examples.<a href="#section-18-2.1.2.2" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
         <li class="normal" id="section-18-2.2">
-          <p id="section-18-2.2.1">draft-hardt-oauth-aauth-protocol-07<a href="#section-18-2.2.1" class="pilcrow">¶</a></p>
+          <p id="section-18-2.2.1">draft-hardt-oauth-aauth-protocol-08<a href="#section-18-2.2.1" class="pilcrow">¶</a></p>
 <ul class="compact normal">
-<li class="compact normal" id="section-18-2.2.2.1">Added <code>Interaction Callback Errors</code> section defining the <code>?error=</code> wire format for callback redirects (<code>access_denied</code>, <code>user_abandoned</code>, <code>server_error</code>, <code>temporarily_unavailable</code>, <code>interaction_expired</code>) and the PS mapping to polling errors. Updated Resource-Initiated Interaction to reference the new section and specify PS behavior on error callbacks. Added Joshua Gay to Acknowledgments.<a href="#section-18-2.2.2.1" class="pilcrow">¶</a>
+<li class="compact normal" id="section-18-2.2.2.1">Call chaining: upstream token <code>aud</code> MUST equal the <code>iss</code> of the intermediary's agent token; routing to PS or AS is derived from the upstream auth token (<code>mission.approver</code> or <code>iss</code>), not the calling agent's <code>ps</code> claim; PS MUST require a mission to remain in the loop for four-party upstream chains.<a href="#section-18-2.2.2.1" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.2.2.2">Interaction code: added that the code is a correlation identifier, not an authorization credential; the code alone MUST NOT authorize the decision.<a href="#section-18-2.2.2.2" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
         <li class="normal" id="section-18-2.3">
-          <p id="section-18-2.3.1">draft-hardt-oauth-aauth-protocol-06<a href="#section-18-2.3.1" class="pilcrow">¶</a></p>
+          <p id="section-18-2.3.1">draft-hardt-oauth-aauth-protocol-07<a href="#section-18-2.3.1" class="pilcrow">¶</a></p>
 <ul class="compact normal">
-<li class="compact normal" id="section-18-2.3.2.1">Implementation and interoperability clarity driven by feedback from Joshua Gay (sidecat): mission reference dereference boundary and <code>approver</code>/<code>s256</code> syntax rules; agent keying material restricted to <code>scheme=jwt</code>; <code>AAuth-Requirement</code> parameter shape and unknown-value behavior; <code>AAuth-Access</code> token grammar (<code>token68</code>); <code>AAuth-Capabilities</code> forward-compatibility; JWKS same-<code>kid</code> refresh and egress admission; auth token verification split into JWT trust and request-context binding with structured <code>cnf.jwk</code> failure ordering; PS approval endpoint authentication security consideration; freshness and replay policy subsection. Interoperability demo profile extracted to a standalone non-normative document.<a href="#section-18-2.3.2.1" class="pilcrow">¶</a>
+<li class="compact normal" id="section-18-2.3.2.1">Added <code>Interaction Callback Errors</code> section defining the <code>?error=</code> wire format for callback redirects (<code>access_denied</code>, <code>user_abandoned</code>, <code>server_error</code>, <code>temporarily_unavailable</code>, <code>interaction_expired</code>) and the PS mapping to polling errors. Updated Resource-Initiated Interaction to reference the new section and specify PS behavior on error callbacks. Added Joshua Gay to Acknowledgments.<a href="#section-18-2.3.2.1" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
         <li class="normal" id="section-18-2.4">
-          <p id="section-18-2.4.1">draft-hardt-oauth-aauth-protocol-05<a href="#section-18-2.4.1" class="pilcrow">¶</a></p>
+          <p id="section-18-2.4.1">draft-hardt-oauth-aauth-protocol-06<a href="#section-18-2.4.1" class="pilcrow">¶</a></p>
 <ul class="compact normal">
-<li class="compact normal" id="section-18-2.4.2.1">Auth tokens: <code>act</code> is OPTIONAL, absent in direct authorization; <code>act.agent</code> identifies the immediate upstream agent (the delegator), not the presenter; nesting records the full chain. Updated verification steps, sub-agent issuance, PS upstream token construction, and delegation chain examples accordingly. Replaced the "sub-agent calls a chained resource" example with "sub-agent inside a chain."<a href="#section-18-2.4.2.1" class="pilcrow">¶</a>
+<li class="compact normal" id="section-18-2.4.2.1">Implementation and interoperability clarity driven by feedback from Joshua Gay (sidecat): mission reference dereference boundary and <code>approver</code>/<code>s256</code> syntax rules; agent keying material restricted to <code>scheme=jwt</code>; <code>AAuth-Requirement</code> parameter shape and unknown-value behavior; <code>AAuth-Access</code> token grammar (<code>token68</code>); <code>AAuth-Capabilities</code> forward-compatibility; JWKS same-<code>kid</code> refresh and egress admission; auth token verification split into JWT trust and request-context binding with structured <code>cnf.jwk</code> failure ordering; PS approval endpoint authentication security consideration; freshness and replay policy subsection. Interoperability demo profile extracted to a standalone non-normative document.<a href="#section-18-2.4.2.1" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
         <li class="normal" id="section-18-2.5">
-          <p id="section-18-2.5.1">draft-hardt-oauth-aauth-protocol-04<a href="#section-18-2.5.1" class="pilcrow">¶</a></p>
+          <p id="section-18-2.5.1">draft-hardt-oauth-aauth-protocol-05<a href="#section-18-2.5.1" class="pilcrow">¶</a></p>
 <ul class="compact normal">
-<li class="compact normal" id="section-18-2.5.2.1">Auth tokens: replaced <code>act.sub</code> with <code>act.agent</code> within each <code>act</code> node; see <a href="https://github.com/dickhardt/AAuth/issues/47">issue #47</a>.<a href="#section-18-2.5.2.1" class="pilcrow">¶</a>
+<li class="compact normal" id="section-18-2.5.2.1">Auth tokens: <code>act</code> is OPTIONAL, absent in direct authorization; <code>act.agent</code> identifies the immediate upstream agent (the delegator), not the presenter; nesting records the full chain. Updated verification steps, sub-agent issuance, PS upstream token construction, and delegation chain examples accordingly. Replaced the "sub-agent calls a chained resource" example with "sub-agent inside a chain."<a href="#section-18-2.5.2.1" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
         <li class="normal" id="section-18-2.6">
-          <p id="section-18-2.6.1">draft-hardt-oauth-aauth-protocol-03<a href="#section-18-2.6.1" class="pilcrow">¶</a></p>
+          <p id="section-18-2.6.1">draft-hardt-oauth-aauth-protocol-04<a href="#section-18-2.6.1" class="pilcrow">¶</a></p>
 <ul class="compact normal">
-<li class="compact normal" id="section-18-2.6.2.1">Metadata: added a common-fields table at the top of the Metadata Documents section covering all four well-known files; documented intentional RFC 9728 divergences (<code>issuer</code> not <code>resource</code>; unprefixed field names).<a href="#section-18-2.6.2.1" class="pilcrow">¶</a>
-</li>
-            <li class="compact normal" id="section-18-2.6.2.2">Metadata: added <code>documentation_uri</code> to <code>aauth-agent.json</code>, <code>aauth-person.json</code>, and <code>aauth-access.json</code>.<a href="#section-18-2.6.2.2" class="pilcrow">¶</a>
-</li>
-            <li class="compact normal" id="section-18-2.6.2.3">Interaction code: updated Crockford base32 citation to <code>[@?I-D.crockford-davis-base32-for-humans]</code>.<a href="#section-18-2.6.2.3" class="pilcrow">¶</a>
+<li class="compact normal" id="section-18-2.6.2.1">Auth tokens: replaced <code>act.sub</code> with <code>act.agent</code> within each <code>act</code> node; see <a href="https://github.com/dickhardt/AAuth/issues/47">issue #47</a>.<a href="#section-18-2.6.2.1" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
         <li class="normal" id="section-18-2.7">
-          <p id="section-18-2.7.1">draft-hardt-oauth-aauth-protocol-02<a href="#section-18-2.7.1" class="pilcrow">¶</a></p>
+          <p id="section-18-2.7.1">draft-hardt-oauth-aauth-protocol-03<a href="#section-18-2.7.1" class="pilcrow">¶</a></p>
 <ul class="compact normal">
-<li class="compact normal" id="section-18-2.7.2.1">Added sub-agents: agent token <code>parent_agent</code> claim, single-level depth, parent-mediated authorization with a <code>subagent_token</code> parameter, and the <code>+</code> sub-agent local-part delimiter; registered <code>parent_agent</code> in the JWT Claims registry.<a href="#section-18-2.7.2.1" class="pilcrow">¶</a>
+<li class="compact normal" id="section-18-2.7.2.1">Metadata: added a common-fields table at the top of the Metadata Documents section covering all four well-known files; documented intentional RFC 9728 divergences (<code>issuer</code> not <code>resource</code>; unprefixed field names).<a href="#section-18-2.7.2.1" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-18-2.7.2.2">Renamed the terminal <code>interaction_required</code> error to <code>user_unreachable</code>; added <code>interaction_unavailable</code> (424) and PS-first interaction relay; clarified completion polling for resource-hosted interactions; added the <code>max_wait</code> interaction parameter.<a href="#section-18-2.7.2.2" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-18-2.7.2.2">Metadata: added <code>documentation_uri</code> to <code>aauth-agent.json</code>, <code>aauth-person.json</code>, and <code>aauth-access.json</code>.<a href="#section-18-2.7.2.2" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-18-2.7.2.3">Added <code>capabilities</code> and OIDC <code>prompt</code> request parameters to the PS token endpoint.<a href="#section-18-2.7.2.3" class="pilcrow">¶</a>
-</li>
-            <li class="compact normal" id="section-18-2.7.2.4">Added <code>requirement=agent-token</code> (<code>401</code>); ordered the resource-access challenge sections weakest-to-strongest.<a href="#section-18-2.7.2.4" class="pilcrow">¶</a>
-</li>
-            <li class="compact normal" id="section-18-2.7.2.5">Added an <code>access_mode</code> resource-metadata field, a "Drop-In Replacement for API Keys and OAuth" section, and a "Consuming a Resource End to End" walkthrough; relaxed <code>jwks_uri</code> to be required only when the resource issues resource tokens or makes signed calls.<a href="#section-18-2.7.2.5" class="pilcrow">¶</a>
-</li>
-            <li class="compact normal" id="section-18-2.7.2.6">Added an OPTIONAL Markdown <code>description</code> field to each well-known metadata document.<a href="#section-18-2.7.2.6" class="pilcrow">¶</a>
-</li>
-            <li class="compact normal" id="section-18-2.7.2.7">Metadata: require the returned <code>issuer</code> to match the URL it was fetched from.<a href="#section-18-2.7.2.7" class="pilcrow">¶</a>
-</li>
-            <li class="compact normal" id="section-18-2.7.2.8">Call chaining: clarified that the intermediary signs with its own key and <code>upstream_token</code> is a body parameter.<a href="#section-18-2.7.2.8" class="pilcrow">¶</a>
-</li>
-            <li class="compact normal" id="section-18-2.7.2.9">Added rationale for the mandated covered components in the HTTP Message Signatures profile.<a href="#section-18-2.7.2.9" class="pilcrow">¶</a>
-</li>
-            <li class="compact normal" id="section-18-2.7.2.10">Added a Security Consideration on non-repudiation after key rotation; clarified that the agent token is AAuth's minimum credential (identity Signature-Key schemes only; pseudonym <code>hwk</code>/<code>jkt-jwt</code> not an AAuth mode).<a href="#section-18-2.7.2.10" class="pilcrow">¶</a>
-</li>
-            <li class="compact normal" id="section-18-2.7.2.11">Bootstrapping: pointer to the AAuth Bootstrap document; resources SHOULD publish <code>access_mode</code> and an R3 vocabulary.<a href="#section-18-2.7.2.11" class="pilcrow">¶</a>
-</li>
-            <li class="compact normal" id="section-18-2.7.2.12">Diagrams: use snake_case <code>agent_token</code> and <code>auth_token</code>.<a href="#section-18-2.7.2.12" class="pilcrow">¶</a>
-</li>
-            <li class="compact normal" id="section-18-2.7.2.13">Named the <code>{approver, s256}</code> pair the "mission reference" and used it consistently for the <code>mission</code> claim in resource and auth tokens, distinct from the full mission blob.<a href="#section-18-2.7.2.13" class="pilcrow">¶</a>
-</li>
-            <li class="compact normal" id="section-18-2.7.2.14">Stated that AAuth never conveys its own requirements via <code>WWW-Authenticate</code>, leaving a resource's existing challenges available alongside <code>AAuth-Requirement</code>.<a href="#section-18-2.7.2.14" class="pilcrow">¶</a>
-</li>
-            <li class="compact normal" id="section-18-2.7.2.15">Specified the interaction <code>code</code> format: Crockford base32 alphabet, ≥40 bits of entropy, presentational hyphens stripped before case-insensitive comparison, single use, mandatory rate-limiting, and expiry bound to the pending interaction; documented the entropy/rate-limit rules as the brute-force defense in Interaction Code Misdirection and made the four <code>code</code> examples consistently hyphenated.<a href="#section-18-2.7.2.15" class="pilcrow">¶</a>
-</li>
-            <li class="compact normal" id="section-18-2.7.2.16">Editorial consistency pass: trimmed redundant mode walkthroughs, removed the empty "Clarification Flow" subsection, and added distinct anchors to the appendix flow diagrams.<a href="#section-18-2.7.2.16" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-18-2.7.2.3">Interaction code: updated Crockford base32 citation to <code>[@?I-D.crockford-davis-base32-for-humans]</code>.<a href="#section-18-2.7.2.3" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
         <li class="normal" id="section-18-2.8">
-          <p id="section-18-2.8.1">draft-hardt-oauth-aauth-protocol-01<a href="#section-18-2.8.1" class="pilcrow">¶</a></p>
+          <p id="section-18-2.8.1">draft-hardt-oauth-aauth-protocol-02<a href="#section-18-2.8.1" class="pilcrow">¶</a></p>
 <ul class="compact normal">
-<li class="compact normal" id="section-18-2.8.2.1">Renamed PS-managed access to PS-asserted access throughout, reflecting the trust posture: the resource accepts identity claims and consent from the agent's PS while applying its own access policy.<a href="#section-18-2.8.2.1" class="pilcrow">¶</a>
+<li class="compact normal" id="section-18-2.8.2.1">Added sub-agents: agent token <code>parent_agent</code> claim, single-level depth, parent-mediated authorization with a <code>subagent_token</code> parameter, and the <code>+</code> sub-agent local-part delimiter; registered <code>parent_agent</code> in the JWT Claims registry.<a href="#section-18-2.8.2.1" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-18-2.8.2.2">Renamed Agent Server to Agent Provider (AP) throughout, including in agent identifier definition, well-known metadata, and IANA registrations.<a href="#section-18-2.8.2.2" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-18-2.8.2.2">Renamed the terminal <code>interaction_required</code> error to <code>user_unreachable</code>; added <code>interaction_unavailable</code> (424) and PS-first interaction relay; clarified completion polling for resource-hosted interactions; added the <code>max_wait</code> interaction parameter.<a href="#section-18-2.8.2.2" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-18-2.8.2.3">Added Roles section describing collocation patterns (PS+AS, Resource+Agent, AP+Resource, Agent+AP, org-wide bundles).<a href="#section-18-2.8.2.3" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-18-2.8.2.3">Added <code>capabilities</code> and OIDC <code>prompt</code> request parameters to the PS token endpoint.<a href="#section-18-2.8.2.3" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-18-2.8.2.4">Added Policy Evaluation Points section describing how AP, PS, AS, and Resource each evaluate the agent from their own vantage point.<a href="#section-18-2.8.2.4" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-18-2.8.2.4">Added <code>requirement=agent-token</code> (<code>401</code>); ordered the resource-access challenge sections weakest-to-strongest.<a href="#section-18-2.8.2.4" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-18-2.8.2.5">Added PS-AS Collapse subsection distinguishing it from three-party access.<a href="#section-18-2.8.2.5" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-18-2.8.2.5">Added an <code>access_mode</code> resource-metadata field, a "Drop-In Replacement for API Keys and OAuth" section, and a "Consuming a Resource End to End" walkthrough; relaxed <code>jwks_uri</code> to be required only when the resource issues resource tokens or makes signed calls.<a href="#section-18-2.8.2.5" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-18-2.8.2.6">Added Trust Posture in PS-Asserted Access security section.<a href="#section-18-2.8.2.6" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-18-2.8.2.6">Added an OPTIONAL Markdown <code>description</code> field to each well-known metadata document.<a href="#section-18-2.8.2.6" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-18-2.8.2.7">Added optional <code>platform</code> request parameter (with new IANA AAuth Platform Value Registry: <code>web</code>, <code>mobile</code>, <code>desktop</code>, <code>workload</code>, <code>self-hosted</code>) and <code>device</code> request parameter at the PS token endpoint, both agent-attested and used for display at the consent screen and connected-agents dashboard.<a href="#section-18-2.8.2.7" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-18-2.8.2.7">Metadata: require the returned <code>issuer</code> to match the URL it was fetched from.<a href="#section-18-2.8.2.7" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-18-2.8.2.8">Replaced ad hoc <code>org</code> references with the <code>tenant</code> claim from OpenID Connect Enterprise Extensions; added <code>tenant</code> as an optional auth token claim.<a href="#section-18-2.8.2.8" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-18-2.8.2.8">Call chaining: clarified that the intermediary signs with its own key and <code>upstream_token</code> is a body parameter.<a href="#section-18-2.8.2.8" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-18-2.8.2.9">Consistency pass: identity-based access now requires an agent token (collapsed agent adoption path from 4 to 3 steps); audit's mission requirement no longer hidden by the "missions, permissions, audit" shorthand; <code>capabilities</code> array on mission approval is "MAY include"; <code>ps</code> claim in agent token is "MUST include" for three-party and above; auth token usage clarified (agent presents auth token, not agent token, on subsequent requests to a resource).<a href="#section-18-2.8.2.9" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-18-2.8.2.9">Added rationale for the mandated covered components in the HTTP Message Signatures profile.<a href="#section-18-2.8.2.9" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-18-2.8.2.10">Demoted the AAuth Bootstrap reference from normative to informative.<a href="#section-18-2.8.2.10" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-18-2.8.2.10">Added a Security Consideration on non-repudiation after key rotation; clarified that the agent token is AAuth's minimum credential (identity Signature-Key schemes only; pseudonym <code>hwk</code>/<code>jkt-jwt</code> not an AAuth mode).<a href="#section-18-2.8.2.10" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.8.2.11">Bootstrapping: pointer to the AAuth Bootstrap document; resources SHOULD publish <code>access_mode</code> and an R3 vocabulary.<a href="#section-18-2.8.2.11" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.8.2.12">Diagrams: use snake_case <code>agent_token</code> and <code>auth_token</code>.<a href="#section-18-2.8.2.12" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.8.2.13">Named the <code>{approver, s256}</code> pair the "mission reference" and used it consistently for the <code>mission</code> claim in resource and auth tokens, distinct from the full mission blob.<a href="#section-18-2.8.2.13" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.8.2.14">Stated that AAuth never conveys its own requirements via <code>WWW-Authenticate</code>, leaving a resource's existing challenges available alongside <code>AAuth-Requirement</code>.<a href="#section-18-2.8.2.14" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.8.2.15">Specified the interaction <code>code</code> format: Crockford base32 alphabet, ≥40 bits of entropy, presentational hyphens stripped before case-insensitive comparison, single use, mandatory rate-limiting, and expiry bound to the pending interaction; documented the entropy/rate-limit rules as the brute-force defense in Interaction Code Misdirection and made the four <code>code</code> examples consistently hyphenated.<a href="#section-18-2.8.2.15" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.8.2.16">Editorial consistency pass: trimmed redundant mode walkthroughs, removed the empty "Clarification Flow" subsection, and added distinct anchors to the appendix flow diagrams.<a href="#section-18-2.8.2.16" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
         <li class="normal" id="section-18-2.9">
-          <p id="section-18-2.9.1">draft-hardt-oauth-aauth-protocol-00<a href="#section-18-2.9.1" class="pilcrow">¶</a></p>
+          <p id="section-18-2.9.1">draft-hardt-oauth-aauth-protocol-01<a href="#section-18-2.9.1" class="pilcrow">¶</a></p>
 <ul class="compact normal">
-<li class="compact normal" id="section-18-2.9.2.1">Initial draft. Replaces <a href="https://datatracker.ietf.org/doc/draft-hardt-aauth-protocol/02/">draft-hardt-aauth-protocol-02</a>; no technical changes.<a href="#section-18-2.9.2.1" class="pilcrow">¶</a>
+<li class="compact normal" id="section-18-2.9.2.1">Renamed PS-managed access to PS-asserted access throughout, reflecting the trust posture: the resource accepts identity claims and consent from the agent's PS while applying its own access policy.<a href="#section-18-2.9.2.1" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.9.2.2">Renamed Agent Server to Agent Provider (AP) throughout, including in agent identifier definition, well-known metadata, and IANA registrations.<a href="#section-18-2.9.2.2" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.9.2.3">Added Roles section describing collocation patterns (PS+AS, Resource+Agent, AP+Resource, Agent+AP, org-wide bundles).<a href="#section-18-2.9.2.3" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.9.2.4">Added Policy Evaluation Points section describing how AP, PS, AS, and Resource each evaluate the agent from their own vantage point.<a href="#section-18-2.9.2.4" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.9.2.5">Added PS-AS Collapse subsection distinguishing it from three-party access.<a href="#section-18-2.9.2.5" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.9.2.6">Added Trust Posture in PS-Asserted Access security section.<a href="#section-18-2.9.2.6" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.9.2.7">Added optional <code>platform</code> request parameter (with new IANA AAuth Platform Value Registry: <code>web</code>, <code>mobile</code>, <code>desktop</code>, <code>workload</code>, <code>self-hosted</code>) and <code>device</code> request parameter at the PS token endpoint, both agent-attested and used for display at the consent screen and connected-agents dashboard.<a href="#section-18-2.9.2.7" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.9.2.8">Replaced ad hoc <code>org</code> references with the <code>tenant</code> claim from OpenID Connect Enterprise Extensions; added <code>tenant</code> as an optional auth token claim.<a href="#section-18-2.9.2.8" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.9.2.9">Consistency pass: identity-based access now requires an agent token (collapsed agent adoption path from 4 to 3 steps); audit's mission requirement no longer hidden by the "missions, permissions, audit" shorthand; <code>capabilities</code> array on mission approval is "MAY include"; <code>ps</code> claim in agent token is "MUST include" for three-party and above; auth token usage clarified (agent presents auth token, not agent token, on subsequent requests to a resource).<a href="#section-18-2.9.2.9" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.9.2.10">Demoted the AAuth Bootstrap reference from normative to informative.<a href="#section-18-2.9.2.10" class="pilcrow">¶</a>
+</li>
+          </ul>
+</li>
+        <li class="normal" id="section-18-2.10">
+          <p id="section-18-2.10.1">draft-hardt-oauth-aauth-protocol-00<a href="#section-18-2.10.1" class="pilcrow">¶</a></p>
+<ul class="compact normal">
+<li class="compact normal" id="section-18-2.10.2.1">Initial draft. Replaces <a href="https://datatracker.ietf.org/doc/draft-hardt-aauth-protocol/02/">draft-hardt-aauth-protocol-02</a>; no technical changes.<a href="#section-18-2.10.2.1" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
@@ -7067,7 +7105,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZERTQSJ9.PLACEHOLDER.PLACEHOLDER"
       <h2 id="name-acknowledgments">
 <a href="#section-19" class="section-number selfRef">19. </a><a href="#name-acknowledgments" class="section-name selfRef">Acknowledgments</a>
       </h2>
-<p id="section-19-1">The author would like to thank reviewers for their feedback on concepts and earlier drafts, and contributors who raised issues and pull requests: Aaron Parecki, Christian Posta, Dasith Wijesiriwardena, Frederik Krogsdal Jacobsen, Jared Hanson, Jeoffrey Haeyaert, João André Marques, Joshua Gay, Karl McGuinness, Mark Hendrickson, Nate Barbettini, Nick Gamb, Paul Carleton, Rohan Harikumar, Scott Motte, Wils Dawson.<a href="#section-19-1" class="pilcrow">¶</a></p>
+<p id="section-19-1">The author would like to thank reviewers for their feedback on concepts and earlier drafts, and contributors who raised issues and pull requests: Aaron Parecki, Christian Posta, Dasith Wijesiriwardena, Frederik Krogsdal Jacobsen, Jared Hanson, Jeoffrey Haeyaert, João André Marques, Joshua Gay, Karl McGuinness, Lukas Friman, Mark Hendrickson, Nate Barbettini, Nick Gamb, Paul Carleton, Rohan Harikumar, Sanjay Dalal, Scott Motte, Wils Dawson.<a href="#section-19-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <section id="section-20">
@@ -7081,7 +7119,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZERTQSJ9.PLACEHOLDER.PLACEHOLDER"
 <dl class="references">
 <dt id="I-D.hardt-httpbis-signature-key">[I-D.hardt-httpbis-signature-key]</dt>
         <dd>
-<span class="refAuthor">Hardt, D.</span> and <span class="refAuthor">T. Meunier</span>, <span class="refTitle">"HTTP Signature Keys"</span>, <time datetime="2026" class="refDate">2026</time>, <span>&lt;<a href="https://dickhardt.github.io/signature-key/draft-hardt-httpbis-signature-key.html">https://dickhardt.github.io/signature-key/draft-hardt-httpbis-signature-key.html</a>&gt;</span>. </dd>
+<span class="refAuthor">Hardt, D.</span> and <span class="refAuthor">T. Meunier</span>, <span class="refTitle">"HTTP Signature Keys"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-hardt-httpbis-signature-key-06</span>, <time datetime="2026-07-02" class="refDate">2 July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-hardt-httpbis-signature-key-06">https://datatracker.ietf.org/doc/html/draft-hardt-httpbis-signature-key-06</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="I-D.ryan-httpauth-payment">[I-D.ryan-httpauth-payment]</dt>
         <dd>
@@ -7139,10 +7177,6 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZERTQSJ9.PLACEHOLDER.PLACEHOLDER"
         <dd>
 <span class="refAuthor">Cotton, M.</span>, <span class="refAuthor">Leiba, B.</span>, and <span class="refAuthor">T. Narten</span>, <span class="refTitle">"Guidelines for Writing an IANA Considerations Section in RFCs"</span>, <span class="seriesInfo">BCP 26</span>, <span class="seriesInfo">RFC 8126</span>, <span class="seriesInfo">DOI 10.17487/RFC8126</span>, <time datetime="2017-06" class="refDate">June 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8126">https://www.rfc-editor.org/info/rfc8126</a>&gt;</span>. </dd>
 <dd class="break"></dd>
-<dt id="RFC8259">[RFC8259]</dt>
-        <dd>
-<span class="refAuthor">Bray, T., Ed.</span>, <span class="refTitle">"The JavaScript Object Notation (JSON) Data Interchange Format"</span>, <span class="seriesInfo">STD 90</span>, <span class="seriesInfo">RFC 8259</span>, <span class="seriesInfo">DOI 10.17487/RFC8259</span>, <time datetime="2017-12" class="refDate">December 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8259">https://www.rfc-editor.org/info/rfc8259</a>&gt;</span>. </dd>
-<dd class="break"></dd>
 <dt id="RFC8615">[RFC8615]</dt>
         <dd>
 <span class="refAuthor">Nottingham, M.</span>, <span class="refTitle">"Well-Known Uniform Resource Identifiers (URIs)"</span>, <span class="seriesInfo">RFC 8615</span>, <span class="seriesInfo">DOI 10.17487/RFC8615</span>, <time datetime="2019-05" class="refDate">May 2019</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8615">https://www.rfc-editor.org/info/rfc8615</a>&gt;</span>. </dd>
@@ -7168,8 +7202,12 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZERTQSJ9.PLACEHOLDER.PLACEHOLDER"
 <span class="refAuthor">Sheffer, Y.</span>, <span class="refAuthor">Saint-Andre, P.</span>, and <span class="refAuthor">T. Fossati</span>, <span class="refTitle">"Recommendations for Secure Use of Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS)"</span>, <span class="seriesInfo">BCP 195</span>, <span class="seriesInfo">RFC 9325</span>, <span class="seriesInfo">DOI 10.17487/RFC9325</span>, <time datetime="2022-11" class="refDate">November 2022</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc9325">https://www.rfc-editor.org/info/rfc9325</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC9421">[RFC9421]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Backman, A., Ed.</span>, <span class="refAuthor">Richer, J., Ed.</span>, and <span class="refAuthor">M. Sporny</span>, <span class="refTitle">"HTTP Message Signatures"</span>, <span class="seriesInfo">RFC 9421</span>, <span class="seriesInfo">DOI 10.17487/RFC9421</span>, <time datetime="2024-02" class="refDate">February 2024</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc9421">https://www.rfc-editor.org/info/rfc9421</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9457">[RFC9457]</dt>
+      <dd>
+<span class="refAuthor">Nottingham, M.</span>, <span class="refAuthor">Wilde, E.</span>, and <span class="refAuthor">S. Dalal</span>, <span class="refTitle">"Problem Details for HTTP APIs"</span>, <span class="seriesInfo">RFC 9457</span>, <span class="seriesInfo">DOI 10.17487/RFC9457</span>, <time datetime="2023-07" class="refDate">July 2023</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc9457">https://www.rfc-editor.org/info/rfc9457</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 </dl>
 </section>
@@ -7188,7 +7226,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZERTQSJ9.PLACEHOLDER.PLACEHOLDER"
 <dd class="break"></dd>
 <dt id="I-D.hardt-aauth-bootstrap">[I-D.hardt-aauth-bootstrap]</dt>
         <dd>
-<span class="refAuthor">Hardt, D.</span>, <span class="refTitle">"AAuth Bootstrap Guidance"</span>, <time datetime="2026" class="refDate">2026</time>, <span>&lt;<a href="https://github.com/dickhardt/AAuth">https://github.com/dickhardt/AAuth</a>&gt;</span>. </dd>
+<span class="refAuthor">Hardt, D.</span>, <span class="refTitle">"AAuth Bootstrap Guidance"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-hardt-aauth-bootstrap-01</span>, <time datetime="2026-05-06" class="refDate">6 May 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-hardt-aauth-bootstrap-01">https://datatracker.ietf.org/doc/html/draft-hardt-aauth-bootstrap-01</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="I-D.hardt-aauth-events">[I-D.hardt-aauth-events]</dt>
         <dd>

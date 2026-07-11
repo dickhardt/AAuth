@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                            26 June 2026
-Expires: 28 December 2026
+Intended status: Standards Track                            11 July 2026
+Expires: 12 January 2027
 
 
                              AAuth Protocol
@@ -50,7 +50,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 28 December 2026.
+   This Internet-Draft will expire on 12 January 2027.
 
 Copyright Notice
 
@@ -188,7 +188,7 @@ Table of Contents
        12.4.4.  Deferred Response State Machine
      12.5.  Error Responses
        12.5.1.  Authentication Errors
-       12.5.2.  Token Endpoint Error Response Format
+       12.5.2.  Error Response Format
        12.5.3.  Token Endpoint Error Codes
        12.5.4.  Polling Error Codes
      12.6.  Token Revocation
@@ -1285,8 +1285,7 @@ Table of Contents
 
                                   Table 2
 
-   Error responses use the same format as the token endpoint
-   Section 12.5.2.
+   Error responses use the error response format Section 12.5.2.
 
 6.3.  Agent Token Required
 
@@ -1788,16 +1787,23 @@ Table of Contents
 
    The agent MUST respond to a clarification with one of:
 
-   1.  *Clarification response*: POST a clarification_response to the
-       pending URL.
-   2.  *Updated request*: POST a new resource_token to the pending URL,
-       replacing the original request with updated scope or parameters.
+   1.  *Clarification response*: POST an action of
+       clarification_response to the pending URL.
+   2.  *Updated request*: POST an action of updated_request with a new
+       resource_token to the pending URL, replacing the original request
+       with updated scope or parameters.
    3.  *Cancel request*: DELETE the pending URL to withdraw the request.
+
+   A POST body MUST include an action member identifying the response
+   type.  A server MUST reject a POST with a missing or unrecognized
+   action value with 400 Bad Request.  The action member makes each POST
+   self-describing and keeps the pending route extensible for future
+   response types.
 
 7.3.2.1.  Clarification Response
 
-   The agent responds by POSTing JSON with clarification_response to the
-   pending URL:
+   The agent responds by POSTing JSON with an action of
+   clarification_response to the pending URL:
 
    POST /pending/abc123 HTTP/1.1
    Host: ps.example
@@ -1808,6 +1814,7 @@ Table of Contents
    Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
    {
+     "action": "clarification_response",
      "clarification_response":
        "I need to create a meeting invite
         for the participants you listed."
@@ -1831,6 +1838,7 @@ Table of Contents
    Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
    {
+     "action": "updated_request",
      "resource_token": "eyJ...",
      "justification": "I've reduced my request to read-only access."
    }
@@ -2151,7 +2159,7 @@ Table of Contents
 
 7.6.3.  Interaction Endpoint Errors
 
-   Errors use the token endpoint error response format Section 12.5.2.
+   Errors use the error response format Section 12.5.2.
 
    +=========================+========+===============================+
    | Error                   | Status | Meaning                       |
@@ -2365,7 +2373,7 @@ Table of Contents
    return an error:
 
    HTTP/1.1 403 Forbidden
-   Content-Type: application/json
+   Content-Type: application/problem+json
 
    {
      "error": "mission_terminated",
@@ -3721,14 +3729,21 @@ Initial request (with Prefer: wait=N)
    A 401 response from any AAuth endpoint uses the Signature-Error
    header as defined in ([I-D.hardt-httpbis-signature-key]).
 
-12.5.2.  Token Endpoint Error Response Format
+12.5.2.  Error Response Format
 
-   Token endpoint errors use Content-Type: application/json ([RFC8259])
-   with the following members:
+   Error response bodies use the HTTP problem details format ([RFC9457])
+   with Content-Type: application/problem+json.  The body is a JSON
+   object with the following members:
 
-   *  error (REQUIRED): String.  A single error code.
-   *  error_description (OPTIONAL): String.  A human-readable
-      description.
+   *  error (REQUIRED): String.  A single error code, as defined by the
+      endpoint returning the error.  This is an RFC 9457 extension
+      member; receivers MUST determine how to proceed from this member.
+   *  detail (OPTIONAL): String.  A human-readable explanation specific
+      to this occurrence of the error.
+
+   Other RFC 9457 members (type, title, status, instance) MAY be present
+   with their RFC 9457 semantics.  AAuth does not define problem type
+   URIs; receivers MUST NOT rely on type to identify AAuth errors.
 
 12.5.3.  Token Endpoint Error Codes
 
@@ -3763,6 +3778,18 @@ Initial request (with Prefer: wait=N)
 
                                  Table 9
 
+   Example — the resource token presented to the token endpoint has
+   expired:
+
+   HTTP/1.1 400 Bad Request
+   Content-Type: application/problem+json
+
+   {
+     "error": "expired_resource_token",
+     "detail": "The resource token expired; obtain a new
+       resource token from the resource and retry."
+   }
+
 12.5.4.  Polling Error Codes
 
         +==============+========+================================+
@@ -3786,6 +3813,16 @@ Initial request (with Prefer: wait=N)
         +--------------+--------+--------------------------------+
 
                                  Table 10
+
+   Example — the user denied the pending request:
+
+   HTTP/1.1 403 Forbidden
+   Content-Type: application/problem+json
+
+   {
+     "error": "denied",
+     "detail": "The user declined the request."
+   }
 
 12.6.  Token Revocation
 
@@ -5146,6 +5183,18 @@ Initial request (with Prefer: wait=N)
 
    _Note: This section is to be removed before publishing as an RFC._
 
+   *  draft-hardt-oauth-aauth-protocol-09
+
+      -  Clarification chat: added a required action discriminator
+         (clarification_response / updated_request) to the agent's POST
+         responses on the pending URL, so the response type is explicit
+         rather than inferred from key presence.
+      -  Error responses: adopted RFC 9457 problem details — error
+         bodies use Content-Type: application/problem+json with the
+         AAuth error code as a required error extension member;
+         error_description replaced by the RFC 9457 detail member; added
+         token endpoint and polling error examples.
+
    *  draft-hardt-oauth-aauth-protocol-08
 
       -  Call chaining: upstream token aud MUST equal the iss of the
@@ -5310,18 +5359,20 @@ Initial request (with Prefer: wait=N)
    concepts and earlier drafts, and contributors who raised issues and
    pull requests: Aaron Parecki, Christian Posta, Dasith
    Wijesiriwardena, Frederik Krogsdal Jacobsen, Jared Hanson, Jeoffrey
-   Haeyaert, João André Marques, Joshua Gay, Karl McGuinness, Mark
-   Hendrickson, Nate Barbettini, Nick Gamb, Paul Carleton, Rohan
-   Harikumar, Scott Motte, Wils Dawson.
+   Haeyaert, João André Marques, Joshua Gay, Karl McGuinness, Lukas
+   Friman, Mark Hendrickson, Nate Barbettini, Nick Gamb, Paul Carleton,
+   Rohan Harikumar, Sanjay Dalal, Scott Motte, Wils Dawson.
 
 20.  References
 
 20.1.  Normative References
 
    [I-D.hardt-httpbis-signature-key]
-              Hardt, D. and T. Meunier, "HTTP Signature Keys", 2026,
-              <https://dickhardt.github.io/signature-key/draft-hardt-
-              httpbis-signature-key.html>.
+              Hardt, D. and T. Meunier, "HTTP Signature Keys", Work in
+              Progress, Internet-Draft, draft-hardt-httpbis-signature-
+              key-06, 2 July 2026,
+              <https://datatracker.ietf.org/doc/html/draft-hardt-
+              httpbis-signature-key-06>.
 
    [I-D.ryan-httpauth-payment]
               Ryan, B., Moxey, J., Meagher, T., Weinstein, J., and S.
@@ -5389,11 +5440,6 @@ Initial request (with Prefer: wait=N)
               RFC 8126, DOI 10.17487/RFC8126, June 2017,
               <https://www.rfc-editor.org/info/rfc8126>.
 
-   [RFC8259]  Bray, T., Ed., "The JavaScript Object Notation (JSON) Data
-              Interchange Format", STD 90, RFC 8259,
-              DOI 10.17487/RFC8259, December 2017,
-              <https://www.rfc-editor.org/info/rfc8259>.
-
    [RFC8615]  Nottingham, M., "Well-Known Uniform Resource Identifiers
               (URIs)", RFC 8615, DOI 10.17487/RFC8615, May 2019,
               <https://www.rfc-editor.org/info/rfc8615>.
@@ -5426,6 +5472,10 @@ Initial request (with Prefer: wait=N)
               Message Signatures", RFC 9421, DOI 10.17487/RFC9421,
               February 2024, <https://www.rfc-editor.org/info/rfc9421>.
 
+   [RFC9457]  Nottingham, M., Wilde, E., and S. Dalal, "Problem Details
+              for HTTP APIs", RFC 9457, DOI 10.17487/RFC9457, July 2023,
+              <https://www.rfc-editor.org/info/rfc9457>.
+
 20.2.  Informative References
 
    [CommonMark]
@@ -5440,8 +5490,10 @@ Initial request (with Prefer: wait=N)
               davis-base32-for-humans-01>.
 
    [I-D.hardt-aauth-bootstrap]
-              Hardt, D., "AAuth Bootstrap Guidance", 2026,
-              <https://github.com/dickhardt/AAuth>.
+              Hardt, D., "AAuth Bootstrap Guidance", Work in Progress,
+              Internet-Draft, draft-hardt-aauth-bootstrap-01, 6 May
+              2026, <https://datatracker.ietf.org/doc/html/draft-hardt-
+              aauth-bootstrap-01>.
 
    [I-D.hardt-aauth-events]
               Hardt, D., "AAuth Events", 2026,
