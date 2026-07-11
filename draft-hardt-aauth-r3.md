@@ -12,7 +12,7 @@ name = "Internet-Draft"
 value = "draft-hardt-aauth-r3-latest"
 stream = "IETF"
 
-date = 2026-03-24T00:00:00Z
+date = 2026-07-11T00:00:00Z
 
 [[author]]
 initials = "D."
@@ -96,7 +96,7 @@ R3 extends the `/.well-known/aauth-resource.json` document defined in AAuth Prot
 
 ```json
 {
-  "resource": "https://calendar.example.com",
+  "issuer": "https://calendar.example.com",
   "r3_vocabularies": {
     "urn:aauth:vocabulary:mcp": "https://calendar.example.com/mcp",
     "urn:aauth:vocabulary:openapi": "https://calendar.example.com/openapi.json"
@@ -104,11 +104,17 @@ R3 extends the `/.well-known/aauth-resource.json` document defined in AAuth Prot
 }
 ```
 
-**`r3_vocabularies`** (OPTIONAL). A JSON object mapping vocabulary URIs to their discovery endpoints. Keys MUST be vocabulary URIs from the `urn:aauth:vocabulary:` namespace for standard vocabularies defined in this document, or third-party URI namespaces for proprietary vocabularies. Values are vocabulary-specific discovery endpoints (the MCP server URL, the OpenAPI spec URL, the gRPC reflection endpoint, etc.). A resource MAY advertise multiple vocabularies simultaneously.
+**`r3_vocabularies`** (OPTIONAL). A JSON object mapping vocabulary URIs to their discovery endpoints. Keys MUST be vocabulary URIs from the `urn:aauth:vocabulary:` namespace for standard vocabularies defined in this document, or third-party URI namespaces for proprietary vocabularies. Values are vocabulary-specific discovery endpoints (the MCP server URL, the OpenAPI spec URL, the gRPC reflection endpoint, etc.). A vocabulary MAY define a structured discovery value in place of a single URL (see {{openapi-gateway-vocabulary}}). A resource MAY advertise multiple vocabularies simultaneously.
+
+## Operation Identifier Scope {#operation-identifier-scope}
+
+Operation identifiers are scoped to the discovery endpoint the resource advertises for that vocabulary in `r3_vocabularies`. A resource advertises exactly one discovery endpoint per vocabulary, and each underlying format requires operation identifiers to be unique within a single definition (OpenAPI `operationId` within a document, MCP tool names within a server, GraphQL operation names within a schema, AsyncAPI `operationId` within a document). Bare identifiers in `r3_operations` requests, R3 documents, and `r3_granted`/`r3_conditional` claims therefore resolve unambiguously against that one definition, and no additional qualifier appears in tokens.
+
+A resource that aggregates multiple backend services behind a single resource identifier MUST do one of the following: present them as one valid definition at the discovery endpoint (renaming colliding identifiers as needed to satisfy the format's uniqueness rules), expose the services under separate resource identifiers (in which case the auth token's `aud` claim distinguishes them), or advertise a vocabulary whose operation entries qualify identifiers per service, such as the OpenAPI Gateway vocabulary ({{openapi-gateway-vocabulary}}). Identical identifiers at *different* resources are already disambiguated by token binding: an auth token is bound to one resource via `aud`, and `r3_uri`/`r3_s256` pin the exact R3 document the grant was drawn from.
 
 ## Standard Vocabularies
 
-This document defines seven standard vocabularies. Third parties MAY define additional vocabularies using their own URI namespaces. Each vocabulary defines: the vocabulary URI, the structure of operation requests, how the resource maps operations to R3 documents, and the discovery endpoint.
+This document defines eight standard vocabularies. Third parties MAY define additional vocabularies using their own URI namespaces. Each vocabulary defines: the vocabulary URI, the structure of operation requests, how the resource maps operations to R3 documents, and the discovery endpoint.
 
 Standard vocabularies use the `urn:aauth:vocabulary:` namespace.
 
@@ -144,6 +150,43 @@ Each operation entry contains:
   "operations": [
     { "operationId": "createEvent" },
     { "operationId": "updateEvent" }
+  ]
+}
+```
+
+### OpenAPI Gateway Vocabulary (`urn:aauth:vocabulary:openapi-gateway`) {#openapi-gateway-vocabulary}
+
+For resources that front multiple OpenAPI-described services behind a single resource identifier, such as an API gateway. The OpenAPI vocabulary ({{openapi-vocabulary}}) assumes a single OpenAPI document per resource; this vocabulary supports several without requiring the gateway to merge specifications or rename colliding `operationId` values. The complexity of multi-service aggregation is confined to this syntax — single-service resources use the plain OpenAPI vocabulary and carry unqualified operations.
+
+The discovery value in `r3_vocabularies` is not a single URL but a JSON object mapping service labels to OpenAPI specification URLs:
+
+```json
+{
+  "issuer": "https://gateway.example.com",
+  "r3_vocabularies": {
+    "urn:aauth:vocabulary:openapi-gateway": {
+      "calendar": "https://gateway.example.com/calendar/openapi.json",
+      "billing": "https://gateway.example.com/billing/openapi.json"
+    }
+  }
+}
+```
+
+Service labels are chosen by the resource and SHOULD be stable: they appear in R3 documents and auth token claims, so relabeling a service invalidates the grants that reference it even when the underlying specification is unchanged.
+
+Each operation entry contains:
+
+- **`service`** (REQUIRED). A service label. MUST match a key in the discovery object.
+- **`operationId`** (REQUIRED). The `operationId` as defined in that service's OpenAPI specification.
+
+The pair (`service`, `operationId`) identifies an operation. `operationId` uniqueness is required only within a single service's specification; the same `operationId` MAY appear under different services.
+
+```json
+{
+  "vocabulary": "urn:aauth:vocabulary:openapi-gateway",
+  "operations": [
+    { "service": "calendar", "operationId": "createEvent" },
+    { "service": "billing", "operationId": "createEvent" }
   ]
 }
 ```
@@ -424,7 +467,7 @@ R3 extends the auth token defined in AAuth Protocol ([@!I-D.hardt-aauth-protocol
 
 Base claims (from AAuth Protocol):
 - `iss`: Auth server URL
-- `dwk`: `aauth-issuer.json`
+- `dwk`: `aauth-access.json` (issued by an AS) or `aauth-person.json` (issued by a PS)
 - `aud`: Resource URL
 - `jti`: Unique token identifier
 - `agent`: Agent identifier
@@ -451,7 +494,7 @@ R3 extension claims:
 ```json
 {
   "iss": "https://as.example.com",
-  "dwk": "aauth-issuer.json",
+  "dwk": "aauth-access.json",
   "aud": "https://calendar.example.com",
   "jti": "at-9d4c1e",
   "agent": "assistant@agent.example",
@@ -595,6 +638,7 @@ This specification establishes the AAuth R3 Vocabulary Registry. The initial con
 |----------------|---------------|-----------|
 | `urn:aauth:vocabulary:mcp` | MCP server | This document |
 | `urn:aauth:vocabulary:openapi` | HTTP/REST | This document |
+| `urn:aauth:vocabulary:openapi-gateway` | HTTP/REST (multi-service gateway) | This document |
 | `urn:aauth:vocabulary:grpc` | gRPC | This document |
 | `urn:aauth:vocabulary:graphql` | GraphQL | This document |
 | `urn:aauth:vocabulary:asyncapi` | Event-driven | This document |
@@ -614,6 +658,14 @@ There are currently no known implementations.
 # Document History
 
 *Note: This section is to be removed before publishing as an RFC.*
+
+- draft-hardt-aauth-r3-01
+  - Added per-call proposals for conditional operations
+  - Content addressing hashes the bytes as served; removed canonicalization
+  - Defined composition when requested operations span multiple R3 documents
+  - Added operation identifier scope rules and the OpenAPI Gateway vocabulary for resources fronting multiple services
+  - Aligned with AAuth Protocol: `issuer` in resource metadata, `dwk` values `aauth-access.json`/`aauth-person.json` in auth tokens
+  - Renamed MM to PS; examples use EdDSA
 
 - draft-hardt-aauth-r3-00
   - Initial submission
@@ -646,6 +698,7 @@ RAR and R3 are complementary. RAR remains appropriate for client-declared author
 |----------------|---------------|---------------------|---------------------|
 | `urn:aauth:vocabulary:mcp` | MCP server | Tool name | MCP tool discovery |
 | `urn:aauth:vocabulary:openapi` | HTTP/REST | `operationId` | OpenAPI spec URL |
+| `urn:aauth:vocabulary:openapi-gateway` | HTTP/REST (multi-service gateway) | `service` + `operationId` | Map of service labels to OpenAPI spec URLs |
 | `urn:aauth:vocabulary:grpc` | gRPC | `package.Service/Method` | Server reflection or `.proto` URL |
 | `urn:aauth:vocabulary:graphql` | GraphQL | Operation name | GraphQL introspection |
 | `urn:aauth:vocabulary:asyncapi` | Event-driven | `operationId` | AsyncAPI spec URL |
