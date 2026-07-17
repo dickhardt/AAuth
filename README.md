@@ -85,7 +85,7 @@ The authorization protocol for agent-to-resource access. Defines four resource a
 
 ##### AAuth Night Demos
 
-Lightning demos presented at [AAuth Night](https://luma.com/a2h25m60) (San Francisco, July 2, 2026):
+Lightning demos presented at [AAuth Night](https://luma.com/a2h25m60) (San Francisco, July 1, 2026):
 
 | Demo | Presenter |
 |------|-----------|
