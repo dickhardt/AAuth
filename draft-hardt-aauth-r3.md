@@ -24,7 +24,7 @@ organization = "Hellō"
 
 %%%
 
-<reference anchor="I-D.hardt-aauth-protocol" target="https://github.com/dickhardt/AAuth">
+<reference anchor="I-D.hardt-oauth-aauth-protocol" target="https://github.com/dickhardt/AAuth">
   <front>
     <title>AAuth Protocol</title>
     <author initials="D." surname="Hardt" fullname="Dick Hardt">
@@ -47,7 +47,7 @@ organization = "Hellō"
 
 .# Abstract
 
-This document defines AAuth Rich Resource Requests (R3), an extension to the AAuth Protocol ([@!I-D.hardt-aauth-protocol]) that enables structured, vocabulary-based authorization for resource access. Resources publish R3 documents (content-addressed authorization definitions) and advertise vocabularies describing their operations. Agents request access using those vocabularies. Auth tokens carry granted operations in the same vocabulary format, enabling resources to enforce authorization directly from the token. R3 provides human-displayable context for consent decisions and content-addressed audit provenance via the `r3_s256` hash in auth tokens.
+This document defines AAuth Rich Resource Requests (R3), an extension to the AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]) that enables structured, vocabulary-based authorization for resource access. Resources publish R3 documents (content-addressed authorization definitions) and advertise vocabularies describing their operations. Agents request access using those vocabularies. Auth tokens carry granted operations in the same vocabulary format, enabling resources to enforce authorization directly from the token. R3 provides human-displayable context for consent decisions and content-addressed audit provenance via the `r3_s256` hash in auth tokens.
 
 .# Discussion Venues
 
@@ -61,7 +61,7 @@ This document is part of the AAuth specification family. Source for this draft a
 
 **Status: Exploratory Draft**
 
-The AAuth Protocol ([@!I-D.hardt-aauth-protocol]) defines resource tokens as the mechanism by which resources declare what authorization is needed to access them, and scope strings as the primary way to express what operations are available. Scopes are sufficient for simple, well-known access patterns but are limited in three respects:
+The AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]) defines resource tokens as the mechanism by which resources declare what authorization is needed to access them, and scope strings as the primary way to express what operations are available. Scopes are sufficient for simple, well-known access patterns but are limited in three respects:
 
 1. **Human comprehension.** Scope strings like `calendar:write` are not self-describing to users or auth agents making approval decisions.
 
@@ -92,7 +92,7 @@ Resources advertise their supported vocabularies in well-known metadata. Each vo
 
 ## Resource Metadata Extensions
 
-R3 extends the `/.well-known/aauth-resource.json` document defined in AAuth Protocol ([@!I-D.hardt-aauth-protocol]):
+R3 extends the `/.well-known/aauth-resource.json` document defined in AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]):
 
 ```json
 {
@@ -286,7 +286,7 @@ Each operation entry contains:
 
 # Authorization Endpoint Extensions {#authorization-endpoint-extensions}
 
-R3 extends the authorization endpoint defined in AAuth Protocol ([@!I-D.hardt-aauth-protocol]) with an `r3_operations` request parameter. When an agent wants to declare intended operations using a resource's vocabulary, it includes `r3_operations` in the authorization endpoint request body.
+R3 extends the authorization endpoint defined in AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]) with an `r3_operations` request parameter. When an agent wants to declare intended operations using a resource's vocabulary, it includes `r3_operations` in the authorization endpoint request body.
 
 ## Request
 
@@ -320,7 +320,7 @@ When `r3_operations` is present, the resource maps the declared operations to an
 
 ## Response
 
-The resource returns a resource token as defined in AAuth Protocol ([@!I-D.hardt-aauth-protocol]), extended with R3 claims:
+The resource returns a resource token as defined in AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]), extended with R3 claims:
 
 ```json
 {
@@ -394,7 +394,7 @@ The `r3_s256` hash is the document's identity, not the URI. The AS caches docume
 
 ## Resource Token Extensions
 
-R3 extends the resource token defined in AAuth Protocol ([@!I-D.hardt-aauth-protocol]) (a JWT with `typ: resource+jwt`) with two additional payload claims. When a resource includes R3 information, it MUST include both.
+R3 extends the resource token defined in AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]) (a JWT with `typ: resource+jwt`) with two additional payload claims. When a resource includes R3 information, it MUST include both.
 
 Base claims (from AAuth Protocol):
 - `iss`: Resource URL
@@ -434,7 +434,7 @@ R3 extension claims:
 }
 ```
 
-Resource tokens MAY include both `scope` (as defined in AAuth Protocol ([@!I-D.hardt-aauth-protocol])) and R3 claims. When both are present, the AS MUST enforce both independently.
+Resource tokens MAY include both `scope` (as defined in AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol])) and R3 claims. When both are present, the AS MUST enforce both independently.
 
 # R3 Processing
 
@@ -449,7 +449,7 @@ Both independently verify `r3_s256` against the fetched document. Because R3 doc
 
 When the AS receives a resource token containing `r3_uri` and `r3_s256`, it MUST:
 
-1. Validate the resource token signature per AAuth Protocol ([@!I-D.hardt-aauth-protocol]).
+1. Validate the resource token signature per AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]).
 2. Fetch the R3 document at `r3_uri`. The AS MAY use a cached copy if the cache entry was stored with the same `r3_s256` value.
 3. Compute the SHA-256 hash of the bytes received and compare it to `r3_s256`. If the hashes do not match, the AS MUST reject the resource token.
 4. Record `r3_uri` and `r3_s256` in its audit log alongside the token issuance event, the agent identifier, and the timestamp.
@@ -463,7 +463,7 @@ Because R3 documents are content-addressed, the AS MAY cache them by `r3_s256` t
 
 # Auth Token Extensions
 
-R3 extends the auth token defined in AAuth Protocol ([@!I-D.hardt-aauth-protocol]) (a JWT with `typ: auth+jwt`) with claims for audit provenance and vocabulary-based grants. The resource can enforce authorization directly from these claims.
+R3 extends the auth token defined in AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]) (a JWT with `typ: auth+jwt`) with claims for audit provenance and vocabulary-based grants. The resource can enforce authorization directly from these claims.
 
 Base claims (from AAuth Protocol):
 - `iss`: Auth server URL
@@ -593,7 +593,7 @@ Whether the AS or PS additionally *machine-evaluates* `parameters` (for example,
 
 ## R3 Document Access Restriction
 
-The AS MUST authenticate itself when fetching `r3_uri` using an HTTP Message Signature as defined in the AAuth Protocol ([@!I-D.hardt-aauth-protocol]). The resource MUST reject requests not signed by its AS.
+The AS MUST authenticate itself when fetching `r3_uri` using an HTTP Message Signature as defined in the AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]). The resource MUST reject requests not signed by its AS.
 
 This prevents agents from fetching R3 documents by following the `r3_uri` they carry in the resource token. Since a resource has exactly one AS, the resource only needs to recognize signatures from that AS. The agent opacity property (agents carry the hash of a document they cannot read) depends on this restriction.
 
