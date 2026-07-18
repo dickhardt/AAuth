@@ -3039,7 +3039,7 @@ This specification registers the following claims in the IANA "JSON Web Token Cl
 
 ## AAuth Requirement Value Registry
 
-This specification establishes the AAuth Requirement Value Registry. The registry policy is Specification Required ([@!RFC8126]).
+This specification establishes the AAuth Requirement Value Registry. The registry policy is Specification Required ([@!RFC8126], Section 4.6). See (#designated-expert-instructions) for instructions to the designated expert.
 
 | Value | Reference |
 |-------|-----------|
@@ -3052,7 +3052,7 @@ This specification establishes the AAuth Requirement Value Registry. The registr
 
 ## AAuth Capability Value Registry
 
-This specification establishes the AAuth Capability Value Registry. The registry policy is Specification Required ([@!RFC8126]).
+This specification establishes the AAuth Capability Value Registry. The registry policy is Specification Required ([@!RFC8126], Section 4.6). See (#designated-expert-instructions) for instructions to the designated expert.
 
 | Value | Reference |
 |-------|-----------|
@@ -3062,7 +3062,7 @@ This specification establishes the AAuth Capability Value Registry. The registry
 
 ## AAuth Platform Value Registry {#aauth-platform-value-registry}
 
-This specification establishes the AAuth Platform Value Registry, used as values of the `platform` request parameter sent to the PS token endpoint (#ps-token-endpoint). The registry policy is Specification Required ([@!RFC8126]).
+This specification establishes the AAuth Platform Value Registry, used as values of the `platform` request parameter sent to the PS token endpoint (#ps-token-endpoint). The registry policy is Specification Required ([@!RFC8126], Section 4.6). See (#designated-expert-instructions) for instructions to the designated expert.
 
 | Value | Description | Reference |
 |-------|-------------|-----------|
@@ -3071,6 +3071,20 @@ This specification establishes the AAuth Platform Value Registry, used as values
 | `desktop` | Native desktop application (macOS, Windows, Linux) | This document |
 | `workload` | Headless server-class workload (backend service, CI runner, scheduled job, edge function) | This document |
 | `self-hosted` | User-controlled deployment under a domain the user controls | This document |
+
+## Designated Expert Instructions {#designated-expert-instructions}
+
+Registration requests for the AAuth Requirement Value, AAuth Capability Value, and AAuth Platform Value registries are evaluated by a designated expert appointed by the IESG, using the Specification Required policy ([@!RFC8126], Section 4.6).
+
+Registration requests should be sent to IANA, which will forward them to the designated expert. The expert is expected to respond within two weeks. Denials should include an explanation and, if applicable, suggestions for how the request could be revised to be successful.
+
+A registration request must include the proposed value, a brief description of its meaning, and a reference to the specification defining it. The designated expert should verify that:
+
+- The referenced specification is stable and freely available, and describes the value's semantics in sufficient detail that interoperable, independent implementations are possible.
+- The proposed value is a lowercase token using only lowercase letters and hyphen, consistent with the registries' existing entries, and is not confusingly similar to an existing entry.
+- The registration does not duplicate the semantics of an existing entry without clear justification.
+- For the Requirement Value and Capability Value registries, the specification defines the protocol behavior expected of a party that declares or encounters the value, including how a party that does not understand the value behaves.
+- For the Platform Value registry, the value describes a distinct runtime context that is meaningful for display to a person at a consent screen or dashboard, and the description does not overstate the security properties the value conveys.
 
 ## URI Scheme Registration
 
@@ -3119,6 +3133,7 @@ The following implementations are known:
   - Required the JWK in a `cnf` claim to carry a fully-specified `alg`, in agent tokens and auth tokens alike, and updated the examples, which previously conveyed a JWK with no `alg` and would now be rejected.
   - Required every key published at an AAuth server's `jwks_uri` to carry `alg`. A discovered key has no other channel for it, so a JWKS that omits the member cannot be used even though [@!RFC7517] makes it OPTIONAL.
   - Required a verifier to select the key matching `kid` without requiring other JWKS members to be usable, so that an issuer can publish a post-quantum key alongside a classical one without breaking verifiers that implement only the latter.
+  - IANA review feedback: added Designated Expert Instructions for the AAuth Requirement Value, Capability Value, and Platform Value registries per RFC 8126 Section 4.5.
 
 - draft-hardt-oauth-aauth-protocol-09
   - Clarification chat: added a required `action` discriminator (`clarification_response` / `updated_request`) to the agent's POST responses on the pending URL, so the response type is explicit rather than inferred from key presence.
