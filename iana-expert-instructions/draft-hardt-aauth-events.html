@@ -1,0 +1,2558 @@
+<!DOCTYPE html>
+<html lang="en" class="Internet-Draft">
+<head>
+<meta charset="utf-8">
+<meta content="Common,Latin" name="scripts">
+<meta content="initial-scale=1.0" name="viewport">
+<title>AAuth Events</title>
+<meta content="Dick Hardt" name="author">
+<meta content="
+       This document defines AAuth Events — an event subscription and delivery mechanism for agents operating under the AAuth Protocol ( ). It specifies the subscribe token that agents use to register callbacks with resources, the event token that resources deliver when events fire, and the delivery path through the Agent Provider (AP). AAuth Events enables agents to receive asynchronous notifications without requiring a public endpoint, using the cryptographic identity established by the AAuth Protocol. 
+    " name="description">
+<meta content="xml2rfc 3.34.0" name="generator">
+<meta content="agent" name="keyword">
+<meta content="events" name="keyword">
+<meta content="webhooks" name="keyword">
+<meta content="async" name="keyword">
+<meta content="subscribe" name="keyword">
+<meta content="http" name="keyword">
+<meta content="identity" name="keyword">
+<meta content="draft-hardt-aauth-events-latest" name="ietf.draft">
+<!-- Generator version information:
+  xml2rfc 3.34.0
+    Python 3.14.5
+    ConfigArgParse 1.7.5
+    google-i18n-address 3.1.1
+    intervaltree 3.2.1
+    Jinja2 3.1.6
+    lxml 6.1.1
+    natsort 8.4.0
+    platformdirs 4.10.1
+    pycountry 24.6.1
+    PyYAML 6.0.3
+    requests 2.33.1
+    wcwidth 0.8.2
+-->
+<link href="draft-hardt-aauth-events.xml" rel="alternate" type="application/rfc+xml">
+<link href="#copyright" rel="license">
+<style type="text/css">@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-vietnamese.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-cyrillic.woff2') format('woff2');
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-vietnamese.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-cyrillic.woff2') format('woff2');
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-vietnamese.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: local('Lora SemiBold'), local('Lora-SemiBold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-semibold-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Oxygen Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Oxygen Mono'), local('OxygenMono-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/oxygenmono-regular-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Oxygen Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Oxygen Mono'), local('OxygenMono-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/oxygenmono-regular-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+}
+
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-greek.woff2') format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-greek.woff2') format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  color-scheme: light dark;
+  --background-color: #fff;
+  --text-color: #222;
+  --title-color: #191919;
+  --link-color: #2a6496;
+  --highlight-color: #f9f9f9;
+  --line-color: #eee;
+  --pilcrow-weak: #ddd;
+  --pilcrow-strong: #bbb;
+  --small-font-size: 14.5px;
+  --font-mono: 'Oxygen Mono', monospace;
+  --font-title: "Sofia Sans Semi Condensed", sans-serif;
+  scrollbar-color: #bbb #eee;
+}
+body {
+  max-width: 600px;
+  margin: 75px auto;
+  padding: 0 5px;
+  color: var(--text-color);
+  background-color: var(--background-color);
+  font: 16px/22px "Lora", serif;
+  scroll-behavior: smooth;
+}
+
+.ears {
+  display: none;
+}
+
+/* headings */
+section {
+  clear: both;
+}
+.section-number {
+  padding-right: 0.5em;
+}
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-title);
+  font-weight: 680;
+  margin: 0.8em 0 0.3em;
+  font-size-adjust: 0.5;
+  color: var(--title-color);
+}
+h1 {
+  &#title {
+    font-size: 32px;
+    line-height: 40px;
+    clear: both;
+    margin: 1.5em 0 0.2em;
+  }
+  &#rfcnum {
+    margin: 1.5em 0 0.2em;
+    & + h1#title {
+      margin: 0.2em 0;
+    }
+  }
+}
+
+h1, h2, h3 {
+  font-size: 22px;
+  line-height: 27px;
+}
+h4, h5, h6 {
+  font-size: 20px;
+  line-height: 24px;
+}
+
+/* general structure */
+.author {
+  padding-bottom: 0.3em;
+  vertical-align: top;
+}
+#abstract+p {
+  font-size: 18px;
+  line-height: 24px;
+  & code, & samp, & tt {
+    font-size: 16px;
+    line-height: 0;
+  }
+}
+
+p {
+  padding: 0;
+  margin: 0.5em 0;
+  text-align: left;
+}
+div {
+  margin: 0;
+}
+.alignRight {
+  margin: 1em 0;
+  &.art-text {
+    background-color: var(--highlight-color);
+    border: 1px solid var(--line-color);
+    border-radius: 3px;
+    padding: 0.5em 1em 0;
+    margin-bottom: 0.5em;
+    & pre {
+      padding: 0;
+      width: auto;
+    }
+  }
+  & > *:first-child {
+    border: none;
+    margin: 0;
+    float: right;
+    clear: both;
+  }
+  & > *:nth-child(2) {
+    clear: both;
+    display: block;
+    border: none;
+  }
+}
+svg {
+  display: block;
+  /* font-family isn't space-separated, but =~ will have to do */
+  &[font-family~="monospace" i], & [font-family~="monospace" i] {
+    font-family: var(--font-mono);
+  }
+}
+.alignCenter {
+  margin: 1em 0;
+  &.art-text {
+    background-color: var(--highlight-color);
+    border: 1px solid var(--line-color);
+    border-radius: 3px;
+    padding: 0.5em 1em 0;
+    margin-bottom: 0.5em;
+    & pre {
+      padding: 0;
+      width: auto;
+    }
+  }
+  & > *:first-child {
+    border: none;
+    /* this isn't optimal, but it's an existence proof.  PrinceXML doesn't
+       support flexbox yet.
+    */
+    display: table;
+    margin: 0 auto;
+  }
+}
+
+/* lists */
+ol, ul {
+  padding: 0;
+  margin: 0 0 0.5em 2em;
+  & :is(ol, ul) {
+    margin-left: 1em;
+  }
+}
+li {
+  margin: 0 0 0.25em 0;
+}
+ul.empty, .ulEmpty {
+  list-style-type: none;
+  & li {
+    margin-top: 0.5em;
+  }
+}
+:is(ul, ol).compact, .ulCompact, .olCompact {
+  margin: 0 0 0 2em;
+  & li {
+    margin: 0;
+    & :first-child { margin-top: 0; }
+    & :last-child { margin-bottom: 0; }
+  }
+}
+
+/* definition lists */
+dl {
+  clear: left;
+  --indent: 3ch;
+  /* --indent: attr(indent ch); not supported in any browser, but we can dream */
+  &.olPercent {
+    --indent: 5ch;
+    & > dt {
+      min-width: calc(var(--indent) - 2ch);
+      float: none;
+    }
+  }
+
+  dl > dd > & {
+    margin-top: 0.5em;
+    margin-bottom: 0;
+  }
+
+  &:not(.dlNewline) > dt {
+    float: left;
+    margin-right: 2ch;
+    min-width: 8ch;
+  }
+  & > dd {
+    margin-bottom: .8em;
+    margin-left: var(--indent) !important; /* stupid element overrides */
+    min-height: 2ex;
+  }
+}
+:is(dl.compact, .dlCompact) > dd {
+  margin-bottom: 0;
+  & > :is(:first-child, .break:first-child + *) {
+    margin-top: 0;
+  }
+  & > :is(:last-child) {
+    margin-bottom: 0;
+  }
+}
+:is(dd, span).break {
+  display: none;
+}
+
+/* links */
+a {
+  text-decoration: none;
+  &[href] {
+    color: var(--link-color);
+    &:hover { text-decoration: underline; }
+    &.selfRef {
+      color: var(--text-color);
+      &:hover {
+        text-decoration: none;
+        background-color: var(--highlight-color);
+      }
+    }
+  }
+}
+.iref + a[href].internal {
+  color: var(--text-color);
+}
+a.xref:is(.cite, .auto), :is(#status-of-memo, #copyright) a {
+  white-space: nowrap;
+}
+
+/* Figures */
+tt, code, pre {
+  background-color: var(--highlight-color);
+  font: 14px/22px var(--font-mono);
+}
+tt, code {
+  /* changing the font for inline elements leads to different ascender
+     and descender heights; as we want to retain baseline alignment,
+     remove leading to avoid altering the final height of lines
+     note: this fails if these blocks take an entire line,
+     a different solution would be great */
+  line-height: 0;
+}
+:is(h1, h2, h3, h4, h5, h6) :is(tt, code) {
+  font-size: 84%;
+}
+pre {
+  border: 1px solid var(--line-color);
+  font-size: 13.5px;
+  line-height: 16px;
+  letter-spacing: -0.2px;
+  margin: 5px;
+  padding: 5px;
+}
+img {
+  max-width: 100%;
+}
+figure {
+  margin: 0.5em 0;
+  padding: 0;
+  & blockquote {
+    margin: 0.8em 0.4em 0.4em;
+  }
+}
+figcaption, caption {
+  font-style: italic;
+  margin: 0.5em 1.5em;
+  text-align: left;
+  caption-side: bottom;
+}
+@media screen {
+  /* Auto-collapse boilerplate. */
+  :is(#status-of-memo, #copyright) {
+    & p {
+      margin: -2px 0;
+      max-height: 0;
+      transition: max-height 2s ease, margin 0.5s ease 0.5s;
+      overflow: hidden;
+    }
+    &:hover p,
+    & h2:target ~ p {
+      margin: 0.5em 0;
+      max-height: 500px;
+      overflow: auto;
+    }
+  }
+  pre, svg {
+    display: inline-block;
+    /* In the horizontal direction, sometimes people make over-sized figures.
+       Scrollbars for those is therefore necessary: auto adds them as necessary..
+       In the vertical direction, the line-height can combine with the font
+       asender/descender height to produce scrollbars: hidden avoids that. */
+    overflow: auto hidden;
+  }
+  pre {
+    max-width: 100%;
+    width: calc(100% - 22px - 1em);
+  }
+  svg {
+    max-width: calc(100% - 22px - 1em);
+  }
+  figure pre {
+    display: block;
+    width: calc(100% - 25px);
+  }
+  :is(pre, svg) + .pilcrow {
+    display: inline-block;
+    vertical-align: text-bottom;
+    padding-bottom: 8px;
+  }
+}
+
+/* aside, blockquote */
+aside, blockquote {
+  margin-left: 0;
+  padding: 0 2em;
+  font-style: italic;
+}
+blockquote {
+  margin: 1em 0;
+  border-left: 2px var(--pilcrow-strong) solid;
+}
+cite {
+  display: block;
+  text-align: right;
+  font-style: italic;
+}
+
+/* tables */
+table {
+  width: auto;
+  max-width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  &.right { margin-left: auto; }
+  &.center { margin-left: auto; margin-right: auto; }
+  &.left { margin-right: auto; }
+  & .text-left { text-align: left; }
+  & .text-center { text-align: center; }
+  & .text-right { text-align: right; }
+  & caption {
+    margin: 0;
+    padding: 3px 0 3px 1em;
+  }
+  & p { margin: 0; }
+}
+
+thead, tbody {
+  border: 1px solid var(--line-color);
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 5px 10px;
+}
+th {
+  background-color: var(--line-color);
+}
+:is(tr:nth-child(2n), thead+tbody > tr:nth-child(2n+1)) > td {
+  background-color: var(--background-color);
+}
+:is(tr:nth-child(2n+1), thead+tbody > tr:nth-child(2n)) > td {
+  background-color: var(--highlight-color);
+}
+
+/* pilcrow */
+a.pilcrow {
+  margin-left: 3px;
+  opacity: 0.2;
+  user-select: none;
+  &[href] {
+    color: var(--pilcrow-weak);
+    &:hover { text-decoration: none; }
+  }
+  @media not print {
+    :hover > &, &:focus {
+      opacity: 1;
+    }
+    &[href]:hover {
+      color: var(--pilcrow-strong);
+      background-color: transparent;
+    }
+  }
+  @media print {
+    display: none;
+  }
+}
+
+/* misc */
+hr {
+  border: 0;
+  border-top: 1px solid var(--line-color);
+}
+.bcp14 {
+  font-variant: small-caps;
+  font-weight: 600;
+  font-size: var(--small-font-size);
+}
+.role {
+  font-variant: all-small-caps;
+}
+sub, sup {
+  line-height: 1;
+  font-size: 80%;
+}
+
+/* info block */
+#identifiers {
+  margin: 0;
+  font-size: var(--small-font-size);
+  line-height: 18px;
+  --identifier-width: 15ch;
+  & dt {
+    width: var(--identifier-width);
+    min-width: var(--identifier-width);
+    clear: left;
+    float: left;
+    text-align: right;
+    margin-right: 1ch;
+  }
+  & dd {
+    margin: 0;
+    margin-left: calc(1em + var(--identifier-width)) !important;
+    min-width: 5em;
+  }
+  & .authors {
+    & .author {
+      display: inline-block;
+      margin-right: 1.5em;
+    }
+    & .org {
+      font-style: italic;
+    }
+  }
+}
+
+/* The prepared/rendered info at the very bottom of the page */
+.docInfo {
+  color: #999;
+  font-size: 0.9em;
+  font-style: italic;
+  margin-top: 2em;
+  & .prepared {
+    float: right;
+  }
+}
+
+/* table of contents */
+#toc {
+  padding: 0.75em 0 2em 0;
+  margin-bottom: 1em;
+
+  & nav {
+    & ul {
+      margin: 0 0.5em 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    & li {
+      line-height: 1.3em;
+      margin: 2px 0;
+      padding-left: 1.2em;
+      text-indent: -1.2em;
+    }
+  }
+  & a.xref {
+    white-space: normal;
+  }
+}
+
+.references {
+  & > dt {
+    text-align: right;
+    font-weight: bold;
+    min-width: 10ch;
+    margin-right: 1.5ch;
+    &:target::before {
+      content: "⇒";
+      margin: 0 10px 0 -25px;
+    }
+  }
+  & > dd {
+    margin-left: 12ch !important;
+    overflow: visible;
+    & .refInstance {
+      margin-bottom: 0.8em;
+    }
+    & .ascii {
+      margin-bottom: 0.25em;
+    }
+  }
+}
+
+#rfc\.index\.index + ul {
+  margin-left: 0;
+}
+
+/* authors */
+address.vcard {
+  font-style: normal;
+  max-width: 20em;
+  margin: 1em auto 1em 0;
+
+  & .nameRole {
+    font-weight: 700;
+    margin-left: 0;
+  }
+  & .label {
+    margin: 0.5em 0;
+  }
+  & .type {
+    display: none;
+  }
+  & .alternative-contact {
+    margin: 0.5em 0 0.25em 0;
+  }
+  & .non-ascii {
+    margin: 0 0 0 2em;
+  }
+  & div.left {
+    text-align: left;
+  }
+  & div.right {
+    text-align: right;
+  }
+}
+
+hr.addr {
+  border-top: 1px dashed;
+  margin: 0;
+  color: #ddd;
+  max-width: calc(100% - 16px);
+}
+@media (min-width: 500px) {
+  #authors-addresses {
+    & > section {
+      column-count: 2;
+      column-gap: 20px;
+    }
+    & > section > h2 {
+      column-span: all;
+    }
+    /* hack for break-inside: avoid-column */
+    & address {
+      display: inline-block;
+      break-inside: avoid-column;
+    }
+  }
+}
+
+/* Comments */
+.rfcEditorRemove {
+  & p:first-of-type {
+    font-style: italic;
+  }
+}
+.cref {
+  background-color: rgba(249, 232, 105, 0.3);
+  padding: 2px 4px;
+}
+.crefSource {
+  font-style: italic;
+}
+
+@media screen {
+  #toc {
+    & nav {
+      font-family: var(--font-title);
+      font-weight: 360;
+      & > ul { margin-bottom: 2em; }
+      & ul {
+        margin: 0 0 0 4px;
+        & :is(p, li) {
+          margin: 2px 0;
+        }
+      }
+    }
+    & a.toplink {
+      float: right;
+    }
+  }
+}
+@media not screen {
+  #toc a.toplink {
+    display: none;
+  }
+}
+
+
+/* TOC layout for smaller screens */
+@media screen and (max-width: 929px) {
+  #toc {
+    position: fixed;
+    z-index: 2;
+    top: 0;
+    right: 0;
+    padding: 1px 0 0 0;
+    margin: 0;
+    border-bottom: 1px solid #ccc;
+    opacity: 0.6;
+    & h2 {
+      margin: 0;
+      padding: 2px 0 2px 6px;
+      padding-right: 1em;
+      font-size: 18px;
+      line-height: 24px;
+      min-width: 190px;
+      text-align: right;
+      background-color: #444;
+      color: white;
+      cursor: pointer;
+      &::before { /* css hamburger */
+        float: right;
+        position: relative;
+        width: 1em;
+        height: 1px;
+        left: -164px;
+        margin: 8px 0 0 0;
+        background: white none repeat scroll 0 0;
+        box-shadow: 0 4px 0 0 white, 0 8px 0 0 white;
+        content: "";
+      }
+    }
+    & nav {
+      display: none;
+      background-color: var(--background-color);
+      padding: 0.5em 1em 1em;
+      overflow: auto;
+      overscroll-behavior: contain;
+      height: calc(100vh - 48px);
+      border-left: 1px solid #ddd;
+    }
+    &.active {
+      opacity: 1;
+      & nav { display: block; }
+    }
+    /* Make the collapsed ToC header render white on gray also when it's a link */
+    & h2 a,
+    & h2 a:is(:link, :focus, :hover),
+    & a.toplink,
+    & a.toplink:hover {
+      color: white;
+      background-color: #444;
+      text-decoration: none;
+    }
+    & a.toplink {
+      margin: 2px 0.5em 0;
+    }
+  }
+}
+
+/* TOC layout for wide screens */
+@media screen and (min-width: 930px) {
+  body {
+    padding-right: 360px;
+    padding-right: calc(min(180px + 20%, 500px));
+  }
+  #toc {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    right: calc(50vw - 480px);
+    width: 312px;
+    margin: 0;
+    padding: 0;
+    z-index: 1;
+    & h2 {
+      margin: 0;
+      padding: 0.25em 1em 1em 0;
+    }
+    & nav {
+      display: block;
+      height: calc(90vh - 84px);
+      bottom: 0;
+      padding: 0.5em 0 2em;
+      overflow: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+    }
+    & a.toplink {
+      margin: 8px 0.5em 0;
+    }
+  }
+  img { /* future proofing */
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* pagination */
+@media print {
+  body {
+    width: 100%;
+  }
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+  #n-copyright-notice {
+    border-bottom: none;
+  }
+  #toc {
+    page-break-before: always;
+    border-top: none;
+    padding-top: 0;
+  }
+  #n-introduction {
+    page-break-before: always;
+  }
+  figure, pre, .vcard {
+    page-break-inside: avoid;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+  :is(h2, h3, h4, h5, h6)+*, dd {
+    page-break-before: avoid;
+  }
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 10pt;
+  }
+  table {
+    border: 1px solid #ddd;
+  }
+  td {
+    border-top: 1px solid #ddd;
+  }
+}
+
+@page :first {
+  padding-top: 0;
+  @top-left {
+    content: normal;
+    border: none;
+  }
+  @top-center {
+    content: normal;
+    border: none;
+  }
+  @top-right {
+    content: normal;
+    border: none;
+  }
+}
+
+@page {
+  size: A4;
+  margin-bottom: 45mm;
+  padding-top: 20px;
+}
+
+/* Dark mode. */
+@media (prefers-color-scheme: dark) {
+:root {
+  --background-color: #121212;
+  --text-color: #f0f0f0;
+  --title-color: #fff;
+  --link-color: #4da4f0;
+  --highlight-color: #282828;
+  --line-color: #444;
+  --pilcrow-weak: #444;
+  --pilcrow-strong: #666;
+  scrollbar-color: #777 #333;
+}
+}
+
+/* SVG Trick: a prefix match works because only black and white are allowed */
+svg {
+  & :is([stroke="black"], [stroke^="#000"]) {
+    stroke: var(--text-color);
+  }
+  & :is([stroke="white"], [stroke^="#fff"]) {
+    stroke: var(--background-color);
+  }
+  & :is([fill="black"], [fill^="#000"], :not([fill])) {
+    fill: var(--text-color);
+  }
+  & :is([fill="white"], [fill^="#fff"]) {
+    fill: var(--background-color);
+  }
+}
+</style>
+
+</head>
+<body class="xml2rfc">
+<table class="ears">
+<thead><tr>
+<td class="left">Internet-Draft</td>
+<td class="center">AAuth-Events</td>
+<td class="right">July 2026</td>
+</tr></thead>
+<tfoot><tr>
+<td class="left">Hardt</td>
+<td class="center">Expires 19 January 2027</td>
+<td class="right">[Page]</td>
+</tr></tfoot>
+</table>
+<div id="external-metadata" class="document-information"></div>
+<div id="internal-metadata" class="document-information">
+<dl id="identifiers">
+<dt class="label-workgroup">Workgroup:</dt>
+<dd class="workgroup">TBD</dd>
+<dt class="label-internet-draft">Internet-Draft:</dt>
+<dd class="internet-draft">draft-hardt-aauth-events-latest</dd>
+<dt class="label-published">Published:</dt>
+<dd class="published">
+<time datetime="2026-07-18" class="published">18 July 2026</time>
+    </dd>
+<dt class="label-intended-status">Intended Status:</dt>
+<dd class="intended-status">Standards Track</dd>
+<dt class="label-expires">Expires:</dt>
+<dd class="expires"><time datetime="2027-01-19">19 January 2027</time></dd>
+<dt class="label-authors">Author:</dt>
+<dd class="authors">
+<div class="author">
+      <div class="author-name">D. Hardt</div>
+<div class="org">Hellō</div>
+</div>
+</dd>
+</dl>
+</div>
+<h1 id="title">AAuth Events</h1>
+<section id="section-abstract">
+      <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
+<p id="section-abstract-1">This document defines AAuth Events — an event subscription and delivery mechanism for agents operating under the AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>). It specifies the subscribe token that agents use to register callbacks with resources, the event token that resources deliver when events fire, and the delivery path through the Agent Provider (AP). AAuth Events enables agents to receive asynchronous notifications without requiring a public endpoint, using the cryptographic identity established by the AAuth Protocol.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+</section>
+<section class="note" id="section-note.1">
+      <h2 id="name-discussion-venues">
+<a href="#name-discussion-venues" class="section-name selfRef">Discussion Venues</a>
+      </h2>
+<p id="section-note.1-1"><em>Note: This section is to be removed before publishing as an RFC.</em><a href="#section-note.1-1" class="pilcrow">¶</a></p>
+<p id="section-note.1-2">Discussion of this document takes place on GitHub at <a href="https://github.com/dickhardt/AAuth">https://github.com/dickhardt/AAuth</a>. Issues, comments, and pull requests are welcome there. Source for this draft is in the same repository.<a href="#section-note.1-2" class="pilcrow">¶</a></p>
+</section>
+<div id="status-of-memo">
+<section id="section-boilerplate.1">
+        <h2 id="name-status-of-this-memo">
+<a href="#name-status-of-this-memo" class="section-name selfRef">Status of This Memo</a>
+        </h2>
+<p id="section-boilerplate.1-1">
+        This Internet-Draft is submitted in full conformance with the
+        provisions of BCP 78 and BCP 79.<a href="#section-boilerplate.1-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-2">
+        Internet-Drafts are working documents of the Internet Engineering Task
+        Force (IETF). Note that other groups may also distribute working
+        documents as Internet-Drafts. The list of current Internet-Drafts is
+        at <span><a href="https://datatracker.ietf.org/drafts/current/">https://datatracker.ietf.org/drafts/current/</a></span>.<a href="#section-boilerplate.1-2" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-3">
+        Internet-Drafts are draft documents valid for a maximum of six months
+        and may be updated, replaced, or obsoleted by other documents at any
+        time. It is inappropriate to use Internet-Drafts as reference
+        material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-4">
+        This Internet-Draft will expire on 19 January 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="copyright">
+<section id="section-boilerplate.2">
+        <h2 id="name-copyright-notice">
+<a href="#name-copyright-notice" class="section-name selfRef">Copyright Notice</a>
+        </h2>
+<p id="section-boilerplate.2-1">
+            Copyright (c) 2026 IETF Trust and the persons identified as the
+            document authors. All rights reserved.<a href="#section-boilerplate.2-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.2-2">
+            This document is subject to BCP 78 and the IETF Trust's Legal
+            Provisions Relating to IETF Documents
+            (<span><a href="https://trustee.ietf.org/license-info">https://trustee.ietf.org/license-info</a></span>) in effect on the date of
+            publication of this document. Please review these documents
+            carefully, as they describe your rights and restrictions with
+            respect to this document. Code Components extracted from this
+            document must include Revised BSD License text as described in
+            Section 4.e of the Trust Legal Provisions and are provided without
+            warranty as described in the Revised BSD License.<a href="#section-boilerplate.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="toc">
+<section id="section-toc.1">
+        <a href="#" onclick="scroll(0,0)" class="toplink">▲</a><h2 id="name-table-of-contents">
+<a href="#name-table-of-contents" class="section-name selfRef">Table of Contents</a>
+        </h2>
+<nav class="toc"><ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1">
+            <p id="section-toc.1-1.1.1"><a href="#section-1" class="auto internal xref">1</a>.  <a href="#name-introduction" class="internal xref">Introduction</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.1">
+                <p id="section-toc.1-1.1.2.1.1" class="keepWithNext"><a href="#section-1.1" class="auto internal xref">1.1</a>.  <a href="#name-agents-cannot-receive-webho" class="internal xref">Agents Cannot Receive Webhooks</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.2">
+                <p id="section-toc.1-1.1.2.2.1" class="keepWithNext"><a href="#section-1.2" class="auto internal xref">1.2</a>.  <a href="#name-the-agent-provider-as-inbox" class="internal xref">The Agent Provider as Inbox</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.3">
+                <p id="section-toc.1-1.1.2.3.1" class="keepWithNext"><a href="#section-1.3" class="auto internal xref">1.3</a>.  <a href="#name-an-open-event-network" class="internal xref">An Open Event Network</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.4">
+                <p id="section-toc.1-1.1.2.4.1"><a href="#section-1.4" class="auto internal xref">1.4</a>.  <a href="#name-what-aauth-events-provides" class="internal xref">What AAuth Events Provides</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.5">
+                <p id="section-toc.1-1.1.2.5.1"><a href="#section-1.5" class="auto internal xref">1.5</a>.  <a href="#name-relationship-to-existing-st" class="internal xref">Relationship to Existing Standards</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2">
+            <p id="section-toc.1-1.2.1"><a href="#section-2" class="auto internal xref">2</a>.  <a href="#name-conventions-and-definitions" class="internal xref">Conventions and Definitions</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3">
+            <p id="section-toc.1-1.3.1"><a href="#section-3" class="auto internal xref">3</a>.  <a href="#name-terminology" class="internal xref">Terminology</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4">
+            <p id="section-toc.1-1.4.1"><a href="#section-4" class="auto internal xref">4</a>.  <a href="#name-protocol-overview" class="internal xref">Protocol Overview</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5">
+            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-ap-metadata" class="internal xref">AP Metadata</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6">
+            <p id="section-toc.1-1.6.1"><a href="#section-6" class="auto internal xref">6</a>.  <a href="#name-subscribe-token" class="internal xref">Subscribe Token</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.1">
+                <p id="section-toc.1-1.6.2.1.1"><a href="#section-6.1" class="auto internal xref">6.1</a>.  <a href="#name-structure" class="internal xref">Structure</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.2">
+                <p id="section-toc.1-1.6.2.2.1"><a href="#section-6.2" class="auto internal xref">6.2</a>.  <a href="#name-presentation" class="internal xref">Presentation</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.3">
+                <p id="section-toc.1-1.6.2.3.1"><a href="#section-6.3" class="auto internal xref">6.3</a>.  <a href="#name-verification" class="internal xref">Verification</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.4">
+                <p id="section-toc.1-1.6.2.4.1"><a href="#section-6.4" class="auto internal xref">6.4</a>.  <a href="#name-agent-context-mapping" class="internal xref">Agent Context Mapping</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7">
+            <p id="section-toc.1-1.7.1"><a href="#section-7" class="auto internal xref">7</a>.  <a href="#name-subscription-registration" class="internal xref">Subscription Registration</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.1">
+                <p id="section-toc.1-1.7.2.1.1"><a href="#section-7.1" class="auto internal xref">7.1</a>.  <a href="#name-public-subscriptions" class="internal xref">Public Subscriptions</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.2">
+                <p id="section-toc.1-1.7.2.2.1"><a href="#section-7.2" class="auto internal xref">7.2</a>.  <a href="#name-protected-subscriptions" class="internal xref">Protected Subscriptions</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8">
+            <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-event-token" class="internal xref">Event Token</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8.2.1">
+                <p id="section-toc.1-1.8.2.1.1"><a href="#section-8.1" class="auto internal xref">8.1</a>.  <a href="#name-structure-2" class="internal xref">Structure</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9">
+            <p id="section-toc.1-1.9.1"><a href="#section-9" class="auto internal xref">9</a>.  <a href="#name-event-delivery-resource-to-" class="internal xref">Event Delivery: Resource to AP</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.1">
+                <p id="section-toc.1-1.9.2.1.1"><a href="#section-9.1" class="auto internal xref">9.1</a>.  <a href="#name-request" class="internal xref">Request</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.2">
+                <p id="section-toc.1-1.9.2.2.1"><a href="#section-9.2" class="auto internal xref">9.2</a>.  <a href="#name-ap-validation" class="internal xref">AP Validation</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10">
+            <p id="section-toc.1-1.10.1"><a href="#section-10" class="auto internal xref">10</a>. <a href="#name-event-delivery-ap-to-agent" class="internal xref">Event Delivery: AP to Agent</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.1">
+                <p id="section-toc.1-1.10.2.1.1"><a href="#section-10.1" class="auto internal xref">10.1</a>.  <a href="#name-agent-verification" class="internal xref">Agent Verification</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11">
+            <p id="section-toc.1-1.11.1"><a href="#section-11" class="auto internal xref">11</a>. <a href="#name-event-discovery" class="internal xref">Event Discovery</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.1">
+                <p id="section-toc.1-1.11.2.1.1"><a href="#section-11.1" class="auto internal xref">11.1</a>.  <a href="#name-r3-vocabulary-identifier" class="internal xref">R3 Vocabulary Identifier</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.2">
+                <p id="section-toc.1-1.11.2.2.1"><a href="#section-11.2" class="auto internal xref">11.2</a>.  <a href="#name-asyncapi-document" class="internal xref">AsyncAPI Document</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.3">
+                <p id="section-toc.1-1.11.2.3.1"><a href="#section-11.3" class="auto internal xref">11.3</a>.  <a href="#name-security-scheme" class="internal xref">Security Scheme</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.4">
+                <p id="section-toc.1-1.11.2.4.1"><a href="#section-11.4" class="auto internal xref">11.4</a>.  <a href="#name-example-asyncapi-document" class="internal xref">Example AsyncAPI Document</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12">
+            <p id="section-toc.1-1.12.1"><a href="#section-12" class="auto internal xref">12</a>. <a href="#name-security-considerations" class="internal xref">Security Considerations</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.1">
+                <p id="section-toc.1-1.12.2.1.1"><a href="#section-12.1" class="auto internal xref">12.1</a>.  <a href="#name-subscribe-token-scope" class="internal xref">Subscribe Token Scope</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.2">
+                <p id="section-toc.1-1.12.2.2.1"><a href="#section-12.2" class="auto internal xref">12.2</a>.  <a href="#name-event-token-forgery" class="internal xref">Event Token Forgery</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.3">
+                <p id="section-toc.1-1.12.2.3.1"><a href="#section-12.3" class="auto internal xref">12.3</a>.  <a href="#name-replay-prevention" class="internal xref">Replay Prevention</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.4">
+                <p id="section-toc.1-1.12.2.4.1"><a href="#section-12.4" class="auto internal xref">12.4</a>.  <a href="#name-subscribe-token-replay-at-r" class="internal xref">Subscribe Token Replay at Registration</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.5">
+                <p id="section-toc.1-1.12.2.5.1"><a href="#section-12.5" class="auto internal xref">12.5</a>.  <a href="#name-pre-authorized-subscription" class="internal xref">Pre-Authorized Subscription URL Security</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.6">
+                <p id="section-toc.1-1.12.2.6.1"><a href="#section-12.6" class="auto internal xref">12.6</a>.  <a href="#name-ap-as-delivery-intermediary" class="internal xref">AP as Delivery Intermediary</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.7">
+                <p id="section-toc.1-1.12.2.7.1"><a href="#section-12.7" class="auto internal xref">12.7</a>.  <a href="#name-resource-enumeration" class="internal xref">Resource Enumeration</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13">
+            <p id="section-toc.1-1.13.1"><a href="#section-13" class="auto internal xref">13</a>. <a href="#name-privacy-considerations" class="internal xref">Privacy Considerations</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.1">
+                <p id="section-toc.1-1.13.2.1.1"><a href="#section-13.1" class="auto internal xref">13.1</a>.  <a href="#name-agent-identifier-stability" class="internal xref">Agent Identifier Stability</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.2">
+                <p id="section-toc.1-1.13.2.2.1"><a href="#section-13.2" class="auto internal xref">13.2</a>.  <a href="#name-event-content" class="internal xref">Event Content</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14">
+            <p id="section-toc.1-1.14.1"><a href="#section-14" class="auto internal xref">14</a>. <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14.2.1">
+                <p id="section-toc.1-1.14.2.1.1"><a href="#section-14.1" class="auto internal xref">14.1</a>.  <a href="#name-jwt-type-values" class="internal xref">JWT Type Values</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14.2.2">
+                <p id="section-toc.1-1.14.2.2.1"><a href="#section-14.2" class="auto internal xref">14.2</a>.  <a href="#name-aauth-r3-vocabulary-identif" class="internal xref">AAuth R3 Vocabulary Identifiers</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15">
+            <p id="section-toc.1-1.15.1"><a href="#section-15" class="auto internal xref">15</a>. <a href="#name-implementation-status" class="internal xref">Implementation Status</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16">
+            <p id="section-toc.1-1.16.1"><a href="#section-16" class="auto internal xref">16</a>. <a href="#name-document-history" class="internal xref">Document History</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17">
+            <p id="section-toc.1-1.17.1"><a href="#section-17" class="auto internal xref">17</a>. <a href="#name-acknowledgments" class="internal xref">Acknowledgments</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.18">
+            <p id="section-toc.1-1.18.1"><a href="#section-18" class="auto internal xref">18</a>. <a href="#name-references" class="internal xref">References</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.18.2.1">
+                <p id="section-toc.1-1.18.2.1.1"><a href="#section-18.1" class="auto internal xref">18.1</a>.  <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.18.2.2">
+                <p id="section-toc.1-1.18.2.2.1"><a href="#section-18.2" class="auto internal xref">18.2</a>.  <a href="#name-informative-references" class="internal xref">Informative References</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19">
+            <p id="section-toc.1-1.19.1"><a href="#appendix-A" class="auto internal xref">Appendix A</a>.  <a href="#name-design-rationale" class="internal xref">Design Rationale</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19.2.1">
+                <p id="section-toc.1-1.19.2.1.1"><a href="#appendix-A.1" class="auto internal xref">A.1</a>.  <a href="#name-why-the-ap-is-the-delivery-" class="internal xref">Why the AP Is the Delivery Intermediary</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19.2.2">
+                <p id="section-toc.1-1.19.2.2.1"><a href="#appendix-A.2" class="auto internal xref">A.2</a>.  <a href="#name-why-the-subscribe-token-is-" class="internal xref">Why the Subscribe Token Is the Signature-Key JWT</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19.2.3">
+                <p id="section-toc.1-1.19.2.3.1"><a href="#appendix-A.3" class="auto internal xref">A.3</a>.  <a href="#name-why-aud-in-the-subscribe-to" class="internal xref">Why <code>aud</code> in the Subscribe Token Is the Resource</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19.2.4">
+                <p id="section-toc.1-1.19.2.4.1"><a href="#appendix-A.4" class="auto internal xref">A.4</a>.  <a href="#name-why-exp-is-the-jwt-validity" class="internal xref">Why <code>exp</code> Is the JWT Validity Period, Not the Subscription Lifetime</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19.2.5">
+                <p id="section-toc.1-1.19.2.5.1"><a href="#appendix-A.5" class="auto internal xref">A.5</a>.  <a href="#name-why-max_uses-is-in-the-subs" class="internal xref">Why <code>max_uses</code> Is in the Subscribe Token</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19.2.6">
+                <p id="section-toc.1-1.19.2.6.1"><a href="#appendix-A.6" class="auto internal xref">A.6</a>.  <a href="#name-why-the-event-token-is-the-" class="internal xref">Why the Event Token Is the Transport Layer, Not the Data Layer</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19.2.7">
+                <p id="section-toc.1-1.19.2.7.1"><a href="#appendix-A.7" class="auto internal xref">A.7</a>.  <a href="#name-why-the-event-token-uses-th" class="internal xref">Why the Event Token Uses the self-jwt Scheme</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19.2.8">
+                <p id="section-toc.1-1.19.2.8.1"><a href="#appendix-A.8" class="auto internal xref">A.8</a>.  <a href="#name-why-exp-in-the-event-token-" class="internal xref">Why <code>exp</code> in the Event Token Is the Response Window</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19.2.9">
+                <p id="section-toc.1-1.19.2.9.1"><a href="#appendix-A.9" class="auto internal xref">A.9</a>.  <a href="#name-why-protected-subscriptions" class="internal xref">Why Protected Subscriptions Use a Pre-Authorized URL</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19.2.10">
+                <p id="section-toc.1-1.19.2.10.1"><a href="#appendix-A.10" class="auto internal xref">A.10</a>. <a href="#name-why-asyncapi-is-the-discove" class="internal xref">Why AsyncAPI Is the Discovery Vocabulary</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19.2.11">
+                <p id="section-toc.1-1.19.2.11.1"><a href="#appendix-A.11" class="auto internal xref">A.11</a>. <a href="#name-comparison-to-existing-patt" class="internal xref">Comparison to Existing Patterns</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.20">
+            <p id="section-toc.1-1.20.1"><a href="#appendix-B" class="auto internal xref">Appendix B</a>.  <a href="#name-non-normative-ap-to-agent-d" class="internal xref">Non-Normative AP-to-Agent Delivery Examples</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.20.2.1">
+                <p id="section-toc.1-1.20.2.1.1"><a href="#appendix-B.1" class="auto internal xref">B.1</a>.  <a href="#name-workload-agents" class="internal xref">Workload Agents</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.20.2.2">
+                <p id="section-toc.1-1.20.2.2.1"><a href="#appendix-B.2" class="auto internal xref">B.2</a>.  <a href="#name-mobile-agents" class="internal xref">Mobile Agents</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.20.2.3">
+                <p id="section-toc.1-1.20.2.3.1"><a href="#appendix-B.3" class="auto internal xref">B.3</a>.  <a href="#name-web-agents" class="internal xref">Web Agents</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.20.2.4">
+                <p id="section-toc.1-1.20.2.4.1"><a href="#appendix-B.4" class="auto internal xref">B.4</a>.  <a href="#name-self-hosted-agents" class="internal xref">Self-Hosted Agents</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.21">
+            <p id="section-toc.1-1.21.1"><a href="#appendix-C" class="auto internal xref"></a><a href="#name-authors-address" class="internal xref">Author's Address</a></p>
+</li>
+        </ul>
+</nav>
+</section>
+</div>
+<div id="introduction">
+<section id="section-1">
+      <h2 id="name-introduction">
+<a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
+      </h2>
+<div id="agents-cannot-receive-webhooks">
+<section id="section-1.1">
+        <h3 id="name-agents-cannot-receive-webho">
+<a href="#section-1.1" class="section-number selfRef">1.1. </a><a href="#name-agents-cannot-receive-webho" class="section-name selfRef">Agents Cannot Receive Webhooks</a>
+        </h3>
+<p id="section-1.1-1">Agents are often not servers with a routable endpoint. Whether running as a workload, a mobile app, or a single-page application, agents typically cannot receive inbound HTTP connections. Existing event delivery mechanisms — webhooks, WebSub, callback URLs — all assume the receiver is always-on and reachable. This assumption fails for agents that run intermittently, execute behind NAT, or live inside a platform that does not expose inbound HTTP.<a href="#section-1.1-1" class="pilcrow">¶</a></p>
+<p id="section-1.1-2">At the same time, many interactions agents initiate are inherently asynchronous. An agent books a medical appointment and needs to know if an earlier slot opens. An agent monitors inventory and needs to know when a product becomes available. An agent submits an order and needs confirmation when it ships. In each case, the agent initiates a synchronous request, the resource accepts it, and then the resource needs to reach back to the agent when something changes — potentially hours or days later.<a href="#section-1.1-2" class="pilcrow">¶</a></p>
+<p id="section-1.1-3">Existing approaches each fall short:<a href="#section-1.1-3" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-1.1-4.1">
+            <strong>Webhooks</strong> require the agent to have a public URL. Agents do not.<a href="#section-1.1-4.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-1.1-4.2">
+            <strong>Polling</strong> is wasteful and imprecise. For time-sensitive events like waitlist slots, polling is too slow and too expensive.<a href="#section-1.1-4.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-1.1-4.3">
+            <strong>Server-Sent Events / WebSocket</strong> require a persistent outbound connection, which conflicts with intermittent agent workloads.<a href="#section-1.1-4.3" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-1.1-4.4">
+            <strong>Message queues</strong> (SQS, Kafka, RabbitMQ) require shared infrastructure, are not web-standard, and have no standardized subscription protocol across trust domains.<a href="#section-1.1-4.4" class="pilcrow">¶</a>
+</li>
+        </ul>
+</section>
+</div>
+<div id="the-agent-provider-as-inbox">
+<section id="section-1.2">
+        <h3 id="name-the-agent-provider-as-inbox">
+<a href="#section-1.2" class="section-number selfRef">1.2. </a><a href="#name-the-agent-provider-as-inbox" class="section-name selfRef">The Agent Provider as Inbox</a>
+        </h3>
+<p id="section-1.2-1">The AAuth Protocol establishes that every agent has an Agent Provider (AP) — a stable, always-on server that issues the agent's identity token. The AP is already a first-class principal in the AAuth ecosystem: it has its own cryptographic identity, publishes metadata at a well-known URL, and is trusted by all parties that interact with the agent.<a href="#section-1.2-1" class="pilcrow">¶</a></p>
+<p id="section-1.2-2">AAuth Events uses the AP as the agent's permanent event inbox. A resource that needs to notify an agent does not need to reach the agent directly — it posts the event to the AP's event endpoint. The AP delivers the event to the agent through whatever mechanism the AP and agent have established. The agent does not need a public URL. The AP is the public URL.<a href="#section-1.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="an-open-event-network">
+<section id="section-1.3">
+        <h3 id="name-an-open-event-network">
+<a href="#section-1.3" class="section-number selfRef">1.3. </a><a href="#name-an-open-event-network" class="section-name selfRef">An Open Event Network</a>
+        </h3>
+<p id="section-1.3-1">The AP inbox and AAuth identity together form a decentralized event network: no central broker, no pre-registration between parties. A resource that has never seen an AP before can deliver to it by resolving the AP's event endpoint from its well-known metadata and signing the delivery with its own discoverable key. This is the federated reachability of email without its deliverability failure. Every delivery is cryptographically attributable to an identified resource, the AP accepts events only for subscriptions its agents established, and protected channels can require the person's identity before a subscription is created. There is no barrier to entry: an agent operator can run their own AP or use a hosted one with no difference in protocol, and any resource with a domain and a JWKS can deliver events.<a href="#section-1.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="what-aauth-events-provides">
+<section id="section-1.4">
+        <h3 id="name-what-aauth-events-provides">
+<a href="#section-1.4" class="section-number selfRef">1.4. </a><a href="#name-what-aauth-events-provides" class="section-name selfRef">What AAuth Events Provides</a>
+        </h3>
+<ul class="compact">
+<li class="compact" id="section-1.4-1.1">
+            <strong>No public endpoint required</strong>: The AP receives events on the agent's behalf. AP-to-agent delivery is platform-dependent and out of scope for this specification.<a href="#section-1.4-1.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-1.4-1.2">
+            <strong>Cryptographic authorization</strong>: The subscribe token is AP-signed and restricts event delivery to a specific resource. No shared secrets.<a href="#section-1.4-1.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-1.4-1.3">
+            <strong>Deliverability through identity</strong>: Every delivery is signed by an identified resource and accepted only against an active subscription. No spoofed events, no shared webhook secrets, no spam.<a href="#section-1.4-1.3" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-1.4-1.4">
+            <strong>Decentralized</strong>: No central broker and no out-of-band registration. Resources discover AP event endpoints via well-known metadata, and APs can be self-hosted or outsourced interchangeably.<a href="#section-1.4-1.4" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-1.4-1.5">
+            <strong>Agent identity at subscription time</strong>: The resource knows cryptographically which agent subscribed, via the <code>sub</code> claim in the subscribe token.<a href="#section-1.4-1.5" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-1.4-1.6">
+            <strong>Protected and public subscriptions</strong>: Public event channels require only a subscribe token. Protected channels use a pre-authorized subscription URL issued by the resource during a prior authenticated interaction.<a href="#section-1.4-1.6" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-1.4-1.7">
+            <strong>Event discovery via AsyncAPI</strong>: Resources describe their event channels using AsyncAPI (<span>[<a href="#AsyncAPI" class="cite xref">AsyncAPI</a>]</span>) as an AAuth R3 vocabulary (<span>[<a href="#I-D.hardt-aauth-r3" class="cite xref">I-D.hardt-aauth-r3</a>]</span>).<a href="#section-1.4-1.7" class="pilcrow">¶</a>
+</li>
+        </ul>
+</section>
+</div>
+<div id="relationship-to-existing-standards">
+<section id="section-1.5">
+        <h3 id="name-relationship-to-existing-st">
+<a href="#section-1.5" class="section-number selfRef">1.5. </a><a href="#name-relationship-to-existing-st" class="section-name selfRef">Relationship to Existing Standards</a>
+        </h3>
+<p id="section-1.5-1">AAuth Events builds on the AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>) and HTTP Signature Keys (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). It provides the transport and subscription mechanisms that AsyncAPI (<span>[<a href="#AsyncAPI" class="cite xref">AsyncAPI</a>]</span>) describes: resources use AsyncAPI to document their event channels and payload schemas, while AAuth Events defines how agents subscribe and how events are delivered.<a href="#section-1.5-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="conventions-and-definitions">
+<section id="section-2">
+      <h2 id="name-conventions-and-definitions">
+<a href="#section-2" class="section-number selfRef">2. </a><a href="#name-conventions-and-definitions" class="section-name selfRef">Conventions and Definitions</a>
+      </h2>
+<p id="section-2-1">{::boilerplate bcp14-tagged}<a href="#section-2-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="terminology">
+<section id="section-3">
+      <h2 id="name-terminology">
+<a href="#section-3" class="section-number selfRef">3. </a><a href="#name-terminology" class="section-name selfRef">Terminology</a>
+      </h2>
+<p id="section-3-1">Terms defined in <span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span> are used here with the same meaning. In particular: Agent, Agent Provider (AP), Agent Token, Resource, Resource Token, Auth Token, Person Server (PS), Access Server (AS), and HTTP Sig.<a href="#section-3-1" class="pilcrow">¶</a></p>
+<p id="section-3-2">This document additionally uses:<a href="#section-3-2" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-3-3.1">
+          <strong>Subscribe Token</strong>: A JWT issued by the AP to the agent, authorizing a specific resource to deliver events to the AP on the agent's behalf. Contains the Event ID and the agent's current signing key.<a href="#section-3-3.1" class="pilcrow">¶</a>
+</li>
+        <li class="compact" id="section-3-3.2">
+          <strong>Event ID (eid)</strong>: An opaque, AP-generated identifier that uniquely identifies a subscription at the AP. The agent maps the <code>eid</code> to its own context. The <code>eid</code> is the correlation key between the subscribe token, the AP's subscription record, and the event token.<a href="#section-3-3.2" class="pilcrow">¶</a>
+</li>
+        <li class="compact" id="section-3-3.3">
+          <strong>Event Token</strong>: A JWT issued and signed by the resource when an event fires, addressed to the agent (<code>aud</code> = agent identifier), and delivered to the AP's event endpoint using the <code>self-jwt</code> Signature-Key scheme (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>).<a href="#section-3-3.3" class="pilcrow">¶</a>
+</li>
+        <li class="compact" id="section-3-3.4">
+          <strong>Event Endpoint</strong>: An endpoint published by the AP in its metadata at which resources deliver event tokens.<a href="#section-3-3.4" class="pilcrow">¶</a>
+</li>
+        <li class="compact" id="section-3-3.5">
+          <strong>Subscription Ticket</strong>: An opaque, short-lived value returned by a resource in response to an authenticated interaction, pre-authorizing a subsequent subscription registration call. Used when subscription to a protected channel requires prior authenticated context.<a href="#section-3-3.5" class="pilcrow">¶</a>
+</li>
+      </ul>
+</section>
+</div>
+<div id="protocol-overview">
+<section id="section-4">
+      <h2 id="name-protocol-overview">
+<a href="#section-4" class="section-number selfRef">4. </a><a href="#name-protocol-overview" class="section-name selfRef">Protocol Overview</a>
+      </h2>
+<p id="section-4-1">AAuth Events involves four phases: setup, subscription registration, event delivery from resource to AP, and event delivery from AP to agent.<a href="#section-4-1" class="pilcrow">¶</a></p>
+<span id="name-aauth-events-protocol-overv"></span><div id="fig-overview">
+<figure id="figure-1">
+        <div class="lang-ascii-art sourcecode" id="section-4-2.1">
+<pre>Agent          AP                   Resource
+  |             |                        |
+  | (1) request |                        |
+  |  subscribe  |                        |
+  |  token      |                        |
+  |------------&gt;|                        |
+  |             |                        |
+  | subscribe   |                        |
+  | token       |                        |
+  |&lt;------------|                        |
+  |             |                        |
+  | (2) signed request                   |
+  |  w/ subscribe token                  |
+  |-------------------------------------&gt;|
+  |             |                        |
+  |           200 OK                     |
+  |&lt;-------------------------------------|
+  |             |                        |
+  |             | ... time passes ...    |
+  |             |                        |
+  |             |  (3) POST event token. |
+  |             |  (+ optional payload)  |
+  |             |&lt;-----------------------|
+  |             |                        |
+  |             |   202 Accepted         |
+  |             |-----------------------&gt;|
+  |             |                        |
+  | (4) event   |                        |
+  |  token +    |                        |
+  |  payload    |                        |
+  |&lt;------------|                        |
+
+</pre>
+</div>
+<figcaption><a href="#figure-1" class="selfRef">Figure 1</a>:
+<a href="#name-aauth-events-protocol-overv" class="selfRef">AAuth Events Protocol Overview</a>
+        </figcaption></figure>
+</div>
+<ol start="1" type="1" class="normal type-1" id="section-4-3">
+<li id="section-4-3.1">
+          <p id="section-4-3.1.1"><strong>Subscribe token acquisition (non-normative)</strong>: The agent requests a subscribe token from its AP. The AP generates an <code>eid</code>, creates a subscription record, and issues a subscribe token. This interaction is AP-internal and out of scope for this specification. See <a href="#non-normative-ap-agent" class="auto internal xref">Appendix B</a> for examples.<a href="#section-4-3.1.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-4-3.2">
+          <p id="section-4-3.2.1"><strong>Subscription registration</strong>: The agent presents the subscribe token to the resource as the <code>Signature-Key</code> JWT on a signed HTTP request to the resource's subscription endpoint. The resource validates the subscribe token, stores the <code>eid</code> and the AP's <code>event_endpoint</code> (resolved from the AP's metadata), and registers the subscription.<a href="#section-4-3.2.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-4-3.3">
+          <p id="section-4-3.3.1"><strong>Event delivery — resource to AP</strong>: When an event fires, the resource issues an event token (a JWT signed by the resource) and POSTs it to the AP's <code>event_endpoint</code>, presenting the event token as the <code>Signature-Key</code> JWT using the <code>self-jwt</code> scheme (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). The optional request body carries the AsyncAPI-defined payload for the event type.<a href="#section-4-3.3.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-4-3.4">
+          <p id="section-4-3.4.1"><strong>Event delivery — AP to agent (non-normative)</strong>: The AP validates the event, looks up the subscription by <code>eid</code>, and delivers the event token and any payload to the agent. This step is platform-dependent and out of scope for this specification. See <a href="#non-normative-ap-agent" class="auto internal xref">Appendix B</a> for examples.<a href="#section-4-3.4.1" class="pilcrow">¶</a></p>
+</li>
+      </ol>
+</section>
+</div>
+<div id="ap-metadata">
+<section id="section-5">
+      <h2 id="name-ap-metadata">
+<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-ap-metadata" class="section-name selfRef">AP Metadata</a>
+      </h2>
+<p id="section-5-1">The AP MUST publish an <code>event_endpoint</code> claim in its metadata at <code>/.well-known/aauth-agent.json</code> if it supports AAuth Events. The <code>event_endpoint</code> is an HTTPS URL at which the AP receives event tokens from resources.<a href="#section-5-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-5-2">
+<pre>{
+  "issuer": "https://ap.example",
+  "jwks_uri": "https://ap.example/.well-known/jwks.json",
+  "event_endpoint": "https://ap.example/events"
+}
+
+</pre><a href="#section-5-2" class="pilcrow">¶</a>
+</div>
+<p id="section-5-3">The AP MAY update the <code>event_endpoint</code> URL at any time. Resources resolve the AP's <code>event_endpoint</code> from the AP's metadata (using the <code>iss</code> claim in the subscribe token to locate the AP's well-known document) rather than caching it from the subscribe token.<a href="#section-5-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="subscribe-token">
+<section id="section-6">
+      <h2 id="name-subscribe-token">
+<a href="#section-6" class="section-number selfRef">6. </a><a href="#name-subscribe-token" class="section-name selfRef">Subscribe Token</a>
+      </h2>
+<div id="structure">
+<section id="section-6.1">
+        <h3 id="name-structure">
+<a href="#section-6.1" class="section-number selfRef">6.1. </a><a href="#name-structure" class="section-name selfRef">Structure</a>
+        </h3>
+<p id="section-6.1-1">A subscribe token is a JWT with <code>typ: aa-subscribe+jwt</code>, issued and signed by the AP, with the following claims:<a href="#section-6.1-1" class="pilcrow">¶</a></p>
+<p id="section-6.1-2">Header:<a href="#section-6.1-2" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-6.1-3.1">
+            <code>alg</code>: Signing algorithm. EdDSA is RECOMMENDED. Implementations MUST NOT accept <code>none</code>.<a href="#section-6.1-3.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-6.1-3.2">
+            <code>typ</code>: <code>aa-subscribe+jwt</code><a href="#section-6.1-3.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-6.1-3.3">
+            <code>kid</code>: Key identifier (AP's signing key)<a href="#section-6.1-3.3" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-6.1-4">Required payload claims:<a href="#section-6.1-4" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-6.1-5.1">
+            <code>iss</code>: Agent Provider URL. Used by the resource to locate the AP's metadata and <code>event_endpoint</code>.<a href="#section-6.1-5.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-6.1-5.2">
+            <code>dwk</code>: <code>aauth-agent.json</code> — the well-known metadata document name for key discovery (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>).<a href="#section-6.1-5.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-6.1-5.3">
+            <code>sub</code>: Agent identifier. The AAuth agent identifier (<code>aauth:local@domain</code>) of the subscribing agent.<a href="#section-6.1-5.3" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-6.1-5.4">
+            <code>aud</code>: Resource URL. The resource that is authorized to deliver events for this subscription. The resource MUST verify that its own URL matches this claim.<a href="#section-6.1-5.4" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-6.1-5.5">
+            <code>cnf</code>: Confirmation claim (<span>[<a href="#RFC7800" class="cite xref">RFC7800</a>]</span>) with <code>jwk</code> containing the agent's current public signing key. The resource uses this key to verify the HTTP signature on the subscription registration request.<a href="#section-6.1-5.5" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-6.1-5.6">
+            <code>eid</code>: Event ID. An opaque string generated by the AP, unique to the AP. The agent maps the <code>eid</code> to its own context (see <a href="#agent-context-mapping" class="auto internal xref">Section 6.4</a>). The resource includes the <code>eid</code> in every event token it issues for this subscription.<a href="#section-6.1-5.6" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-6.1-5.7">
+            <code>iat</code>: Issued-at timestamp.<a href="#section-6.1-5.7" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-6.1-5.8">
+            <code>exp</code>: Expiration timestamp. The resource MUST reject subscribe tokens with <code>exp</code> in the past.<a href="#section-6.1-5.8" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-6.1-6">Optional payload claims:<a href="#section-6.1-6" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-6.1-7.1">
+            <code>max_uses</code>: A positive integer. If present, the AP MUST NOT accept more than this many event tokens for this <code>eid</code>. If absent, the subscription is unlimited. Enforcement is the AP's responsibility; the AP informs the resource of remaining uses in its <code>202 Accepted</code> response (see <a href="#event-delivery" class="auto internal xref">Section 9</a>). The resource SHOULD track <code>remaining_uses</code> to manage subscription state — for example, prompting the agent to re-subscribe when the subscription is exhausted.<a href="#section-6.1-7.1" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-6.1-8">Example subscribe token payload:<a href="#section-6.1-8" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-6.1-9">
+<pre>{
+  "iss": "https://ap.example",
+  "dwk": "aauth-agent.json",
+  "sub": "aauth:k7q3p9n2@ap.example",
+  "aud": "https://resource.example",
+  "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519", "x": "..." } },
+  "eid": "evt_8f3k2n9p",
+  "iat": 1750000000,
+  "exp": 1750086400,
+  "max_uses": 1
+}
+
+</pre><a href="#section-6.1-9" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="presentation">
+<section id="section-6.2">
+        <h3 id="name-presentation">
+<a href="#section-6.2" class="section-number selfRef">6.2. </a><a href="#name-presentation" class="section-name selfRef">Presentation</a>
+        </h3>
+<p id="section-6.2-1">The agent presents the subscribe token as the <code>Signature-Key</code> JWT on the subscription registration request, using <code>scheme=jwt</code>:<a href="#section-6.2-1" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-6.2-2">
+<pre>POST /appointments/waitlist HTTP/1.1
+Host: resource.example
+Content-Type: application/json
+Signature-Input: sig=("@method" "@authority"
+    "@path" "signature-key" "content-type");created=1750000000
+Signature: sig=:...signature bytes...:
+Signature-Key: sig=jwt;
+    jwt="eyJhbGciOiJFZERTQSIsInR5cCI6ImFhLXN1Yitqd3QiLCJraWQiOiIuLi4ifQ..."
+
+{
+  "event_types": ["slot.available"]
+}
+
+</pre><a href="#section-6.2-2" class="pilcrow">¶</a>
+</div>
+<p id="section-6.2-3">The subscribe token replaces the agent token as the <code>Signature-Key</code> JWT for subscription registration requests. The <code>cnf.jwk</code> in the subscribe token provides the key the resource uses to verify the HTTP signature. The subscribe token is structurally analogous to the agent token — both are AP-signed JWTs carrying <code>cnf.jwk</code> — distinguished by <code>typ</code>.<a href="#section-6.2-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="verification">
+<section id="section-6.3">
+        <h3 id="name-verification">
+<a href="#section-6.3" class="section-number selfRef">6.3. </a><a href="#name-verification" class="section-name selfRef">Verification</a>
+        </h3>
+<p id="section-6.3-1">The resource MUST verify the subscribe token as follows:<a href="#section-6.3-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="compact type-1" id="section-6.3-2">
+<li id="section-6.3-2.1">Decode the JWT header. Verify <code>typ</code> is <code>aa-subscribe+jwt</code>.<a href="#section-6.3-2.1" class="pilcrow">¶</a>
+</li>
+          <li id="section-6.3-2.2">Verify <code>dwk</code> is <code>aauth-agent.json</code>. Discover the AP's JWKS via <code>{iss}/.well-known/{dwk}</code> per (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). Locate the key matching <code>kid</code> and verify the JWT signature.<a href="#section-6.3-2.2" class="pilcrow">¶</a>
+</li>
+          <li id="section-6.3-2.3">Verify <code>exp</code> is in the future and <code>iat</code> is not in the future.<a href="#section-6.3-2.3" class="pilcrow">¶</a>
+</li>
+          <li id="section-6.3-2.4">Verify <code>aud</code> matches the resource's own URL.<a href="#section-6.3-2.4" class="pilcrow">¶</a>
+</li>
+          <li id="section-6.3-2.5">Verify <code>cnf.jwk</code> matches the key used to sign the HTTP request.<a href="#section-6.3-2.5" class="pilcrow">¶</a>
+</li>
+          <li id="section-6.3-2.6">Verify <code>eid</code> is present and non-empty.<a href="#section-6.3-2.6" class="pilcrow">¶</a>
+</li>
+        </ol>
+<p id="section-6.3-3">After verification, the resource stores the subscription record with sufficient information to deliver events — at minimum <code>{eid, iss}</code> (the Event ID and the AP's issuer URL). When an event fires, the resource resolves the AP's <code>event_endpoint</code> from <code>{iss}/.well-known/aauth-agent.json</code> at delivery time, using standard HTTP caching for the well-known document.<a href="#section-6.3-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="agent-context-mapping">
+<section id="section-6.4">
+        <h3 id="name-agent-context-mapping">
+<a href="#section-6.4" class="section-number selfRef">6.4. </a><a href="#name-agent-context-mapping" class="section-name selfRef">Agent Context Mapping</a>
+        </h3>
+<p id="section-6.4-1">The <code>eid</code> is the agent's correlation key. The agent maintains a local mapping of <code>eid</code> values to internal context — for example, "eid <code>evt_8f3k2n9p</code> corresponds to the appointment waitlist for Dr. Smith opened as part of mission <code>mission_xyz</code>". This mapping is the agent's own concern and is not defined by this specification.<a href="#section-6.4-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="subscription-registration">
+<section id="section-7">
+      <h2 id="name-subscription-registration">
+<a href="#section-7" class="section-number selfRef">7. </a><a href="#name-subscription-registration" class="section-name selfRef">Subscription Registration</a>
+      </h2>
+<div id="public-subscriptions">
+<section id="section-7.1">
+        <h3 id="name-public-subscriptions">
+<a href="#section-7.1" class="section-number selfRef">7.1. </a><a href="#name-public-subscriptions" class="section-name selfRef">Public Subscriptions</a>
+        </h3>
+<p id="section-7.1-1">For event channels that do not require prior authorization, the agent presents the subscribe token (as the <code>Signature-Key</code> JWT) on a signed POST to the resource's subscription endpoint. No additional credential is required. The resource validates the subscribe token per <a href="#subscribe-token" class="auto internal xref">Section 6</a> and registers the subscription.<a href="#section-7.1-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="protected-subscriptions">
+<section id="section-7.2">
+        <h3 id="name-protected-subscriptions">
+<a href="#section-7.2" class="section-number selfRef">7.2. </a><a href="#name-protected-subscriptions" class="section-name selfRef">Protected Subscriptions</a>
+        </h3>
+<p id="section-7.2-1">Some event channels require the agent to be authorized before it can register a subscription — for example, subscribing to events for a specific patient's appointments, or events associated with a particular account. In these cases, the resource does not accept subscription registrations from arbitrary agents; only agents that have already been authorized in an earlier interaction may register.<a href="#section-7.2-1" class="pilcrow">¶</a></p>
+<p id="section-7.2-2">This specification defines a <strong>pre-authorized subscription URL</strong> pattern for protected subscriptions:<a href="#section-7.2-2" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="compact type-1" id="section-7.2-3">
+<li id="section-7.2-3.1">The agent makes an authenticated request to the resource (using an auth token obtained through one of the AAuth Protocol access modes).<a href="#section-7.2-3.1" class="pilcrow">¶</a>
+</li>
+          <li id="section-7.2-3.2">The resource, if subscription to events is available for the context established by this interaction, returns a <strong>subscription ticket URL</strong> — an HTTPS URL that encodes a short-lived, single-use authorization to register a subscription. The ticket URL is opaque and is valid only for the specific context (agent, operation, and resource state) established in step 1.<a href="#section-7.2-3.2" class="pilcrow">¶</a>
+</li>
+          <li id="section-7.2-3.3">The agent obtains a subscribe token from its AP.<a href="#section-7.2-3.3" class="pilcrow">¶</a>
+</li>
+          <li id="section-7.2-3.4">The agent presents the subscribe token (as the <code>Signature-Key</code> JWT) on a signed POST to the subscription ticket URL. No additional auth token is required at this step; the authorization is embedded in the URL. The request body MAY include additional parameters as defined by the resource's AsyncAPI channel schema.<a href="#section-7.2-3.4" class="pilcrow">¶</a>
+</li>
+          <li id="section-7.2-3.5">The resource validates the subscribe token, verifies the ticket in the URL is valid for the calling agent (by checking <code>sub</code> in the subscribe token matches the agent that triggered step 1) and has not been used before, and registers the subscription.<a href="#section-7.2-3.5" class="pilcrow">¶</a>
+</li>
+        </ol>
+<p id="section-7.2-4">The subscription ticket URL is resource-controlled: the resource issues it, defines its scope and expiry, and enforces its single-use constraint. The ticket is not defined by this specification beyond the pattern above.<a href="#section-7.2-4" class="pilcrow">¶</a></p>
+<p id="section-7.2-5">Example response from step 2:<a href="#section-7.2-5" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-7.2-6">
+<pre>{
+  "status": "unavailable",
+  "next_available": "2026-08-24",
+  "waitlist": {
+    "subscribe_url": "https://resource.example/waitlist/st_9k2m_abc123",
+    "event_types": ["slot.available"],
+    "offer_window_seconds": 300
+  }
+}
+
+</pre><a href="#section-7.2-6" class="pilcrow">¶</a>
+</div>
+<p id="section-7.2-7">Example subscription registration from step 4:<a href="#section-7.2-7" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-7.2-8">
+<pre>POST /waitlist/st_9k2m_abc123 HTTP/1.1
+Host: resource.example
+Content-Type: application/json
+Signature-Input: sig=("@method" "@authority"
+    "@path" "signature-key" "content-type");created=1750000000
+Signature: sig=:...signature bytes...:
+Signature-Key: sig=jwt;
+    jwt="eyJhbGciOiJFZERTQSIsInR5cCI6ImFhLXN1Yitqd3QiLCJraWQiOiIuLi4ifQ..."
+
+{
+  "event_types": ["slot.available"]
+}
+
+</pre><a href="#section-7.2-8" class="pilcrow">¶</a>
+</div>
+<p id="section-7.2-9">The HTTP signature covers the request path (including the ticket), cryptographically binding the subscribe token's identity to this specific ticket URL.<a href="#section-7.2-9" class="pilcrow">¶</a></p>
+<p id="section-7.2-10">The resource SHOULD include the subscription ticket URL in an AsyncAPI channel parameter (<span>[<a href="#AsyncAPI" class="cite xref">AsyncAPI</a>]</span>) so that agents that discover the resource's event capabilities through its AsyncAPI document know to obtain the URL from a prior API response.<a href="#section-7.2-10" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="event-token">
+<section id="section-8">
+      <h2 id="name-event-token">
+<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-event-token" class="section-name selfRef">Event Token</a>
+      </h2>
+<div id="structure-1">
+<section id="section-8.1">
+        <h3 id="name-structure-2">
+<a href="#section-8.1" class="section-number selfRef">8.1. </a><a href="#name-structure-2" class="section-name selfRef">Structure</a>
+        </h3>
+<p id="section-8.1-1">When an event fires, the resource issues an event token: a JWT signed by the resource with the following claims:<a href="#section-8.1-1" class="pilcrow">¶</a></p>
+<p id="section-8.1-2">Header:<a href="#section-8.1-2" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-8.1-3.1">
+            <code>alg</code>: Signing algorithm. EdDSA is RECOMMENDED.<a href="#section-8.1-3.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-8.1-3.2">
+            <code>typ</code>: <code>aa-event+jwt</code><a href="#section-8.1-3.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-8.1-3.3">
+            <code>kid</code>: Key identifier (resource's signing key)<a href="#section-8.1-3.3" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-8.1-4">Required payload claims:<a href="#section-8.1-4" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-8.1-5.1">
+            <code>iss</code>: Resource URL.<a href="#section-8.1-5.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-8.1-5.2">
+            <code>dwk</code>: <code>aauth-resource.json</code> — the well-known metadata document name for key discovery (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>).<a href="#section-8.1-5.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-8.1-5.3">
+            <code>aud</code>: Agent identifier (<code>aauth:local@domain</code>). The agent MUST verify this matches its own identifier.<a href="#section-8.1-5.3" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-8.1-5.4">
+            <code>eid</code>: Event ID. MUST match the <code>eid</code> from the subscribe token for this subscription. The AP uses the <code>eid</code> to look up the subscription record and route to the agent. The agent uses the <code>eid</code> to look up its local context mapping.<a href="#section-8.1-5.4" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-8.1-5.5">
+            <code>iat</code>: Issued-at timestamp.<a href="#section-8.1-5.5" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-8.1-5.6">
+            <code>exp</code>: Expiration timestamp. The agent MUST NOT act on an event token with <code>exp</code> in the past. The meaning of <code>exp</code> is event-specific — for time-sensitive events, it encodes the deadline by which the agent must act.<a href="#section-8.1-5.6" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-8.1-6">The event token MUST NOT contain a <code>cnf</code> claim. The event token is a self-issued JWT per the <code>self-jwt</code> Signature-Key scheme (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>): the resource is both the JWT issuer and the HTTP request signer, and the key identified by <code>kid</code> in the resource's JWKS verifies both the JWT and the HTTP Message Signature.<a href="#section-8.1-6" class="pilcrow">¶</a></p>
+<p id="section-8.1-7">The event token is the transport and security layer. It carries no event-specific data. Event-specific content is delivered as the POST body alongside the event token (see <a href="#event-delivery" class="auto internal xref">Section 9</a>).<a href="#section-8.1-7" class="pilcrow">¶</a></p>
+<p id="section-8.1-8">Example event token payload:<a href="#section-8.1-8" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-8.1-9">
+<pre>{
+  "iss": "https://resource.example",
+  "dwk": "aauth-resource.json",
+  "aud": "aauth:k7q3p9n2@ap.example",
+  "eid": "evt_8f3k2n9p",
+  "iat": 1750200000,
+  "exp": 1750200300
+}
+
+</pre><a href="#section-8.1-9" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+</section>
+</div>
+<div id="event-delivery">
+<section id="section-9">
+      <h2 id="name-event-delivery-resource-to-">
+<a href="#section-9" class="section-number selfRef">9. </a><a href="#name-event-delivery-resource-to-" class="section-name selfRef">Event Delivery: Resource to AP</a>
+      </h2>
+<div id="request">
+<section id="section-9.1">
+        <h3 id="name-request">
+<a href="#section-9.1" class="section-number selfRef">9.1. </a><a href="#name-request" class="section-name selfRef">Request</a>
+        </h3>
+<p id="section-9.1-1">When an event fires for an active subscription, the resource posts to the AP's <code>event_endpoint</code>, presenting the event token as the <code>Signature-Key</code> JWT using the <code>self-jwt</code> scheme (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). The POST body is the AsyncAPI-defined payload for the event type (OPTIONAL — omitted if the event carries no payload):<a href="#section-9.1-1" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-9.1-2">
+<pre>POST /events HTTP/1.1
+Host: ap.example
+Content-Type: application/json
+Signature-Input: sig=("@method" "@authority"
+    "@path" "signature-key" "content-type" "content-digest");created=1750200000
+Signature: sig=:...resource signing key signature bytes...:
+Signature-Key: sig=self-jwt;
+    jwt="eyJhbGciOiJFZERTQSIsInR5cCI6ImFhLWV2ZW50K2p3dCIsImtpZCI6Ii4uLiJ9..."
+
+{
+  "event_type": "slot.available",
+  "slot_time": "2026-07-15T10:00:00Z"
+}
+
+</pre><a href="#section-9.1-2" class="pilcrow">¶</a>
+</div>
+<p id="section-9.1-3">The event token in <code>Signature-Key</code> provides the resource's identity (<code>iss</code>) and routing and authorization claims (<code>eid</code>, <code>aud</code>, <code>exp</code>). Unlike agent tokens and subscribe tokens (which use the <code>jwt</code> scheme with <code>cnf.jwk</code>), the event token uses the <code>self-jwt</code> scheme (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>): the resource is both the JWT issuer and the HTTP request signer, so no <code>cnf.jwk</code> is needed. The resource has a stable JWKS discoverable from <code>{iss}/.well-known/{dwk}</code>, and the AP uses the same key (identified by <code>kid</code> in the JWT header) to verify both the JWT signature and the HTTP signature. The request body structure is defined by the resource's AsyncAPI message schema for the event type (see <a href="#event-discovery" class="auto internal xref">Section 11</a>). The AP forwards both the event token and the payload body to the agent.<a href="#section-9.1-3" class="pilcrow">¶</a></p>
+<p id="section-9.1-4">The resource resolves the AP's <code>event_endpoint</code> from <code>{iss}/.well-known/aauth-agent.json</code> at delivery time, using standard HTTP caching for the AP's well-known document.<a href="#section-9.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="ap-validation">
+<section id="section-9.2">
+        <h3 id="name-ap-validation">
+<a href="#section-9.2" class="section-number selfRef">9.2. </a><a href="#name-ap-validation" class="section-name selfRef">AP Validation</a>
+        </h3>
+<p id="section-9.2-1">The AP MUST validate the event delivery request as follows:<a href="#section-9.2-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="compact type-1" id="section-9.2-2">
+<li id="section-9.2-2.1">Extract the event token JWT from the <code>Signature-Key</code> header (<code>scheme=self-jwt</code>). Verify <code>typ</code> is <code>aa-event+jwt</code>. Verify <code>cnf</code> is absent, per the <code>self-jwt</code> scheme (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>).<a href="#section-9.2-2.1" class="pilcrow">¶</a>
+</li>
+          <li id="section-9.2-2.2">Discover the resource's JWKS via <code>{iss}/.well-known/{dwk}</code>. Locate the key matching <code>kid</code> and verify the JWT signature.<a href="#section-9.2-2.2" class="pilcrow">¶</a>
+</li>
+          <li id="section-9.2-2.3">Verify the HTTP signature using the same key (matched by <code>kid</code>), per the <code>self-jwt</code> scheme: the JWT signing key and the HTTP signing key are the same key, discoverable from the resource's well-known document.<a href="#section-9.2-2.3" class="pilcrow">¶</a>
+</li>
+          <li id="section-9.2-2.4">Look up the subscription record by <code>eid</code>. If no active subscription exists for this <code>eid</code>, return <code>404</code>.<a href="#section-9.2-2.4" class="pilcrow">¶</a>
+</li>
+          <li id="section-9.2-2.5">Verify <code>iss</code> matches the resource recorded at subscription time (the <code>aud</code> of the subscribe token for this <code>eid</code>).<a href="#section-9.2-2.5" class="pilcrow">¶</a>
+</li>
+          <li id="section-9.2-2.6">Verify the event token <code>exp</code> is in the future.<a href="#section-9.2-2.6" class="pilcrow">¶</a>
+</li>
+          <li id="section-9.2-2.7">If <code>max_uses</code> is set in the subscribe token, verify the use count has not been exceeded. Increment the use count atomically. If the use limit is reached, the AP MAY mark the subscription as complete after delivery.<a href="#section-9.2-2.7" class="pilcrow">¶</a>
+</li>
+          <li id="section-9.2-2.8">Verify the event token <code>aud</code> matches the agent identifier in the subscription record.<a href="#section-9.2-2.8" class="pilcrow">¶</a>
+</li>
+        </ol>
+<p id="section-9.2-3">If all checks pass, the AP returns <code>202 Accepted</code> and proceeds with delivery to the agent. The AP MUST NOT return <code>202</code> before the event has been durably recorded for delivery. If <code>max_uses</code> was set in the subscribe token, the AP MUST include a JSON response body with a <code>remaining_uses</code> field indicating how many more event tokens the AP will accept for this <code>eid</code>:<a href="#section-9.2-3" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-9.2-4">
+<pre>HTTP/1.1 202 Accepted
+Content-Type: application/json
+
+{
+  "remaining_uses": 0
+}
+
+</pre><a href="#section-9.2-4" class="pilcrow">¶</a>
+</div>
+<p id="section-9.2-5">When <code>remaining_uses</code> is <code>0</code>, the subscription is exhausted. The resource SHOULD clean up its subscription record and MAY prompt the agent to re-subscribe on the next interaction. When <code>max_uses</code> was not set, the AP returns <code>202 Accepted</code> with no body (or an empty JSON object).<a href="#section-9.2-5" class="pilcrow">¶</a></p>
+<p id="section-9.2-6">The AP returns <code>400</code> for malformed requests, <code>401</code> if the resource's HTTP signature cannot be verified, <code>403</code> if the resource does not match the subscription's authorized resource, <code>404</code> if the <code>eid</code> is unknown or the subscription has expired, and <code>429</code> if <code>max_uses</code> has been exceeded.<a href="#section-9.2-6" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="ap-to-agent">
+<section id="section-10">
+      <h2 id="name-event-delivery-ap-to-agent">
+<a href="#section-10" class="section-number selfRef">10. </a><a href="#name-event-delivery-ap-to-agent" class="section-name selfRef">Event Delivery: AP to Agent</a>
+      </h2>
+<p id="section-10-1">How the AP delivers the event token to the agent is platform-dependent and outside the scope of this specification. The AP is the agent's inbox; the internal mechanism is an implementation choice for the AP and agent.<a href="#section-10-1" class="pilcrow">¶</a></p>
+<p id="section-10-2">See <a href="#non-normative-ap-agent" class="auto internal xref">Appendix B</a> for non-normative examples of AP-to-agent delivery for different platforms.<a href="#section-10-2" class="pilcrow">¶</a></p>
+<div id="agent-verification">
+<section id="section-10.1">
+        <h3 id="name-agent-verification">
+<a href="#section-10.1" class="section-number selfRef">10.1. </a><a href="#name-agent-verification" class="section-name selfRef">Agent Verification</a>
+        </h3>
+<p id="section-10.1-1">Upon receiving an event token (and optional payload) from the AP, the agent MUST:<a href="#section-10.1-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="compact type-1" id="section-10.1-2">
+<li id="section-10.1-2.1">Decode the JWT header. Verify <code>typ</code> is <code>aa-event+jwt</code>.<a href="#section-10.1-2.1" class="pilcrow">¶</a>
+</li>
+          <li id="section-10.1-2.2">Discover the resource's JWKS via <code>{iss}/.well-known/{dwk}</code> per (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). Verify the JWT signature.<a href="#section-10.1-2.2" class="pilcrow">¶</a>
+</li>
+          <li id="section-10.1-2.3">Verify <code>aud</code> matches the agent's own identifier.<a href="#section-10.1-2.3" class="pilcrow">¶</a>
+</li>
+          <li id="section-10.1-2.4">Verify <code>exp</code> is in the future. If <code>exp</code> has passed, the agent SHOULD NOT act on the event (the response window has closed).<a href="#section-10.1-2.4" class="pilcrow">¶</a>
+</li>
+          <li id="section-10.1-2.5">Look up <code>eid</code> in the agent's local context mapping to recover the context associated with this subscription.<a href="#section-10.1-2.5" class="pilcrow">¶</a>
+</li>
+          <li id="section-10.1-2.6">Deduplicate: if the agent has already processed an event with this <code>eid</code> from this <code>iss</code>, it SHOULD ignore the duplicate. The <code>eid</code> is a natural idempotency key.<a href="#section-10.1-2.6" class="pilcrow">¶</a>
+</li>
+        </ol>
+<p id="section-10.1-3">If a payload was included, the agent MAY use it directly. The payload structure is defined by the resource's AsyncAPI message schema for the event type.<a href="#section-10.1-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="event-discovery">
+<section id="section-11">
+      <h2 id="name-event-discovery">
+<a href="#section-11" class="section-number selfRef">11. </a><a href="#name-event-discovery" class="section-name selfRef">Event Discovery</a>
+      </h2>
+<p id="section-11-1">Resources describe their event capabilities using AsyncAPI (<span>[<a href="#AsyncAPI" class="cite xref">AsyncAPI</a>]</span>) as an AAuth R3 vocabulary (<span>[<a href="#I-D.hardt-aauth-r3" class="cite xref">I-D.hardt-aauth-r3</a>]</span>).<a href="#section-11-1" class="pilcrow">¶</a></p>
+<div id="r3-vocabulary-identifier">
+<section id="section-11.1">
+        <h3 id="name-r3-vocabulary-identifier">
+<a href="#section-11.1" class="section-number selfRef">11.1. </a><a href="#name-r3-vocabulary-identifier" class="section-name selfRef">R3 Vocabulary Identifier</a>
+        </h3>
+<p id="section-11.1-1">The vocabulary identifier for AAuth Events is:<a href="#section-11.1-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-11.1-2">
+<pre>urn:aauth:vocabulary:asyncapi
+
+</pre><a href="#section-11.1-2" class="pilcrow">¶</a>
+</div>
+<p id="section-11.1-3">Resources that support AAuth Events SHOULD declare this vocabulary in their AAuth resource metadata:<a href="#section-11.1-3" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-11.1-4">
+<pre>{
+  "issuer": "https://resource.example",
+  "r3_vocabularies": {
+    "urn:aauth:vocabulary:openapi": "/openapi.json",
+    "urn:aauth:vocabulary:asyncapi": "/asyncapi.json"
+  }
+}
+
+</pre><a href="#section-11.1-4" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="asyncapi-document">
+<section id="section-11.2">
+        <h3 id="name-asyncapi-document">
+<a href="#section-11.2" class="section-number selfRef">11.2. </a><a href="#name-asyncapi-document" class="section-name selfRef">AsyncAPI Document</a>
+        </h3>
+<p id="section-11.2-1">The resource's AsyncAPI document describes:<a href="#section-11.2-1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-11.2-2.1">
+            <strong>Channels</strong>: Event streams the agent may subscribe to. Channels MAY use parameterized addresses (e.g., <code>/waitlist/{subscriptionTicket}</code>) when the subscription endpoint URL is dynamic (see <a href="#protected-subscriptions" class="auto internal xref">Section 7.2</a>).<a href="#section-11.2-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-11.2-2.2">
+            <strong>Operations</strong>: <code>receive</code> operations on channels, with the security requirement and message schema.<a href="#section-11.2-2.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-11.2-2.3">
+            <strong>Messages</strong>: The payload schema for each event type. The AsyncAPI payload schema describes the <code>payload</code> field in the event delivery POST body (see <a href="#event-delivery" class="auto internal xref">Section 9</a>). The AAuth event token envelope (<code>iss</code>, <code>aud</code>, <code>eid</code>, <code>exp</code>) is implicit and not part of the AsyncAPI schema.<a href="#section-11.2-2.3" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-11.2-2.4">
+            <strong>Security schemes</strong>: The AAuth subscribe token security scheme.<a href="#section-11.2-2.4" class="pilcrow">¶</a>
+</li>
+        </ul>
+</section>
+</div>
+<div id="security-scheme">
+<section id="section-11.3">
+        <h3 id="name-security-scheme">
+<a href="#section-11.3" class="section-number selfRef">11.3. </a><a href="#name-security-scheme" class="section-name selfRef">Security Scheme</a>
+        </h3>
+<p id="section-11.3-1">Resources MUST declare the AAuth subscribe token security scheme as follows:<a href="#section-11.3-1" class="pilcrow">¶</a></p>
+<div class="lang-yaml sourcecode" id="section-11.3-2">
+<pre>securitySchemes:
+  aauth_subscribe:
+    type: http
+    scheme: aauth-subscribe
+    description: &gt;
+      AAuth Subscribe Token (typ: aa-subscribe+jwt), issued by the agent's Agent
+      Provider, presented as the Signature-Key JWT with HTTP Message Signatures.
+      See draft-hardt-aauth-events.
+
+</pre><a href="#section-11.3-2" class="pilcrow">¶</a>
+</div>
+<p id="section-11.3-3">Operations that require only a subscribe token declare:<a href="#section-11.3-3" class="pilcrow">¶</a></p>
+<div class="lang-yaml sourcecode" id="section-11.3-4">
+<pre>security:
+  - aauth_subscribe: []
+
+</pre><a href="#section-11.3-4" class="pilcrow">¶</a>
+</div>
+<p id="section-11.3-5">Operations that require a pre-authorized subscription URL (see <a href="#protected-subscriptions" class="auto internal xref">Section 7.2</a>) have no security scheme on the subscription endpoint itself — the subscription ticket in the URL carries the authorization. The resource SHOULD annotate such channels with a description noting that the subscription URL is obtained from a prior authenticated API call.<a href="#section-11.3-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="example-asyncapi-document">
+<section id="section-11.4">
+        <h3 id="name-example-asyncapi-document">
+<a href="#section-11.4" class="section-number selfRef">11.4. </a><a href="#name-example-asyncapi-document" class="section-name selfRef">Example AsyncAPI Document</a>
+        </h3>
+<div class="breakable lang-yaml sourcecode" id="section-11.4-1">
+<pre>asyncapi: 3.0.0
+info:
+  title: Appointments Events
+  version: 1.0.0
+
+channels:
+  waitlistPublic:
+    address: /appointments/waitlist/public
+    messages:
+      slotAvailable:
+        $ref: '#/components/messages/SlotAvailable'
+
+  waitlistProtected:
+    address: /appointments/waitlist/{subscriptionTicket}
+    description: &gt;
+      Subscription URL returned by POST /appointments when no slot is
+      immediately available and the calling agent is authorized for
+      waitlist access. The subscriptionTicket is embedded in the URL
+      and carries the authorization context.
+    parameters:
+      subscriptionTicket:
+        description: Single-use ticket from the POST /appointments response.
+    messages:
+      slotAvailable:
+        $ref: '#/components/messages/SlotAvailable'
+
+operations:
+  subscribePublicWaitlist:
+    action: receive
+    channel:
+      $ref: '#/channels/waitlistPublic'
+    security:
+      - aauth_subscribe: []
+
+  subscribeProtectedWaitlist:
+    action: receive
+    channel:
+      $ref: '#/channels/waitlistProtected'
+
+components:
+  messages:
+    SlotAvailable:
+      contentType: application/jwt
+      payload:
+        type: object
+        properties:
+          event_type:
+            type: string
+            const: slot.available
+          slot_time:
+            type: string
+            format: date-time
+          doctor_id:
+            type: string
+        required:
+          - event_type
+          - slot_time
+
+  securitySchemes:
+    aauth_subscribe:
+      type: http
+      scheme: aauth-subscribe
+      description: AAuth Subscribe Token as Signature-Key JWT
+
+</pre><a href="#section-11.4-1" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+</section>
+</div>
+<div id="security-considerations">
+<section id="section-12">
+      <h2 id="name-security-considerations">
+<a href="#section-12" class="section-number selfRef">12. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
+      </h2>
+<div id="subscribe-token-scope">
+<section id="section-12.1">
+        <h3 id="name-subscribe-token-scope">
+<a href="#section-12.1" class="section-number selfRef">12.1. </a><a href="#name-subscribe-token-scope" class="section-name selfRef">Subscribe Token Scope</a>
+        </h3>
+<p id="section-12.1-1">The <code>aud</code> claim in the subscribe token restricts which resource may deliver events to the AP for this <code>eid</code>. If a resource attempts to deliver events for an <code>eid</code> issued to a different resource, the AP MUST reject the request <a href="#event-delivery" class="auto internal xref">Section 9</a>. This prevents a compromised resource from hijacking another resource's subscription channel.<a href="#section-12.1-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="event-token-forgery">
+<section id="section-12.2">
+        <h3 id="name-event-token-forgery">
+<a href="#section-12.2" class="section-number selfRef">12.2. </a><a href="#name-event-token-forgery" class="section-name selfRef">Event Token Forgery</a>
+        </h3>
+<p id="section-12.2-1">Event tokens are signed by the resource using the resource's own signing key. The agent verifies the event token against the resource's JWKS (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). A party without the resource's private key cannot forge a valid event token. There are no shared secrets in AAuth Events.<a href="#section-12.2-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="replay-prevention">
+<section id="section-12.3">
+        <h3 id="name-replay-prevention">
+<a href="#section-12.3" class="section-number selfRef">12.3. </a><a href="#name-replay-prevention" class="section-name selfRef">Replay Prevention</a>
+        </h3>
+<p id="section-12.3-1">The AP enforces <code>max_uses</code> per <code>eid</code> and rejects event tokens with <code>exp</code> in the past. The agent additionally deduplicates on <code>eid</code> from the same <code>iss</code> <a href="#agent-verification" class="auto internal xref">Section 10.1</a>. These two layers prevent replay: a captured event token cannot be re-delivered once the AP has tracked its delivery and the agent has processed it.<a href="#section-12.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="subscribe-token-replay-at-registration">
+<section id="section-12.4">
+        <h3 id="name-subscribe-token-replay-at-r">
+<a href="#section-12.4" class="section-number selfRef">12.4. </a><a href="#name-subscribe-token-replay-at-r" class="section-name selfRef">Subscribe Token Replay at Registration</a>
+        </h3>
+<p id="section-12.4-1">A subscribe token with a valid <code>exp</code> could in principle be presented to the resource's subscription endpoint more than once. The <code>eid</code> is the deduplication key: the resource SHOULD reject subscription registration requests for an <code>eid</code> it has already registered. Single-use enforcement of the subscription ticket URL (in protected subscriptions) provides an additional constraint.<a href="#section-12.4-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="pre-authorized-subscription-url-security">
+<section id="section-12.5">
+        <h3 id="name-pre-authorized-subscription">
+<a href="#section-12.5" class="section-number selfRef">12.5. </a><a href="#name-pre-authorized-subscription" class="section-name selfRef">Pre-Authorized Subscription URL Security</a>
+        </h3>
+<p id="section-12.5-1">The subscription ticket URL (see <a href="#protected-subscriptions" class="auto internal xref">Section 7.2</a>) encodes authorization from a prior authenticated context. Resources MUST ensure that subscription tickets are:<a href="#section-12.5-1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-12.5-2.1">Short-lived (expiry appropriate to the expected delay between issuing and using the ticket).<a href="#section-12.5-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-12.5-2.2">Single-use (the resource invalidates the ticket on first successful subscription registration).<a href="#section-12.5-2.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-12.5-2.3">Bound to the agent that triggered the prior interaction (the resource MUST verify that <code>sub</code> in the subscribe token matches the agent that established the ticket).<a href="#section-12.5-2.3" class="pilcrow">¶</a>
+</li>
+        </ul>
+</section>
+</div>
+<div id="ap-as-delivery-intermediary">
+<section id="section-12.6">
+        <h3 id="name-ap-as-delivery-intermediary">
+<a href="#section-12.6" class="section-number selfRef">12.6. </a><a href="#name-ap-as-delivery-intermediary" class="section-name selfRef">AP as Delivery Intermediary</a>
+        </h3>
+<p id="section-12.6-1">The AP sees every event token delivered to an agent. The AP validates the event token's <code>iss</code>, <code>aud</code>, and <code>eid</code> claims but does not need to inspect resource-specific payload claims. APs SHOULD document their data retention policies for event tokens.<a href="#section-12.6-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="resource-enumeration">
+<section id="section-12.7">
+        <h3 id="name-resource-enumeration">
+<a href="#section-12.7" class="section-number selfRef">12.7. </a><a href="#name-resource-enumeration" class="section-name selfRef">Resource Enumeration</a>
+        </h3>
+<p id="section-12.7-1">A resource that exposes its AsyncAPI document publicly reveals what event types it emits. This may be intentional (public API). Resources that wish to restrict event type discovery MAY gate their AsyncAPI document with AAuth authentication.<a href="#section-12.7-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="privacy-considerations">
+<section id="section-13">
+      <h2 id="name-privacy-considerations">
+<a href="#section-13" class="section-number selfRef">13. </a><a href="#name-privacy-considerations" class="section-name selfRef">Privacy Considerations</a>
+      </h2>
+<div id="agent-identifier-stability">
+<section id="section-13.1">
+        <h3 id="name-agent-identifier-stability">
+<a href="#section-13.1" class="section-number selfRef">13.1. </a><a href="#name-agent-identifier-stability" class="section-name selfRef">Agent Identifier Stability</a>
+        </h3>
+<p id="section-13.1-1">The <code>sub</code> claim in the subscribe token carries the agent's stable identifier. Resources that receive subscribe tokens can correlate an agent's subscription activity over time. This is the intended property — the resource needs to know which agent subscribed. Agents and APs should be aware that subscription registrations leave a record at the resource.<a href="#section-13.1-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="event-content">
+<section id="section-13.2">
+        <h3 id="name-event-content">
+<a href="#section-13.2" class="section-number selfRef">13.2. </a><a href="#name-event-content" class="section-name selfRef">Event Content</a>
+        </h3>
+<p id="section-13.2-1">The event token carries no event-specific data — it is the security and routing envelope only. Event-specific content travels in the <code>payload</code> field of the POST body (see <a href="#event-delivery" class="auto internal xref">Section 9</a>), which is also visible to the AP during routing. Resources SHOULD NOT include sensitive personal data in the payload beyond what is necessary for the agent to evaluate relevance. Sensitive details SHOULD be fetched by the agent from the resource's data API using a current auth token.<a href="#section-13.2-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="iana-considerations">
+<section id="section-14">
+      <h2 id="name-iana-considerations">
+<a href="#section-14" class="section-number selfRef">14. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
+      </h2>
+<div id="jwt-type-values">
+<section id="section-14.1">
+        <h3 id="name-jwt-type-values">
+<a href="#section-14.1" class="section-number selfRef">14.1. </a><a href="#name-jwt-type-values" class="section-name selfRef">JWT Type Values</a>
+        </h3>
+<p id="section-14.1-1">This specification defines the following JWT <code>typ</code> header parameter values, to be registered in the IANA "JSON Web Token Types" registry:<a href="#section-14.1-1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-14.1-2.1">
+            <code>aa-subscribe+jwt</code>: AAuth Subscribe Token.<a href="#section-14.1-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-14.1-2.2">
+            <code>aa-event+jwt</code>: AAuth Event Token.<a href="#section-14.1-2.2" class="pilcrow">¶</a>
+</li>
+        </ul>
+</section>
+</div>
+<div id="aauth-r3-vocabulary-identifiers">
+<section id="section-14.2">
+        <h3 id="name-aauth-r3-vocabulary-identif">
+<a href="#section-14.2" class="section-number selfRef">14.2. </a><a href="#name-aauth-r3-vocabulary-identif" class="section-name selfRef">AAuth R3 Vocabulary Identifiers</a>
+        </h3>
+<p id="section-14.2-1">This specification defines the following R3 vocabulary identifier:<a href="#section-14.2-1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-14.2-2.1">
+            <code>urn:aauth:vocabulary:asyncapi</code>: AAuth AsyncAPI event vocabulary.<a href="#section-14.2-2.1" class="pilcrow">¶</a>
+</li>
+        </ul>
+</section>
+</div>
+</section>
+</div>
+<div id="implementation-status">
+<section id="section-15">
+      <h2 id="name-implementation-status">
+<a href="#section-15" class="section-number selfRef">15. </a><a href="#name-implementation-status" class="section-name selfRef">Implementation Status</a>
+      </h2>
+<p id="section-15-1"><em>Note: This section is to be removed before publishing as an RFC.</em><a href="#section-15-1" class="pilcrow">¶</a></p>
+<p id="section-15-2">TBD<a href="#section-15-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="document-history">
+<section id="section-16">
+      <h2 id="name-document-history">
+<a href="#section-16" class="section-number selfRef">16. </a><a href="#name-document-history" class="section-name selfRef">Document History</a>
+      </h2>
+<p id="section-16-1"><em>Note: This section is to be removed before publishing as an RFC.</em><a href="#section-16-1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-16-2.1">
+          <p id="section-16-2.1.1">draft-hardt-aauth-events-00<a href="#section-16-2.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-16-2.1.2.1">Initial draft.<a href="#section-16-2.1.2.1" class="pilcrow">¶</a>
+</li>
+          </ul>
+</li>
+      </ul>
+</section>
+</div>
+<div id="acknowledgments">
+<section id="section-17">
+      <h2 id="name-acknowledgments">
+<a href="#section-17" class="section-number selfRef">17. </a><a href="#name-acknowledgments" class="section-name selfRef">Acknowledgments</a>
+      </h2>
+<p id="section-17-1">The author would like to thank reviewers for their feedback on concepts and earlier drafts: Rohit Khare.<a href="#section-17-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<section id="section-18">
+      <h2 id="name-references">
+<a href="#section-18" class="section-number selfRef">18. </a><a href="#name-references" class="section-name selfRef">References</a>
+      </h2>
+<section id="section-18.1">
+        <h3 id="name-normative-references">
+<a href="#section-18.1" class="section-number selfRef">18.1. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+        </h3>
+<dl class="references">
+<dt id="I-D.hardt-aauth-r3">[I-D.hardt-aauth-r3]</dt>
+        <dd>
+<span class="refAuthor">Hardt, D.</span>, <span class="refTitle">"AAuth Rich Resource Requests (R3)"</span>, <time datetime="2026" class="refDate">2026</time>, <span>&lt;<a href="https://github.com/dickhardt/AAuth">https://github.com/dickhardt/AAuth</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="I-D.hardt-httpbis-signature-key">[I-D.hardt-httpbis-signature-key]</dt>
+        <dd>
+<span class="refAuthor">Hardt, D.</span> and <span class="refAuthor">T. Meunier</span>, <span class="refTitle">"HTTP Signature Keys"</span>, <time datetime="2026" class="refDate">2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-hardt-httpbis-signature-key">https://datatracker.ietf.org/doc/draft-hardt-httpbis-signature-key</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="I-D.hardt-oauth-aauth-protocol">[I-D.hardt-oauth-aauth-protocol]</dt>
+        <dd>
+<span class="refAuthor">Hardt, D.</span>, <span class="refTitle">"AAuth Protocol"</span>, <time datetime="2026" class="refDate">2026</time>, <span>&lt;<a href="https://github.com/dickhardt/AAuth">https://github.com/dickhardt/AAuth</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC7800">[RFC7800]</dt>
+      <dd>
+<span class="refAuthor">Jones, M.</span>, <span class="refAuthor">Bradley, J.</span>, and <span class="refAuthor">H. Tschofenig</span>, <span class="refTitle">"Proof-of-Possession Key Semantics for JSON Web Tokens (JWTs)"</span>, <span class="seriesInfo">RFC 7800</span>, <span class="seriesInfo">DOI 10.17487/RFC7800</span>, <time datetime="2016-04" class="refDate">April 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7800">https://www.rfc-editor.org/info/rfc7800</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+<section id="section-18.2">
+        <h3 id="name-informative-references">
+<a href="#section-18.2" class="section-number selfRef">18.2. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
+        </h3>
+<dl class="references">
+<dt id="AsyncAPI">[AsyncAPI]</dt>
+        <dd>
+<span class="refAuthor">AsyncAPI Initiative</span>, <span class="refTitle">"AsyncAPI Specification 3.0.0"</span>, <time datetime="2023" class="refDate">2023</time>, <span>&lt;<a href="https://www.asyncapi.com/docs/reference/specification/v3.0.0">https://www.asyncapi.com/docs/reference/specification/v3.0.0</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="I-D.hardt-aauth-bootstrap">[I-D.hardt-aauth-bootstrap]</dt>
+      <dd>
+<span class="refAuthor">Hardt, D.</span>, <span class="refTitle">"AAuth Bootstrap Guidance"</span>, <time datetime="2026" class="refDate">2026</time>, <span>&lt;<a href="https://github.com/dickhardt/AAuth">https://github.com/dickhardt/AAuth</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+</section>
+<div id="design-rationale">
+<section id="appendix-A">
+      <h2 id="name-design-rationale">
+<a href="#appendix-A" class="section-number selfRef">Appendix A. </a><a href="#name-design-rationale" class="section-name selfRef">Design Rationale</a>
+      </h2>
+<p id="appendix-A-1">This appendix explains the key design decisions in AAuth Events and the alternatives considered.<a href="#appendix-A-1" class="pilcrow">¶</a></p>
+<div id="why-the-ap-is-the-delivery-intermediary">
+<section id="appendix-A.1">
+        <h3 id="name-why-the-ap-is-the-delivery-">
+<a href="#appendix-A.1" class="section-number selfRef">A.1. </a><a href="#name-why-the-ap-is-the-delivery-" class="section-name selfRef">Why the AP Is the Delivery Intermediary</a>
+        </h3>
+<p id="appendix-A.1-1">Agents are workloads, not servers. They spin up, execute, and terminate. They run behind NAT, inside containers, or on mobile devices. They have no stable public endpoint.<a href="#appendix-A.1-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.1-2">Every existing push delivery mechanism (webhooks, WebSub, CIBA ping/push mode, W3C Web Push) assumes the subscriber has a stable HTTP endpoint. W3C Web Push is the closest analog to what AAuth Events does — it uses a browser push service (Google/Apple/Mozilla) as the subscriber's stable address. AAuth Events uses the AP in this role, with two improvements: the AP already has a trust relationship with the agent (it issued the agent's identity token), and the subscriber's identity is cryptographic (not just an opaque push service subscription).<a href="#appendix-A.1-2" class="pilcrow">¶</a></p>
+<p id="appendix-A.1-3">The AP-as-inbox pattern mirrors how email works: you do not need to be online when someone sends you mail. The mail server is the stable address. AAuth Events gives agents the same property for event delivery.<a href="#appendix-A.1-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="why-the-subscribe-token-is-the-signature-key-jwt">
+<section id="appendix-A.2">
+        <h3 id="name-why-the-subscribe-token-is-">
+<a href="#appendix-A.2" class="section-number selfRef">A.2. </a><a href="#name-why-the-subscribe-token-is-" class="section-name selfRef">Why the Subscribe Token Is the Signature-Key JWT</a>
+        </h3>
+<p id="appendix-A.2-1">The subscribe token simultaneously serves two functions: it proves the agent's identity (via <code>cnf.jwk</code> + HTTP signature) and registers the subscription (via <code>eid</code>, <code>aud</code>, <code>exp</code>). Presenting it as the <code>Signature-Key</code> JWT means a single signed HTTP request to the subscription endpoint accomplishes both without a separate credential or header.<a href="#appendix-A.2-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.2-2">This is structurally analogous to the agent token — both are AP-signed JWTs with <code>cnf.jwk</code>, distinguished by <code>typ</code>. The resource's verification path is the same whether it is processing an identity-based request with an agent token or a subscription registration with a subscribe token.<a href="#appendix-A.2-2" class="pilcrow">¶</a></p>
+<p id="appendix-A.2-3">The alternative — a separate header or body parameter carrying the subscribe token alongside the normal agent token — was rejected because it requires two credentials where the subscribe token alone is sufficient.<a href="#appendix-A.2-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="why-aud-in-the-subscribe-token-is-the-resource">
+<section id="appendix-A.3">
+        <h3 id="name-why-aud-in-the-subscribe-to">
+<a href="#appendix-A.3" class="section-number selfRef">A.3. </a><a href="#name-why-aud-in-the-subscribe-to" class="section-name selfRef">Why <code>aud</code> in the Subscribe Token Is the Resource</a>
+        </h3>
+<p id="appendix-A.3-1">The <code>aud</code> claim restricts event delivery authorization to a specific resource. Only the resource named in <code>aud</code> may deliver events for this <code>eid</code> to the AP. This prevents:<a href="#appendix-A.3-1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="appendix-A.3-2.1">A compromised resource from injecting events into another agent's subscription channels.<a href="#appendix-A.3-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="appendix-A.3-2.2">The AP from accepting events from unexpected callers.<a href="#appendix-A.3-2.2" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="appendix-A.3-3">The AP enforces this by matching the calling resource (identified by its HTTP signature) against the <code>aud</code> in the subscribe token stored in the subscription record.<a href="#appendix-A.3-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="why-exp-is-the-jwt-validity-period-not-the-subscription-lifetime">
+<section id="appendix-A.4">
+        <h3 id="name-why-exp-is-the-jwt-validity">
+<a href="#appendix-A.4" class="section-number selfRef">A.4. </a><a href="#name-why-exp-is-the-jwt-validity" class="section-name selfRef">Why <code>exp</code> Is the JWT Validity Period, Not the Subscription Lifetime</a>
+        </h3>
+<p id="appendix-A.4-1">Subscription lifetime is a negotiation between the agent and the resource at registration time. The resource has its own policy on maximum subscription duration. These durations can be days or months and are resource-specific.<a href="#appendix-A.4-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.4-2">The subscribe token's <code>exp</code> is the standard JWT validity window — how long the resource may accept this token for registration. Conflating JWT validity with subscription lifetime would either force a very long-lived token (security concern: replay window) or a very short subscription (UX concern: subscriptions expire before they're useful).<a href="#appendix-A.4-2" class="pilcrow">¶</a></p>
+<p id="appendix-A.4-3">The resource stores the subscription record with whatever lifetime the agent and resource negotiate at registration. The subscribe token is a registration credential, not a subscription policy document.<a href="#appendix-A.4-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="why-max-uses-is-in-the-subscribe-token">
+<section id="appendix-A.5">
+        <h3 id="name-why-max_uses-is-in-the-subs">
+<a href="#appendix-A.5" class="section-number selfRef">A.5. </a><a href="#name-why-max_uses-is-in-the-subs" class="section-name selfRef">Why <code>max_uses</code> Is in the Subscribe Token</a>
+        </h3>
+<p id="appendix-A.5-1"><code>max_uses</code> is the AP's throttle on how many event tokens it will accept for a given <code>eid</code>. It is AP-enforced, not resource-enforced. Placing it in the subscribe token — which the AP issued and controls — makes it AP-policy without requiring a separate AP configuration step.<a href="#appendix-A.5-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.5-2">For single-shot events (confirm this reservation), <code>max_uses: 1</code> ensures the AP accepts exactly one event. For ongoing subscriptions, <code>max_uses</code> is omitted (unlimited). When <code>max_uses</code> is absent, there is no sentinel value — absence means unlimited, avoiding any need for a special value such as -1.<a href="#appendix-A.5-2" class="pilcrow">¶</a></p>
+<p id="appendix-A.5-3">The AP informs the resource of remaining uses in the <code>202 Accepted</code> response body after each delivery. The resource SHOULD use <code>remaining_uses: 0</code> as the signal to clean up its subscription record and prompt the agent to re-subscribe. This keeps the AP as the enforcement point while giving the resource the state it needs to manage the subscription lifecycle.<a href="#appendix-A.5-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="why-the-event-token-is-the-transport-layer-not-the-data-layer">
+<section id="appendix-A.6">
+        <h3 id="name-why-the-event-token-is-the-">
+<a href="#appendix-A.6" class="section-number selfRef">A.6. </a><a href="#name-why-the-event-token-is-the-" class="section-name selfRef">Why the Event Token Is the Transport Layer, Not the Data Layer</a>
+        </h3>
+<p id="appendix-A.6-1">The event token carries only what is needed for security, routing, and correlation: <code>iss</code>, <code>aud</code>, <code>eid</code>, <code>exp</code>. It is the cryptographic layer — the AP uses it to authenticate the resource, look up the subscription, and verify the delivery is authorized. The agent uses it to verify authenticity and look up its context via <code>eid</code>.<a href="#appendix-A.6-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.6-2">Event-specific data travels as a separate <code>payload</code> in the same POST body. The AsyncAPI message schema for the event type defines the payload structure. This separation keeps the JWT minimal and avoids embedding event data in a signed-but-not-encrypted envelope. For events where the agent needs full details beyond the payload, it fetches them from the resource's data API using a current auth token.<a href="#appendix-A.6-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="why-the-event-token-uses-the-self-jwt-scheme">
+<section id="appendix-A.7">
+        <h3 id="name-why-the-event-token-uses-th">
+<a href="#appendix-A.7" class="section-number selfRef">A.7. </a><a href="#name-why-the-event-token-uses-th" class="section-name selfRef">Why the Event Token Uses the self-jwt Scheme</a>
+        </h3>
+<p id="appendix-A.7-1">Agent tokens and subscribe tokens use the <code>jwt</code> Signature-Key scheme because they are delegation credentials: the AP issues the JWT, and the JWT delegates HTTP signing authority to the agent's key via <code>cnf.jwk</code>. The event token has no delegation — the resource issues the JWT and signs the HTTP request itself, with the same key. The <code>self-jwt</code> scheme (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>) models exactly this: the JWT issuer and the HTTP signer are the same party, <code>cnf</code> is absent, and the key discovered from <code>{iss}/.well-known/{dwk}</code> (matched by <code>kid</code>) verifies both the JWT and the HTTP Message Signature. Using <code>self-jwt</code> lets the event token carry application claims (<code>eid</code>, <code>aud</code>, <code>exp</code>) in the Signature-Key JWT without inventing an AAuth-specific extension to the <code>jwt</code> scheme.<a href="#appendix-A.7-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="why-exp-in-the-event-token-is-the-response-window">
+<section id="appendix-A.8">
+        <h3 id="name-why-exp-in-the-event-token-">
+<a href="#appendix-A.8" class="section-number selfRef">A.8. </a><a href="#name-why-exp-in-the-event-token-" class="section-name selfRef">Why <code>exp</code> in the Event Token Is the Response Window</a>
+        </h3>
+<p id="appendix-A.8-1">The <code>exp</code> claim in the event token defines how long the agent has to respond to the event. Its meaning is event-specific: for a waitlist slot, it is the deadline by which the agent must claim the slot; for a shipping confirmation, it may be a much longer acknowledgment window.<a href="#appendix-A.8-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.8-2">The AP delivers events in near real-time. If the AP cannot deliver an event before its <code>exp</code>, the agent should not act on it (the response window has closed). The agent verifies <code>exp</code> before acting.<a href="#appendix-A.8-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="why-protected-subscriptions-use-a-pre-authorized-url">
+<section id="appendix-A.9">
+        <h3 id="name-why-protected-subscriptions">
+<a href="#appendix-A.9" class="section-number selfRef">A.9. </a><a href="#name-why-protected-subscriptions" class="section-name selfRef">Why Protected Subscriptions Use a Pre-Authorized URL</a>
+        </h3>
+<p id="appendix-A.9-1">For protected event channels, the resource needs to verify that the subscribing agent has been authorized in a prior interaction before accepting the subscription. The naive approach — requiring both an auth token and a subscribe token on the subscription call — is awkward because the two tokens serve different purposes and the auth token conveyance alongside a <code>Signature-Key</code> subscribe token has no established AAuth pattern.<a href="#appendix-A.9-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.9-2">The pre-authorized subscription URL pattern solves this cleanly: authorization is captured in the prior authenticated interaction, and the resource returns a ticket URL that encodes this context. The agent then presents only the subscribe token at the ticket URL. The HTTP signature covers the URL path (including the ticket), binding the subscribe token's identity to this specific authorization context.<a href="#appendix-A.9-2" class="pilcrow">¶</a></p>
+<p id="appendix-A.9-3">This mirrors established patterns (OAuth authorization codes, S3 presigned URLs) while preserving the AAuth Events invariant: all subscription endpoints accept only the subscribe token as the <code>Signature-Key</code> JWT.<a href="#appendix-A.9-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="why-asyncapi-is-the-discovery-vocabulary">
+<section id="appendix-A.10">
+        <h3 id="name-why-asyncapi-is-the-discove">
+<a href="#appendix-A.10" class="section-number selfRef">A.10. </a><a href="#name-why-asyncapi-is-the-discove" class="section-name selfRef">Why AsyncAPI Is the Discovery Vocabulary</a>
+        </h3>
+<p id="appendix-A.10-1">AsyncAPI is the de facto standard for describing event-driven APIs. It describes channels, message schemas, security requirements, and (via parameterized addresses) dynamic subscription endpoints. The AAuth R3 vocabulary framework already accommodates multiple vocabularies per resource — AsyncAPI sits naturally alongside OpenAPI for synchronous operations.<a href="#appendix-A.10-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.10-2">The target reader of an AAuth resource's AsyncAPI document is an AAuth-capable agent, not generic AsyncAPI tooling. This means the <code>aauth_subscribe</code> security scheme (type: <code>http</code>, scheme: <code>aauth-subscribe</code>) does not need to be understood by Swagger UI or code generators — it is a declaration for the agent's benefit, interpreted per this specification.<a href="#appendix-A.10-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="comparison-to-existing-patterns">
+<section id="appendix-A.11">
+        <h3 id="name-comparison-to-existing-patt">
+<a href="#appendix-A.11" class="section-number selfRef">A.11. </a><a href="#name-comparison-to-existing-patt" class="section-name selfRef">Comparison to Existing Patterns</a>
+        </h3>
+<table class="center" id="table-1">
+          <caption><a href="#table-1" class="selfRef">Table 1</a></caption>
+<thead>
+            <tr>
+              <th class="text-left" rowspan="1" colspan="1"></th>
+              <th class="text-left" rowspan="1" colspan="1">AAuth Events</th>
+              <th class="text-left" rowspan="1" colspan="1">Webhooks</th>
+              <th class="text-left" rowspan="1" colspan="1">WebSub</th>
+              <th class="text-left" rowspan="1" colspan="1">CIBA (ping)</th>
+              <th class="text-left" rowspan="1" colspan="1">Web Push</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">Receiver needs public URL</td>
+              <td class="text-left" rowspan="1" colspan="1">No</td>
+              <td class="text-left" rowspan="1" colspan="1">Yes</td>
+              <td class="text-left" rowspan="1" colspan="1">Yes</td>
+              <td class="text-left" rowspan="1" colspan="1">Yes</td>
+              <td class="text-left" rowspan="1" colspan="1">No</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">Caller identity</td>
+              <td class="text-left" rowspan="1" colspan="1">Cryptographic (resource key)</td>
+              <td class="text-left" rowspan="1" colspan="1">HMAC shared secret</td>
+              <td class="text-left" rowspan="1" colspan="1">None</td>
+              <td class="text-left" rowspan="1" colspan="1">Client creds</td>
+              <td class="text-left" rowspan="1" colspan="1">Push service</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">Subscriber identity at resource</td>
+              <td class="text-left" rowspan="1" colspan="1">Agent identifier (<code>sub</code>)</td>
+              <td class="text-left" rowspan="1" colspan="1">None</td>
+              <td class="text-left" rowspan="1" colspan="1">None</td>
+              <td class="text-left" rowspan="1" colspan="1">Client ID</td>
+              <td class="text-left" rowspan="1" colspan="1">Subscription ID</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">Per-operation subscription</td>
+              <td class="text-left" rowspan="1" colspan="1">Yes</td>
+              <td class="text-left" rowspan="1" colspan="1">No (account-level)</td>
+              <td class="text-left" rowspan="1" colspan="1">No</td>
+              <td class="text-left" rowspan="1" colspan="1">Yes</td>
+              <td class="text-left" rowspan="1" colspan="1">No</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">General event types</td>
+              <td class="text-left" rowspan="1" colspan="1">Yes</td>
+              <td class="text-left" rowspan="1" colspan="1">Yes</td>
+              <td class="text-left" rowspan="1" colspan="1">Yes</td>
+              <td class="text-left" rowspan="1" colspan="1">No (auth only)</td>
+              <td class="text-left" rowspan="1" colspan="1">Yes</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">Standard description format</td>
+              <td class="text-left" rowspan="1" colspan="1">AsyncAPI (R3)</td>
+              <td class="text-left" rowspan="1" colspan="1">Proprietary</td>
+              <td class="text-left" rowspan="1" colspan="1">Atom/RSS</td>
+              <td class="text-left" rowspan="1" colspan="1">N/A</td>
+              <td class="text-left" rowspan="1" colspan="1">None</td>
+            </tr>
+          </tbody>
+        </table>
+</section>
+</div>
+</section>
+</div>
+<div id="non-normative-ap-agent">
+<section id="appendix-B">
+      <h2 id="name-non-normative-ap-to-agent-d">
+<a href="#appendix-B" class="section-number selfRef">Appendix B. </a><a href="#name-non-normative-ap-to-agent-d" class="section-name selfRef">Non-Normative AP-to-Agent Delivery Examples</a>
+      </h2>
+<p id="appendix-B-1">How the AP delivers an event token to an agent is platform-dependent and not specified by this document. The following examples illustrate common patterns, paralleling the approach taken in <span>[<a href="#I-D.hardt-aauth-bootstrap" class="cite xref">I-D.hardt-aauth-bootstrap</a>]</span> for agent token acquisition.<a href="#appendix-B-1" class="pilcrow">¶</a></p>
+<div id="workload-agents">
+<section id="appendix-B.1">
+        <h3 id="name-workload-agents">
+<a href="#appendix-B.1" class="section-number selfRef">B.1. </a><a href="#name-workload-agents" class="section-name selfRef">Workload Agents</a>
+        </h3>
+<p id="appendix-B.1-1">A workload agent (running in a cloud function, container, or batch job) may poll the AP for pending event tokens on startup, using an AP-internal endpoint. The AP acts as a durable inbox — storing event tokens until the workload polls. The workload validates and processes pending events before beginning its primary task.<a href="#appendix-B.1-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="mobile-agents">
+<section id="appendix-B.2">
+        <h3 id="name-mobile-agents">
+<a href="#appendix-B.2" class="section-number selfRef">B.2. </a><a href="#name-mobile-agents" class="section-name selfRef">Mobile Agents</a>
+        </h3>
+<p id="appendix-B.2-1">A mobile agent may receive events via the platform's native push notification infrastructure (APNs on iOS, FCM on Android). The AP holds a push token registered by the agent at enrollment time and delivers event tokens to the agent via push notification. The agent wakes on receipt, fetches the full event token from the AP if needed, and processes it.<a href="#appendix-B.2-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="web-agents">
+<section id="appendix-B.3">
+        <h3 id="name-web-agents">
+<a href="#appendix-B.3" class="section-number selfRef">B.3. </a><a href="#name-web-agents" class="section-name selfRef">Web Agents</a>
+        </h3>
+<p id="appendix-B.3-1">A web agent with a persistent session may receive events via a server-sent event (SSE) or WebSocket connection that the agent maintains to the AP. The AP streams event tokens over this connection as they arrive.<a href="#appendix-B.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="self-hosted-agents">
+<section id="appendix-B.4">
+        <h3 id="name-self-hosted-agents">
+<a href="#appendix-B.4" class="section-number selfRef">B.4. </a><a href="#name-self-hosted-agents" class="section-name selfRef">Self-Hosted Agents</a>
+        </h3>
+<p id="appendix-B.4-1">A self-hosted agent may receive events in two ways depending on whether it manages its own AP or delegates to an external one.<a href="#appendix-B.4-1" class="pilcrow">¶</a></p>
+<p id="appendix-B.4-2">If the agent acts as its own AP (<span>[<a href="#I-D.hardt-aauth-bootstrap" class="cite xref">I-D.hardt-aauth-bootstrap</a>]</span>), it may expose an internal event endpoint. Events are delivered directly to this endpoint by the resource — the AP and agent are collocated.<a href="#appendix-B.4-2" class="pilcrow">¶</a></p>
+<p id="appendix-B.4-3">If the agent uses an external AP service, it maintains an outbound persistent connection (SSE, WebSocket, or a similar mechanism) to the AP's inbox service. The AP delivers event tokens and payloads over this connection as they arrive. The self-hosted agent does not need a public inbound endpoint — the outbound connection to the AP is sufficient.<a href="#appendix-B.4-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="authors-addresses">
+<section id="appendix-C">
+      <h2 id="name-authors-address">
+<a href="#name-authors-address" class="section-name selfRef">Author's Address</a>
+      </h2>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Dick Hardt</span></div>
+<div dir="auto" class="left"><span class="org">Hellō</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:dick.hardt@gmail.com" class="email">dick.hardt@gmail.com</a>
+</div>
+</address>
+</section>
+</div>
+<script>const toc = document.getElementById("toc");
+toc.querySelector("h2").addEventListener("click", e => {
+  toc.classList.toggle("active");
+});
+toc.querySelector("nav").addEventListener("click", e => {
+  toc.classList.remove("active");
+});
+</script>
+</body>
+</html>

@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                            15 June 2026
-Expires: 17 December 2026
+Intended status: Standards Track                            18 July 2026
+Expires: 19 January 2027
 
 
                    AAuth Rich Resource Requests (R3)
@@ -48,7 +48,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 17 December 2026.
+   This Internet-Draft will expire on 19 January 2027.
 
 Copyright Notice
 
@@ -71,14 +71,17 @@ Table of Contents
    3.  Terminology
    4.  Vocabularies
      4.1.  Resource Metadata Extensions
-     4.2.  Standard Vocabularies
-       4.2.1.  MCP Vocabulary (urn:aauth:vocabulary:mcp)
-       4.2.2.  OpenAPI Vocabulary (urn:aauth:vocabulary:openapi)
-       4.2.3.  gRPC Vocabulary (urn:aauth:vocabulary:grpc)
-       4.2.4.  GraphQL Vocabulary (urn:aauth:vocabulary:graphql)
-       4.2.5.  AsyncAPI Vocabulary (urn:aauth:vocabulary:asyncapi)
-       4.2.6.  WSDL Vocabulary (urn:aauth:vocabulary:wsdl)
-       4.2.7.  OData Vocabulary (urn:aauth:vocabulary:odata)
+     4.2.  Operation Identifier Scope
+     4.3.  Standard Vocabularies
+       4.3.1.  MCP Vocabulary (urn:aauth:vocabulary:mcp)
+       4.3.2.  OpenAPI Vocabulary (urn:aauth:vocabulary:openapi)
+       4.3.3.  OpenAPI Gateway Vocabulary
+               (urn:aauth:vocabulary:openapi-gateway)
+       4.3.4.  gRPC Vocabulary (urn:aauth:vocabulary:grpc)
+       4.3.5.  GraphQL Vocabulary (urn:aauth:vocabulary:graphql)
+       4.3.6.  AsyncAPI Vocabulary (urn:aauth:vocabulary:asyncapi)
+       4.3.7.  WSDL Vocabulary (urn:aauth:vocabulary:wsdl)
+       4.3.8.  OData Vocabulary (urn:aauth:vocabulary:odata)
    5.  Authorization Endpoint Extensions
      5.1.  Request
      5.2.  Response
@@ -106,6 +109,7 @@ Table of Contents
    11. IANA Considerations
      11.1.  JWT Claims Registration
      11.2.  R3 Vocabulary Registry
+       11.2.1.  Designated Expert Instructions
    12. Implementation Status
    13. Document History
    14. Acknowledgments
@@ -185,7 +189,7 @@ Table of Contents
    AAuth Protocol ([I-D.hardt-aauth-protocol]):
 
    {
-     "resource": "https://calendar.example.com",
+     "issuer": "https://calendar.example.com",
      "r3_vocabularies": {
        "urn:aauth:vocabulary:mcp": "https://calendar.example.com/mcp",
        "urn:aauth:vocabulary:openapi": "https://calendar.example.com/openapi.json"
@@ -198,12 +202,39 @@ Table of Contents
    this document, or third-party URI namespaces for proprietary
    vocabularies.  Values are vocabulary-specific discovery endpoints
    (the MCP server URL, the OpenAPI spec URL, the gRPC reflection
-   endpoint, etc.).  A resource MAY advertise multiple vocabularies
-   simultaneously.
+   endpoint, etc.).  A vocabulary MAY define a structured discovery
+   value in place of a single URL (see {{openapi-gateway-vocabulary}}).
+   A resource MAY advertise multiple vocabularies simultaneously.
 
-4.2.  Standard Vocabularies
+4.2.  Operation Identifier Scope
 
-   This document defines seven standard vocabularies.  Third parties MAY
+   Operation identifiers are scoped to the discovery endpoint the
+   resource advertises for that vocabulary in r3_vocabularies.  A
+   resource advertises exactly one discovery endpoint per vocabulary,
+   and each underlying format requires operation identifiers to be
+   unique within a single definition (OpenAPI operationId within a
+   document, MCP tool names within a server, GraphQL operation names
+   within a schema, AsyncAPI operationId within a document).  Bare
+   identifiers in r3_operations requests, R3 documents, and r3_granted/
+   r3_conditional claims therefore resolve unambiguously against that
+   one definition, and no additional qualifier appears in tokens.
+
+   A resource that aggregates multiple backend services behind a single
+   resource identifier MUST do one of the following: present them as one
+   valid definition at the discovery endpoint (renaming colliding
+   identifiers as needed to satisfy the format's uniqueness rules),
+   expose the services under separate resource identifiers (in which
+   case the auth token's aud claim distinguishes them), or advertise a
+   vocabulary whose operation entries qualify identifiers per service,
+   such as the OpenAPI Gateway vocabulary ({{openapi-gateway-
+   vocabulary}}).  Identical identifiers at _different_ resources are
+   already disambiguated by token binding: an auth token is bound to one
+   resource via aud, and r3_uri/r3_s256 pin the exact R3 document the
+   grant was drawn from.
+
+4.3.  Standard Vocabularies
+
+   This document defines eight standard vocabularies.  Third parties MAY
    define additional vocabularies using their own URI namespaces.  Each
    vocabulary defines: the vocabulary URI, the structure of operation
    requests, how the resource maps operations to R3 documents, and the
@@ -211,7 +242,7 @@ Table of Contents
 
    Standard vocabularies use the urn:aauth:vocabulary: namespace.
 
-4.2.1.  MCP Vocabulary (urn:aauth:vocabulary:mcp)
+4.3.1.  MCP Vocabulary (urn:aauth:vocabulary:mcp)
 
    For resources that expose an MCP server.  The discovery endpoint is
    the MCP server URL.  Agents discover available tool names via MCP
@@ -230,7 +261,7 @@ Table of Contents
      ]
    }
 
-4.2.2.  OpenAPI Vocabulary (urn:aauth:vocabulary:openapi)
+4.3.2.  OpenAPI Vocabulary (urn:aauth:vocabulary:openapi)
 
    For resources that expose an OpenAPI-described HTTP API.  The
    discovery endpoint is the OpenAPI specification URL.  Agents discover
@@ -249,7 +280,56 @@ Table of Contents
      ]
    }
 
-4.2.3.  gRPC Vocabulary (urn:aauth:vocabulary:grpc)
+4.3.3.  OpenAPI Gateway Vocabulary (urn:aauth:vocabulary:openapi-
+        gateway)
+
+   For resources that front multiple OpenAPI-described services behind a
+   single resource identifier, such as an API gateway.  The OpenAPI
+   vocabulary ({{openapi-vocabulary}}) assumes a single OpenAPI document
+   per resource; this vocabulary supports several without requiring the
+   gateway to merge specifications or rename colliding operationId
+   values.  The complexity of multi-service aggregation is confined to
+   this syntax — single-service resources use the plain OpenAPI
+   vocabulary and carry unqualified operations.
+
+   The discovery value in r3_vocabularies is not a single URL but a JSON
+   object mapping service labels to OpenAPI specification URLs:
+
+   {
+     "issuer": "https://gateway.example.com",
+     "r3_vocabularies": {
+       "urn:aauth:vocabulary:openapi-gateway": {
+         "calendar": "https://gateway.example.com/calendar/openapi.json",
+         "billing": "https://gateway.example.com/billing/openapi.json"
+       }
+     }
+   }
+
+   Service labels are chosen by the resource and SHOULD be stable: they
+   appear in R3 documents and auth token claims, so relabeling a service
+   invalidates the grants that reference it even when the underlying
+   specification is unchanged.
+
+   Each operation entry contains:
+
+   *  *service* (REQUIRED).  A service label.  MUST match a key in the
+      discovery object.
+   *  *operationId* (REQUIRED).  The operationId as defined in that
+      service's OpenAPI specification.
+
+   The pair (service, operationId) identifies an operation. operationId
+   uniqueness is required only within a single service's specification;
+   the same operationId MAY appear under different services.
+
+   {
+     "vocabulary": "urn:aauth:vocabulary:openapi-gateway",
+     "operations": [
+       { "service": "calendar", "operationId": "createEvent" },
+       { "service": "billing", "operationId": "createEvent" }
+     ]
+   }
+
+4.3.4.  gRPC Vocabulary (urn:aauth:vocabulary:grpc)
 
    For resources that expose a gRPC server.  The discovery endpoint is
    the gRPC server reflection endpoint (supporting
@@ -268,7 +348,7 @@ Table of Contents
      ]
    }
 
-4.2.4.  GraphQL Vocabulary (urn:aauth:vocabulary:graphql)
+4.3.5.  GraphQL Vocabulary (urn:aauth:vocabulary:graphql)
 
    For resources that expose a GraphQL API.  The discovery endpoint is
    the GraphQL endpoint.  Agents discover available operations via
@@ -288,16 +368,22 @@ Table of Contents
      ]
    }
 
-4.2.5.  AsyncAPI Vocabulary (urn:aauth:vocabulary:asyncapi)
+4.3.6.  AsyncAPI Vocabulary (urn:aauth:vocabulary:asyncapi)
 
-   For resources that expose an event-driven interface described by
-   AsyncAPI.  The discovery endpoint is the AsyncAPI specification URL.
-
-   Each operation entry contains:
+   For resources that emit events described by AsyncAPI.  The discovery
+   endpoint is the AsyncAPI specification URL.
 
    *  *operationId* (REQUIRED).  The operationId as defined in the
       AsyncAPI specification.
-   *  *action* (REQUIRED).  One of send or receive.
+   *  *action* (OPTIONAL).  The AsyncAPI action type: send or receive.
+      Agents subscribing to events use receive.
+
+   When a resource grants an agent an AsyncAPI subscription operation
+   via R3, the actual subscription registration and event delivery use
+   the AAuth Events protocol ([I-D.hardt-aauth-events]).  The resource
+   issues a subscription ticket URL in response to the authenticated
+   request; the agent then completes subscription registration using a
+   subscribe token per AAuth Events.
 
    {
      "vocabulary": "urn:aauth:vocabulary:asyncapi",
@@ -307,7 +393,7 @@ Table of Contents
      ]
    }
 
-4.2.6.  WSDL Vocabulary (urn:aauth:vocabulary:wsdl)
+4.3.7.  WSDL Vocabulary (urn:aauth:vocabulary:wsdl)
 
    For resources that expose a SOAP/WSDL-described web service.  The
    discovery endpoint is the WSDL document URL.
@@ -326,7 +412,7 @@ Table of Contents
      ]
    }
 
-4.2.7.  OData Vocabulary (urn:aauth:vocabulary:odata)
+4.3.8.  OData Vocabulary (urn:aauth:vocabulary:odata)
 
    For resources that expose an OData service.  The discovery endpoint
    is the OData service root URL.  Agents discover entity sets,
@@ -621,11 +707,12 @@ Table of Contents
    enforce authorization directly from these claims.
 
    Base claims (from AAuth Protocol): - iss: Auth server URL - dwk:
-   aauth-issuer.json - aud: Resource URL - jti: Unique token identifier
-   - agent: Agent identifier - cnf: Confirmation claim with jwk
-   containing the agent's public key - iat: Issued at timestamp - exp:
-   Expiration timestamp - sub: User identifier (conditional) - scope:
-   Authorized scopes (conditional)
+   aauth-access.json (issued by an AS) or aauth-person.json (issued by a
+   PS) - aud: Resource URL - jti: Unique token identifier - agent: Agent
+   identifier - cnf: Confirmation claim with jwk containing the agent's
+   public key - iat: Issued at timestamp - exp: Expiration timestamp -
+   sub: User identifier (conditional) - scope: Authorized scopes
+   (conditional)
 
    R3 extension claims: - *r3_uri* (REQUIRED for R3): The URI of the R3
    document that was in effect at approval time. - *r3_s256* (REQUIRED
@@ -643,7 +730,7 @@ Table of Contents
 
    {
      "iss": "https://as.example.com",
-     "dwk": "aauth-issuer.json",
+     "dwk": "aauth-access.json",
      "aud": "https://calendar.example.com",
      "jti": "at-9d4c1e",
      "agent": "assistant@agent.example",
@@ -890,28 +977,64 @@ Table of Contents
    This specification establishes the AAuth R3 Vocabulary Registry.  The
    initial contents are:
 
-    +===============================+================+===============+
-    | Vocabulary URI                | Interface Type | Reference     |
-    +===============================+================+===============+
-    | urn:aauth:vocabulary:mcp      | MCP server     | This document |
-    +-------------------------------+----------------+---------------+
-    | urn:aauth:vocabulary:openapi  | HTTP/REST      | This document |
-    +-------------------------------+----------------+---------------+
-    | urn:aauth:vocabulary:grpc     | gRPC           | This document |
-    +-------------------------------+----------------+---------------+
-    | urn:aauth:vocabulary:graphql  | GraphQL        | This document |
-    +-------------------------------+----------------+---------------+
-    | urn:aauth:vocabulary:asyncapi | Event-driven   | This document |
-    +-------------------------------+----------------+---------------+
-    | urn:aauth:vocabulary:wsdl     | SOAP/WSDL      | This document |
-    +-------------------------------+----------------+---------------+
-    | urn:aauth:vocabulary:odata    | OData          | This document |
-    +-------------------------------+----------------+---------------+
+    +======================================+================+=========+
+    | Vocabulary URI                       | Interface Type |Reference|
+    +======================================+================+=========+
+    | urn:aauth:vocabulary:mcp             | MCP server     |This     |
+    |                                      |                |document |
+    +--------------------------------------+----------------+---------+
+    | urn:aauth:vocabulary:openapi         | HTTP/REST      |This     |
+    |                                      |                |document |
+    +--------------------------------------+----------------+---------+
+    | urn:aauth:vocabulary:openapi-gateway | HTTP/REST      |This     |
+    |                                      | (multi-service |document |
+    |                                      | gateway)       |         |
+    +--------------------------------------+----------------+---------+
+    | urn:aauth:vocabulary:grpc            | gRPC           |This     |
+    |                                      |                |document |
+    +--------------------------------------+----------------+---------+
+    | urn:aauth:vocabulary:graphql         | GraphQL        |This     |
+    |                                      |                |document |
+    +--------------------------------------+----------------+---------+
+    | urn:aauth:vocabulary:asyncapi        | Event-driven   |This     |
+    |                                      |                |document |
+    +--------------------------------------+----------------+---------+
+    | urn:aauth:vocabulary:wsdl            | SOAP/WSDL      |This     |
+    |                                      |                |document |
+    +--------------------------------------+----------------+---------+
+    | urn:aauth:vocabulary:odata           | OData          |This     |
+    |                                      |                |document |
+    +--------------------------------------+----------------+---------+
 
-                                 Table 2
+                                  Table 2
 
    New values may be registered following the Specification Required
-   policy ([RFC8126]).
+   policy ([RFC8126], Section 4.6).
+
+11.2.1.  Designated Expert Instructions
+
+   Registration requests for the AAuth R3 Vocabulary Registry are
+   evaluated by a designated expert appointed by the IESG.  Registration
+   requests should be sent to IANA, which will forward them to the
+   designated expert.  The expert is expected to respond within two
+   weeks.  Denials should include an explanation and, if applicable,
+   suggestions for how the request could be revised to be successful.
+
+   A registration request must include the proposed vocabulary URI, the
+   interface type it describes, and a reference to the specification
+   defining it.  The designated expert should verify that:
+
+   *  The vocabulary URI follows the urn:aauth:vocabulary:<name>
+      pattern, where <name> is a lowercase token using only lowercase
+      letters, digits, and hyphen, and is not confusingly similar to an
+      existing entry.
+   *  The referenced specification is stable and freely available, and
+      defines how operation identifiers are derived from the interface
+      description in sufficient detail that independent implementations
+      produce the same identifiers for the same interface.
+   *  The vocabulary covers an interface type not already served by an
+      existing entry, or provides clear justification for an alternative
+      vocabulary for an existing interface type.
 
 12.  Implementation Status
 
@@ -930,7 +1053,23 @@ Table of Contents
 
    _Note: This section is to be removed before publishing as an RFC._
 
+   *  draft-hardt-aauth-r3-01
+
+      -  IANA review feedback: added Designated Expert Instructions for
+         the AAuth R3 Vocabulary Registry per RFC 8126 Section 4.5.
+      -  Added per-call proposals for conditional operations
+      -  Content addressing hashes the bytes as served; removed
+         canonicalization
+      -  Defined composition when requested operations span multiple R3
+         documents
+      -  Added operation identifier scope rules and the OpenAPI Gateway
+         vocabulary for resources fronting multiple services
+      -  Aligned with AAuth Protocol: issuer in resource metadata, dwk
+         values aauth-access.json/aauth-person.json in auth tokens
+      -  Renamed MM to PS; examples use EdDSA
+
    *  draft-hardt-aauth-r3-00
+
       -  Initial submission
 
 14.  Acknowledgments
@@ -951,6 +1090,10 @@ Table of Contents
               <https://www.rfc-editor.org/info/rfc8126>.
 
 15.2.  Informative References
+
+   [I-D.hardt-aauth-events]
+              Hardt, D., "AAuth Events", 2026,
+              <https://github.com/dickhardt/AAuth>.
 
    [RFC7942]  Sheffer, Y. and A. Farrel, "Improving Awareness of Running
               Code: The Implementation Status Section", BCP 205,
@@ -1009,6 +1152,12 @@ Appendix B.  Vocabulary Summary
    +-----------------------------+---------+----------------+-------------+
    |urn:aauth:vocabulary:openapi |HTTP/REST|operationId     |OpenAPI spec |
    |                             |         |                |URL          |
+   +-----------------------------+---------+----------------+-------------+
+   |urn:aauth:vocabulary:openapi-|HTTP/REST|service +       |Map of       |
+   |gateway                      |(multi-  |operationId     |service      |
+   |                             |service  |                |labels to    |
+   |                             |gateway) |                |OpenAPI spec |
+   |                             |         |                |URLs         |
    +-----------------------------+---------+----------------+-------------+
    |urn:aauth:vocabulary:grpc    |gRPC     |package.Service/|Server       |
    |                             |         |Method          |reflection or|

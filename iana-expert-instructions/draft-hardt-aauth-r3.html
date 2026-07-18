@@ -9,25 +9,26 @@
 <meta content="
        This document defines AAuth Rich Resource Requests (R3), an extension to the AAuth Protocol ( ) that enables structured, vocabulary-based authorization for resource access. Resources publish R3 documents (content-addressed authorization definitions) and advertise vocabularies describing their operations. Agents request access using those vocabularies. Auth tokens carry granted operations in the same vocabulary format, enabling resources to enforce authorization directly from the token. R3 provides human-displayable context for consent decisions and content-addressed audit provenance via the  r3_s256  hash in auth tokens. 
     " name="description">
-<meta content="xml2rfc 3.33.0" name="generator">
+<meta content="xml2rfc 3.34.0" name="generator">
 <meta content="agent" name="keyword">
 <meta content="authorization" name="keyword">
 <meta content="http" name="keyword">
 <meta content="resource" name="keyword">
 <meta content="draft-hardt-aauth-r3-latest" name="ietf.draft">
 <!-- Generator version information:
-  xml2rfc 3.33.0
-    Python 3.12.13
-    ConfigArgParse 1.7
+  xml2rfc 3.34.0
+    Python 3.14.5
+    ConfigArgParse 1.7.5
     google-i18n-address 3.1.1
     intervaltree 3.2.1
     Jinja2 3.1.6
-    lxml 6.0.2
-    platformdirs 4.9.6
+    lxml 6.1.1
+    natsort 8.4.0
+    platformdirs 4.10.1
     pycountry 24.6.1
     PyYAML 6.0.3
     requests 2.33.1
-    wcwidth 0.7.0
+    wcwidth 0.8.2
 -->
 <link href="draft-hardt-aauth-r3.xml" rel="alternate" type="application/rfc+xml">
 <link href="#copyright" rel="license">
@@ -1046,11 +1047,11 @@ svg {
 <thead><tr>
 <td class="left">Internet-Draft</td>
 <td class="center">AAuth-R3</td>
-<td class="right">June 2026</td>
+<td class="right">July 2026</td>
 </tr></thead>
 <tfoot><tr>
 <td class="left">Hardt</td>
-<td class="center">Expires 17 December 2026</td>
+<td class="center">Expires 19 January 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1063,12 +1064,12 @@ svg {
 <dd class="internet-draft">draft-hardt-aauth-r3-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-06-15" class="published">15 June 2026</time>
+<time datetime="2026-07-18" class="published">18 July 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Standards Track</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2026-12-17">17 December 2026</time></dd>
+<dd class="expires"><time datetime="2027-01-19">19 January 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1109,7 +1110,7 @@ svg {
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 17 December 2026.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 19 January 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -1154,28 +1155,34 @@ svg {
                 <p id="section-toc.1-1.4.2.1.1"><a href="#section-4.1" class="auto internal xref">4.1</a>.  <a href="#name-resource-metadata-extension" class="internal xref">Resource Metadata Extensions</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.2">
-                <p id="section-toc.1-1.4.2.2.1"><a href="#section-4.2" class="auto internal xref">4.2</a>.  <a href="#name-standard-vocabularies" class="internal xref">Standard Vocabularies</a></p>
+                <p id="section-toc.1-1.4.2.2.1"><a href="#section-4.2" class="auto internal xref">4.2</a>.  <a href="#name-operation-identifier-scope" class="internal xref">Operation Identifier Scope</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.3">
+                <p id="section-toc.1-1.4.2.3.1"><a href="#section-4.3" class="auto internal xref">4.3</a>.  <a href="#name-standard-vocabularies" class="internal xref">Standard Vocabularies</a></p>
 <ul class="compact toc ulBare ulEmpty">
-<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.2.2.1">
-                    <p id="section-toc.1-1.4.2.2.2.1.1"><a href="#section-4.2.1" class="auto internal xref">4.2.1</a>.  <a href="#name-mcp-vocabulary-urnaauthvoca" class="internal xref">MCP Vocabulary (<code>urn:aauth:vocabulary:mcp</code>)</a></p>
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.3.2.1">
+                    <p id="section-toc.1-1.4.2.3.2.1.1"><a href="#section-4.3.1" class="auto internal xref">4.3.1</a>.  <a href="#name-mcp-vocabulary-urnaauthvoca" class="internal xref">MCP Vocabulary (<code>urn:aauth:vocabulary:mcp</code>)</a></p>
 </li>
-                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.2.2.2">
-                    <p id="section-toc.1-1.4.2.2.2.2.1"><a href="#section-4.2.2" class="auto internal xref">4.2.2</a>.  <a href="#name-openapi-vocabulary-urnaauth" class="internal xref">OpenAPI Vocabulary (<code>urn:aauth:vocabulary:openapi</code>)</a></p>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.3.2.2">
+                    <p id="section-toc.1-1.4.2.3.2.2.1"><a href="#section-4.3.2" class="auto internal xref">4.3.2</a>.  <a href="#name-openapi-vocabulary-urnaauth" class="internal xref">OpenAPI Vocabulary (<code>urn:aauth:vocabulary:openapi</code>)</a></p>
 </li>
-                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.2.2.3">
-                    <p id="section-toc.1-1.4.2.2.2.3.1"><a href="#section-4.2.3" class="auto internal xref">4.2.3</a>.  <a href="#name-grpc-vocabulary-urnaauthvoc" class="internal xref">gRPC Vocabulary (<code>urn:aauth:vocabulary:grpc</code>)</a></p>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.3.2.3">
+                    <p id="section-toc.1-1.4.2.3.2.3.1"><a href="#section-4.3.3" class="auto internal xref">4.3.3</a>.  <a href="#name-openapi-gateway-vocabulary-" class="internal xref">OpenAPI Gateway Vocabulary (<code>urn:aauth:vocabulary:openapi-gateway</code>)</a></p>
 </li>
-                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.2.2.4">
-                    <p id="section-toc.1-1.4.2.2.2.4.1"><a href="#section-4.2.4" class="auto internal xref">4.2.4</a>.  <a href="#name-graphql-vocabulary-urnaauth" class="internal xref">GraphQL Vocabulary (<code>urn:aauth:vocabulary:graphql</code>)</a></p>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.3.2.4">
+                    <p id="section-toc.1-1.4.2.3.2.4.1"><a href="#section-4.3.4" class="auto internal xref">4.3.4</a>.  <a href="#name-grpc-vocabulary-urnaauthvoc" class="internal xref">gRPC Vocabulary (<code>urn:aauth:vocabulary:grpc</code>)</a></p>
 </li>
-                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.2.2.5">
-                    <p id="section-toc.1-1.4.2.2.2.5.1"><a href="#section-4.2.5" class="auto internal xref">4.2.5</a>.  <a href="#name-asyncapi-vocabulary-urnaaut" class="internal xref">AsyncAPI Vocabulary (<code>urn:aauth:vocabulary:asyncapi</code>)</a></p>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.3.2.5">
+                    <p id="section-toc.1-1.4.2.3.2.5.1"><a href="#section-4.3.5" class="auto internal xref">4.3.5</a>.  <a href="#name-graphql-vocabulary-urnaauth" class="internal xref">GraphQL Vocabulary (<code>urn:aauth:vocabulary:graphql</code>)</a></p>
 </li>
-                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.2.2.6">
-                    <p id="section-toc.1-1.4.2.2.2.6.1"><a href="#section-4.2.6" class="auto internal xref">4.2.6</a>.  <a href="#name-wsdl-vocabulary-urnaauthvoc" class="internal xref">WSDL Vocabulary (<code>urn:aauth:vocabulary:wsdl</code>)</a></p>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.3.2.6">
+                    <p id="section-toc.1-1.4.2.3.2.6.1"><a href="#section-4.3.6" class="auto internal xref">4.3.6</a>.  <a href="#name-asyncapi-vocabulary-urnaaut" class="internal xref">AsyncAPI Vocabulary (<code>urn:aauth:vocabulary:asyncapi</code>)</a></p>
 </li>
-                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.2.2.7">
-                    <p id="section-toc.1-1.4.2.2.2.7.1"><a href="#section-4.2.7" class="auto internal xref">4.2.7</a>.  <a href="#name-odata-vocabulary-urnaauthvo" class="internal xref">OData Vocabulary (<code>urn:aauth:vocabulary:odata</code>)</a></p>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.3.2.7">
+                    <p id="section-toc.1-1.4.2.3.2.7.1"><a href="#section-4.3.7" class="auto internal xref">4.3.7</a>.  <a href="#name-wsdl-vocabulary-urnaauthvoc" class="internal xref">WSDL Vocabulary (<code>urn:aauth:vocabulary:wsdl</code>)</a></p>
+</li>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.3.2.8">
+                    <p id="section-toc.1-1.4.2.3.2.8.1"><a href="#section-4.3.8" class="auto internal xref">4.3.8</a>.  <a href="#name-odata-vocabulary-urnaauthvo" class="internal xref">OData Vocabulary (<code>urn:aauth:vocabulary:odata</code>)</a></p>
 </li>
                 </ul>
 </li>
@@ -1273,6 +1280,11 @@ svg {
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.2">
                 <p id="section-toc.1-1.11.2.2.1"><a href="#section-11.2" class="auto internal xref">11.2</a>.  <a href="#name-r3-vocabulary-registry" class="internal xref">R3 Vocabulary Registry</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.2.2.1">
+                    <p id="section-toc.1-1.11.2.2.2.1.1"><a href="#section-11.2.1" class="auto internal xref">11.2.1</a>.  <a href="#name-designated-expert-instructi" class="internal xref">Designated Expert Instructions</a></p>
+</li>
+                </ul>
 </li>
             </ul>
 </li>
@@ -1392,7 +1404,7 @@ svg {
 <p id="section-4.1-1">R3 extends the <code>/.well-known/aauth-resource.json</code> document defined in AAuth Protocol (<span>[<a href="#I-D.hardt-aauth-protocol" class="cite xref">I-D.hardt-aauth-protocol</a>]</span>):<a href="#section-4.1-1" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="section-4.1-2">
 <pre>{
-  "resource": "https://calendar.example.com",
+  "issuer": "https://calendar.example.com",
   "r3_vocabularies": {
     "urn:aauth:vocabulary:mcp": "https://calendar.example.com/mcp",
     "urn:aauth:vocabulary:openapi": "https://calendar.example.com/openapi.json"
@@ -1401,29 +1413,38 @@ svg {
 
 </pre><a href="#section-4.1-2" class="pilcrow">¶</a>
 </div>
-<p id="section-4.1-3"><strong><code>r3_vocabularies</code></strong> (OPTIONAL). A JSON object mapping vocabulary URIs to their discovery endpoints. Keys MUST be vocabulary URIs from the <code>urn:aauth:vocabulary:</code> namespace for standard vocabularies defined in this document, or third-party URI namespaces for proprietary vocabularies. Values are vocabulary-specific discovery endpoints (the MCP server URL, the OpenAPI spec URL, the gRPC reflection endpoint, etc.). A resource MAY advertise multiple vocabularies simultaneously.<a href="#section-4.1-3" class="pilcrow">¶</a></p>
+<p id="section-4.1-3"><strong><code>r3_vocabularies</code></strong> (OPTIONAL). A JSON object mapping vocabulary URIs to their discovery endpoints. Keys MUST be vocabulary URIs from the <code>urn:aauth:vocabulary:</code> namespace for standard vocabularies defined in this document, or third-party URI namespaces for proprietary vocabularies. Values are vocabulary-specific discovery endpoints (the MCP server URL, the OpenAPI spec URL, the gRPC reflection endpoint, etc.). A vocabulary MAY define a structured discovery value in place of a single URL (see {{openapi-gateway-vocabulary}}). A resource MAY advertise multiple vocabularies simultaneously.<a href="#section-4.1-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="operation-identifier-scope">
+<section id="section-4.2">
+        <h3 id="name-operation-identifier-scope">
+<a href="#section-4.2" class="section-number selfRef">4.2. </a><a href="#name-operation-identifier-scope" class="section-name selfRef">Operation Identifier Scope</a>
+        </h3>
+<p id="section-4.2-1">Operation identifiers are scoped to the discovery endpoint the resource advertises for that vocabulary in <code>r3_vocabularies</code>. A resource advertises exactly one discovery endpoint per vocabulary, and each underlying format requires operation identifiers to be unique within a single definition (OpenAPI <code>operationId</code> within a document, MCP tool names within a server, GraphQL operation names within a schema, AsyncAPI <code>operationId</code> within a document). Bare identifiers in <code>r3_operations</code> requests, R3 documents, and <code>r3_granted</code>/<code>r3_conditional</code> claims therefore resolve unambiguously against that one definition, and no additional qualifier appears in tokens.<a href="#section-4.2-1" class="pilcrow">¶</a></p>
+<p id="section-4.2-2">A resource that aggregates multiple backend services behind a single resource identifier MUST do one of the following: present them as one valid definition at the discovery endpoint (renaming colliding identifiers as needed to satisfy the format's uniqueness rules), expose the services under separate resource identifiers (in which case the auth token's <code>aud</code> claim distinguishes them), or advertise a vocabulary whose operation entries qualify identifiers per service, such as the OpenAPI Gateway vocabulary ({{openapi-gateway-vocabulary}}). Identical identifiers at <em>different</em> resources are already disambiguated by token binding: an auth token is bound to one resource via <code>aud</code>, and <code>r3_uri</code>/<code>r3_s256</code> pin the exact R3 document the grant was drawn from.<a href="#section-4.2-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="standard-vocabularies">
-<section id="section-4.2">
+<section id="section-4.3">
         <h3 id="name-standard-vocabularies">
-<a href="#section-4.2" class="section-number selfRef">4.2. </a><a href="#name-standard-vocabularies" class="section-name selfRef">Standard Vocabularies</a>
+<a href="#section-4.3" class="section-number selfRef">4.3. </a><a href="#name-standard-vocabularies" class="section-name selfRef">Standard Vocabularies</a>
         </h3>
-<p id="section-4.2-1">This document defines seven standard vocabularies. Third parties MAY define additional vocabularies using their own URI namespaces. Each vocabulary defines: the vocabulary URI, the structure of operation requests, how the resource maps operations to R3 documents, and the discovery endpoint.<a href="#section-4.2-1" class="pilcrow">¶</a></p>
-<p id="section-4.2-2">Standard vocabularies use the <code>urn:aauth:vocabulary:</code> namespace.<a href="#section-4.2-2" class="pilcrow">¶</a></p>
+<p id="section-4.3-1">This document defines eight standard vocabularies. Third parties MAY define additional vocabularies using their own URI namespaces. Each vocabulary defines: the vocabulary URI, the structure of operation requests, how the resource maps operations to R3 documents, and the discovery endpoint.<a href="#section-4.3-1" class="pilcrow">¶</a></p>
+<p id="section-4.3-2">Standard vocabularies use the <code>urn:aauth:vocabulary:</code> namespace.<a href="#section-4.3-2" class="pilcrow">¶</a></p>
 <div id="mcp-vocabulary">
-<section id="section-4.2.1">
+<section id="section-4.3.1">
           <h4 id="name-mcp-vocabulary-urnaauthvoca">
-<a href="#section-4.2.1" class="section-number selfRef">4.2.1. </a><a href="#name-mcp-vocabulary-urnaauthvoca" class="section-name selfRef">MCP Vocabulary (<code>urn:aauth:vocabulary:mcp</code>)</a>
+<a href="#section-4.3.1" class="section-number selfRef">4.3.1. </a><a href="#name-mcp-vocabulary-urnaauthvoca" class="section-name selfRef">MCP Vocabulary (<code>urn:aauth:vocabulary:mcp</code>)</a>
           </h4>
-<p id="section-4.2.1-1">For resources that expose an MCP server. The discovery endpoint is the MCP server URL. Agents discover available tool names via MCP tool discovery.<a href="#section-4.2.1-1" class="pilcrow">¶</a></p>
-<p id="section-4.2.1-2">Each operation entry contains:<a href="#section-4.2.1-2" class="pilcrow">¶</a></p>
+<p id="section-4.3.1-1">For resources that expose an MCP server. The discovery endpoint is the MCP server URL. Agents discover available tool names via MCP tool discovery.<a href="#section-4.3.1-1" class="pilcrow">¶</a></p>
+<p id="section-4.3.1-2">Each operation entry contains:<a href="#section-4.3.1-2" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-4.2.1-3.1">
-              <strong><code>tool</code></strong> (REQUIRED). The MCP tool name as advertised by the MCP server's tool discovery.<a href="#section-4.2.1-3.1" class="pilcrow">¶</a>
+<li class="compact" id="section-4.3.1-3.1">
+              <strong><code>tool</code></strong> (REQUIRED). The MCP tool name as advertised by the MCP server's tool discovery.<a href="#section-4.3.1-3.1" class="pilcrow">¶</a>
 </li>
           </ul>
-<div class="lang-json sourcecode" id="section-4.2.1-4">
+<div class="lang-json sourcecode" id="section-4.3.1-4">
 <pre>{
   "vocabulary": "urn:aauth:vocabulary:mcp",
   "operations": [
@@ -1432,23 +1453,23 @@ svg {
   ]
 }
 
-</pre><a href="#section-4.2.1-4" class="pilcrow">¶</a>
+</pre><a href="#section-4.3.1-4" class="pilcrow">¶</a>
 </div>
 </section>
 </div>
 <div id="openapi-vocabulary">
-<section id="section-4.2.2">
+<section id="section-4.3.2">
           <h4 id="name-openapi-vocabulary-urnaauth">
-<a href="#section-4.2.2" class="section-number selfRef">4.2.2. </a><a href="#name-openapi-vocabulary-urnaauth" class="section-name selfRef">OpenAPI Vocabulary (<code>urn:aauth:vocabulary:openapi</code>)</a>
+<a href="#section-4.3.2" class="section-number selfRef">4.3.2. </a><a href="#name-openapi-vocabulary-urnaauth" class="section-name selfRef">OpenAPI Vocabulary (<code>urn:aauth:vocabulary:openapi</code>)</a>
           </h4>
-<p id="section-4.2.2-1">For resources that expose an OpenAPI-described HTTP API. The discovery endpoint is the OpenAPI specification URL. Agents discover available operations by fetching and parsing the spec.<a href="#section-4.2.2-1" class="pilcrow">¶</a></p>
-<p id="section-4.2.2-2">Each operation entry contains:<a href="#section-4.2.2-2" class="pilcrow">¶</a></p>
+<p id="section-4.3.2-1">For resources that expose an OpenAPI-described HTTP API. The discovery endpoint is the OpenAPI specification URL. Agents discover available operations by fetching and parsing the spec.<a href="#section-4.3.2-1" class="pilcrow">¶</a></p>
+<p id="section-4.3.2-2">Each operation entry contains:<a href="#section-4.3.2-2" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-4.2.2-3.1">
-              <strong><code>operationId</code></strong> (REQUIRED). The <code>operationId</code> as defined in the OpenAPI specification.<a href="#section-4.2.2-3.1" class="pilcrow">¶</a>
+<li class="compact" id="section-4.3.2-3.1">
+              <strong><code>operationId</code></strong> (REQUIRED). The <code>operationId</code> as defined in the OpenAPI specification.<a href="#section-4.3.2-3.1" class="pilcrow">¶</a>
 </li>
           </ul>
-<div class="lang-json sourcecode" id="section-4.2.2-4">
+<div class="lang-json sourcecode" id="section-4.3.2-4">
 <pre>{
   "vocabulary": "urn:aauth:vocabulary:openapi",
   "operations": [
@@ -1457,23 +1478,67 @@ svg {
   ]
 }
 
-</pre><a href="#section-4.2.2-4" class="pilcrow">¶</a>
+</pre><a href="#section-4.3.2-4" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="openapi-gateway-vocabulary">
+<section id="section-4.3.3">
+          <h4 id="name-openapi-gateway-vocabulary-">
+<a href="#section-4.3.3" class="section-number selfRef">4.3.3. </a><a href="#name-openapi-gateway-vocabulary-" class="section-name selfRef">OpenAPI Gateway Vocabulary (<code>urn:aauth:vocabulary:openapi-gateway</code>)</a>
+          </h4>
+<p id="section-4.3.3-1">For resources that front multiple OpenAPI-described services behind a single resource identifier, such as an API gateway. The OpenAPI vocabulary ({{openapi-vocabulary}}) assumes a single OpenAPI document per resource; this vocabulary supports several without requiring the gateway to merge specifications or rename colliding <code>operationId</code> values. The complexity of multi-service aggregation is confined to this syntax — single-service resources use the plain OpenAPI vocabulary and carry unqualified operations.<a href="#section-4.3.3-1" class="pilcrow">¶</a></p>
+<p id="section-4.3.3-2">The discovery value in <code>r3_vocabularies</code> is not a single URL but a JSON object mapping service labels to OpenAPI specification URLs:<a href="#section-4.3.3-2" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-4.3.3-3">
+<pre>{
+  "issuer": "https://gateway.example.com",
+  "r3_vocabularies": {
+    "urn:aauth:vocabulary:openapi-gateway": {
+      "calendar": "https://gateway.example.com/calendar/openapi.json",
+      "billing": "https://gateway.example.com/billing/openapi.json"
+    }
+  }
+}
+
+</pre><a href="#section-4.3.3-3" class="pilcrow">¶</a>
+</div>
+<p id="section-4.3.3-4">Service labels are chosen by the resource and SHOULD be stable: they appear in R3 documents and auth token claims, so relabeling a service invalidates the grants that reference it even when the underlying specification is unchanged.<a href="#section-4.3.3-4" class="pilcrow">¶</a></p>
+<p id="section-4.3.3-5">Each operation entry contains:<a href="#section-4.3.3-5" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-4.3.3-6.1">
+              <strong><code>service</code></strong> (REQUIRED). A service label. MUST match a key in the discovery object.<a href="#section-4.3.3-6.1" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-4.3.3-6.2">
+              <strong><code>operationId</code></strong> (REQUIRED). The <code>operationId</code> as defined in that service's OpenAPI specification.<a href="#section-4.3.3-6.2" class="pilcrow">¶</a>
+</li>
+          </ul>
+<p id="section-4.3.3-7">The pair (<code>service</code>, <code>operationId</code>) identifies an operation. <code>operationId</code> uniqueness is required only within a single service's specification; the same <code>operationId</code> MAY appear under different services.<a href="#section-4.3.3-7" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-4.3.3-8">
+<pre>{
+  "vocabulary": "urn:aauth:vocabulary:openapi-gateway",
+  "operations": [
+    { "service": "calendar", "operationId": "createEvent" },
+    { "service": "billing", "operationId": "createEvent" }
+  ]
+}
+
+</pre><a href="#section-4.3.3-8" class="pilcrow">¶</a>
 </div>
 </section>
 </div>
 <div id="grpc-vocabulary">
-<section id="section-4.2.3">
+<section id="section-4.3.4">
           <h4 id="name-grpc-vocabulary-urnaauthvoc">
-<a href="#section-4.2.3" class="section-number selfRef">4.2.3. </a><a href="#name-grpc-vocabulary-urnaauthvoc" class="section-name selfRef">gRPC Vocabulary (<code>urn:aauth:vocabulary:grpc</code>)</a>
+<a href="#section-4.3.4" class="section-number selfRef">4.3.4. </a><a href="#name-grpc-vocabulary-urnaauthvoc" class="section-name selfRef">gRPC Vocabulary (<code>urn:aauth:vocabulary:grpc</code>)</a>
           </h4>
-<p id="section-4.2.3-1">For resources that expose a gRPC server. The discovery endpoint is the gRPC server reflection endpoint (supporting <code>grpc.reflection.v1.ServerReflection</code>) or a hosted <code>.proto</code> file URL.<a href="#section-4.2.3-1" class="pilcrow">¶</a></p>
-<p id="section-4.2.3-2">Each operation entry contains:<a href="#section-4.2.3-2" class="pilcrow">¶</a></p>
+<p id="section-4.3.4-1">For resources that expose a gRPC server. The discovery endpoint is the gRPC server reflection endpoint (supporting <code>grpc.reflection.v1.ServerReflection</code>) or a hosted <code>.proto</code> file URL.<a href="#section-4.3.4-1" class="pilcrow">¶</a></p>
+<p id="section-4.3.4-2">Each operation entry contains:<a href="#section-4.3.4-2" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-4.2.3-3.1">
-              <strong><code>method</code></strong> (REQUIRED). The fully qualified gRPC method name in the form <code>package.ServiceName/MethodName</code>.<a href="#section-4.2.3-3.1" class="pilcrow">¶</a>
+<li class="compact" id="section-4.3.4-3.1">
+              <strong><code>method</code></strong> (REQUIRED). The fully qualified gRPC method name in the form <code>package.ServiceName/MethodName</code>.<a href="#section-4.3.4-3.1" class="pilcrow">¶</a>
 </li>
           </ul>
-<div class="lang-json sourcecode" id="section-4.2.3-4">
+<div class="lang-json sourcecode" id="section-4.3.4-4">
 <pre>{
   "vocabulary": "urn:aauth:vocabulary:grpc",
   "operations": [
@@ -1482,26 +1547,26 @@ svg {
   ]
 }
 
-</pre><a href="#section-4.2.3-4" class="pilcrow">¶</a>
+</pre><a href="#section-4.3.4-4" class="pilcrow">¶</a>
 </div>
 </section>
 </div>
 <div id="graphql-vocabulary">
-<section id="section-4.2.4">
+<section id="section-4.3.5">
           <h4 id="name-graphql-vocabulary-urnaauth">
-<a href="#section-4.2.4" class="section-number selfRef">4.2.4. </a><a href="#name-graphql-vocabulary-urnaauth" class="section-name selfRef">GraphQL Vocabulary (<code>urn:aauth:vocabulary:graphql</code>)</a>
+<a href="#section-4.3.5" class="section-number selfRef">4.3.5. </a><a href="#name-graphql-vocabulary-urnaauth" class="section-name selfRef">GraphQL Vocabulary (<code>urn:aauth:vocabulary:graphql</code>)</a>
           </h4>
-<p id="section-4.2.4-1">For resources that expose a GraphQL API. The discovery endpoint is the GraphQL endpoint. Agents discover available operations via GraphQL introspection (<code>__schema</code> query).<a href="#section-4.2.4-1" class="pilcrow">¶</a></p>
-<p id="section-4.2.4-2">Each operation entry contains:<a href="#section-4.2.4-2" class="pilcrow">¶</a></p>
+<p id="section-4.3.5-1">For resources that expose a GraphQL API. The discovery endpoint is the GraphQL endpoint. Agents discover available operations via GraphQL introspection (<code>__schema</code> query).<a href="#section-4.3.5-1" class="pilcrow">¶</a></p>
+<p id="section-4.3.5-2">Each operation entry contains:<a href="#section-4.3.5-2" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-4.2.4-3.1">
-              <strong><code>operation</code></strong> (REQUIRED). The GraphQL operation name. MUST be a named query, mutation, or subscription.<a href="#section-4.2.4-3.1" class="pilcrow">¶</a>
+<li class="compact" id="section-4.3.5-3.1">
+              <strong><code>operation</code></strong> (REQUIRED). The GraphQL operation name. MUST be a named query, mutation, or subscription.<a href="#section-4.3.5-3.1" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-4.2.4-3.2">
-              <strong><code>type</code></strong> (REQUIRED). One of <code>query</code>, <code>mutation</code>, or <code>subscription</code>.<a href="#section-4.2.4-3.2" class="pilcrow">¶</a>
+            <li class="compact" id="section-4.3.5-3.2">
+              <strong><code>type</code></strong> (REQUIRED). One of <code>query</code>, <code>mutation</code>, or <code>subscription</code>.<a href="#section-4.3.5-3.2" class="pilcrow">¶</a>
 </li>
           </ul>
-<div class="lang-json sourcecode" id="section-4.2.4-4">
+<div class="lang-json sourcecode" id="section-4.3.5-4">
 <pre>{
   "vocabulary": "urn:aauth:vocabulary:graphql",
   "operations": [
@@ -1510,26 +1575,26 @@ svg {
   ]
 }
 
-</pre><a href="#section-4.2.4-4" class="pilcrow">¶</a>
+</pre><a href="#section-4.3.5-4" class="pilcrow">¶</a>
 </div>
 </section>
 </div>
 <div id="asyncapi-vocabulary">
-<section id="section-4.2.5">
+<section id="section-4.3.6">
           <h4 id="name-asyncapi-vocabulary-urnaaut">
-<a href="#section-4.2.5" class="section-number selfRef">4.2.5. </a><a href="#name-asyncapi-vocabulary-urnaaut" class="section-name selfRef">AsyncAPI Vocabulary (<code>urn:aauth:vocabulary:asyncapi</code>)</a>
+<a href="#section-4.3.6" class="section-number selfRef">4.3.6. </a><a href="#name-asyncapi-vocabulary-urnaaut" class="section-name selfRef">AsyncAPI Vocabulary (<code>urn:aauth:vocabulary:asyncapi</code>)</a>
           </h4>
-<p id="section-4.2.5-1">For resources that expose an event-driven interface described by AsyncAPI. The discovery endpoint is the AsyncAPI specification URL.<a href="#section-4.2.5-1" class="pilcrow">¶</a></p>
-<p id="section-4.2.5-2">Each operation entry contains:<a href="#section-4.2.5-2" class="pilcrow">¶</a></p>
+<p id="section-4.3.6-1">For resources that emit events described by AsyncAPI. The discovery endpoint is the AsyncAPI specification URL.<a href="#section-4.3.6-1" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-4.2.5-3.1">
-              <strong><code>operationId</code></strong> (REQUIRED). The <code>operationId</code> as defined in the AsyncAPI specification.<a href="#section-4.2.5-3.1" class="pilcrow">¶</a>
+<li class="compact" id="section-4.3.6-2.1">
+              <strong><code>operationId</code></strong> (REQUIRED). The <code>operationId</code> as defined in the AsyncAPI specification.<a href="#section-4.3.6-2.1" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-4.2.5-3.2">
-              <strong><code>action</code></strong> (REQUIRED). One of <code>send</code> or <code>receive</code>.<a href="#section-4.2.5-3.2" class="pilcrow">¶</a>
+            <li class="compact" id="section-4.3.6-2.2">
+              <strong><code>action</code></strong> (OPTIONAL). The AsyncAPI action type: <code>send</code> or <code>receive</code>. Agents subscribing to events use <code>receive</code>.<a href="#section-4.3.6-2.2" class="pilcrow">¶</a>
 </li>
           </ul>
-<div class="lang-json sourcecode" id="section-4.2.5-4">
+<p id="section-4.3.6-3">When a resource grants an agent an AsyncAPI subscription operation via R3, the actual subscription registration and event delivery use the AAuth Events protocol (<span>[<a href="#I-D.hardt-aauth-events" class="cite xref">I-D.hardt-aauth-events</a>]</span>). The resource issues a subscription ticket URL in response to the authenticated request; the agent then completes subscription registration using a subscribe token per AAuth Events.<a href="#section-4.3.6-3" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-4.3.6-4">
 <pre>{
   "vocabulary": "urn:aauth:vocabulary:asyncapi",
   "operations": [
@@ -1538,26 +1603,26 @@ svg {
   ]
 }
 
-</pre><a href="#section-4.2.5-4" class="pilcrow">¶</a>
+</pre><a href="#section-4.3.6-4" class="pilcrow">¶</a>
 </div>
 </section>
 </div>
 <div id="wsdl-vocabulary">
-<section id="section-4.2.6">
+<section id="section-4.3.7">
           <h4 id="name-wsdl-vocabulary-urnaauthvoc">
-<a href="#section-4.2.6" class="section-number selfRef">4.2.6. </a><a href="#name-wsdl-vocabulary-urnaauthvoc" class="section-name selfRef">WSDL Vocabulary (<code>urn:aauth:vocabulary:wsdl</code>)</a>
+<a href="#section-4.3.7" class="section-number selfRef">4.3.7. </a><a href="#name-wsdl-vocabulary-urnaauthvoc" class="section-name selfRef">WSDL Vocabulary (<code>urn:aauth:vocabulary:wsdl</code>)</a>
           </h4>
-<p id="section-4.2.6-1">For resources that expose a SOAP/WSDL-described web service. The discovery endpoint is the WSDL document URL.<a href="#section-4.2.6-1" class="pilcrow">¶</a></p>
-<p id="section-4.2.6-2">Each operation entry contains:<a href="#section-4.2.6-2" class="pilcrow">¶</a></p>
+<p id="section-4.3.7-1">For resources that expose a SOAP/WSDL-described web service. The discovery endpoint is the WSDL document URL.<a href="#section-4.3.7-1" class="pilcrow">¶</a></p>
+<p id="section-4.3.7-2">Each operation entry contains:<a href="#section-4.3.7-2" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-4.2.6-3.1">
-              <strong><code>operation</code></strong> (REQUIRED). The operation name as defined in the WSDL <code>portType</code> or <code>binding</code>.<a href="#section-4.2.6-3.1" class="pilcrow">¶</a>
+<li class="compact" id="section-4.3.7-3.1">
+              <strong><code>operation</code></strong> (REQUIRED). The operation name as defined in the WSDL <code>portType</code> or <code>binding</code>.<a href="#section-4.3.7-3.1" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-4.2.6-3.2">
-              <strong><code>service</code></strong> (OPTIONAL). The WSDL service name, for disambiguation when multiple services expose the same operation name.<a href="#section-4.2.6-3.2" class="pilcrow">¶</a>
+            <li class="compact" id="section-4.3.7-3.2">
+              <strong><code>service</code></strong> (OPTIONAL). The WSDL service name, for disambiguation when multiple services expose the same operation name.<a href="#section-4.3.7-3.2" class="pilcrow">¶</a>
 </li>
           </ul>
-<div class="lang-json sourcecode" id="section-4.2.6-4">
+<div class="lang-json sourcecode" id="section-4.3.7-4">
 <pre>{
   "vocabulary": "urn:aauth:vocabulary:wsdl",
   "operations": [
@@ -1565,26 +1630,26 @@ svg {
   ]
 }
 
-</pre><a href="#section-4.2.6-4" class="pilcrow">¶</a>
+</pre><a href="#section-4.3.7-4" class="pilcrow">¶</a>
 </div>
 </section>
 </div>
 <div id="odata-vocabulary">
-<section id="section-4.2.7">
+<section id="section-4.3.8">
           <h4 id="name-odata-vocabulary-urnaauthvo">
-<a href="#section-4.2.7" class="section-number selfRef">4.2.7. </a><a href="#name-odata-vocabulary-urnaauthvo" class="section-name selfRef">OData Vocabulary (<code>urn:aauth:vocabulary:odata</code>)</a>
+<a href="#section-4.3.8" class="section-number selfRef">4.3.8. </a><a href="#name-odata-vocabulary-urnaauthvo" class="section-name selfRef">OData Vocabulary (<code>urn:aauth:vocabulary:odata</code>)</a>
           </h4>
-<p id="section-4.2.7-1">For resources that expose an OData service. The discovery endpoint is the OData service root URL. Agents discover entity sets, functions, and actions via the <code>$metadata</code> document.<a href="#section-4.2.7-1" class="pilcrow">¶</a></p>
-<p id="section-4.2.7-2">Each operation entry contains:<a href="#section-4.2.7-2" class="pilcrow">¶</a></p>
+<p id="section-4.3.8-1">For resources that expose an OData service. The discovery endpoint is the OData service root URL. Agents discover entity sets, functions, and actions via the <code>$metadata</code> document.<a href="#section-4.3.8-1" class="pilcrow">¶</a></p>
+<p id="section-4.3.8-2">Each operation entry contains:<a href="#section-4.3.8-2" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-4.2.7-3.1">
-              <strong><code>operation</code></strong> (REQUIRED). An entity set name, a bound function (<code>EntitySet/FunctionName</code>), or a bound action (<code>EntitySet/ActionName</code>).<a href="#section-4.2.7-3.1" class="pilcrow">¶</a>
+<li class="compact" id="section-4.3.8-3.1">
+              <strong><code>operation</code></strong> (REQUIRED). An entity set name, a bound function (<code>EntitySet/FunctionName</code>), or a bound action (<code>EntitySet/ActionName</code>).<a href="#section-4.3.8-3.1" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-4.2.7-3.2">
-              <strong><code>methods</code></strong> (OPTIONAL). An array of HTTP methods for entity set CRUD (e.g., <code>["GET", "POST"]</code>). Omitted for bound functions and actions.<a href="#section-4.2.7-3.2" class="pilcrow">¶</a>
+            <li class="compact" id="section-4.3.8-3.2">
+              <strong><code>methods</code></strong> (OPTIONAL). An array of HTTP methods for entity set CRUD (e.g., <code>["GET", "POST"]</code>). Omitted for bound functions and actions.<a href="#section-4.3.8-3.2" class="pilcrow">¶</a>
 </li>
           </ul>
-<div class="lang-json sourcecode" id="section-4.2.7-4">
+<div class="lang-json sourcecode" id="section-4.3.8-4">
 <pre>{
   "vocabulary": "urn:aauth:vocabulary:odata",
   "operations": [
@@ -1593,7 +1658,7 @@ svg {
   ]
 }
 
-</pre><a href="#section-4.2.7-4" class="pilcrow">¶</a>
+</pre><a href="#section-4.3.8-4" class="pilcrow">¶</a>
 </div>
 </section>
 </div>
@@ -1854,7 +1919,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <p id="section-8-1">R3 extends the auth token defined in AAuth Protocol (<span>[<a href="#I-D.hardt-aauth-protocol" class="cite xref">I-D.hardt-aauth-protocol</a>]</span>) (a JWT with <code>typ: auth+jwt</code>) with claims for audit provenance and vocabulary-based grants. The resource can enforce authorization directly from these claims.<a href="#section-8-1" class="pilcrow">¶</a></p>
 <p id="section-8-2">Base claims (from AAuth Protocol):
 - <code>iss</code>: Auth server URL
-- <code>dwk</code>: <code>aauth-issuer.json</code>
+- <code>dwk</code>: <code>aauth-access.json</code> (issued by an AS) or <code>aauth-person.json</code> (issued by a PS)
 - <code>aud</code>: Resource URL
 - <code>jti</code>: Unique token identifier
 - <code>agent</code>: Agent identifier
@@ -1880,7 +1945,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <div class="lang-json sourcecode" id="section-8-5">
 <pre>{
   "iss": "https://as.example.com",
-  "dwk": "aauth-issuer.json",
+  "dwk": "aauth-access.json",
   "aud": "https://calendar.example.com",
   "jti": "at-9d4c1e",
   "agent": "assistant@agent.example",
@@ -2157,6 +2222,13 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
+                <code>urn:aauth:vocabulary:openapi-gateway</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">HTTP/REST (multi-service gateway)</td>
+              <td class="text-left" rowspan="1" colspan="1">This document</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
                 <code>urn:aauth:vocabulary:grpc</code>
 </td>
               <td class="text-left" rowspan="1" colspan="1">gRPC</td>
@@ -2192,7 +2264,24 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
             </tr>
           </tbody>
         </table>
-<p id="section-11.2-3">New values may be registered following the Specification Required policy (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>).<a href="#section-11.2-3" class="pilcrow">¶</a></p>
+<p id="section-11.2-3">New values may be registered following the Specification Required policy (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>, Section 4.6).<a href="#section-11.2-3" class="pilcrow">¶</a></p>
+<div id="designated-expert-instructions">
+<section id="section-11.2.1">
+          <h4 id="name-designated-expert-instructi">
+<a href="#section-11.2.1" class="section-number selfRef">11.2.1. </a><a href="#name-designated-expert-instructi" class="section-name selfRef">Designated Expert Instructions</a>
+          </h4>
+<p id="section-11.2.1-1">Registration requests for the AAuth R3 Vocabulary Registry are evaluated by a designated expert appointed by the IESG. Registration requests should be sent to IANA, which will forward them to the designated expert. The expert is expected to respond within two weeks. Denials should include an explanation and, if applicable, suggestions for how the request could be revised to be successful.<a href="#section-11.2.1-1" class="pilcrow">¶</a></p>
+<p id="section-11.2.1-2">A registration request must include the proposed vocabulary URI, the interface type it describes, and a reference to the specification defining it. The designated expert should verify that:<a href="#section-11.2.1-2" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-11.2.1-3.1">The vocabulary URI follows the <code>urn:aauth:vocabulary:&lt;name&gt;</code> pattern, where <code>&lt;name&gt;</code> is a lowercase token using only lowercase letters, digits, and hyphen, and is not confusingly similar to an existing entry.<a href="#section-11.2.1-3.1" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-11.2.1-3.2">The referenced specification is stable and freely available, and defines how operation identifiers are derived from the interface description in sufficient detail that independent implementations produce the same identifiers for the same interface.<a href="#section-11.2.1-3.2" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-11.2.1-3.3">The vocabulary covers an interface type not already served by an existing entry, or provides clear justification for an alternative vocabulary for an existing interface type.<a href="#section-11.2.1-3.3" class="pilcrow">¶</a>
+</li>
+          </ul>
+</section>
+</div>
 </section>
 </div>
 </section>
@@ -2213,11 +2302,30 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <a href="#section-13" class="section-number selfRef">13. </a><a href="#name-document-history" class="section-name selfRef">Document History</a>
       </h2>
 <p id="section-13-1"><em>Note: This section is to be removed before publishing as an RFC.</em><a href="#section-13-1" class="pilcrow">¶</a></p>
-<ul class="compact">
-<li class="compact" id="section-13-2.1">
-          <p id="section-13-2.1.1">draft-hardt-aauth-r3-00<a href="#section-13-2.1.1" class="pilcrow">¶</a></p>
-<ul class="compact">
-<li class="compact" id="section-13-2.1.2.1">Initial submission<a href="#section-13-2.1.2.1" class="pilcrow">¶</a>
+<ul class="normal">
+<li class="normal" id="section-13-2.1">
+          <p id="section-13-2.1.1">draft-hardt-aauth-r3-01<a href="#section-13-2.1.1" class="pilcrow">¶</a></p>
+<ul class="compact normal">
+<li class="compact normal" id="section-13-2.1.2.1">IANA review feedback: added Designated Expert Instructions for the AAuth R3 Vocabulary Registry per RFC 8126 Section 4.5.<a href="#section-13-2.1.2.1" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-13-2.1.2.2">Added per-call proposals for conditional operations<a href="#section-13-2.1.2.2" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-13-2.1.2.3">Content addressing hashes the bytes as served; removed canonicalization<a href="#section-13-2.1.2.3" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-13-2.1.2.4">Defined composition when requested operations span multiple R3 documents<a href="#section-13-2.1.2.4" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-13-2.1.2.5">Added operation identifier scope rules and the OpenAPI Gateway vocabulary for resources fronting multiple services<a href="#section-13-2.1.2.5" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-13-2.1.2.6">Aligned with AAuth Protocol: <code>issuer</code> in resource metadata, <code>dwk</code> values <code>aauth-access.json</code>/<code>aauth-person.json</code> in auth tokens<a href="#section-13-2.1.2.6" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-13-2.1.2.7">Renamed MM to PS; examples use EdDSA<a href="#section-13-2.1.2.7" class="pilcrow">¶</a>
+</li>
+          </ul>
+</li>
+        <li class="normal" id="section-13-2.2">
+          <p id="section-13-2.2.1">draft-hardt-aauth-r3-00<a href="#section-13-2.2.1" class="pilcrow">¶</a></p>
+<ul class="compact normal">
+<li class="compact normal" id="section-13-2.2.2.1">Initial submission<a href="#section-13-2.2.2.1" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
@@ -2256,6 +2364,10 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <a href="#section-15.2" class="section-number selfRef">15.2. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
         </h3>
 <dl class="references">
+<dt id="I-D.hardt-aauth-events">[I-D.hardt-aauth-events]</dt>
+        <dd>
+<span class="refAuthor">Hardt, D.</span>, <span class="refTitle">"AAuth Events"</span>, <time datetime="2026" class="refDate">2026</time>, <span>&lt;<a href="https://github.com/dickhardt/AAuth">https://github.com/dickhardt/AAuth</a>&gt;</span>. </dd>
+<dd class="break"></dd>
 <dt id="RFC7942">[RFC7942]</dt>
         <dd>
 <span class="refAuthor">Sheffer, Y.</span> and <span class="refAuthor">A. Farrel</span>, <span class="refTitle">"Improving Awareness of Running Code: The Implementation Status Section"</span>, <span class="seriesInfo">BCP 205</span>, <span class="seriesInfo">RFC 7942</span>, <span class="seriesInfo">DOI 10.17487/RFC7942</span>, <time datetime="2016-07" class="refDate">July 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7942">https://www.rfc-editor.org/info/rfc7942</a>&gt;</span>. </dd>
@@ -2320,6 +2432,16 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
               <code>operationId</code>
 </td>
             <td class="text-left" rowspan="1" colspan="1">OpenAPI spec URL</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>urn:aauth:vocabulary:openapi-gateway</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">HTTP/REST (multi-service gateway)</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>service</code> + <code>operationId</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Map of service labels to OpenAPI spec URLs</td>
           </tr>
           <tr>
             <td class="text-left" rowspan="1" colspan="1">

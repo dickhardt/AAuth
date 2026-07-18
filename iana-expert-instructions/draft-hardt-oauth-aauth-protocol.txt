@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                            17 June 2026
-Expires: 19 December 2026
+Intended status: Standards Track                            18 July 2026
+Expires: 19 January 2027
 
 
                              AAuth Protocol
@@ -50,7 +50,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 19 December 2026.
+   This Internet-Draft will expire on 19 January 2027.
 
 Copyright Notice
 
@@ -188,7 +188,7 @@ Table of Contents
        12.4.4.  Deferred Response State Machine
      12.5.  Error Responses
        12.5.1.  Authentication Errors
-       12.5.2.  Token Endpoint Error Response Format
+       12.5.2.  Error Response Format
        12.5.3.  Token Endpoint Error Codes
        12.5.4.  Polling Error Codes
      12.6.  Token Revocation
@@ -247,7 +247,8 @@ Table of Contents
      16.7.  AAuth Requirement Value Registry
      16.8.  AAuth Capability Value Registry
      16.9.  AAuth Platform Value Registry
-     16.10. URI Scheme Registration
+     16.10. Designated Expert Instructions
+     16.11. URI Scheme Registration
    17. Implementation Status
    18. Document History
    19. Acknowledgments
@@ -369,6 +370,11 @@ Table of Contents
       agents can explain or adjust their requests.
    *  *Progressive adoption*: Each party can adopt independently; modes
       build on each other.
+   *  *Asynchronous event delivery*: Agents receive events from
+      resources through the AP, without requiring a public endpoint.
+      Resources post event tokens to the AP's event endpoint; the AP
+      routes them to the agent.  Defined in AAuth Events
+      ([I-D.hardt-aauth-events]).
 
 1.4.  What AAuth Does Not Do
 
@@ -775,6 +781,12 @@ Table of Contents
       PS + AS for employees and internal resources, with federation
       incurred only at the boundary when an internal agent accesses an
       external resource.
+
+   An AP that supports AAuth Events ([I-D.hardt-aauth-events])
+   additionally acts as an event router — it receives event tokens from
+   resources on behalf of agents and routes them to the appropriate
+   agent instance.  This is an extension of the AP role, not a new
+   party.
 
    These are deployment choices that do not change the wire protocol.  A
    receiver verifies each role's tokens and metadata identically whether
@@ -1274,8 +1286,7 @@ Table of Contents
 
                                   Table 2
 
-   Error responses use the same format as the token endpoint
-   Section 12.5.2.
+   Error responses use the error response format Section 12.5.2.
 
 6.3.  Agent Token Required
 
@@ -1777,16 +1788,23 @@ Table of Contents
 
    The agent MUST respond to a clarification with one of:
 
-   1.  *Clarification response*: POST a clarification_response to the
-       pending URL.
-   2.  *Updated request*: POST a new resource_token to the pending URL,
-       replacing the original request with updated scope or parameters.
+   1.  *Clarification response*: POST an action of
+       clarification_response to the pending URL.
+   2.  *Updated request*: POST an action of updated_request with a new
+       resource_token to the pending URL, replacing the original request
+       with updated scope or parameters.
    3.  *Cancel request*: DELETE the pending URL to withdraw the request.
+
+   A POST body MUST include an action member identifying the response
+   type.  A server MUST reject a POST with a missing or unrecognized
+   action value with 400 Bad Request.  The action member makes each POST
+   self-describing and keeps the pending route extensible for future
+   response types.
 
 7.3.2.1.  Clarification Response
 
-   The agent responds by POSTing JSON with clarification_response to the
-   pending URL:
+   The agent responds by POSTing JSON with an action of
+   clarification_response to the pending URL:
 
    POST /pending/abc123 HTTP/1.1
    Host: ps.example
@@ -1797,6 +1815,7 @@ Table of Contents
    Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
    {
+     "action": "clarification_response",
      "clarification_response":
        "I need to create a meeting invite
         for the participants you listed."
@@ -1820,6 +1839,7 @@ Table of Contents
    Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
    {
+     "action": "updated_request",
      "resource_token": "eyJ...",
      "justification": "I've reduced my request to read-only access."
    }
@@ -2140,7 +2160,7 @@ Table of Contents
 
 7.6.3.  Interaction Endpoint Errors
 
-   Errors use the token endpoint error response format Section 12.5.2.
+   Errors use the error response format Section 12.5.2.
 
    +=========================+========+===============================+
    | Error                   | Status | Meaning                       |
@@ -2354,7 +2374,7 @@ Table of Contents
    return an error:
 
    HTTP/1.1 403 Forbidden
-   Content-Type: application/json
+   Content-Type: application/problem+json
 
    {
      "error": "mission_terminated",
@@ -2829,16 +2849,17 @@ Table of Contents
 
 9.4.5.  Upstream Token Verification
 
-   When the PS receives an upstream_token parameter in a call chaining
-   request:
+   When the PS or AS receives an upstream_token parameter in a call
+   chaining request:
 
    1.  Perform Auth Token Verification Section 9.4.3 on the upstream
        token.
-   2.  Verify iss is a trusted AS (an AS whose auth token the PS
-       previously brokered).
-   3.  Verify the aud in the upstream token matches the resource that is
-       now acting as an agent (i.e., the upstream token was issued for
-       the intermediary resource).
+   2.  Verify iss is a trusted issuer (a PS or AS whose auth token the
+       recipient previously brokered or is authorized to extend).
+   3.  Verify the aud in the upstream token equals the iss of the
+       intermediary's agent token (presented in the Signature-Key
+       header).  This binding confirms the upstream token was issued to
+       the resource now making the downstream request.
    4.  The PS constructs the act claim for the downstream auth token:
        act.agent is set to the intermediary resource's agent identifier,
        and if the upstream token contained an act claim, it is nested
@@ -2871,8 +2892,12 @@ Table of Contents
 
    When a resource needs to access a downstream resource on behalf of
    the caller, it acts as an agent.  The resource determines where to
-   send the downstream token request based on the upstream auth token it
-   received:
+   route the downstream token request from the upstream auth token it
+   received — specifically from mission.approver (if a mission is
+   present) or from iss (the identity of the PS or AS that issued the
+   upstream token).  The ps claim in the calling agent's agent token is
+   NOT used for this routing; the upstream auth token is the
+   authoritative source.
 
    *  *Mission present* (mission.approver in the upstream auth token):
       The resource sends the downstream resource token to the PS
@@ -2882,16 +2907,22 @@ Table of Contents
       scope.  This is the governed path — the PS sees the full
       delegation chain for audit.
 
-   *  *No mission, iss is a PS* (three-party upstream): The resource
-      sends the downstream resource token to the PS identified by iss,
-      along with its own agent token and the upstream_token.  The PS
-      evaluates the request without mission context.
+   *  *No mission, iss is a PS* (three-party upstream): The upstream
+      auth token was issued directly by the PS (iss = PS URL).  The
+      resource sends the downstream resource token to that PS, along
+      with its own agent token and the upstream_token.  The PS evaluates
+      the request without mission context.
 
    *  *No mission, iss is an AS* (four-party upstream, no governance):
       The resource sends the downstream resource token to the AS
       identified by iss, along with its own agent token and the
       upstream_token.  The AS evaluates the request based on resource
       policy.  No PS is involved — no governance context is available.
+
+   To ensure the PS is in the loop for every hop in a chain, the
+   person's PS MUST require a mission.  A mission puts mission.approver
+   in the upstream auth token, giving every intermediary a PS URL to
+   route to regardless of whether the upstream issuer was a PS or AS.
 
    In every case the intermediary signs the downstream token request
    with its *own* key, presenting its own agent token via the Signature-
@@ -3470,18 +3501,27 @@ Table of Contents
    fold the Crockford decode aliases (I/L → 1, O → 0) before comparison
    so that a user who transcribes an ambiguous glyph still matches.
 
+   *Correlation only.* The code is a correlation identifier — it ties
+   the user's browser session to the pending interaction so the server
+   can look up the correct request.  It is NOT an authorization
+   credential.  The person's approve/deny decision MUST be recorded via
+   an authenticated channel at the PS; how the PS authenticates the
+   person is outside the scope of this specification.  Because the agent
+   relays the interaction URL and code to the user, the code is visible
+   to the agent — the code alone MUST NOT authorize the decision.
+
    *Single use.* A code MUST be single-use.  Once the user arrives at
    the interaction URL with a valid code and the code is consumed, the
    server MUST reject any later presentation of the same code, returning
    invalid_code Section 12.5.4.
 
-   *Rate-limiting.* Because the code is the only secret guarding the
-   interaction URL, the server MUST rate-limit code-validation attempts
-   at the interaction URL.  After a small number of failed attempts the
-   server MUST treat the pending interaction as terminally failed and
-   return invalid_code Section 12.5.4 on subsequent attempts, bounding
-   the brute-force window to far fewer guesses than the code's entropy
-   would otherwise allow.
+   *Rate-limiting.* Because the code guards access to the interaction
+   page, the server MUST rate-limit code-validation attempts at the
+   interaction URL.  After a small number of failed attempts the server
+   MUST treat the pending interaction as terminally failed and return
+   invalid_code Section 12.5.4 on subsequent attempts, bounding the
+   brute-force window to far fewer guesses than the code's entropy would
+   otherwise allow.
 
    *Lifetime.* A code MUST expire no later than the pending interaction
    it is bound to Section 12.4.  Once the pending request has expired,
@@ -3690,14 +3730,21 @@ Initial request (with Prefer: wait=N)
    A 401 response from any AAuth endpoint uses the Signature-Error
    header as defined in ([I-D.hardt-httpbis-signature-key]).
 
-12.5.2.  Token Endpoint Error Response Format
+12.5.2.  Error Response Format
 
-   Token endpoint errors use Content-Type: application/json ([RFC8259])
-   with the following members:
+   Error response bodies use the HTTP problem details format ([RFC9457])
+   with Content-Type: application/problem+json.  The body is a JSON
+   object with the following members:
 
-   *  error (REQUIRED): String.  A single error code.
-   *  error_description (OPTIONAL): String.  A human-readable
-      description.
+   *  error (REQUIRED): String.  A single error code, as defined by the
+      endpoint returning the error.  This is an RFC 9457 extension
+      member; receivers MUST determine how to proceed from this member.
+   *  detail (OPTIONAL): String.  A human-readable explanation specific
+      to this occurrence of the error.
+
+   Other RFC 9457 members (type, title, status, instance) MAY be present
+   with their RFC 9457 semantics.  AAuth does not define problem type
+   URIs; receivers MUST NOT rely on type to identify AAuth errors.
 
 12.5.3.  Token Endpoint Error Codes
 
@@ -3732,6 +3779,18 @@ Initial request (with Prefer: wait=N)
 
                                  Table 9
 
+   Example — the resource token presented to the token endpoint has
+   expired:
+
+   HTTP/1.1 400 Bad Request
+   Content-Type: application/problem+json
+
+   {
+     "error": "expired_resource_token",
+     "detail": "The resource token expired; obtain a new
+       resource token from the resource and retry."
+   }
+
 12.5.4.  Polling Error Codes
 
         +==============+========+================================+
@@ -3755,6 +3814,16 @@ Initial request (with Prefer: wait=N)
         +--------------+--------+--------------------------------+
 
                                  Table 10
+
+   Example — the user denied the pending request:
+
+   HTTP/1.1 403 Forbidden
+   Content-Type: application/problem+json
+
+   {
+     "error": "denied",
+     "detail": "The user declined the request."
+   }
 
 12.6.  Token Revocation
 
@@ -4138,6 +4207,7 @@ Initial request (with Prefer: wait=N)
      "logo_dark_uri": "https://agent.example/logo-dark.png",
      "documentation_uri": "https://agent.example/docs",
      "callback_endpoint": "https://agent.example/callback",
+     "event_endpoint": "https://agent.example/events",
      "localhost_callback_allowed": true,
      "tos_uri": "https://agent.example/tos",
      "policy_uri": "https://agent.example/privacy"
@@ -4160,6 +4230,9 @@ Initial request (with Prefer: wait=N)
       the agent provider
    *  callback_endpoint (OPTIONAL): The agent's HTTPS callback endpoint
       URL
+   *  event_endpoint (OPTIONAL): HTTPS URL at which the AP receives
+      event tokens from resources.  Required if the AP supports AAuth
+      Events ([I-D.hardt-aauth-events]).
    *  login_endpoint (OPTIONAL): URL where third parties can direct
       users to initiate authentication Section 11
    *  localhost_callback_allowed (OPTIONAL): Boolean.  Default: false.
@@ -4935,6 +5008,19 @@ Initial request (with Prefer: wait=N)
 
                                  Table 14
 
+   The following JWT typ values are registered by AAuth Events
+   ([I-D.hardt-aauth-events]):
+
+              +==================+==========================+
+              | Type Value       | Reference                |
+              +==================+==========================+
+              | aa-subscribe+jwt | [I-D.hardt-aauth-events] |
+              +------------------+--------------------------+
+              | aa-event+jwt     | [I-D.hardt-aauth-events] |
+              +------------------+--------------------------+
+
+                                  Table 15
+
 16.6.  JWT Claims Registrations
 
    This specification registers the following claims in the IANA "JSON
@@ -4967,12 +5053,14 @@ Initial request (with Prefer: wait=N)
      |              | auth tokens          |            |           |
      +--------------+----------------------+------------+-----------+
 
-                                 Table 15
+                                 Table 16
 
 16.7.  AAuth Requirement Value Registry
 
    This specification establishes the AAuth Requirement Value Registry.
-   The registry policy is Specification Required ([RFC8126]).
+   The registry policy is Specification Required ([RFC8126],
+   Section 4.6).  See Section 16.10 for instructions to the designated
+   expert.
 
                      +===============+===============+
                      | Value         | Reference     |
@@ -4990,12 +5078,14 @@ Initial request (with Prefer: wait=N)
                      | claims        | This document |
                      +---------------+---------------+
 
-                                  Table 16
+                                  Table 17
 
 16.8.  AAuth Capability Value Registry
 
    This specification establishes the AAuth Capability Value Registry.
-   The registry policy is Specification Required ([RFC8126]).
+   The registry policy is Specification Required ([RFC8126],
+   Section 4.6).  See Section 16.10 for instructions to the designated
+   expert.
 
                      +===============+===============+
                      | Value         | Reference     |
@@ -5007,14 +5097,15 @@ Initial request (with Prefer: wait=N)
                      | payment       | This document |
                      +---------------+---------------+
 
-                                  Table 17
+                                  Table 18
 
 16.9.  AAuth Platform Value Registry
 
    This specification establishes the AAuth Platform Value Registry,
    used as values of the platform request parameter sent to the PS token
    endpoint Section 7.1.  The registry policy is Specification Required
-   ([RFC8126]).
+   ([RFC8126], Section 4.6).  See Section 16.10 for instructions to the
+   designated expert.
 
        +=============+================================+===========+
        | Value       | Description                    | Reference |
@@ -5037,9 +5128,42 @@ Initial request (with Prefer: wait=N)
        |             | controls                       |           |
        +-------------+--------------------------------+-----------+
 
-                                 Table 18
+                                 Table 19
 
-16.10.  URI Scheme Registration
+16.10.  Designated Expert Instructions
+
+   Registration requests for the AAuth Requirement Value, AAuth
+   Capability Value, and AAuth Platform Value registries are evaluated
+   by a designated expert appointed by the IESG, using the Specification
+   Required policy ([RFC8126], Section 4.6).
+
+   Registration requests should be sent to IANA, which will forward them
+   to the designated expert.  The expert is expected to respond within
+   two weeks.  Denials should include an explanation and, if applicable,
+   suggestions for how the request could be revised to be successful.
+
+   A registration request must include the proposed value, a brief
+   description of its meaning, and a reference to the specification
+   defining it.  The designated expert should verify that:
+
+   *  The referenced specification is stable and freely available, and
+      describes the value's semantics in sufficient detail that
+      interoperable, independent implementations are possible.
+   *  The proposed value is a lowercase token using only lowercase
+      letters and hyphen, consistent with the registries' existing
+      entries, and is not confusingly similar to an existing entry.
+   *  The registration does not duplicate the semantics of an existing
+      entry without clear justification.
+   *  For the Requirement Value and Capability Value registries, the
+      specification defines the protocol behavior expected of a party
+      that declares or encounters the value, including how a party that
+      does not understand the value behaves.
+   *  For the Platform Value registry, the value describes a distinct
+      runtime context that is meaningful for display to a person at a
+      consent screen or dashboard, and the description does not
+      overstate the security properties the value conveys.
+
+16.11.  URI Scheme Registration
 
    This specification registers the aauth URI scheme in the "Uniform
    Resource Identifier (URI) Schemes" registry ([RFC7595]):
@@ -5097,6 +5221,35 @@ Initial request (with Prefer: wait=N)
 18.  Document History
 
    _Note: This section is to be removed before publishing as an RFC._
+
+   *  draft-hardt-oauth-aauth-protocol-10
+
+      -  IANA review feedback: added Designated Expert Instructions for
+         the AAuth Requirement Value, Capability Value, and Platform
+         Value registries per RFC 8126 Section 4.5.
+
+   *  draft-hardt-oauth-aauth-protocol-09
+
+      -  Clarification chat: added a required action discriminator
+         (clarification_response / updated_request) to the agent's POST
+         responses on the pending URL, so the response type is explicit
+         rather than inferred from key presence.
+      -  Error responses: adopted RFC 9457 problem details — error
+         bodies use Content-Type: application/problem+json with the
+         AAuth error code as a required error extension member;
+         error_description replaced by the RFC 9457 detail member; added
+         token endpoint and polling error examples.
+
+   *  draft-hardt-oauth-aauth-protocol-08
+
+      -  Call chaining: upstream token aud MUST equal the iss of the
+         intermediary's agent token; routing to PS or AS is derived from
+         the upstream auth token (mission.approver or iss), not the
+         calling agent's ps claim; PS MUST require a mission to remain
+         in the loop for four-party upstream chains.
+      -  Interaction code: added that the code is a correlation
+         identifier, not an authorization credential; the code alone
+         MUST NOT authorize the decision.
 
    *  draft-hardt-oauth-aauth-protocol-07
 
@@ -5251,18 +5404,20 @@ Initial request (with Prefer: wait=N)
    concepts and earlier drafts, and contributors who raised issues and
    pull requests: Aaron Parecki, Christian Posta, Dasith
    Wijesiriwardena, Frederik Krogsdal Jacobsen, Jared Hanson, Jeoffrey
-   Haeyaert, João André Marques, Joshua Gay, Karl McGuinness, Mark
-   Hendrickson, Nate Barbettini, Nick Gamb, Paul Carleton, Rohan
-   Harikumar, Scott Motte, Wils Dawson.
+   Haeyaert, João André Marques, Joshua Gay, Karl McGuinness, Lukas
+   Friman, Mark Hendrickson, Nate Barbettini, Nick Gamb, Paul Carleton,
+   Rohan Harikumar, Sanjay Dalal, Scott Motte, Wils Dawson.
 
 20.  References
 
 20.1.  Normative References
 
    [I-D.hardt-httpbis-signature-key]
-              Hardt, D. and T. Meunier, "HTTP Signature Keys", 2026,
-              <https://dickhardt.github.io/signature-key/draft-hardt-
-              httpbis-signature-key.html>.
+              Hardt, D. and T. Meunier, "HTTP Signature Keys", Work in
+              Progress, Internet-Draft, draft-hardt-httpbis-signature-
+              key-06, 2 July 2026,
+              <https://datatracker.ietf.org/doc/html/draft-hardt-
+              httpbis-signature-key-06>.
 
    [I-D.ryan-httpauth-payment]
               Ryan, B., Moxey, J., Meagher, T., Weinstein, J., and S.
@@ -5330,11 +5485,6 @@ Initial request (with Prefer: wait=N)
               RFC 8126, DOI 10.17487/RFC8126, June 2017,
               <https://www.rfc-editor.org/info/rfc8126>.
 
-   [RFC8259]  Bray, T., Ed., "The JavaScript Object Notation (JSON) Data
-              Interchange Format", STD 90, RFC 8259,
-              DOI 10.17487/RFC8259, December 2017,
-              <https://www.rfc-editor.org/info/rfc8259>.
-
    [RFC8615]  Nottingham, M., "Well-Known Uniform Resource Identifiers
               (URIs)", RFC 8615, DOI 10.17487/RFC8615, May 2019,
               <https://www.rfc-editor.org/info/rfc8615>.
@@ -5367,6 +5517,10 @@ Initial request (with Prefer: wait=N)
               Message Signatures", RFC 9421, DOI 10.17487/RFC9421,
               February 2024, <https://www.rfc-editor.org/info/rfc9421>.
 
+   [RFC9457]  Nottingham, M., Wilde, E., and S. Dalal, "Problem Details
+              for HTTP APIs", RFC 9457, DOI 10.17487/RFC9457, July 2023,
+              <https://www.rfc-editor.org/info/rfc9457>.
+
 20.2.  Informative References
 
    [CommonMark]
@@ -5381,7 +5535,13 @@ Initial request (with Prefer: wait=N)
               davis-base32-for-humans-01>.
 
    [I-D.hardt-aauth-bootstrap]
-              Hardt, D., "AAuth Bootstrap Guidance", 2026,
+              Hardt, D., "AAuth Bootstrap Guidance", Work in Progress,
+              Internet-Draft, draft-hardt-aauth-bootstrap-01, 6 May
+              2026, <https://datatracker.ietf.org/doc/html/draft-hardt-
+              aauth-bootstrap-01>.
+
+   [I-D.hardt-aauth-events]
+              Hardt, D., "AAuth Events", 2026,
               <https://github.com/dickhardt/AAuth>.
 
    [I-D.hardt-aauth-r3]
