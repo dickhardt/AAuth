@@ -651,7 +651,17 @@ This specification establishes the AAuth R3 Vocabulary Registry. The initial con
 | `urn:aauth:vocabulary:wsdl` | SOAP/WSDL | This document |
 | `urn:aauth:vocabulary:odata` | OData | This document |
 
-New values may be registered following the Specification Required policy ([@!RFC8126]).
+New values may be registered following the Specification Required policy ([@!RFC8126], Section 4.6).
+
+### Designated Expert Instructions
+
+Registration requests for the AAuth R3 Vocabulary Registry are evaluated by a designated expert appointed by the IESG. Registration requests should be sent to IANA, which will forward them to the designated expert. The expert is expected to respond within two weeks. Denials should include an explanation and, if applicable, suggestions for how the request could be revised to be successful.
+
+A registration request must include the proposed vocabulary URI, the interface type it describes, and a reference to the specification defining it. The designated expert should verify that:
+
+- The vocabulary URI follows the `urn:aauth:vocabulary:<name>` pattern, where `<name>` is a lowercase token using only lowercase letters, digits, and hyphen, and is not confusingly similar to an existing entry.
+- The referenced specification is stable and freely available, and defines how operation identifiers are derived from the interface description in sufficient detail that independent implementations produce the same identifiers for the same interface.
+- The vocabulary covers an interface type not already served by an existing entry, or provides clear justification for an alternative vocabulary for an existing interface type.
 
 # Implementation Status
 
@@ -668,6 +678,7 @@ There are currently no known implementations.
 - draft-hardt-aauth-r3-01
   - Added the OPTIONAL `account` field to the R3 document, carrying the `account` value the authorization endpoint request named, and recommended that `display` name the account in terms the person recognises — the value is an identifier in the resource's namespace and may be opaque, so a consent screen rendering it verbatim identifies nothing.
   - Corrected the JWT header examples: `alg` is `Ed25519` rather than the deprecated polymorphic `EdDSA`, `typ` values are `aa-resource+jwt` and `aa-auth+jwt` to match the media types the protocol spec registers, and the `cnf.jwk` carries the `alg` member now required of every conveyed key.
+  - IANA review feedback: added Designated Expert Instructions for the AAuth R3 Vocabulary Registry per RFC 8126 Section 4.5.
   - Added per-call proposals for conditional operations
   - Content addressing hashes the bytes as served; removed canonicalization
   - Defined composition when requested operations span multiple R3 documents
