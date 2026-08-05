@@ -1397,12 +1397,22 @@ The mission blob MUST include:
 
 The mission blob MAY include:
 
-- `approved_tools`: Array of tool objects (each with `name` and `description`) that the agent may use without per-call permission at the PS's permission endpoint (#permission-endpoint).
+- `approved_tools`: Array of tool objects (each with `name` and `description`) that the agent may use without per-call permission at the PS's permission endpoint (#permission-endpoint). See (#approved-tools-accountability) for what granting this entails.
 - `capabilities`: Array of capability strings (e.g., `interaction`, `payment`) that the PS can provide on behalf of the user for this session. The PS determines these based on whether it can reach the specific user — for example, via push notification, email, or an active session. The agent unions these with its own capabilities when constructing the `AAuth-Capabilities` request header (#aauth-capabilities).
 
 The response body — the mission blob — is the mission JSON that `s256` hashes everywhere it appears (the `AAuth-Mission` header and the `mission` reference in resource and auth tokens). The `s256` is the base64url-encoded SHA-256 hash of the response body bytes. The agent verifies the hash by computing SHA-256 over the exact response body bytes, and MUST store those bytes exactly as received — no re-serialization.
 
 The approved description MAY differ from the proposal — the PS or user may refine, constrain, or expand the mission during review. The approved tools MAY be a subset of the proposed tools. The agent MUST use the `approver` and `s256` from the `AAuth-Mission` header in all subsequent `AAuth-Mission` request headers.
+
+### Approved Tools and Offline Accountability {#approved-tools-accountability}
+
+An agent MAY perform actions covered by `approved_tools` while it cannot reach its PS. This is the point of the grant: headless workloads, intermittently connected agents, and self-hosted deployments (#aauth-platform-value-registry) are first-class, and requiring a permission call per action would make them unworkable. Audit records are fire-and-forget (#audit-endpoint), so records for actions taken during a partition are emitted on reconnection, if at all.
+
+It follows that the mission log is not a complete record. A PS cannot distinguish an agent that did nothing while partitioned from one that acted and never reported it, because nothing obliges the agent to account for a sequence the PS issued. Nor does the resource-token lifetime bound a partitioned agent's local actions: an approved tool that touches no remote resource consumes no token, so a mission revoked mid-partition does not stop it until the agent next reaches the PS.
+
+Granting `approved_tools` is therefore a trust decision about offline accountability, and its blast radius is whatever the granted tools can do without network access — which the PS accepts when it grants them. A PS that requires complete audit coverage, or prompt response to revocation, SHOULD NOT grant `approved_tools`, and SHOULD require a permission call per action instead; that is an online governance model and works for deployments that can rely on connectivity. A PS wanting stronger guarantees without giving up offline operation MAY issue and track its own sequence alongside the grant, which needs no protocol support and is left to implementations.
+
+This specification defines no mechanism making an omitted audit record detectable. Doing so would require the PS to issue work permits before the agent acts, which would remove the offline operation `approved_tools` exists to enable.
 
 ## Mission Log {#mission-log}
 
@@ -3070,6 +3080,7 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-10
+  - Added (#approved-tools-accountability), stating that approved-tool actions MAY execute while the PS is unreachable, that the mission log is consequently not a complete record, and that granting `approved_tools` is a trust decision about offline accountability whose blast radius is what the granted tools can do offline. A PS needing complete coverage declines the grant and requires per-action permission calls. Addresses issue #49.
   - Added (#directed-sub-chaining): a downstream issuer MUST NOT copy a directed `sub` from an upstream token, MAY emit `sub` only from its own authenticated federation step, otherwise omits it and carries the agent and delegation facts alone, and never places a person identifier in `act`. Identity is `(iss, sub)`, so a value minted by one issuer for one audience means nothing under another, and reusing it defeats the pairwise separation directed identifiers exist to provide. Addresses issue #41.
   - Updated the delegation chain examples, which showed a single `sub` value carried unchanged across every hop and so illustrated the behaviour (#directed-sub-chaining) forbids.
   - Revocation identifies a token by `(iss, jti)` rather than `jti` alone, and recipients key revocation state by that pair. A `jti` is unique only within its issuer's namespace, while a revocation endpoint receives tokens from many issuers, so `jti` alone invites cross-issuer collision. Addresses issue #59.
