@@ -357,8 +357,9 @@ The document MUST be served over HTTPS. The resource MUST require a valid HTTP M
     { "tool": "create_calendar_event" },
     { "tool": "modify_calendar_event" }
   ],
+  "account": "dick@example.com",
   "display": {
-    "summary": "Create and modify events on your work calendar",
+    "summary": "Create and modify events on your work calendar (dick@example.com)",
     "implications": "Meetings can be scheduled or rescheduled. Existing events can be modified.",
     "data_accessed": "Event titles, times, attendees, and descriptions in the work calendar",
     "irreversible": "Sent meeting invitations cannot be unsent"
@@ -373,6 +374,10 @@ The document MUST be served over HTTPS. The resource MUST require a valid HTTP M
 **`vocabulary`** (REQUIRED). The vocabulary URI identifying how operations are expressed. MUST match one of the vocabularies the resource advertises in `r3_vocabularies`.
 
 **`operations`** (REQUIRED). An array of operations covered by this R3 document, using the vocabulary-specific structure defined in {{mcp-vocabulary}} through {{odata-vocabulary}}. This is the same format used in the agent's `r3_operations` request and in the auth token's `r3_granted` and `r3_conditional` claims.
+
+**`account`** (OPTIONAL). Present when the authorization endpoint request carried an `account` parameter ([@!I-D.hardt-aauth-protocol]), carrying that same value. It identifies which account at the resource this authorization covers.
+
+When `account` is present, the `display` section SHOULD name the account in terms the person recognises. The value itself is an identifier in the resource's namespace and may be opaque — a numeric company id, a workspace key — so a consent screen rendering it verbatim tells the person nothing about which of their accounts is being authorized. The resource holds the human-readable name and `display` is where it belongs; a PS renders `display` and is not expected to interpret `account`.
 
 **`display`** (RECOMMENDED). Human-readable descriptions of the consequences of granting this access. The resource describes what *it* does, not what the agent intends:
 
@@ -661,6 +666,7 @@ There are currently no known implementations.
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-aauth-r3-01
+  - Added the OPTIONAL `account` field to the R3 document, carrying the `account` value the authorization endpoint request named, and recommended that `display` name the account in terms the person recognises — the value is an identifier in the resource's namespace and may be opaque, so a consent screen rendering it verbatim identifies nothing.
   - Corrected the JWT header examples: `alg` is `Ed25519` rather than the deprecated polymorphic `EdDSA`, `typ` values are `aa-resource+jwt` and `aa-auth+jwt` to match the media types the protocol spec registers, and the `cnf.jwk` carries the `alg` member now required of every conveyed key.
   - Added per-call proposals for conditional operations
   - Content addressing hashes the bytes as served; removed canonicalization

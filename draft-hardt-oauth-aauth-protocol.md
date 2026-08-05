@@ -621,6 +621,7 @@ A resource MAY publish an `authorization_endpoint` in its metadata. The agent se
 **Request parameters:**
 
 - `scope` (REQUIRED): A space-separated string of scope values the agent is requesting.
+- `account` (OPTIONAL): A string identifying which account at the resource the authorization is for, drawn from the resource's own account namespace (#account-binding).
 
 ```http
 POST /authorize HTTP/1.1
@@ -812,6 +813,7 @@ Payload:
 - `scope`: Requested scopes, as a space-separated string of scope values. Companion specifications MAY define alternative authorization claims that replace `scope`.
 
 Optional payload claims:
+- `account`: The account the authorization is for, echoing the `account` parameter of the request that produced this token (#account-binding).
 - `mission`: Mission reference (present when the resource is mission-aware and the agent sent an `AAuth-Mission` header). Contains:
   - `approver`: HTTPS URL of the entity that approved the mission
   - `s256`: SHA-256 hash of the approved mission JSON (base64url)
@@ -1699,6 +1701,7 @@ Conditional payload claims (at least one MUST be present):
 At least one of `sub` or `scope` MUST be present.
 
 Optional payload claims:
+- `account`: The account the authorization is for, copied from the resource token (#account-binding).
 - `mission`: Mission reference. Present when the auth token was issued in the context of a mission. Contains:
   - `approver`: HTTPS URL of the entity that approved the mission
   - `s256`: SHA-256 hash of the approved mission JSON (base64url)
@@ -2031,6 +2034,26 @@ Scopes appear in three places in the protocol:
 3. **Authorization endpoint request** (`scope`): The scope the agent is requesting from the resource.
 
 The PS evaluates requested scopes against mission context (if present) and user consent. The AS evaluates scopes against resource policy. Either party may narrow the granted scope.
+
+## Account Binding {#account-binding}
+
+A resource may hold more than one account for the same person — an AAuth-to-OAuth proxy where a user has connected several accounts at the upstream service, a SaaS product where someone belongs to several workspaces. Scope says what the agent may do; it does not say which of those accounts it may do it to.
+
+The OPTIONAL `account` parameter of the authorization endpoint request (#authorization-endpoint-request) binds an authorization to one of them. Its value is a string from the resource's own account namespace — an email address, a workspace identifier, a tenant id, whatever the resource already uses. This specification gives it no structure and no meaning; only the resource interprets it.
+
+When the request carried `account`, the resource echoes it as the `account` claim of the resource token, the PS or AS copies it into the auth token, and the resource enforces per-account access directly from the token it receives. Different accounts yield different auth tokens, so an auth token for one account grants nothing at another, and the audit trail records which account each authorization covered.
+
+The parameter selects; it does not hint. It is not `login_hint` ([@!OpenID.Core], Section 3.1.2.1), which is a hint about who to authenticate at the party receiving it. Nobody is being authenticated here — the account is already connected at the resource — and the value has to survive into the issued tokens as a claim rather than being consumed during a login. Overloading `login_hint` would also conflate the person logging in at their PS with the account being acted on at the resource, which are different things and may belong to different namespaces entirely.
+
+### Resolving the Account {#account-resolution}
+
+An agent knows which account to name only if it has been told. Where it has not, the resource MUST NOT enumerate the accounts it holds for the person. It responds with `requirement=interaction` (#requirement-responses) and the person selects at the resource, in their own session.
+
+Enumerating is unsafe for a reason that is easy to miss: at the authorization endpoint the resource has the agent's identity and no verified identity for the person, so it has nothing to gate disclosure on and nothing to key the list to. Returning a list on the strength of an agent token would disclose which accounts sit behind that agent to anyone presenting one. Even where the resource does know the person — on a request bearing an auth token — which of someone's accounts an agent may act on is a decision that belongs to the person rather than to the agent, and the interaction flow is where a person makes it.
+
+Once the person has selected, the agent holds the `account` value and sends it on subsequent authorization requests without further interaction. An agent operating under a mission that already names the account never interacts at all.
+
+A PS displaying an authorization for consent MAY show the `account` value, and a resource that wants the person to see something more legible than an opaque identifier — a workspace name rather than a numeric id — puts that in the `display` text of its R3 document ([@?I-D.hardt-aauth-r3]), which is the resource-controlled consent text. The `account` value itself stays the identifier the resource enforces on.
 
 ## Requirement Responses {#requirement-responses}
 
@@ -3080,6 +3103,7 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-10
+  - Added (#account-binding): an OPTIONAL `account` parameter on the authorization endpoint request, echoed as an OPTIONAL claim in the resource token and copied into the auth token, binding an authorization to one of several accounts a resource may hold for the same person. The value is an opaque string in the resource's own namespace. Where the agent does not know which account to name, the resource returns `requirement=interaction` and the person selects at the resource; a resource MUST NOT enumerate a person's accounts to an agent, having nothing to gate that disclosure on at the authorization endpoint. Addresses issue #52.
   - Added (#approved-tools-accountability), stating that approved-tool actions MAY execute while the PS is unreachable, that the mission log is consequently not a complete record, and that granting `approved_tools` is a trust decision about offline accountability whose blast radius is what the granted tools can do offline. A PS needing complete coverage declines the grant and requires per-action permission calls. Addresses issue #49.
   - Added (#directed-sub-chaining): a downstream issuer MUST NOT copy a directed `sub` from an upstream token, MAY emit `sub` only from its own authenticated federation step, otherwise omits it and carries the agent and delegation facts alone, and never places a person identifier in `act`. Identity is `(iss, sub)`, so a value minted by one issuer for one audience means nothing under another, and reusing it defeats the pairwise separation directed identifiers exist to provide. Addresses issue #41.
   - Updated the delegation chain examples, which showed a single `sub` value carried unchanged across every hop and so illustrated the behaviour (#directed-sub-chaining) forbids.
