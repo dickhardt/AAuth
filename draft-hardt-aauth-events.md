@@ -215,7 +215,7 @@ A subscribe token is a JWT with `typ: aa-subscribe+jwt`, issued and signed by th
 
 Header:
 
-- `alg`: Signing algorithm. EdDSA is RECOMMENDED. Implementations MUST NOT accept `none`.
+- `alg`: Signing algorithm. A fully-specified identifier is REQUIRED; `Ed25519` is RECOMMENDED. Implementations MUST NOT accept `none` or the polymorphic `EdDSA` identifier.
 - `typ`: `aa-subscribe+jwt`
 - `kid`: Key identifier (AP's signing key)
 
@@ -242,7 +242,8 @@ Example subscribe token payload:
   "dwk": "aauth-agent.json",
   "sub": "aauth:k7q3p9n2@ap.example",
   "aud": "https://resource.example",
-  "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519", "x": "..." } },
+  "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519",
+                    "x": "...", "alg": "Ed25519" } },
   "eid": "evt_8f3k2n9p",
   "iat": 1750000000,
   "exp": 1750086400,
@@ -351,7 +352,7 @@ When an event fires, the resource issues an event token: a JWT signed by the res
 
 Header:
 
-- `alg`: Signing algorithm. EdDSA is RECOMMENDED.
+- `alg`: Signing algorithm. A fully-specified identifier is REQUIRED; `Ed25519` is RECOMMENDED.
 - `typ`: `aa-event+jwt`
 - `kid`: Key identifier (resource's signing key)
 
@@ -649,6 +650,7 @@ TBD
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-aauth-events-00
+  - Algorithm identifiers: `Ed25519` rather than the deprecated polymorphic `EdDSA`; the `cnf.jwk` example carries the `alg` member now required of every conveyed key.
   - Initial draft.
 
 # Acknowledgments

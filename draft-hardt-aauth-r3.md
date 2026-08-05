@@ -413,8 +413,8 @@ R3 extension claims:
 
 ```json
 {
-  "typ": "resource+jwt",
-  "alg": "EdDSA",
+  "typ": "aa-resource+jwt",
+  "alg": "Ed25519",
   "kid": "resource-key-1"
 }
 ```
@@ -485,8 +485,8 @@ R3 extension claims:
 
 ```json
 {
-  "typ": "auth+jwt",
-  "alg": "EdDSA",
+  "typ": "aa-auth+jwt",
+  "alg": "Ed25519",
   "kid": "as-key-1"
 }
 ```
@@ -499,7 +499,8 @@ R3 extension claims:
   "jti": "at-9d4c1e",
   "agent": "assistant@agent.example",
   "sub": "user:alice@example.com",
-  "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519", "x": "NzbLsXh8uDCcd..." } },
+  "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519",
+                    "x": "NzbLsXh8uDCcd...", "alg": "Ed25519" } },
   "r3_uri": "https://calendar.example.com/r3/a1b2c3d4",
   "r3_s256": "aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789abcd",
   "r3_granted": {
@@ -660,6 +661,7 @@ There are currently no known implementations.
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-aauth-r3-01
+  - Corrected the JWT header examples: `alg` is `Ed25519` rather than the deprecated polymorphic `EdDSA`, `typ` values are `aa-resource+jwt` and `aa-auth+jwt` to match the media types the protocol spec registers, and the `cnf.jwk` carries the `alg` member now required of every conveyed key.
   - Added per-call proposals for conditional operations
   - Content addressing hashes the bytes as served; removed canonicalization
   - Defined composition when requested operations span multiple R3 documents
