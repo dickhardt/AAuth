@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                             5 July 2026
-Expires: 6 January 2027
+Intended status: Standards Track                           5 August 2026
+Expires: 6 February 2027
 
 
                              AAuth Protocol
@@ -50,7 +50,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 6 January 2027.
+   This Internet-Draft will expire on 6 February 2027.
 
 Copyright Notice
 
@@ -5357,11 +5357,13 @@ Initial request (with Prefer: wait=N)
 
    The author would like to thank reviewers for their feedback on
    concepts and earlier drafts, and contributors who raised issues and
-   pull requests: Aaron Parecki, Christian Posta, Dasith
-   Wijesiriwardena, Frederik Krogsdal Jacobsen, Jared Hanson, Jeoffrey
-   Haeyaert, João André Marques, Joshua Gay, Karl McGuinness, Lukas
-   Friman, Mark Hendrickson, Nate Barbettini, Nick Gamb, Paul Carleton,
-   Rohan Harikumar, Sanjay Dalal, Scott Motte, Wils Dawson.
+   pull requests: Aaron Parecki, Ben McAdams, Christian Posta, Danny
+   Fuhriman, Dasith Wijesiriwardena, Frederik Krogsdal Jacobsen, Jared
+   Hanson, Jeoffrey Haeyaert, João André Marques, Joshua Gay, Karl
+   McGuinness, Ken Huang, Lukas Friman, Mark Hendrickson, Mayur
+   Agnihotri, Nate Barbettini, Nick Gamb, Paul Carleton, Rohan
+   Harikumar, Sanjay Dalal, Scott Motte, Wils Dawson, Zeeshan Khan, and
+   the GitHub contributors hegu-1 and sdatapix.
 
 20.  References
 
@@ -5370,9 +5372,9 @@ Initial request (with Prefer: wait=N)
    [I-D.hardt-httpbis-signature-key]
               Hardt, D. and T. Meunier, "HTTP Signature Keys", Work in
               Progress, Internet-Draft, draft-hardt-httpbis-signature-
-              key-06, 2 July 2026,
+              key-08, 4 July 2026,
               <https://datatracker.ietf.org/doc/html/draft-hardt-
-              httpbis-signature-key-06>.
+              httpbis-signature-key-08>.
 
    [I-D.ryan-httpauth-payment]
               Ryan, B., Moxey, J., Meagher, T., Weinstein, J., and S.
