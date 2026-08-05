@@ -1771,6 +1771,21 @@ In every case the intermediary signs the downstream token request with its **own
 
 The recipient (PS or AS) evaluates the downstream request per (#upstream-token-verification).
 
+#### Directed Identifiers Across a Chain {#directed-sub-chaining}
+
+The `sub` of an auth token is a directed identifier: a PS SHOULD issue a pairwise pseudonymous value per resource, so that two resources serving the same person cannot correlate them by comparing tokens (#auth-tokens, #directed-identifiers). Identity is the pair `(iss, sub)` — a `sub` minted by one issuer for one audience carries no meaning under a different issuer for a different audience.
+
+A downstream issuer sees the upstream `sub` in the `upstream_token` it is handed. It MUST NOT carry that value forward:
+
+1. An issuer MUST NOT copy a directed `sub` from an upstream token into a token it issues.
+2. It MAY include `sub` only where it obtained or derived a downstream-directed identifier for the person itself, through an authenticated PS or claims federation step of its own.
+3. Otherwise the token it issues omits `sub` and carries only the verified agent and delegation facts — `agent` and, where present, `act`.
+4. The `act` chain records agent identity provenance only and MUST NOT carry any identifier for the person.
+
+Clause 3 leaves a well-formed token: §(#auth-tokens) requires at least one of `sub` or `scope`, so a downstream token carrying `scope` and no `sub` satisfies the structure. Losing the user identifier is the intended outcome where no mapping exists — a downstream resource learns what the agent is authorized to do without learning who, which is the correct answer when nobody has established who the person is in that issuer's namespace.
+
+Copying instead would fail in both directions at once. The value would be meaningless under the new issuer, so the downstream resource would either misidentify the person or key state to an identifier no one can resolve; and the same string appearing at two resources is exactly the correlation handle pairwise identifiers exist to prevent, handed to a party the user never consented to share it with.
+
 Note that downstream authorization is not required to be a subset of the upstream scopes. A downstream resource may have capabilities that are orthogonal to the upstream resource — for example, a flight booking API that calls a payment processor needs the payment processor to charge a card, an operation the user and original agent could never perform directly. The downstream resource's scope is constrained by its own AS policy and the PS's evaluation of the mission context, not by the upstream token's scope. The PS provides the governance constraint — it evaluates each hop independently and can deny requests that fall outside the mission or the user's intent.
 
 Because the resource acts as an agent, it MUST have its own agent identity — it MUST publish agent metadata at `/.well-known/aauth-agent.json` so that downstream resources and ASes can verify its identity.
@@ -1847,11 +1862,14 @@ The relationship type — call chain vs sub-agent — is distinguishable from th
 
 ```json
 // auth token asst presents at booking — direct auth, no act
-{ "aud": "booking.example", "sub": "user:alice",
+{ "aud": "booking.example", "sub": "3d9e77c2-booking",
   "agent": "aauth:asst@agent.example" }
 
-// auth token booking presents at payments — booking was delegated by asst
-{ "aud": "payments.example", "sub": "user:alice",
+// auth token booking presents at payments — booking was delegated by asst.
+// The PS issues a sub directed at payments, unrelated to the one it
+// issued for booking; had it no mapping for the person there, it would
+// omit sub and carry scope alone.
+{ "aud": "payments.example", "sub": "8f2c1ab4-payments",
   "agent": "aauth:booking@booking.example",
   "act": { "agent": "aauth:asst@agent.example" } }
 ```
@@ -1860,7 +1878,7 @@ The relationship type — call chain vs sub-agent — is distinguishable from th
 
 ```json
 // auth token search1 presents at search — delegated by its parent
-{ "aud": "search.example", "sub": "user:alice",
+{ "aud": "search.example", "sub": "b41f0d6e-search",
   "agent": "aauth:planner.7f3c+search1@vendor.example",
   "act": { "agent": "aauth:planner.7f3c@vendor.example" } }
 ```
@@ -1869,7 +1887,7 @@ The relationship type — call chain vs sub-agent — is distinguishable from th
 
 ```json
 // auth token booking+search1 presents at maps
-{ "aud": "maps.example", "sub": "user:alice",
+{ "aud": "maps.example", "sub": "c07a5b13-maps",
   "agent": "aauth:booking+search1@booking.example",
   "act": { "agent": "aauth:booking@booking.example",
            "act": { "agent": "aauth:asst@agent.example" } } }
@@ -3052,6 +3070,8 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-10
+  - Added (#directed-sub-chaining): a downstream issuer MUST NOT copy a directed `sub` from an upstream token, MAY emit `sub` only from its own authenticated federation step, otherwise omits it and carries the agent and delegation facts alone, and never places a person identifier in `act`. Identity is `(iss, sub)`, so a value minted by one issuer for one audience means nothing under another, and reusing it defeats the pairwise separation directed identifiers exist to provide. Addresses issue #41.
+  - Updated the delegation chain examples, which showed a single `sub` value carried unchanged across every hop and so illustrated the behaviour (#directed-sub-chaining) forbids.
   - Revocation identifies a token by `(iss, jti)` rather than `jti` alone, and recipients key revocation state by that pair. A `jti` is unique only within its issuer's namespace, while a revocation endpoint receives tokens from many issuers, so `jti` alone invites cross-issuer collision. Addresses issue #59.
   - Added an OPTIONAL `revocation_endpoint` to agent provider metadata. Agent tokens are issued by the AP, which was the only role with no way to revoke what it issues. Addresses issue #60.
   - Stated what revocation does not do: auth tokens verify offline, so a holder that no revocation request reaches is bounded by token lifetime alone.
