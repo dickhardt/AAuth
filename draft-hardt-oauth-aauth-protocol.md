@@ -732,7 +732,7 @@ AAuth-Requirement: requirement=agent-token
 
 The header carries no additional parameters: the agent already holds its agent token and need only present it. The agent retries the request, signing it per (#http-message-signatures-profile) and presenting its agent token via the `Signature-Key` header using `sig=jwt;jwt="<agent-token>"`.
 
-`requirement=agent-token` is distinct from `requirement=auth-token`: the former asks for the agent's own identity token, with no PS or AS involved; the latter asks the agent to obtain an auth token from its PS using the enclosed resource token. It is also more specific than an `Accept-Signature` challenge ([@!I-D.hardt-httpbis-signature-key]), which accepts any URI-identified key — `requirement=agent-token` tells the agent that an AAuth agent token in particular is required.
+`requirement=agent-token` is distinct from `requirement=auth-token`: the former asks for the agent's own identity token, with no PS or AS involved; the latter asks the agent to obtain an auth token from its PS using the enclosed resource token. It is also more specific than an `Accept-Signature-Scheme` challenge ([@!I-D.hardt-httpbis-signature-key]), which names schemes and so would accept any key those schemes can convey — `requirement=agent-token` tells the agent that an AAuth agent token in particular is required.
 
 ## AAuth-Access Response Header {#aauth-access}
 
@@ -2241,7 +2241,9 @@ Initial request (with Prefer: wait=N)
 
 ### Authentication Errors
 
-A `401` response from any AAuth endpoint uses the `Signature-Error` header as defined in ([@!I-D.hardt-httpbis-signature-key]).
+A `401` response from any AAuth endpoint uses the `Signature-Error` header as defined in ([@!I-D.hardt-httpbis-signature-key]). The header, not the response body, is the machine-readable carrier; agents MUST NOT depend on the body for signature error handling.
+
+A server returning `unsupported_scheme` SHOULD include `Accept-Signature-Scheme`, and one returning `unsupported_algorithm` SHOULD include `Accept-Signature-Alg` (#verification). The error names what went wrong; the header names what would succeed. Because AAuth fixes the scheme (#keying-material) and requires `Ed25519` support of every agent and resource (#signature-algorithms), a conformant agent does not reach either error — the headers exist so that an agent preferring another algorithm, or a client arriving from outside AAuth, can recover in one round trip rather than by trial.
 
 ### Error Response Format {#error-response-format}
 
@@ -2277,7 +2279,7 @@ Content-Type: application/problem+json
 }
 ```
 
-### Polling Error Codes
+### Polling Error Codes {#polling-error-codes}
 
 | Error | Status | Meaning |
 |-------|--------|---------|
@@ -2402,6 +2404,10 @@ The `Signature-Input` header ([@!RFC9421], Section 4.1) MUST include the followi
 
 - `created`: Signature creation timestamp as an Integer (Unix time). The agent MUST set this to the current time.
 
+Agents MUST NOT include the `alg` signature parameter, and verifiers MUST ignore it if present, per [@!RFC9421], Section 3.3.7: under the JOSE signing algorithms this profile uses, the algorithm is signaled by the key rather than requested on the wire, and JWA identifiers are not registered in the HTTP Signature Algorithms registry. The algorithm is determined per (#signature-algorithms).
+
+Agents SHOULD NOT include the `keyid` parameter ([@!RFC9421], Section 5.1); the key is identified by the `Signature-Key` header. If `keyid` is present for a label that also appears in `Signature-Key`, the two MUST identify the same key, and the verifier MUST take the key from `Signature-Key`.
+
 ### Verification (Server) {#verification}
 
 When a server receives a signed request, it MUST perform the following steps. Any failure MUST result in a `401` response with the appropriate `Signature-Error` header ([@!I-D.hardt-httpbis-signature-key]).
@@ -2409,9 +2415,30 @@ When a server receives a signed request, it MUST perform the following steps. An
 1. Extract the `Signature`, `Signature-Input`, and `Signature-Key` headers. If any are missing, return `invalid_request`.
 2. Verify that the `Signature-Input` covers the required components defined in (#covered-components). If the server requires additional components, verify those are covered as well. If not, return `invalid_input` with `required_input`.
 3. Verify the `created` parameter is present and within the server's signature validity window of the server's current time. The default window is 60 seconds. Servers MAY advertise a different window via their metadata (e.g., `signature_window` in resource metadata). Reject with `invalid_signature` if outside this window. Servers and agents SHOULD synchronize their clocks using NTP ([@RFC5905]).
-4. Determine the signature algorithm from the `alg` parameter in the key. If the algorithm is not supported, return `unsupported_algorithm`.
-5. Obtain the public key from the `Signature-Key` header according to the scheme, as specified in ([@!I-D.hardt-httpbis-signature-key]). Return `invalid_key` if the key cannot be parsed, `unknown_key` if the key is not found at the `jwks_uri`, `invalid_jwt` if a JWT scheme fails verification, or `expired_jwt` if the JWT has expired.
-6. Verify the HTTP Message Signature ([@!RFC9421]) using the obtained public key and determined algorithm. Return `invalid_signature` if verification fails.
+4. Select the `Signature-Key` dictionary member for the label being verified and read its scheme. If the scheme is not one the server implements — including any scheme this profile does not use (#keying-material) and any unregistered value — return `unsupported_scheme` with an `Accept-Signature-Scheme` header naming the schemes the server accepts. A server MUST NOT fail in a scheme-specific or undefined manner on an unrecognized scheme.
+5. Obtain the public key from the `Signature-Key` header according to the scheme, as specified in ([@!I-D.hardt-httpbis-signature-key]). Return `invalid_key` if the key cannot be parsed, `unknown_key` if the key is not found at the `jwks_uri`, `invalid_jwt` if a JWT scheme fails verification, `expired_jwt` if the JWT has expired, or `issuer_missing` / `issuer_mismatch` if the issuer's metadata document fails the checks in (#metadata-documents).
+6. Determine the signature algorithm from the `alg` member of the obtained key, per (#signature-algorithms). Return `unsupported_algorithm` if `alg` is absent, is a polymorphic identifier, or names an algorithm or key type the server does not implement, and include an `Accept-Signature-Alg` header naming the algorithms the server accepts. Return `invalid_key` if the key's `kty` or `crv` disagrees with its `alg`.
+7. Verify the HTTP Message Signature ([@!RFC9421]) using the obtained public key and determined algorithm. Return `invalid_signature` if verification fails.
+
+Steps 5 and 6 are ordered so that the algorithm is read from the key the scheme resolved to. Under `scheme=jwt` the key is the `cnf.jwk` of the presented token, which the server does not hold until the assertion has been verified.
+
+An `Accept-Signature-Alg` header names exactly the algorithms the server accepts, neither a subset nor a superset, so an agent that selects an algorithm from that list and presents a key carrying it is assured of clearing step 6. A server MAY omit either `Accept-Signature-*` header where enumerating what it accepts to an unauthenticated caller is judged a disclosure risk, accepting that agents then have to discover the sets by trial or out of band.
+
+This profile pins the response status to `401` for every signature failure, where the HTTP Signature Keys specification uses `400` for most of them and permits `401` for the recoverable ones. AAuth requests are authenticated by their signature, so a signature that does not verify is an authentication failure rather than a malformed request, and a single status keeps agent retry logic uniform.
+
+A `403` response denies access after the signature verified — authentication succeeded and authorization did not. Per ([@!I-D.hardt-httpbis-signature-key]), such a response MUST NOT include a `Signature-Error`, `Accept-Signature-Scheme`, or `Accept-Signature-Alg` header. This applies to the AAuth errors returned with `403` (#token-endpoint-error-codes, #polling-error-codes).
+
+#### Signature-Key Scheme Rejection {#scheme-rejection}
+
+AAuth requires `scheme=jwt` (#keying-material), so a request presenting any other scheme is rejected under step 4 above:
+
+```http
+HTTP/1.1 401 Unauthorized
+Signature-Error: error=unsupported_scheme
+Accept-Signature-Scheme: jwt
+```
+
+A resource that also serves clients outside AAuth — signing per ([@!I-D.hardt-httpbis-signature-key]) without an AAuth agent token — MAY accept further schemes and MUST then list all of them. `Accept-Signature-Scheme` states what the server accepts from any caller; `AAuth-Requirement: requirement=agent-token` (#requirement-agent-token) is the narrower statement that an AAuth agent token in particular is required, and a server challenging an AAuth agent uses that rather than `Accept-Signature-Scheme`.
 
 #### Freshness and Replay {#freshness-and-replay}
 
@@ -2478,7 +2505,7 @@ The `jwks_uri`, `tos_uri`, `policy_uri`, `logo_uri`, and `logo_dark_uri` values 
 
 Participants publish metadata at well-known URLs ([@!RFC8615]) to enable discovery.
 
-When fetching a metadata document, implementations MUST verify that the `issuer` value in the document matches the URL the document was retrieved from (the URL minus the `/.well-known/{dwk}` suffix). If the values do not match, the metadata document MUST be rejected.
+When fetching a metadata document, implementations MUST verify that it contains an `issuer` member, and that the `issuer` value matches the URL the document was retrieved from (the URL minus the `/.well-known/{dwk}` suffix), compared by byte equality as presented. A document with no `issuer` MUST be rejected with `issuer_missing`; one whose `issuer` does not match MUST be rejected with `issuer_mismatch` ([@!I-D.hardt-httpbis-signature-key]). This is the check [@!RFC8414], Section 3.3 requires of authorization server metadata.
 
 This check prevents host-poisoned metadata: an attacker hosting a metadata document at one domain that claims an `issuer` of a different domain. Without it, a permissive verifier following the `jwks_uri` in such a document could end up trusting attacker-controlled keys for tokens claiming the impersonated issuer.
 
@@ -3017,6 +3044,11 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-10
+  - Verification: reordered the steps so the algorithm is read from the key the scheme resolved to, which under `scheme=jwt` is not held until the assertion verifies. Added a scheme-rejection step returning `unsupported_scheme` with `Accept-Signature-Scheme`, made mandatory and conformance-testable by [@!I-D.hardt-httpbis-signature-key]; replaced "determine the algorithm from the `alg` parameter" with the specific checks, reporting `unsupported_algorithm` with `Accept-Signature-Alg`, and `invalid_key` where `kty` or `crv` disagrees with `alg`.
+  - Mapped the metadata document issuer check to the `issuer_missing` and `issuer_mismatch` error codes, and required the `issuer` member to be present rather than only to match.
+  - Stated that this profile pins signature failures to `401` where the base specification uses `400` for most of them, and that a `403` MUST NOT carry `Signature-Error` or either `Accept-Signature-*` header.
+  - Forbade the `alg` signature parameter and discouraged `keyid`, per [@!RFC9421], Section 3.3.7 and Section 5.1: under the JOSE signing algorithms the algorithm is signaled by the key, and the key is identified by `Signature-Key`.
+  - Rewrote the `requirement=agent-token` comparison, which described the `sigkey` parameter of `Accept-Signature` — removed in draft-hardt-httpbis-signature-key-08 — rather than `Accept-Signature-Scheme`.
   - Algorithm identifiers: adopted the fully-specified `Ed25519` identifier registered by [@!RFC9864] in place of the polymorphic `EdDSA`, which that RFC deprecates. Rewrote (#signature-algorithms) to state the Algorithm Determination rules AAuth inherits from [@!I-D.hardt-httpbis-signature-key]: `alg` is REQUIRED and MUST be fully specified, `EdDSA` and `none` and symmetric algorithms MUST NOT be used, and a verifier MUST reject a key whose `kty` or `crv` disagrees with its `alg`. Cited the IANA JOSE algorithms registry itself rather than [@RFC7518], which established it but no longer holds all of it. Addresses issue #57.
   - Required the JWK in a `cnf` claim to carry a fully-specified `alg`, in agent tokens and auth tokens alike, and updated the examples, which previously conveyed a JWK with no `alg` and would now be rejected.
   - Required every key published at an AAuth server's `jwks_uri` to carry `alg`. A discovered key has no other channel for it, so a JWKS that omits the member cannot be used even though [@!RFC7517] makes it OPTIONAL.
