@@ -3051,7 +3051,7 @@ The following implementations are known:
 
 # Acknowledgments
 
-The author would like to thank reviewers for their feedback on concepts and earlier drafts, and contributors who raised issues and pull requests: Aaron Parecki, Christian Posta, Dasith Wijesiriwardena, Frederik Krogsdal Jacobsen, Jared Hanson, Jeoffrey Haeyaert, João André Marques, Joshua Gay, Karl McGuinness, Lukas Friman, Mark Hendrickson, Nate Barbettini, Nick Gamb, Paul Carleton, Rohan Harikumar, Sanjay Dalal, Scott Motte, Wils Dawson.
+The author would like to thank reviewers for their feedback on concepts and earlier drafts, and contributors who raised issues and pull requests: Aaron Parecki, Ben McAdams, Christian Posta, Danny Fuhriman, Dasith Wijesiriwardena, Frederik Krogsdal Jacobsen, Jared Hanson, Jeoffrey Haeyaert, João André Marques, Joshua Gay, Karl McGuinness, Ken Huang, Lukas Friman, Mark Hendrickson, Mayur Agnihotri, Nate Barbettini, Nick Gamb, Paul Carleton, Rohan Harikumar, Sanjay Dalal, Scott Motte, Wils Dawson, Zeeshan Khan, and the GitHub contributors hegu-1 and sdatapix.
 
 {backmatter}
 
