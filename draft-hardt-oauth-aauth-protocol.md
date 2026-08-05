@@ -2304,7 +2304,9 @@ Content-Type: application/problem+json
 
 ## Token Revocation {#token-revocation}
 
-Any AAuth server that issues tokens MAY provide a revocation endpoint. The endpoint accepts a signed POST with the `jti` of the token to revoke. The server identifies the token from the `jti` and its own records — no token type is needed since the `jti` is unique within the issuer's namespace.
+Any AAuth server that issues tokens MAY provide a revocation endpoint. The endpoint accepts a signed POST identifying the token to revoke by the pair `(iss, jti)`. Both members are REQUIRED. The server identifies the token from that pair and its own records; no token type is needed, since `(iss, jti)` is unique.
+
+A `jti` is unique only within the namespace of the issuer that minted it. A revocation endpoint receives tokens from many issuers — a resource holds auth tokens from every PS and AS its callers use — so a `jti` alone does not identify a token unambiguously and invites cross-issuer collision, revoking the wrong token or silently failing to revoke the right one. Recipients maintaining revocation state MUST key it by `(iss, jti)`.
 
 **Request:**
 
@@ -2318,21 +2320,25 @@ Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
+  "iss": "https://ps.example",
   "jti": "unique-token-identifier"
 }
 ```
 
-**Response:** `200 OK` if the token was revoked or was already invalid. `404` if the `jti` is not recognized.
+**Response:** `200 OK` if the token was revoked or was already invalid. `404` if the `(iss, jti)` pair is not recognized.
 
-Revocation provides real-time termination of access. The PS or AS calls the revocation endpoint of the resource that a token was issued for, passing the `jti` of the auth token to revoke. The following revocation scenarios are supported:
+Revocation provides real-time termination of access. The PS or AS calls the revocation endpoint of the resource that a token was issued for, passing the `iss` and `jti` of the auth token to revoke. The following revocation scenarios are supported:
 
-- **PS revokes an auth token it issued** (three-party): The PS calls the resource's revocation endpoint with the auth token's `jti`.
-- **PS revokes an auth token it provided** (four-party): The PS calls the resource's revocation endpoint with the auth token's `jti`. The PS MAY also notify the AS.
-- **AS revokes an auth token it issued**: The AS calls the resource's revocation endpoint with the auth token's `jti`.
+- **PS revokes an auth token it issued** (three-party): The PS calls the resource's revocation endpoint with the auth token's `iss` and `jti`.
+- **PS revokes an auth token it provided** (four-party): The PS calls the resource's revocation endpoint with the auth token's `iss` and `jti`. The PS MAY also notify the AS.
+- **AS revokes an auth token it issued**: The AS calls the resource's revocation endpoint with the auth token's `iss` and `jti`.
 - **PS revokes a mission**: The PS marks the mission as revoked. All subsequent token requests referencing that mission's `s256` are denied. The PS SHOULD revoke outstanding auth tokens issued under the mission.
+- **Agent provider revokes an agent token it issued**: The agent provider marks the agent token revoked at its own `revocation_endpoint` (#agent-provider-metadata). An agent token is issued by the AP, so the AP is the only party that can revoke one; a PS or resource that no longer trusts an agent denies it rather than revoking its token.
 - **Agent provider stops issuing agent tokens**: The agent provider decides not to issue new agent tokens to the agent. Existing agent tokens expire naturally. This is part of the regular token lifecycle — all tokens have limited lifetimes and require periodic re-issuance, which provides a natural policy re-evaluation point.
 
-Revocation endpoints are advertised in server metadata as `revocation_endpoint`. Resources that accept revocation requests MUST verify the caller's identity via HTTP Message Signatures and MUST only accept revocation from the issuer of the token being revoked or from a trusted PS.
+Revocation endpoints are advertised in server metadata as `revocation_endpoint`. Recipients of revocation requests MUST verify the caller's identity via HTTP Message Signatures and MUST only accept revocation from the issuer of the token being revoked or from a trusted PS.
+
+Auth tokens are verified offline, from their signature and claims, with no call to the issuer. A resource therefore learns of a revocation only when one reaches its revocation endpoint, and a party that cannot reach it is bounded by token lifetime alone — at most one hour for an auth token (#auth-tokens), five minutes for a resource token (#resource-tokens). Revocation shortens exposure; it does not eliminate it, and deployments requiring immediate termination should issue shorter-lived tokens rather than relying on revocation reaching every holder.
 
 Auth tokens are short-lived (maximum 1 hour) and proof-of-possession (useless without the bound signing key). All AAuth tokens have limited lifetimes — agent tokens, resource tokens, and auth tokens all expire and require re-issuance. Each re-issuance is a policy evaluation point where the issuer can deny renewal. This natural expiration cycle, combined with real-time revocation, provides layered access control.
 
@@ -2527,7 +2533,7 @@ AAuth intentionally diverges from RFC 9728 on two points: AAuth uses `issuer` (n
 
 Per-role sections below list these common fields in their examples and note any role-specific REQUIRED/conditional differences (e.g., `jwks_uri` is conditionally REQUIRED for resources). Role-specific fields are listed after the common fields.
 
-### Agent Provider Metadata
+### Agent Provider Metadata {#agent-provider-metadata}
 
 Published at `/.well-known/aauth-agent.json`:
 
@@ -2542,6 +2548,7 @@ Published at `/.well-known/aauth-agent.json`:
   "documentation_uri": "https://agent.example/docs",
   "callback_endpoint": "https://agent.example/callback",
   "event_endpoint": "https://agent.example/events",
+  "revocation_endpoint": "https://agent.example/revoke",
   "localhost_callback_allowed": true,
   "tos_uri": "https://agent.example/tos",
   "policy_uri": "https://agent.example/privacy"
@@ -2560,6 +2567,7 @@ Fields:
 - `callback_endpoint` (OPTIONAL): The agent's HTTPS callback endpoint URL
 - `event_endpoint` (OPTIONAL): HTTPS URL at which the AP receives event tokens from resources. Required if the AP supports AAuth Events ([@?I-D.hardt-aauth-events]).
 - `login_endpoint` (OPTIONAL): URL where third parties can direct users to initiate authentication (#third-party-login)
+- `revocation_endpoint` (OPTIONAL): URL where authorized parties can revoke agent tokens the agent provider issued (#token-revocation)
 - `localhost_callback_allowed` (OPTIONAL): Boolean. Default: `false`.
 - `tos_uri` (OPTIONAL): URL to terms of service (per [@RFC7591])
 - `policy_uri` (OPTIONAL): URL to privacy policy (per [@RFC7591])
@@ -3044,6 +3052,9 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-10
+  - Revocation identifies a token by `(iss, jti)` rather than `jti` alone, and recipients key revocation state by that pair. A `jti` is unique only within its issuer's namespace, while a revocation endpoint receives tokens from many issuers, so `jti` alone invites cross-issuer collision. Addresses issue #59.
+  - Added an OPTIONAL `revocation_endpoint` to agent provider metadata. Agent tokens are issued by the AP, which was the only role with no way to revoke what it issues. Addresses issue #60.
+  - Stated what revocation does not do: auth tokens verify offline, so a holder that no revocation request reaches is bounded by token lifetime alone.
   - Verification: reordered the steps so the algorithm is read from the key the scheme resolved to, which under `scheme=jwt` is not held until the assertion verifies. Added a scheme-rejection step returning `unsupported_scheme` with `Accept-Signature-Scheme`, made mandatory and conformance-testable by [@!I-D.hardt-httpbis-signature-key]; replaced "determine the algorithm from the `alg` parameter" with the specific checks, reporting `unsupported_algorithm` with `Accept-Signature-Alg`, and `invalid_key` where `kty` or `crv` disagrees with `alg`.
   - Mapped the metadata document issuer check to the `issuer_missing` and `issuer_mismatch` error codes, and required the `issuer` member to be present rather than only to match.
   - Stated that this profile pins signature failures to `401` where the base specification uses `400` for most of them, and that a `403` MUST NOT carry `Signature-Error` or either `Accept-Signature-*` header.
