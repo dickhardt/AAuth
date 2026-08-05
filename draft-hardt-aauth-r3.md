@@ -672,7 +672,7 @@ There are currently no known implementations.
 
 # Acknowledgments
 
-The author would like to thank reviewers for their feedback.
+The author would like to thank reviewers for their feedback, and Ben McAdams for a pull request correcting this document's reference to the AAuth Protocol specification.
 
 {backmatter}
 
