@@ -69,6 +69,15 @@ organization = "Hellō"
   </front>
 </reference>
 
+<reference anchor="IANA.JOSE.Algorithms" target="https://www.iana.org/assignments/jose/jose.xhtml#web-signature-encryption-algorithms">
+  <front>
+    <title>JSON Web Signature and Encryption Algorithms</title>
+    <author>
+      <organization>IANA</organization>
+    </author>
+  </front>
+</reference>
+
 <reference anchor="CommonMark" target="https://spec.commonmark.org/0.31.2/">
   <front>
     <title>CommonMark Spec</title>
@@ -535,7 +544,7 @@ Implementations MUST perform exact string comparison on agent identifiers (case-
 
 An agent MUST obtain an agent token from its agent provider before participating in the AAuth protocol. The acquisition process follows these steps:
 
-1. The agent generates a signing key pair (EdDSA is RECOMMENDED).
+1. The agent generates a signing key pair (Ed25519 is RECOMMENDED).
 2. The agent proves its identity to the agent provider through a platform-specific mechanism.
 3. The agent provider verifies the agent's identity and issues an agent token binding the agent's public key to the agent's identifier.
 
@@ -546,7 +555,7 @@ The mechanism for proving identity is platform-dependent. See [@?I-D.hardt-aauth
 An agent token is a JWT with `typ: aa-agent+jwt` containing:
 
 Header:
-- `alg`: Signing algorithm. EdDSA is RECOMMENDED. Implementations MUST NOT accept `none`.
+- `alg`: Signing algorithm. A fully-specified identifier is REQUIRED; `Ed25519` is RECOMMENDED. Implementations MUST NOT accept `none`, the polymorphic `EdDSA` identifier, or any symmetric algorithm (#signature-algorithms).
 - `typ`: `aa-agent+jwt`
 - `kid`: Key identifier
 
@@ -555,7 +564,7 @@ Required payload claims:
 - `dwk`: `aauth-agent.json` — the well-known metadata document name for key discovery ([@!I-D.hardt-httpbis-signature-key])
 - `sub`: Agent identifier (stable across key rotations)
 - `jti`: Unique token identifier for replay detection, audit, and revocation
-- `cnf`: Confirmation claim ([@!RFC7800]) with `jwk` containing the agent's public key
+- `cnf`: Confirmation claim ([@!RFC7800]) with `jwk` containing the agent's public key. The JWK MUST carry a fully-specified `alg` member (#signature-algorithms).
 - `iat`: Issued at timestamp
 - `exp`: Expiration timestamp. Agent tokens SHOULD NOT have a lifetime exceeding 24 hours.
 
@@ -787,7 +796,7 @@ A resource MAY return `requirement=auth-token` with a new resource token to a re
 A resource token is a JWT with `typ: aa-resource+jwt` containing:
 
 Header:
-- `alg`: Signing algorithm. EdDSA is RECOMMENDED. Implementations MUST NOT accept `none`.
+- `alg`: Signing algorithm. A fully-specified identifier is REQUIRED; `Ed25519` is RECOMMENDED. Implementations MUST NOT accept `none`, the polymorphic `EdDSA` identifier, or any symmetric algorithm (#signature-algorithms).
 - `typ`: `aa-resource+jwt`
 - `kid`: Key identifier
 
@@ -1658,7 +1667,7 @@ The server applies user consent (its PS responsibility) and resource policy (its
 An auth token is a JWT with `typ: aa-auth+jwt` containing:
 
 Header:
-- `alg`: Signing algorithm. EdDSA is RECOMMENDED. Implementations MUST NOT accept `none`.
+- `alg`: Signing algorithm. A fully-specified identifier is REQUIRED; `Ed25519` is RECOMMENDED. Implementations MUST NOT accept `none`, the polymorphic `EdDSA` identifier, or any symmetric algorithm (#signature-algorithms).
 - `typ`: `aa-auth+jwt`
 - `kid`: Key identifier
 
@@ -1668,7 +1677,7 @@ Required payload claims:
 - `aud`: The URL of the resource the agent is authorized to access.
 - `jti`: Unique token identifier for replay detection, audit, and revocation
 - `agent`: Agent identifier
-- `cnf`: Confirmation claim with `jwk` containing the agent's public key
+- `cnf`: Confirmation claim with `jwk` containing the agent's public key. The JWK MUST carry a fully-specified `alg` member (#signature-algorithms).
 - `act`: Delegation chain ([@!RFC8693], Section 4.1). OPTIONAL. See (#delegation-chain).
 - `iat`: Issued at timestamp
 - `exp`: Expiration timestamp. Auth tokens MUST NOT have a lifetime exceeding 1 hour.
@@ -1788,7 +1797,8 @@ A sub-agent has its own agent identity — its own `aauth:local@domain` identifi
   "iss": "https://vendor.example",
   "dwk": "aauth-agent.json",
   "sub": "aauth:planner.7f3c+search1@vendor.example",
-  "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519", "x": "..." } },
+  "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519",
+                    "x": "...", "alg": "Ed25519" } },
   "ps":  "https://ps.example",
   "parent_agent": "aauth:planner.7f3c@vendor.example"
 }
@@ -2328,9 +2338,20 @@ Auth tokens are short-lived (maximum 1 hour) and proof-of-possession (useless wi
 
 This section profiles HTTP Message Signatures ([@!RFC9421]) for use with AAuth. Signing requirements (what the agent does) and verification requirements (what the server does) are specified separately.
 
-### Signature Algorithms
+### Signature Algorithms {#signature-algorithms}
 
-Agents and resources MUST support EdDSA using Ed25519 ([@!RFC8032]). Agents and resources SHOULD support ECDSA using P-256 with deterministic signatures ([@!RFC6979]). The `alg` parameter in the JWK ([@!RFC7517]) key representation identifies the algorithm. See the IANA JSON Web Signature and Encryption Algorithms registry ([@RFC7518], Section 7.1) for the full list of algorithm identifiers.
+Agents and resources MUST support `Ed25519` ([@!RFC8032]). Agents and resources SHOULD support `ES256`. Algorithm identifiers are values from the IANA "JSON Web Signature and Encryption Algorithms" registry [@!IANA.JOSE.Algorithms], and the `alg` member of the JWK ([@!RFC7517]) carries the identifier.
+
+Every key AAuth conveys or references is subject to the Algorithm Determination rules of the HTTP Signature Keys specification ([@!I-D.hardt-httpbis-signature-key]). In particular:
+
+- The `alg` member MUST be present and MUST be a fully-specified identifier — one that determines the signature operation completely, including curve and hash where applicable. A verifier MUST reject a key whose `alg` is absent.
+- The polymorphic `EdDSA` identifier MUST NOT be used. Use `Ed25519` (or `Ed448`), which [@!RFC9864] registered as its fully-specified replacements when it deprecated `EdDSA`.
+- `none`, any algorithm whose JOSE Implementation Requirement is `Prohibited`, and symmetric algorithms (the `oct` key type and the `HS256`, `HS384`, and `HS512` identifiers) MUST NOT be used.
+- A verifier MUST reject a key whose `kty` or, where present, `crv` disagrees with its `alg`.
+
+Naming `Ed25519` rather than `EdDSA` with the curve pinned separately in prose is what makes the requirement testable: a verifier reading only the `alg` value cannot distinguish Ed25519 from Ed448, and [@!RFC9864] deprecates exactly that pattern. `ES256` is likewise already fully specified, and its use is RECOMMENDED where a platform's keys are ECDSA on P-256 — notably hardware-backed keys on devices whose secure enclave does not offer Ed25519.
+
+Post-quantum algorithms need no special treatment here: the ML-DSA identifiers registered by [@!RFC9964] are fully specified and are used directly as the `alg` value.
 
 ### Keying Material {#keying-material}
 
@@ -2401,6 +2422,10 @@ Within the validity window, a captured signature could in principle be replayed.
 ## JWKS Discovery and Caching {#jwks-discovery}
 
 All AAuth token verification — agent tokens, resource tokens, and auth tokens — requires discovering the issuer's signing keys via the `{iss}/.well-known/{dwk}` pattern defined in the HTTP Signature Keys specification ([@!I-D.hardt-httpbis-signature-key]).
+
+Every key an AAuth server publishes at its `jwks_uri` MUST carry a fully-specified `alg` member (#signature-algorithms). A JWKS is the only channel through which the algorithm of a discovered key is conveyed — the `Signature-Key` header carries `iss`, `kid`, and `dwk`, which identify a key rather than describe it — so a published key that omits `alg` cannot be used, even though [@!RFC7517] makes the member OPTIONAL. Deployments reusing an existing JWKS need only ensure that the keys AAuth selects by `kid` carry `alg`; other members of the same document are never resolved.
+
+A verifier MUST select the key matching `kid` without requiring any other member of the JWKS to be usable, and MUST NOT fail because an unselected member names a key type or algorithm it does not implement. Without this an issuer could not add a post-quantum key alongside a classical one — doing so would break every verifier that does not implement the new key type, including those that were only ever going to use the classical key.
 
 Implementations MUST cache JWKS responses and SHOULD respect HTTP cache headers (`Cache-Control`, `Expires`) returned by the JWKS endpoint. When an implementation encounters an unknown `kid` in a JWT header, it SHOULD refresh the cached JWKS for that issuer to support key rotation. To prevent abuse, implementations MUST NOT fetch a given issuer's JWKS more frequently than once per minute. If a JWKS fetch fails, implementations SHOULD use the cached JWKS if available and SHOULD retry with exponential backoff. Cached JWKS entries SHOULD be discarded after a maximum of 24 hours regardless of cache headers, to ensure removed keys are no longer trusted.
 
@@ -2990,6 +3015,12 @@ The following implementations are known:
 # Document History
 
 *Note: This section is to be removed before publishing as an RFC.*
+
+- draft-hardt-oauth-aauth-protocol-10
+  - Algorithm identifiers: adopted the fully-specified `Ed25519` identifier registered by [@!RFC9864] in place of the polymorphic `EdDSA`, which that RFC deprecates. Rewrote (#signature-algorithms) to state the Algorithm Determination rules AAuth inherits from [@!I-D.hardt-httpbis-signature-key]: `alg` is REQUIRED and MUST be fully specified, `EdDSA` and `none` and symmetric algorithms MUST NOT be used, and a verifier MUST reject a key whose `kty` or `crv` disagrees with its `alg`. Cited the IANA JOSE algorithms registry itself rather than [@RFC7518], which established it but no longer holds all of it. Addresses issue #57.
+  - Required the JWK in a `cnf` claim to carry a fully-specified `alg`, in agent tokens and auth tokens alike, and updated the examples, which previously conveyed a JWK with no `alg` and would now be rejected.
+  - Required every key published at an AAuth server's `jwks_uri` to carry `alg`. A discovered key has no other channel for it, so a JWKS that omits the member cannot be used even though [@!RFC7517] makes it OPTIONAL.
+  - Required a verifier to select the key matching `kid` without requiring other JWKS members to be usable, so that an issuer can publish a post-quantum key alongside a classical one without breaking verifiers that implement only the latter.
 
 - draft-hardt-oauth-aauth-protocol-09
   - Clarification chat: added a required `action` discriminator (`clarification_response` / `updated_request`) to the agent's POST responses on the pending URL, so the response type is explicit rather than inferred from key presence.
