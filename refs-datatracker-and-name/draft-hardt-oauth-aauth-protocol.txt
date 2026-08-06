@@ -5547,7 +5547,8 @@ Initial request (with Prefer: wait=N)
          Companion drafts not yet on the datatracker (R3, Events)
          continue to reference the repository.
       -  Acknowledgments: identified the contributor previously listed
-         by the handle hegu-1 as He Gu.
+         by the handle hegu-1 as He Gu, and removed the handle sdatapix,
+         which is Sanjay Dalal, already listed.
       -  Added Section 12.3: an OPTIONAL account parameter on the
          authorization endpoint request, echoed as an OPTIONAL claim in
          the resource token and copied into the auth token, binding an
@@ -5818,8 +5819,7 @@ Initial request (with Prefer: wait=N)
    Jared Hanson, Jeoffrey Haeyaert, João André Marques, Joshua Gay, Karl
    McGuinness, Ken Huang, Lukas Friman, Mark Hendrickson, Mayur
    Agnihotri, Nate Barbettini, Nick Gamb, Paul Carleton, Rohan
-   Harikumar, Sanjay Dalal, Scott Motte, Wils Dawson, Zeeshan Khan, and
-   the GitHub contributor sdatapix.
+   Harikumar, Sanjay Dalal, Scott Motte, Wils Dawson, Zeeshan Khan.
 
 20.  References
 
