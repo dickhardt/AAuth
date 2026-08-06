@@ -1588,7 +1588,7 @@ svg {
 <p id="section-6.1-2">Header:<a href="#section-6.1-2" class="pilcrow">¶</a></p>
 <ul class="compact">
 <li class="compact" id="section-6.1-3.1">
-            <code>alg</code>: Signing algorithm. EdDSA is RECOMMENDED. Implementations MUST NOT accept <code>none</code>.<a href="#section-6.1-3.1" class="pilcrow">¶</a>
+            <code>alg</code>: Signing algorithm. A fully-specified identifier is REQUIRED; <code>Ed25519</code> is RECOMMENDED. Implementations MUST NOT accept <code>none</code> or the polymorphic <code>EdDSA</code> identifier.<a href="#section-6.1-3.1" class="pilcrow">¶</a>
 </li>
           <li class="compact" id="section-6.1-3.2">
             <code>typ</code>: <code>aa-subscribe+jwt</code><a href="#section-6.1-3.2" class="pilcrow">¶</a>
@@ -1637,7 +1637,8 @@ svg {
   "dwk": "aauth-agent.json",
   "sub": "aauth:k7q3p9n2@ap.example",
   "aud": "https://resource.example",
-  "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519", "x": "..." } },
+  "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519",
+                    "x": "...", "alg": "Ed25519" } },
   "eid": "evt_8f3k2n9p",
   "iat": 1750000000,
   "exp": 1750086400,
@@ -1790,7 +1791,7 @@ Signature-Key: sig=jwt;
 <p id="section-8.1-2">Header:<a href="#section-8.1-2" class="pilcrow">¶</a></p>
 <ul class="compact">
 <li class="compact" id="section-8.1-3.1">
-            <code>alg</code>: Signing algorithm. EdDSA is RECOMMENDED.<a href="#section-8.1-3.1" class="pilcrow">¶</a>
+            <code>alg</code>: Signing algorithm. A fully-specified identifier is REQUIRED; <code>Ed25519</code> is RECOMMENDED.<a href="#section-8.1-3.1" class="pilcrow">¶</a>
 </li>
           <li class="compact" id="section-8.1-3.2">
             <code>typ</code>: <code>aa-event+jwt</code><a href="#section-8.1-3.2" class="pilcrow">¶</a>
@@ -2250,7 +2251,9 @@ components:
 <li class="compact" id="section-16-2.1">
           <p id="section-16-2.1.1">draft-hardt-aauth-events-00<a href="#section-16-2.1.1" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-16-2.1.2.1">Initial draft.<a href="#section-16-2.1.2.1" class="pilcrow">¶</a>
+<li class="compact" id="section-16-2.1.2.1">Algorithm identifiers: <code>Ed25519</code> rather than the deprecated polymorphic <code>EdDSA</code>; the <code>cnf.jwk</code> example carries the <code>alg</code> member now required of every conveyed key.<a href="#section-16-2.1.2.1" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-16-2.1.2.2">Initial draft.<a href="#section-16-2.1.2.2" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>

@@ -1828,8 +1828,8 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 - <strong><code>r3_s256</code></strong> (REQUIRED for R3): The SHA-256 hash of the R3 document at <code>r3_uri</code>, base64url-encoded without padding.<a href="#section-6.3-3" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="section-6.3-4">
 <pre>{
-  "typ": "resource+jwt",
-  "alg": "EdDSA",
+  "typ": "aa-resource+jwt",
+  "alg": "Ed25519",
   "kid": "resource-key-1"
 }
 
@@ -1927,8 +1927,8 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 - <strong><code>r3_conditional</code></strong> (OPTIONAL): Operations authorized in principle but requiring per-call approval based on the specific parameters the agent provides.<a href="#section-8-3" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="section-8-4">
 <pre>{
-  "typ": "auth+jwt",
-  "alg": "EdDSA",
+  "typ": "aa-auth+jwt",
+  "alg": "Ed25519",
   "kid": "as-key-1"
 }
 
@@ -1942,7 +1942,8 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
   "jti": "at-9d4c1e",
   "agent": "assistant@agent.example",
   "sub": "user:alice@example.com",
-  "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519", "x": "NzbLsXh8uDCcd..." } },
+  "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519",
+                    "x": "NzbLsXh8uDCcd...", "alg": "Ed25519" } },
   "r3_uri": "https://calendar.example.com/r3/a1b2c3d4",
   "r3_s256": "aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789abcd",
   "r3_granted": {
@@ -2281,17 +2282,19 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <li class="normal" id="section-13-2.1">
           <p id="section-13-2.1.1">draft-hardt-aauth-r3-01<a href="#section-13-2.1.1" class="pilcrow">¶</a></p>
 <ul class="compact normal">
-<li class="compact normal" id="section-13-2.1.2.1">Added per-call proposals for conditional operations<a href="#section-13-2.1.2.1" class="pilcrow">¶</a>
+<li class="compact normal" id="section-13-2.1.2.1">Corrected the JWT header examples: <code>alg</code> is <code>Ed25519</code> rather than the deprecated polymorphic <code>EdDSA</code>, <code>typ</code> values are <code>aa-resource+jwt</code> and <code>aa-auth+jwt</code> to match the media types the protocol spec registers, and the <code>cnf.jwk</code> carries the <code>alg</code> member now required of every conveyed key.<a href="#section-13-2.1.2.1" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.2">Content addressing hashes the bytes as served; removed canonicalization<a href="#section-13-2.1.2.2" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.2">Added per-call proposals for conditional operations<a href="#section-13-2.1.2.2" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.3">Defined composition when requested operations span multiple R3 documents<a href="#section-13-2.1.2.3" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.3">Content addressing hashes the bytes as served; removed canonicalization<a href="#section-13-2.1.2.3" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.4">Added operation identifier scope rules and the OpenAPI Gateway vocabulary for resources fronting multiple services<a href="#section-13-2.1.2.4" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.4">Defined composition when requested operations span multiple R3 documents<a href="#section-13-2.1.2.4" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.5">Aligned with AAuth Protocol: <code>issuer</code> in resource metadata, <code>dwk</code> values <code>aauth-access.json</code>/<code>aauth-person.json</code> in auth tokens<a href="#section-13-2.1.2.5" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.5">Added operation identifier scope rules and the OpenAPI Gateway vocabulary for resources fronting multiple services<a href="#section-13-2.1.2.5" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.6">Renamed MM to PS; examples use EdDSA<a href="#section-13-2.1.2.6" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.6">Aligned with AAuth Protocol: <code>issuer</code> in resource metadata, <code>dwk</code> values <code>aauth-access.json</code>/<code>aauth-person.json</code> in auth tokens<a href="#section-13-2.1.2.6" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-13-2.1.2.7">Renamed MM to PS; examples use EdDSA<a href="#section-13-2.1.2.7" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>

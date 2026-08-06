@@ -1581,7 +1581,7 @@ svg {
 <p id="section-7-1">A typical agent token issued by an AP, illustrating the claims described in <span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span> and the identifier strategies in <a href="#identifier-strategies" class="auto internal xref">Section 6</a>.<a href="#section-7-1" class="pilcrow">¶</a></p>
 <p id="section-7-2">JWT header:<a href="#section-7-2" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="section-7-3">
-<pre>{ "alg": "EdDSA", "typ": "aa-agent+jwt", "kid": "..." }
+<pre>{ "alg": "Ed25519", "typ": "aa-agent+jwt", "kid": "..." }
 
 </pre><a href="#section-7-3" class="pilcrow">¶</a>
 </div>
@@ -1592,7 +1592,8 @@ svg {
   "dwk":  "aauth-agent.json",
   "sub":  "aauth:k7q3p9n2@ap.example",
   "ps":   "https://ps.example",
-  "cnf":  { "jwk": { "kty": "OKP", "crv": "Ed25519", "x": "..." } },
+  "cnf":  { "jwk": { "kty": "OKP", "crv": "Ed25519",
+                     "x": "...", "alg": "Ed25519" } },
   "iat":  1746316800,
   "exp":  1746320400,
   "jti":  "..."
@@ -1842,18 +1843,25 @@ Signature-Key: sig=jkt-jwt;jwt="eyJhbGc..."
 <p id="section-14-1"><em>Note: This section is to be removed before publishing as an RFC.</em><a href="#section-14-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-14-2.1">
-          <p id="section-14-2.1.1">draft-hardt-aauth-bootstrap-01<a href="#section-14-2.1.1" class="pilcrow">¶</a></p>
+          <p id="section-14-2.1.1">draft-hardt-aauth-bootstrap-02<a href="#section-14-2.1.1" class="pilcrow">¶</a></p>
 <ul class="compact normal">
-<li class="compact normal" id="section-14-2.1.2.1">Major rewrite. The document is now informational guidance for AP implementers. The previously-normative PS bootstrap protocol (PS <code>/bootstrap</code> endpoint, <code>bootstrap_token</code>, bootstrap announcement, agent server [now Agent Provider] <code>bootstrap_endpoint</code> / <code>refresh_endpoint</code> / <code>webauthn_endpoint</code>) has been removed. PS-side binding to a person now happens lazily on the agent's first interaction with the PS per the AAuth Protocol; the bootstrap document covers AP-side enrollment patterns only.<a href="#section-14-2.1.2.1" class="pilcrow">¶</a>
-</li>
-            <li class="compact normal" id="section-14-2.1.2.2">Removed Agent-Attested Display Values section; the <code>platform</code> and <code>device</code> parameters are defined and described in the AAuth Protocol.<a href="#section-14-2.1.2.2" class="pilcrow">¶</a>
+<li class="compact normal" id="section-14-2.1.2.1">Algorithm identifiers: <code>Ed25519</code> rather than the deprecated polymorphic <code>EdDSA</code>; the <code>cnf.jwk</code> example carries the <code>alg</code> member now required of every conveyed key.<a href="#section-14-2.1.2.1" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
         <li class="normal" id="section-14-2.2">
-          <p id="section-14-2.2.1">draft-hardt-aauth-bootstrap-00<a href="#section-14-2.2.1" class="pilcrow">¶</a></p>
+          <p id="section-14-2.2.1">draft-hardt-aauth-bootstrap-01<a href="#section-14-2.2.1" class="pilcrow">¶</a></p>
 <ul class="compact normal">
-<li class="compact normal" id="section-14-2.2.2.1">Initial draft.<a href="#section-14-2.2.2.1" class="pilcrow">¶</a>
+<li class="compact normal" id="section-14-2.2.2.1">Major rewrite. The document is now informational guidance for AP implementers. The previously-normative PS bootstrap protocol (PS <code>/bootstrap</code> endpoint, <code>bootstrap_token</code>, bootstrap announcement, agent server [now Agent Provider] <code>bootstrap_endpoint</code> / <code>refresh_endpoint</code> / <code>webauthn_endpoint</code>) has been removed. PS-side binding to a person now happens lazily on the agent's first interaction with the PS per the AAuth Protocol; the bootstrap document covers AP-side enrollment patterns only.<a href="#section-14-2.2.2.1" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-14-2.2.2.2">Removed Agent-Attested Display Values section; the <code>platform</code> and <code>device</code> parameters are defined and described in the AAuth Protocol.<a href="#section-14-2.2.2.2" class="pilcrow">¶</a>
+</li>
+          </ul>
+</li>
+        <li class="normal" id="section-14-2.3">
+          <p id="section-14-2.3.1">draft-hardt-aauth-bootstrap-00<a href="#section-14-2.3.1" class="pilcrow">¶</a></p>
+<ul class="compact normal">
+<li class="compact normal" id="section-14-2.3.2.1">Initial draft.<a href="#section-14-2.3.2.1" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
