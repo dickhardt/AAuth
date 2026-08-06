@@ -61,19 +61,24 @@ This document is part of the AAuth specification family. Source for this draft a
 
 **Status: Exploratory Draft**
 
-The AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]) defines resource tokens as the mechanism by which resources declare what authorization is needed to access them, and scope strings as the primary way to express what operations are available. Scopes are sufficient for simple, well-known access patterns but are limited in three respects:
+The AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]) defines resource tokens as the mechanism by which resources declare what authorization is needed to access them, and scope strings as the primary way to express what operations are available. Scopes are sufficient for simple, well-known access patterns but are limited in four respects:
 
-1. **Human comprehension.** Scope strings like `calendar:write` are not self-describing to users or auth agents making approval decisions.
+1. **Human comprehension.** Scope strings like `calendar:write` are not self-describing to a person deciding whether to approve, or to the PS presenting that decision.
 
-2. **Machine precision.** Scopes do not express which specific operations are being authorized or distinguish operations that need per-call approval.
+2. **Machine precision.** Scopes do not express which specific operations a grant covers.
 
 3. **Audit completeness.** Scopes do not identify which specific version of an authorization definition was in effect at the time of approval.
+
+4. **Call-specific consequence.** Even a precisely named operation does not say what one invocation of it will do. The same `drop_table` call is a scratch table made a minute ago or the table the business runs on, and the difference is in the parameters and in the state of the resource, not in the operation.
 
 R3 addresses these by introducing:
 
 - **Vocabularies** that describe a resource's operations in terms the agent already understands (MCP tools, OpenAPI operations, gRPC methods, etc.)
 - **R3 documents**: structured, content-addressed authorization definitions published by the resource and fetched by the AS
 - **Vocabulary-based grants** in auth tokens, so resources can enforce authorization directly from claims they understand
+- **Per-call proposals** (#per-call-proposals): an R3 document generated for a single pending call, carrying that call's concrete parameters and what the resource says the call will do
+
+The last of these exists because the resource is the only party that can describe a particular call. An agent asking to drop a table knows the name it supplied. The resource knows whether that table holds ten records written five minutes ago or ten million written over two years, and whether anything is connected to it now. The operation is the same in both cases, and so is any scope covering it; what differs is what the person approving it needs to be told. A per-call proposal is where the resource says it, for that one call, before it runs.
 
 # Conventions and Definitions
 
@@ -104,17 +109,17 @@ R3 extends the `/.well-known/aauth-resource.json` document defined in AAuth Prot
 }
 ```
 
-**`r3_vocabularies`** (OPTIONAL). A JSON object mapping vocabulary URIs to their discovery endpoints. Keys MUST be vocabulary URIs from the `urn:aauth:vocabulary:` namespace for standard vocabularies defined in this document, or third-party URI namespaces for proprietary vocabularies. Values are vocabulary-specific discovery endpoints (the MCP server URL, the OpenAPI spec URL, the gRPC reflection endpoint, etc.). A vocabulary MAY define a structured discovery value in place of a single URL (see {{openapi-gateway-vocabulary}}). A resource MAY advertise multiple vocabularies simultaneously.
+**`r3_vocabularies`** (OPTIONAL). A JSON object mapping vocabulary URIs to their discovery endpoints. Keys MUST be vocabulary URIs from the `urn:aauth:vocabulary:` namespace for standard vocabularies defined in this document, or third-party URI namespaces for proprietary vocabularies. Values are vocabulary-specific discovery endpoints (the MCP server URL, the OpenAPI spec URL, the gRPC reflection endpoint, etc.). A resource MAY advertise multiple vocabularies simultaneously.
 
 ## Operation Identifier Scope {#operation-identifier-scope}
 
 Operation identifiers are scoped to the discovery endpoint the resource advertises for that vocabulary in `r3_vocabularies`. A resource advertises exactly one discovery endpoint per vocabulary, and each underlying format requires operation identifiers to be unique within a single definition (OpenAPI `operationId` within a document, MCP tool names within a server, GraphQL operation names within a schema, AsyncAPI `operationId` within a document). Bare identifiers in `r3_operations` requests, R3 documents, and `r3_granted`/`r3_conditional` claims therefore resolve unambiguously against that one definition, and no additional qualifier appears in tokens.
 
-A resource that aggregates multiple backend services behind a single resource identifier MUST do one of the following: present them as one valid definition at the discovery endpoint (renaming colliding identifiers as needed to satisfy the format's uniqueness rules), expose the services under separate resource identifiers (in which case the auth token's `aud` claim distinguishes them), or advertise a vocabulary whose operation entries qualify identifiers per service, such as the OpenAPI Gateway vocabulary ({{openapi-gateway-vocabulary}}). Identical identifiers at *different* resources are already disambiguated by token binding: an auth token is bound to one resource via `aud`, and `r3_uri`/`r3_s256` pin the exact R3 document the grant was drawn from.
+A resource that aggregates multiple backend services behind a single resource identifier MUST do one of the following: present them as one valid definition at the discovery endpoint (renaming colliding identifiers as needed to satisfy the format's uniqueness rules), or expose the services under separate resource identifiers (in which case the auth token's `aud` claim distinguishes them). Identical identifiers at *different* resources are already disambiguated by token binding: an auth token is bound to one resource via `aud`, and `r3_uri`/`r3_s256` pin the exact R3 document the grant was drawn from.
 
 ## Standard Vocabularies
 
-This document defines eight standard vocabularies. Third parties MAY define additional vocabularies using their own URI namespaces. Each vocabulary defines: the vocabulary URI, the structure of operation requests, how the resource maps operations to R3 documents, and the discovery endpoint.
+This document defines seven standard vocabularies. Third parties MAY define additional vocabularies using their own URI namespaces. Each vocabulary defines: the vocabulary URI, the structure of operation requests, how the resource maps operations to R3 documents, and the discovery endpoint.
 
 Standard vocabularies use the `urn:aauth:vocabulary:` namespace.
 
@@ -150,43 +155,6 @@ Each operation entry contains:
   "operations": [
     { "operationId": "createEvent" },
     { "operationId": "updateEvent" }
-  ]
-}
-```
-
-### OpenAPI Gateway Vocabulary (`urn:aauth:vocabulary:openapi-gateway`) {#openapi-gateway-vocabulary}
-
-For resources that front multiple OpenAPI-described services behind a single resource identifier, such as an API gateway. The OpenAPI vocabulary ({{openapi-vocabulary}}) assumes a single OpenAPI document per resource; this vocabulary supports several without requiring the gateway to merge specifications or rename colliding `operationId` values. The complexity of multi-service aggregation is confined to this syntax — single-service resources use the plain OpenAPI vocabulary and carry unqualified operations.
-
-The discovery value in `r3_vocabularies` is not a single URL but a JSON object mapping service labels to OpenAPI specification URLs:
-
-```json
-{
-  "issuer": "https://gateway.example.com",
-  "r3_vocabularies": {
-    "urn:aauth:vocabulary:openapi-gateway": {
-      "calendar": "https://gateway.example.com/calendar/openapi.json",
-      "billing": "https://gateway.example.com/billing/openapi.json"
-    }
-  }
-}
-```
-
-Service labels are chosen by the resource and SHOULD be stable: they appear in R3 documents and auth token claims, so relabeling a service invalidates the grants that reference it even when the underlying specification is unchanged.
-
-Each operation entry contains:
-
-- **`service`** (REQUIRED). A service label. MUST match a key in the discovery object.
-- **`operationId`** (REQUIRED). The `operationId` as defined in that service's OpenAPI specification.
-
-The pair (`service`, `operationId`) identifies an operation. `operationId` uniqueness is required only within a single service's specification; the same `operationId` MAY appear under different services.
-
-```json
-{
-  "vocabulary": "urn:aauth:vocabulary:openapi-gateway",
-  "operations": [
-    { "service": "calendar", "operationId": "createEvent" },
-    { "service": "billing", "operationId": "createEvent" }
   ]
 }
 ```
@@ -231,6 +199,8 @@ Each operation entry contains:
 ### AsyncAPI Vocabulary (`urn:aauth:vocabulary:asyncapi`) {#asyncapi-vocabulary}
 
 For resources that emit events described by AsyncAPI. The discovery endpoint is the AsyncAPI specification URL.
+
+Each operation entry contains:
 
 - **`operationId`** (REQUIRED). The `operationId` as defined in the AsyncAPI specification.
 - **`action`** (OPTIONAL). The AsyncAPI action type: `send` or `receive`. Agents subscribing to events use `receive`.
@@ -314,7 +284,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 **`r3_operations`** (OPTIONAL). An object containing:
 
 - **`vocabulary`** (REQUIRED). A URI identifying the vocabulary. MUST be supported by the resource as advertised in `r3_vocabularies`.
-- **`operations`** (REQUIRED). An array of operation requests. Structure is vocabulary-specific; see {{mcp-vocabulary}} through {{odata-vocabulary}}.
+- **`operations`** (REQUIRED). An array of operation requests. Structure is vocabulary-specific; see (#mcp-vocabulary) through (#odata-vocabulary).
 
 When `r3_operations` is present, the resource maps the declared operations to an appropriate R3 document and includes `r3_uri` and `r3_s256` in the resource token. When `r3_operations` is absent, the resource MAY still include R3 claims in the resource token based on its own policy.
 
@@ -324,7 +294,7 @@ The resource returns a resource token as defined in AAuth Protocol ([@!I-D.hardt
 
 ```json
 {
-  "resource_token": "eyJhbGciOiJFUzI1NiJ9..."
+  "resource_token": "eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtcmVzb3VyY2Urand0In0..."
 }
 ```
 
@@ -339,7 +309,7 @@ When an agent's `r3_operations` request includes operations that the resource ma
 - **`operations`** is the union of the requested operations, expressed in the request's vocabulary.
 - **`display`** describes the combined access. The resource MAY merge the `display` sections of the underlying definitions (for example, concatenating `implications` and unioning `data_accessed`) or author a purpose-built summary for the combination.
 
-The composed document is served at a fresh content-addressed `r3_uri` exactly like any other R3 document (see {{content-addressing}}): the resource builds it on the fly and persists the serialized bytes so the hash remains stable across the AS and PS fetches. Because R3 documents are content-addressed, an identical combination of operations reduces to the same hash and MAY be cached and reused across requests.
+The composed document is served at a fresh content-addressed `r3_uri` exactly like any other R3 document (see (#content-addressing)): the resource builds it on the fly and persists the serialized bytes so the hash remains stable across the AS and PS fetches. Because R3 documents are content-addressed, an identical combination of operations reduces to the same hash and MAY be cached and reused across requests.
 
 This composition is opaque to the agent. The agent sees one `r3_uri`/`r3_s256` in the resource token regardless of how many internal definitions the requested operations were drawn from, and the auth token's `r3_granted` and `r3_conditional` claims express the granted operations against that single composed document.
 
@@ -347,7 +317,7 @@ This composition is opaque to the agent. The agent sees one `r3_uri`/`r3_s256` i
 
 An R3 document is a JSON object published by the resource at a URI. It describes the authorization semantics for a class of access: what operations are covered (in vocabulary format), what the access means in human terms, and what consequences it carries.
 
-The document MUST be served over HTTPS. The resource MUST require a valid HTTP Message Signature on requests to R3 document URIs, and MUST reject requests that are not signed by the resource's AS. Agents cannot fetch R3 documents.
+The document MUST be served over HTTPS. The resource MUST require a valid HTTP Message Signature on requests to R3 document URIs, and MUST reject requests not signed by the party it addressed the resource token to (#r3-document-access-restriction). Agents cannot fetch R3 documents.
 
 ```json
 {
@@ -373,7 +343,7 @@ The document MUST be served over HTTPS. The resource MUST require a valid HTTP M
 
 **`vocabulary`** (REQUIRED). The vocabulary URI identifying how operations are expressed. MUST match one of the vocabularies the resource advertises in `r3_vocabularies`.
 
-**`operations`** (REQUIRED). An array of operations covered by this R3 document, using the vocabulary-specific structure defined in {{mcp-vocabulary}} through {{odata-vocabulary}}. This is the same format used in the agent's `r3_operations` request and in the auth token's `r3_granted` and `r3_conditional` claims.
+**`operations`** (REQUIRED). An array of operations covered by this R3 document, using the vocabulary-specific structure defined in (#mcp-vocabulary) through (#odata-vocabulary). This is the same format used in the agent's `r3_operations` request and in the auth token's `r3_granted` and `r3_conditional` claims.
 
 **`account`** (OPTIONAL). Present when the authorization endpoint request carried an `account` parameter ([@!I-D.hardt-oauth-aauth-protocol]), carrying that same value. It identifies which account at the resource this authorization covers.
 
@@ -381,7 +351,7 @@ When `account` is present, the `display` section SHOULD name the account in term
 
 **`display`** (RECOMMENDED). Human-readable descriptions of the consequences of granting this access. The resource describes what *it* does, not what the agent intends:
 
-- `summary` (REQUIRED if `display` present). A short plain-language description suitable for a consent UI or auth agent.
+- `summary` (REQUIRED if `display` present). A short plain-language description suitable for a consent screen.
 - `implications` (OPTIONAL). Side effects of granting this access: emails sent, records modified, costs incurred.
 - `data_accessed` (OPTIONAL). What data becomes visible to the caller.
 - `irreversible` (OPTIONAL). Plain-language description of actions that cannot be undone.
@@ -463,8 +433,7 @@ When the AS receives a resource token containing `r3_uri` and `r3_s256`, it MUST
 
 ## Caching
 
-Because R3 documents are content-addressed, the AS MAY cache them by `r3_s256` to avoid redundant fetches. When serving a cached entry, the AS MUST verify that the stored document produces the expected hash. The AS is not required to retain R3 documents beyond their immediate use in token issuance — the AS's audit log records `r3_uri` and `r3_s256`, which is sufficient for later verification by re-fetching.
-
+The AS is not required to retain R3 documents beyond their immediate use in token issuance. Its audit log records `r3_uri` and `r3_s256`, which is enough to re-fetch and verify the document later.
 
 # Auth Token Extensions
 
@@ -533,14 +502,14 @@ R3 extension claims:
 - **`vocabulary`** (REQUIRED). The vocabulary URI.
 - **`operations`** (REQUIRED). An array of operations using the vocabulary-specific structure. The AS MAY narrow the grant to fewer operations than defined in the R3 document.
 
-The distinction: `r3_granted` operations are fully authorized and the resource serves them. `r3_conditional` operations require the resource to challenge when the agent actually calls. On the challenge the resource builds a **per-call proposal** ({{per-call-proposals}}) — a content-addressed document carrying the specific parameters of the call — and the AS evaluates those concrete parameters before issuing a per-call auth token.
+The distinction: `r3_granted` operations are fully authorized and the resource serves them. `r3_conditional` operations require the resource to challenge when the agent actually calls. On the challenge the resource builds a **per-call proposal** (#per-call-proposals) — a content-addressed document carrying the specific parameters of the call — and the AS evaluates those concrete parameters before issuing a per-call auth token.
 
 ## Resource Enforcement
 
 The resource matches each incoming API call against the auth token claims:
 
 1. **Match in `r3_granted`**: serve the request.
-2. **Match in `r3_conditional`**: build a per-call proposal ({{per-call-proposals}}) and return `AAuth-Requirement` with a resource token referencing it. The AS evaluates the specific call against the proposed parameters.
+2. **Match in `r3_conditional`**: build a per-call proposal (#per-call-proposals) and return `AAuth-Requirement` with a resource token referencing it. The AS evaluates the specific call against the proposed parameters.
 3. **No match**: reject the request.
 
 No token introspection or R3 document fetch is needed at enforcement time. The resource uses the vocabulary it already understands.
@@ -551,11 +520,11 @@ When `r3_operations` was not used (the agent received the resource token via a 4
 
 An `r3_conditional` operation is authorized in principle but not for any specific call: the consequences depend on the concrete parameters the agent supplies (who the email is addressed to, how large the payment is, which record is deleted). When the agent invokes such an operation, the resource challenges the call and the AS re-evaluates it against those parameters before issuing a per-call auth token.
 
-A **per-call proposal** is the document that carries the specifics of that one pending call. It is an R3 document scoped to a single invocation: same structure, same content-addressing ({{content-addressing}}), and the same AS/PS-only fetch restriction as a class R3 document. Reusing content-addressing keeps tokens small — they carry only the `r3_uri`/`r3_s256` reference, never the parameters — and binds the eventual approval to the exact call that was proposed.
+A **per-call proposal** is the document that carries the specifics of that one pending call. It is an R3 document scoped to a single invocation: same structure, same content-addressing (#content-addressing), and the same AS/PS-only fetch restriction as a class R3 document. Reusing content-addressing keeps tokens small — they carry only the `r3_uri`/`r3_s256` reference, never the parameters — and binds the eventual approval to the exact call that was proposed.
 
 ## Proposal Document
 
-In addition to the R3 document fields ({{r3-document}}), a per-call proposal carries:
+In addition to the R3 document fields (#r3-document), a per-call proposal carries:
 
 **`operations`** (REQUIRED). The single conditional operation being invoked, in the resource's vocabulary.
 
@@ -565,7 +534,7 @@ In addition to the R3 document fields ({{r3-document}}), a per-call proposal car
 - `excerpt` (OPTIONAL). A short, human-readable excerpt of the value for display.
 - `media_type` (OPTIONAL). The media type of the value.
 
-**`display`** (RECOMMENDED). Per-call human context for the user's approval decision. In addition to the structured fields defined in {{r3-document}}, a proposal's `display` MAY include a `detail` Markdown string. The following sections are RECOMMENDED as a convention (not normative requirements): `## Action`, `## To` / `## Recipient`, `## Details`, `## Content` (excerpt), `## Irreversible`.
+**`display`** (RECOMMENDED). Per-call human context for the user's approval decision. In addition to the structured fields defined in (#r3-document), a proposal's `display` MAY include a `detail` Markdown string. The following sections are RECOMMENDED as a convention (not normative requirements): `## Action`, `## To` / `## Recipient`, `## Details`, `## Content` (excerpt), `## Irreversible`.
 
 ```json
 {
@@ -597,15 +566,11 @@ Whether the AS or PS additionally *machine-evaluates* `parameters` (for example,
 
 # Security Considerations
 
-## R3 Document Access Restriction
+## R3 Document Access Restriction {#r3-document-access-restriction}
 
-The AS MUST authenticate itself when fetching `r3_uri` using an HTTP Message Signature as defined in the AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]). The resource MUST reject requests not signed by its AS.
+A party fetching `r3_uri` MUST authenticate itself with an HTTP Message Signature as defined in the AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]). The resource MUST reject any request not signed by the party it addressed the resource token to — the `aud` of the resource token carrying that `r3_uri`, which is the AS in four-party access and the PS in three-party access. The resource therefore recognizes one signer per document and does not accept fetches from any other party.
 
-This prevents agents from fetching R3 documents by following the `r3_uri` they carry in the resource token. Since a resource has exactly one AS, the resource only needs to recognize signatures from that AS. The agent opacity property (agents carry the hash of a document they cannot read) depends on this restriction.
-
-## R3 Endpoint Access Control
-
-The agent opacity property — agents carry the hash of a document they cannot read — depends entirely on the resource correctly restricting access to R3 document endpoints. If the resource fails to require a valid HTTP Message Signature from its AS on R3 document requests, or accepts signatures from keys other than its AS's, agents can fetch and read R3 documents, breaking the opacity guarantee. Implementations MUST treat R3 endpoint access control as a critical security requirement and SHOULD verify this restriction during deployment testing.
+Agent opacity — the agent carries the hash of a document it cannot read — depends entirely on this restriction. A resource that does not require the signature, or that accepts signatures from other keys, lets an agent follow the `r3_uri` in its resource token and read the document. Implementations SHOULD verify the restriction during deployment testing.
 
 ## Hash Verification
 
@@ -644,7 +609,6 @@ This specification establishes the AAuth R3 Vocabulary Registry. The initial con
 |----------------|---------------|-----------|
 | `urn:aauth:vocabulary:mcp` | MCP server | This document |
 | `urn:aauth:vocabulary:openapi` | HTTP/REST | This document |
-| `urn:aauth:vocabulary:openapi-gateway` | HTTP/REST (multi-service gateway) | This document |
 | `urn:aauth:vocabulary:grpc` | gRPC | This document |
 | `urn:aauth:vocabulary:graphql` | GraphQL | This document |
 | `urn:aauth:vocabulary:asyncapi` | Event-driven | This document |
@@ -676,17 +640,12 @@ There are currently no known implementations.
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-aauth-r3-01
-  - Referenced the AAuth Protocol by its datatracker document URL, which tracks the latest revision, rather than by a repository link or a pinned draft revision.
-  - Corrected three stale references left by concurrent changes: the `account` field cited the pre-rename `I-D.hardt-aauth-protocol` anchor, which after the rename resolved from the datatracker to the abandoned draft-hardt-aauth-protocol-02 without any build error; and the resource token and auth token prose named `typ: resource+jwt` and `typ: auth+jwt` where the registered media types, and this document's own examples, are `aa-resource+jwt` and `aa-auth+jwt`.
-  - Added the OPTIONAL `account` field to the R3 document, carrying the `account` value the authorization endpoint request named, and recommended that `display` name the account in terms the person recognises — the value is an identifier in the resource's namespace and may be opaque, so a consent screen rendering it verbatim identifies nothing.
-  - Corrected the JWT header examples: `alg` is `Ed25519` rather than the deprecated polymorphic `EdDSA`, `typ` values are `aa-resource+jwt` and `aa-auth+jwt` to match the media types the protocol spec registers, and the `cnf.jwk` carries the `alg` member now required of every conveyed key.
-  - IANA review feedback: added Designated Expert Instructions for the AAuth R3 Vocabulary Registry per RFC 8126 Section 4.5.
-  - Added per-call proposals for conditional operations
-  - Content addressing hashes the bytes as served; removed canonicalization
-  - Defined composition when requested operations span multiple R3 documents
-  - Added operation identifier scope rules and the OpenAPI Gateway vocabulary for resources fronting multiple services
-  - Aligned with AAuth Protocol: `issuer` in resource metadata, `dwk` values `aauth-access.json`/`aauth-person.json` in auth tokens
-  - Renamed MM to PS; examples use EdDSA
+  - Added per-call proposals: an `r3_conditional` operation is challenged at call time, and the resource builds a content-addressed proposal carrying the concrete parameters, which the AS evaluates and the resource binds on retry. A parameter MAY be carried as a digest so large or sensitive values stay between the agent and the resource.
+  - Added the OPTIONAL `account` field, carrying the `account` value the authorization endpoint request named. `display` SHOULD name the account in terms the person recognises, the value itself being an identifier in the resource's namespace that may be opaque.
+  - Content addressing hashes the bytes as served; canonicalization removed.
+  - A resource MUST compose a single R3 document when the requested operations span more than one of its internal definitions.
+  - Added operation identifier scope rules, and what a resource aggregating multiple backend services behind one resource identifier MUST do.
+  - Aligned with the AAuth Protocol: `issuer` in resource metadata, and `dwk` values `aauth-access.json` and `aauth-person.json` in auth tokens.
 
 - draft-hardt-aauth-r3-00
   - Initial submission
@@ -719,7 +678,6 @@ RAR and R3 are complementary. RAR remains appropriate for client-declared author
 |----------------|---------------|---------------------|---------------------|
 | `urn:aauth:vocabulary:mcp` | MCP server | Tool name | MCP tool discovery |
 | `urn:aauth:vocabulary:openapi` | HTTP/REST | `operationId` | OpenAPI spec URL |
-| `urn:aauth:vocabulary:openapi-gateway` | HTTP/REST (multi-service gateway) | `service` + `operationId` | Map of service labels to OpenAPI spec URLs |
 | `urn:aauth:vocabulary:grpc` | gRPC | `package.Service/Method` | Server reflection or `.proto` URL |
 | `urn:aauth:vocabulary:graphql` | GraphQL | Operation name | GraphQL introspection |
 | `urn:aauth:vocabulary:asyncapi` | Event-driven | `operationId` | AsyncAPI spec URL |
