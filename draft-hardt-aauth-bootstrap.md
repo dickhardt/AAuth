@@ -25,7 +25,7 @@ organization = "Hellō"
 
 %%%
 
-<reference anchor="I-D.hardt-oauth-aauth-protocol" target="https://github.com/dickhardt/AAuth">
+<reference anchor="I-D.hardt-oauth-aauth-protocol" target="https://datatracker.ietf.org/doc/draft-hardt-oauth-aauth-protocol">
   <front>
     <title>AAuth Protocol</title>
     <author initials="D." surname="Hardt" fullname="Dick Hardt">
@@ -399,6 +399,7 @@ TBD
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-aauth-bootstrap-02
+  - Referenced the AAuth Protocol by its datatracker document URL, which tracks the latest revision.
   - Algorithm identifiers: `Ed25519` rather than the deprecated polymorphic `EdDSA`; the `cnf.jwk` example carries the `alg` member now required of every conveyed key.
 
 - draft-hardt-aauth-bootstrap-01

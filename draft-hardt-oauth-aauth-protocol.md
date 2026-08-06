@@ -59,6 +59,29 @@ organization = "Hellō"
   </front>
 </reference>
 
+<reference anchor="I-D.hardt-httpbis-signature-key" target="https://datatracker.ietf.org/doc/draft-hardt-httpbis-signature-key">
+  <front>
+    <title>HTTP Signature Keys</title>
+    <author initials="D." surname="Hardt" fullname="Dick Hardt">
+      <organization>Hellō</organization>
+    </author>
+    <author initials="T." surname="Meunier" fullname="Thibault Meunier">
+      <organization>Cloudflare</organization>
+    </author>
+    <date year="2026"/>
+  </front>
+</reference>
+
+<reference anchor="I-D.hardt-aauth-bootstrap" target="https://datatracker.ietf.org/doc/draft-hardt-aauth-bootstrap">
+  <front>
+    <title>AAuth Bootstrap Guidance</title>
+    <author initials="D." surname="Hardt" fullname="Dick Hardt">
+      <organization>Hellō</organization>
+    </author>
+    <date year="2026"/>
+  </front>
+</reference>
+
 <reference anchor="I-D.hardt-aauth-r3" target="https://github.com/dickhardt/AAuth">
   <front>
     <title>AAuth Rich Resource Requests (R3)</title>
@@ -1399,22 +1422,12 @@ The mission blob MUST include:
 
 The mission blob MAY include:
 
-- `approved_tools`: Array of tool objects (each with `name` and `description`) that the agent may use without per-call permission at the PS's permission endpoint (#permission-endpoint). See (#approved-tools-accountability) for what granting this entails.
+- `approved_tools`: Array of tool objects (each with `name` and `description`) that the agent may use without per-call permission at the PS's permission endpoint (#permission-endpoint).
 - `capabilities`: Array of capability strings (e.g., `interaction`, `payment`) that the PS can provide on behalf of the user for this session. The PS determines these based on whether it can reach the specific user — for example, via push notification, email, or an active session. The agent unions these with its own capabilities when constructing the `AAuth-Capabilities` request header (#aauth-capabilities).
 
 The response body — the mission blob — is the mission JSON that `s256` hashes everywhere it appears (the `AAuth-Mission` header and the `mission` reference in resource and auth tokens). The `s256` is the base64url-encoded SHA-256 hash of the response body bytes. The agent verifies the hash by computing SHA-256 over the exact response body bytes, and MUST store those bytes exactly as received — no re-serialization.
 
 The approved description MAY differ from the proposal — the PS or user may refine, constrain, or expand the mission during review. The approved tools MAY be a subset of the proposed tools. The agent MUST use the `approver` and `s256` from the `AAuth-Mission` header in all subsequent `AAuth-Mission` request headers.
-
-### Approved Tools and Offline Accountability {#approved-tools-accountability}
-
-An agent MAY perform actions covered by `approved_tools` while it cannot reach its PS. This is the point of the grant: headless workloads, intermittently connected agents, and self-hosted deployments (#aauth-platform-value-registry) are first-class, and requiring a permission call per action would make them unworkable. Audit records are fire-and-forget (#audit-endpoint), so records for actions taken during a partition are emitted on reconnection, if at all.
-
-It follows that the mission log is not a complete record. A PS cannot distinguish an agent that did nothing while partitioned from one that acted and never reported it, because nothing obliges the agent to account for a sequence the PS issued. Nor does the resource-token lifetime bound a partitioned agent's local actions: an approved tool that touches no remote resource consumes no token, so a mission revoked mid-partition does not stop it until the agent next reaches the PS.
-
-Granting `approved_tools` is therefore a trust decision about offline accountability, and its blast radius is whatever the granted tools can do without network access — which the PS accepts when it grants them. A PS that requires complete audit coverage, or prompt response to revocation, SHOULD NOT grant `approved_tools`, and SHOULD require a permission call per action instead; that is an online governance model and works for deployments that can rely on connectivity. A PS wanting stronger guarantees without giving up offline operation MAY issue and track its own sequence alongside the grant, which needs no protocol support and is left to implementations.
-
-This specification defines no mechanism making an omitted audit record detectable. Doing so would require the PS to issue work permits before the agent acts, which would remove the offline operation `approved_tools` exists to enable.
 
 ## Mission Log {#mission-log}
 
@@ -2045,16 +2058,6 @@ When the request carried `account`, the resource echoes it as the `account` clai
 
 The parameter selects; it does not hint. It is not `login_hint` ([@!OpenID.Core], Section 3.1.2.1), which is a hint about who to authenticate at the party receiving it. Nobody is being authenticated here — the account is already connected at the resource — and the value has to survive into the issued tokens as a claim rather than being consumed during a login. Overloading `login_hint` would also conflate the person logging in at their PS with the account being acted on at the resource, which are different things and may belong to different namespaces entirely.
 
-### Resolving the Account {#account-resolution}
-
-An agent knows which account to name only if it has been told. Where it has not, the resource MUST NOT enumerate the accounts it holds for the person. It responds with `requirement=interaction` (#requirement-responses) and the person selects at the resource, in their own session.
-
-Enumerating is unsafe for a reason that is easy to miss: at the authorization endpoint the resource has the agent's identity and no verified identity for the person, so it has nothing to gate disclosure on and nothing to key the list to. Returning a list on the strength of an agent token would disclose which accounts sit behind that agent to anyone presenting one. Even where the resource does know the person — on a request bearing an auth token — which of someone's accounts an agent may act on is a decision that belongs to the person rather than to the agent, and the interaction flow is where a person makes it.
-
-Once the person has selected, the agent holds the `account` value and sends it on subsequent authorization requests without further interaction. An agent operating under a mission that already names the account never interacts at all.
-
-A PS displaying an authorization for consent MAY show the `account` value, and a resource that wants the person to see something more legible than an opaque identifier — a workspace name rather than a numeric id — puts that in the `display` text of its R3 document ([@?I-D.hardt-aauth-r3]), which is the resource-controlled consent text. The `account` value itself stays the identifier the resource enforces on.
-
 ## Requirement Responses {#requirement-responses}
 
 Servers use the `AAuth-Requirement` response header to indicate protocol-level requirements to agents. The header MAY be sent with `401 Unauthorized` or `202 Accepted` responses. A `401` response indicates that authorization is required. A `202` response indicates that the request is pending and additional action is required — user interaction (`requirement=interaction`), third-party approval (`requirement=approval`), a clarification answer (`requirement=clarification`), or identity claims (`requirement=claims`).
@@ -2384,12 +2387,12 @@ Revocation provides real-time termination of access. The PS or AS calls the revo
 - **PS revokes an auth token it provided** (four-party): The PS calls the resource's revocation endpoint with the auth token's `iss` and `jti`. The PS MAY also notify the AS.
 - **AS revokes an auth token it issued**: The AS calls the resource's revocation endpoint with the auth token's `iss` and `jti`.
 - **PS revokes a mission**: The PS marks the mission as revoked. All subsequent token requests referencing that mission's `s256` are denied. The PS SHOULD revoke outstanding auth tokens issued under the mission.
-- **Agent provider revokes an agent token it issued**: The agent provider marks the agent token revoked at its own `revocation_endpoint` (#agent-provider-metadata). An agent token is issued by the AP, so the AP is the only party that can revoke one; a PS or resource that no longer trusts an agent denies it rather than revoking its token.
+- **Agent provider revokes an agent token it issued**: On learning that an agent can no longer be trusted, the agent provider calls the PS's revocation endpoint with the agent token's `iss` and `jti`. The PS MUST deny subsequent requests presenting that agent token, and SHOULD revoke the auth tokens it issued or provided for that agent by calling the revocation endpoint of each resource those tokens were issued for. Under identity-based access (#requirement-agent-token) the agent presents its agent token to the resource directly, and the agent provider has no record of which resources those are; a resource accepting agent tokens SHOULD therefore provide a revocation endpoint, and where none is reached that access is bounded by the agent token lifetime alone.
 - **Agent provider stops issuing agent tokens**: The agent provider decides not to issue new agent tokens to the agent. Existing agent tokens expire naturally. This is part of the regular token lifecycle — all tokens have limited lifetimes and require periodic re-issuance, which provides a natural policy re-evaluation point.
 
 Revocation endpoints are advertised in server metadata as `revocation_endpoint`. Recipients of revocation requests MUST verify the caller's identity via HTTP Message Signatures and MUST only accept revocation from the issuer of the token being revoked or from a trusted PS.
 
-Auth tokens are verified offline, from their signature and claims, with no call to the issuer. A resource therefore learns of a revocation only when one reaches its revocation endpoint, and a party that cannot reach it is bounded by token lifetime alone — at most one hour for an auth token (#auth-tokens), five minutes for a resource token (#resource-tokens). Revocation shortens exposure; it does not eliminate it, and deployments requiring immediate termination should issue shorter-lived tokens rather than relying on revocation reaching every holder.
+Verifying an auth token does not ask the issuer about that token. A resource fetches the issuer's JWKS to obtain the verification key and caches it across many tokens, then checks the signature and claims locally; nothing in that path reports that a particular token has been revoked. A resource therefore learns of a revocation only when one reaches its revocation endpoint, and a party that no revocation request reaches is bounded by token lifetime alone — at most one hour for an auth token (#auth-tokens), five minutes for a resource token (#resource-tokens). Revocation shortens exposure; it does not eliminate it, and deployments requiring immediate termination should issue shorter-lived tokens rather than relying on revocation reaching every holder.
 
 Auth tokens are short-lived (maximum 1 hour) and proof-of-possession (useless without the bound signing key). All AAuth tokens have limited lifetimes — agent tokens, resource tokens, and auth tokens all expire and require re-issuance. Each re-issuance is a policy evaluation point where the issuer can deny renewal. This natural expiration cycle, combined with real-time revocation, provides layered access control.
 
@@ -2599,7 +2602,6 @@ Published at `/.well-known/aauth-agent.json`:
   "documentation_uri": "https://agent.example/docs",
   "callback_endpoint": "https://agent.example/callback",
   "event_endpoint": "https://agent.example/events",
-  "revocation_endpoint": "https://agent.example/revoke",
   "localhost_callback_allowed": true,
   "tos_uri": "https://agent.example/tos",
   "policy_uri": "https://agent.example/privacy"
@@ -2618,7 +2620,6 @@ Fields:
 - `callback_endpoint` (OPTIONAL): The agent's HTTPS callback endpoint URL
 - `event_endpoint` (OPTIONAL): HTTPS URL at which the AP receives event tokens from resources. Required if the AP supports AAuth Events ([@?I-D.hardt-aauth-events]).
 - `login_endpoint` (OPTIONAL): URL where third parties can direct users to initiate authentication (#third-party-login)
-- `revocation_endpoint` (OPTIONAL): URL where authorized parties can revoke agent tokens the agent provider issued (#token-revocation)
 - `localhost_callback_allowed` (OPTIONAL): Boolean. Default: `false`.
 - `tos_uri` (OPTIONAL): URL to terms of service (per [@RFC7591])
 - `policy_uri` (OPTIONAL): URL to privacy policy (per [@RFC7591])
@@ -2663,7 +2664,7 @@ Fields:
 - `audit_endpoint` (OPTIONAL): URL where agents log actions performed (#audit-endpoint)
 - `interaction_endpoint` (OPTIONAL): URL where agents relay interactions to the user through the PS (#interaction-endpoint)
 - `mission_control_endpoint` (OPTIONAL): URL for mission administrative interface
-- `revocation_endpoint` (OPTIONAL): URL where authorized parties can revoke tokens (#token-revocation)
+- `revocation_endpoint` (OPTIONAL): URL where authorized parties can revoke tokens (#token-revocation). This is also where an agent provider revokes an agent token it issued, so that the PS denies the agent token and revokes what it issued for that agent.
 - `jwks_uri` (REQUIRED): URL to the PS's JSON Web Key Set
 - `scopes_supported` (RECOMMENDED): Array of scope values the PS supports, including identity scopes (e.g., `openid`, `profile`, `email`) and enterprise scopes (e.g., `tenant`, `groups`, `roles`)
 - `claims_supported` (RECOMMENDED): Array of identity claim names the PS can provide (e.g., `sub`, `email`, `name`, `tenant`)
@@ -3117,23 +3118,12 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-10
-  - Added (#account-binding): an OPTIONAL `account` parameter on the authorization endpoint request, echoed as an OPTIONAL claim in the resource token and copied into the auth token, binding an authorization to one of several accounts a resource may hold for the same person. The value is an opaque string in the resource's own namespace. Where the agent does not know which account to name, the resource returns `requirement=interaction` and the person selects at the resource; a resource MUST NOT enumerate a person's accounts to an agent, having nothing to gate that disclosure on at the authorization endpoint. Addresses issue #52.
-  - Added (#approved-tools-accountability), stating that approved-tool actions MAY execute while the PS is unreachable, that the mission log is consequently not a complete record, and that granting `approved_tools` is a trust decision about offline accountability whose blast radius is what the granted tools can do offline. A PS needing complete coverage declines the grant and requires per-action permission calls. Addresses issue #49.
-  - Added (#directed-sub-chaining): a downstream issuer MUST NOT copy a directed `sub` from an upstream token, MAY emit `sub` only from its own authenticated federation step, otherwise omits it and carries the agent and delegation facts alone, and never places a person identifier in `act`. Identity is `(iss, sub)`, so a value minted by one issuer for one audience means nothing under another, and reusing it defeats the pairwise separation directed identifiers exist to provide. Addresses issue #41.
-  - Updated the delegation chain examples, which showed a single `sub` value carried unchanged across every hop and so illustrated the behaviour (#directed-sub-chaining) forbids.
-  - Revocation identifies a token by `(iss, jti)` rather than `jti` alone, and recipients key revocation state by that pair. A `jti` is unique only within its issuer's namespace, while a revocation endpoint receives tokens from many issuers, so `jti` alone invites cross-issuer collision. Addresses issue #59.
-  - Added an OPTIONAL `revocation_endpoint` to agent provider metadata. Agent tokens are issued by the AP, which was the only role with no way to revoke what it issues. Addresses issue #60.
-  - Stated what revocation does not do: auth tokens verify offline, so a holder that no revocation request reaches is bounded by token lifetime alone.
-  - Verification: reordered the steps so the algorithm is read from the key the scheme resolved to, which under `scheme=jwt` is not held until the assertion verifies. Added a scheme-rejection step returning `unsupported_scheme` with `Accept-Signature-Scheme`, made mandatory and conformance-testable by [@!I-D.hardt-httpbis-signature-key]; replaced "determine the algorithm from the `alg` parameter" with the specific checks, reporting `unsupported_algorithm` with `Accept-Signature-Alg`, and `invalid_key` where `kty` or `crv` disagrees with `alg`.
-  - Mapped the metadata document issuer check to the `issuer_missing` and `issuer_mismatch` error codes, and required the `issuer` member to be present rather than only to match.
-  - Stated that this profile pins signature failures to `401` where the base specification uses `400` for most of them, and that a `403` MUST NOT carry `Signature-Error` or either `Accept-Signature-*` header.
-  - Forbade the `alg` signature parameter and discouraged `keyid`, per [@!RFC9421], Section 3.3.7 and Section 5.1: under the JOSE signing algorithms the algorithm is signaled by the key, and the key is identified by `Signature-Key`.
-  - Rewrote the `requirement=agent-token` comparison, which described the `sigkey` parameter of `Accept-Signature` — removed in draft-hardt-httpbis-signature-key-08 — rather than `Accept-Signature-Scheme`.
-  - Algorithm identifiers: adopted the fully-specified `Ed25519` identifier registered by [@!RFC9864] in place of the polymorphic `EdDSA`, which that RFC deprecates. Rewrote (#signature-algorithms) to state the Algorithm Determination rules AAuth inherits from [@!I-D.hardt-httpbis-signature-key]: `alg` is REQUIRED and MUST be fully specified, `EdDSA` and `none` and symmetric algorithms MUST NOT be used, and a verifier MUST reject a key whose `kty` or `crv` disagrees with its `alg`. Cited the IANA JOSE algorithms registry itself rather than [@RFC7518], which established it but no longer holds all of it. Addresses issue #57.
-  - Required the JWK in a `cnf` claim to carry a fully-specified `alg`, in agent tokens and auth tokens alike, and updated the examples, which previously conveyed a JWK with no `alg` and would now be rejected.
-  - Required every key published at an AAuth server's `jwks_uri` to carry `alg`. A discovered key has no other channel for it, so a JWKS that omits the member cannot be used even though [@!RFC7517] makes it OPTIONAL.
-  - Required a verifier to select the key matching `kid` without requiring other JWKS members to be usable, so that an issuer can publish a post-quantum key alongside a classical one without breaking verifiers that implement only the latter.
-  - IANA review feedback: added Designated Expert Instructions for the AAuth Requirement Value, Capability Value, and Platform Value registries per RFC 8126 Section 4.5.
+  - Adopted the fully-specified `Ed25519` of [@!RFC9864] in place of the `EdDSA` it deprecates. `alg` is REQUIRED and MUST be fully specified; `EdDSA`, `none`, and symmetric algorithms MUST NOT be used; a verifier MUST reject a key whose `kty` or `crv` disagrees with its `alg`. Addresses issue #57.
+  - A `cnf` JWK MUST carry a fully-specified `alg`, as MUST every key at an AAuth server's `jwks_uri`. A verifier MUST select the key matching `kid` without requiring the other JWKS members to be usable.
+  - Aligned verification and error mapping with [@!I-D.hardt-httpbis-signature-key]: added `unsupported_scheme`, `unsupported_algorithm`, `invalid_key`, `issuer_missing`, and `issuer_mismatch`; pinned signature failures to `401`; a `403` MUST NOT carry `Signature-Error` or either `Accept-Signature-*` header; the `alg` signature parameter MUST NOT be used.
+  - Revocation identifies a token by `(iss, jti)`, and recipients key revocation state by that pair. An agent provider revokes an agent token at the PS's `revocation_endpoint`. Addresses issues #59 and #60.
+  - A downstream issuer MUST NOT copy a directed `sub` from an upstream token, MAY emit one only from its own authenticated federation step, and MUST NOT place a person identifier in `act`. Addresses issue #41.
+  - Added the OPTIONAL `account` parameter on the authorization endpoint request, echoed in the resource token and copied into the auth token, binding an authorization to one of several accounts a resource may hold for the same person. Addresses issue #52.
 
 - draft-hardt-oauth-aauth-protocol-09
   - Clarification chat: added a required `action` discriminator (`clarification_response` / `updated_request`) to the agent's POST responses on the pending URL, so the response type is explicit rather than inferred from key presence.
@@ -3195,7 +3185,7 @@ The following implementations are known:
 
 # Acknowledgments
 
-The author would like to thank reviewers for their feedback on concepts and earlier drafts, and contributors who raised issues and pull requests: Aaron Parecki, Ben McAdams, Christian Posta, Danny Fuhriman, Dasith Wijesiriwardena, Frederik Krogsdal Jacobsen, Jared Hanson, Jeoffrey Haeyaert, João André Marques, Joshua Gay, Karl McGuinness, Ken Huang, Lukas Friman, Mark Hendrickson, Mayur Agnihotri, Nate Barbettini, Nick Gamb, Paul Carleton, Rohan Harikumar, Sanjay Dalal, Scott Motte, Wils Dawson, Zeeshan Khan, and the GitHub contributors hegu-1 and sdatapix.
+The author would like to thank reviewers for their feedback on concepts and earlier drafts, and contributors who raised issues and pull requests: Aaron Parecki, Ben McAdams, Christian Posta, Danny Fuhriman, Dasith Wijesiriwardena, Frederik Krogsdal Jacobsen, He Gu, Jared Hanson, Jeoffrey Haeyaert, João André Marques, Joshua Gay, Karl McGuinness, Ken Huang, Lukas Friman, Mark Hendrickson, Mayur Agnihotri, Nate Barbettini, Nick Gamb, Paul Carleton, Rohan Harikumar, Sanjay Dalal, Scott Motte, Wils Dawson, Zeeshan Khan.
 
 {backmatter}
 
