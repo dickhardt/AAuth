@@ -701,6 +701,8 @@ Table of Contents
 
    *  draft-hardt-aauth-bootstrap-02
 
+      -  Referenced the AAuth Protocol by its datatracker document URL,
+         which tracks the latest revision.
       -  Algorithm identifiers: Ed25519 rather than the deprecated
          polymorphic EdDSA; the cnf.jwk example carries the alg member
          now required of every conveyed key.
@@ -739,7 +741,8 @@ Table of Contents
 
    [I-D.hardt-oauth-aauth-protocol]
               Hardt, D., "AAuth Protocol", 2026,
-              <https://github.com/dickhardt/AAuth>.
+              <https://datatracker.ietf.org/doc/draft-hardt-oauth-aauth-
+              protocol>.
 
    [RFC9421]  Backman, A., Ed., Richer, J., Ed., and M. Sporny, "HTTP
               Message Signatures", RFC 9421, DOI 10.17487/RFC9421,

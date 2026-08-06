@@ -1072,6 +1072,9 @@ Table of Contents
 
    *  draft-hardt-aauth-r3-01
 
+      -  Referenced the AAuth Protocol by its datatracker document URL,
+         which tracks the latest revision, rather than by a repository
+         link or a pinned draft revision.
       -  Corrected three stale references left by concurrent changes:
          the account field cited the pre-rename I-D.hardt-aauth-protocol
          anchor, which after the rename resolved from the datatracker to
@@ -1120,7 +1123,8 @@ Table of Contents
 
    [I-D.hardt-oauth-aauth-protocol]
               Hardt, D., "AAuth Protocol", 2026,
-              <https://github.com/dickhardt/AAuth>.
+              <https://datatracker.ietf.org/doc/draft-hardt-oauth-aauth-
+              protocol>.
 
    [RFC8126]  Cotton, M., Leiba, B., and T. Narten, "Guidelines for
               Writing an IANA Considerations Section in RFCs", BCP 26,
