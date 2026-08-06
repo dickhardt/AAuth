@@ -3141,7 +3141,7 @@ The following implementations are known:
 
 - draft-hardt-oauth-aauth-protocol-10
   - Referenced HTTP Signature Keys and AAuth Bootstrap by their datatracker document URLs, which track the latest revision, rather than letting them resolve to a pinned draft revision. Companion drafts not yet on the datatracker (R3, Events) continue to reference the repository.
-  - Acknowledgments: identified the contributor previously listed by the handle hegu-1 as He Gu.
+  - Acknowledgments: identified the contributor previously listed by the handle hegu-1 as He Gu, and removed the handle sdatapix, which is Sanjay Dalal, already listed.
   - Added (#account-binding): an OPTIONAL `account` parameter on the authorization endpoint request, echoed as an OPTIONAL claim in the resource token and copied into the auth token, binding an authorization to one of several accounts a resource may hold for the same person. The value is an opaque string in the resource's own namespace. Where the agent does not know which account to name, the resource returns `requirement=interaction` and the person selects at the resource; a resource MUST NOT enumerate a person's accounts to an agent, having nothing to gate that disclosure on at the authorization endpoint. Addresses issue #52.
   - Added (#approved-tools-accountability), stating that approved-tool actions MAY execute while the PS is unreachable, that the mission log is consequently not a complete record, and that granting `approved_tools` is a trust decision about offline accountability whose blast radius is what the granted tools can do offline. A PS needing complete coverage declines the grant and requires per-action permission calls. Addresses issue #49.
   - Added (#directed-sub-chaining): a downstream issuer MUST NOT copy a directed `sub` from an upstream token, MAY emit `sub` only from its own authenticated federation step, otherwise omits it and carries the agent and delegation facts alone, and never places a person identifier in `act`. Identity is `(iss, sub)`, so a value minted by one issuer for one audience means nothing under another, and reusing it defeats the pairwise separation directed identifiers exist to provide. Addresses issue #41.
@@ -3220,7 +3220,7 @@ The following implementations are known:
 
 # Acknowledgments
 
-The author would like to thank reviewers for their feedback on concepts and earlier drafts, and contributors who raised issues and pull requests: Aaron Parecki, Ben McAdams, Christian Posta, Danny Fuhriman, Dasith Wijesiriwardena, Frederik Krogsdal Jacobsen, He Gu, Jared Hanson, Jeoffrey Haeyaert, João André Marques, Joshua Gay, Karl McGuinness, Ken Huang, Lukas Friman, Mark Hendrickson, Mayur Agnihotri, Nate Barbettini, Nick Gamb, Paul Carleton, Rohan Harikumar, Sanjay Dalal, Scott Motte, Wils Dawson, Zeeshan Khan, and the GitHub contributor sdatapix.
+The author would like to thank reviewers for their feedback on concepts and earlier drafts, and contributors who raised issues and pull requests: Aaron Parecki, Ben McAdams, Christian Posta, Danny Fuhriman, Dasith Wijesiriwardena, Frederik Krogsdal Jacobsen, He Gu, Jared Hanson, Jeoffrey Haeyaert, João André Marques, Joshua Gay, Karl McGuinness, Ken Huang, Lukas Friman, Mark Hendrickson, Mayur Agnihotri, Nate Barbettini, Nick Gamb, Paul Carleton, Rohan Harikumar, Sanjay Dalal, Scott Motte, Wils Dawson, Zeeshan Khan.
 
 {backmatter}
 
