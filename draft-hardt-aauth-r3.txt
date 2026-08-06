@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                            11 July 2026
-Expires: 12 January 2027
+Intended status: Standards Track                           6 August 2026
+Expires: 7 February 2027
 
 
                    AAuth Rich Resource Requests (R3)
@@ -48,7 +48,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 12 January 2027.
+   This Internet-Draft will expire on 7 February 2027.
 
 Copyright Notice
 
@@ -1046,7 +1046,9 @@ Table of Contents
 
 14.  Acknowledgments
 
-   The author would like to thank reviewers for their feedback.
+   The author would like to thank reviewers for their feedback, and Ben
+   McAdams for a pull request correcting this document's reference to
+   the AAuth Protocol specification.
 
 15.  References
 
