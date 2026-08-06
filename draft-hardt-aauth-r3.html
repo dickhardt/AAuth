@@ -1079,7 +1079,7 @@ svg {
 <h1 id="title">AAuth Rich Resource Requests (R3)</h1>
 <section id="section-abstract">
       <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
-<p id="section-abstract-1">This document defines AAuth Rich Resource Requests (R3), an extension to the AAuth Protocol (<span>[<a href="#I-D.hardt-aauth-protocol" class="cite xref">I-D.hardt-aauth-protocol</a>]</span>) that enables structured, vocabulary-based authorization for resource access. Resources publish R3 documents (content-addressed authorization definitions) and advertise vocabularies describing their operations. Agents request access using those vocabularies. Auth tokens carry granted operations in the same vocabulary format, enabling resources to enforce authorization directly from the token. R3 provides human-displayable context for consent decisions and content-addressed audit provenance via the <code>r3_s256</code> hash in auth tokens.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+<p id="section-abstract-1">This document defines AAuth Rich Resource Requests (R3), an extension to the AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>) that enables structured, vocabulary-based authorization for resource access. Resources publish R3 documents (content-addressed authorization definitions) and advertise vocabularies describing their operations. Agents request access using those vocabularies. Auth tokens carry granted operations in the same vocabulary format, enabling resources to enforce authorization directly from the token. R3 provides human-displayable context for consent decisions and content-addressed audit provenance via the <code>r3_s256</code> hash in auth tokens.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
 </section>
 <section class="note" id="section-note.1">
       <h2 id="name-discussion-venues">
@@ -1332,7 +1332,7 @@ svg {
 <a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
       </h2>
 <p id="section-1-1"><strong>Status: Exploratory Draft</strong><a href="#section-1-1" class="pilcrow">¶</a></p>
-<p id="section-1-2">The AAuth Protocol (<span>[<a href="#I-D.hardt-aauth-protocol" class="cite xref">I-D.hardt-aauth-protocol</a>]</span>) defines resource tokens as the mechanism by which resources declare what authorization is needed to access them, and scope strings as the primary way to express what operations are available. Scopes are sufficient for simple, well-known access patterns but are limited in three respects:<a href="#section-1-2" class="pilcrow">¶</a></p>
+<p id="section-1-2">The AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>) defines resource tokens as the mechanism by which resources declare what authorization is needed to access them, and scope strings as the primary way to express what operations are available. Scopes are sufficient for simple, well-known access patterns but are limited in three respects:<a href="#section-1-2" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="normal type-1" id="section-1-3">
 <li id="section-1-3.1">
           <p id="section-1-3.1.1"><strong>Human comprehension.</strong> Scope strings like <code>calendar:write</code> are not self-describing to users or auth agents making approval decisions.<a href="#section-1-3.1.1" class="pilcrow">¶</a></p>
@@ -1398,7 +1398,7 @@ svg {
         <h3 id="name-resource-metadata-extension">
 <a href="#section-4.1" class="section-number selfRef">4.1. </a><a href="#name-resource-metadata-extension" class="section-name selfRef">Resource Metadata Extensions</a>
         </h3>
-<p id="section-4.1-1">R3 extends the <code>/.well-known/aauth-resource.json</code> document defined in AAuth Protocol (<span>[<a href="#I-D.hardt-aauth-protocol" class="cite xref">I-D.hardt-aauth-protocol</a>]</span>):<a href="#section-4.1-1" class="pilcrow">¶</a></p>
+<p id="section-4.1-1">R3 extends the <code>/.well-known/aauth-resource.json</code> document defined in AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>):<a href="#section-4.1-1" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="section-4.1-2">
 <pre>{
   "issuer": "https://calendar.example.com",
@@ -1668,7 +1668,7 @@ svg {
       <h2 id="name-authorization-endpoint-exte">
 <a href="#section-5" class="section-number selfRef">5. </a><a href="#name-authorization-endpoint-exte" class="section-name selfRef">Authorization Endpoint Extensions</a>
       </h2>
-<p id="section-5-1">R3 extends the authorization endpoint defined in AAuth Protocol (<span>[<a href="#I-D.hardt-aauth-protocol" class="cite xref">I-D.hardt-aauth-protocol</a>]</span>) with an <code>r3_operations</code> request parameter. When an agent wants to declare intended operations using a resource's vocabulary, it includes <code>r3_operations</code> in the authorization endpoint request body.<a href="#section-5-1" class="pilcrow">¶</a></p>
+<p id="section-5-1">R3 extends the authorization endpoint defined in AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>) with an <code>r3_operations</code> request parameter. When an agent wants to declare intended operations using a resource's vocabulary, it includes <code>r3_operations</code> in the authorization endpoint request body.<a href="#section-5-1" class="pilcrow">¶</a></p>
 <div id="request">
 <section id="section-5.1">
         <h3 id="name-request">
@@ -1712,7 +1712,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
         <h3 id="name-response">
 <a href="#section-5.2" class="section-number selfRef">5.2. </a><a href="#name-response" class="section-name selfRef">Response</a>
         </h3>
-<p id="section-5.2-1">The resource returns a resource token as defined in AAuth Protocol (<span>[<a href="#I-D.hardt-aauth-protocol" class="cite xref">I-D.hardt-aauth-protocol</a>]</span>), extended with R3 claims:<a href="#section-5.2-1" class="pilcrow">¶</a></p>
+<p id="section-5.2-1">The resource returns a resource token as defined in AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>), extended with R3 claims:<a href="#section-5.2-1" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="section-5.2-2">
 <pre>{
   "resource_token": "eyJhbGciOiJFUzI1NiJ9..."
@@ -1820,7 +1820,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
         <h3 id="name-resource-token-extensions">
 <a href="#section-6.3" class="section-number selfRef">6.3. </a><a href="#name-resource-token-extensions" class="section-name selfRef">Resource Token Extensions</a>
         </h3>
-<p id="section-6.3-1">R3 extends the resource token defined in AAuth Protocol (<span>[<a href="#I-D.hardt-aauth-protocol" class="cite xref">I-D.hardt-aauth-protocol</a>]</span>) (a JWT with <code>typ: resource+jwt</code>) with two additional payload claims. When a resource includes R3 information, it MUST include both.<a href="#section-6.3-1" class="pilcrow">¶</a></p>
+<p id="section-6.3-1">R3 extends the resource token defined in AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>) (a JWT with <code>typ: resource+jwt</code>) with two additional payload claims. When a resource includes R3 information, it MUST include both.<a href="#section-6.3-1" class="pilcrow">¶</a></p>
 <p id="section-6.3-2">Base claims (from AAuth Protocol):
 - <code>iss</code>: Resource URL
 - <code>dwk</code>: <code>aauth-resource.json</code>
@@ -1859,7 +1859,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 </pre><a href="#section-6.3-5" class="pilcrow">¶</a>
 </div>
-<p id="section-6.3-6">Resource tokens MAY include both <code>scope</code> (as defined in AAuth Protocol (<span>[<a href="#I-D.hardt-aauth-protocol" class="cite xref">I-D.hardt-aauth-protocol</a>]</span>)) and R3 claims. When both are present, the AS MUST enforce both independently.<a href="#section-6.3-6" class="pilcrow">¶</a></p>
+<p id="section-6.3-6">Resource tokens MAY include both <code>scope</code> (as defined in AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>)) and R3 claims. When both are present, the AS MUST enforce both independently.<a href="#section-6.3-6" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -1886,7 +1886,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
         </h3>
 <p id="section-7.1-1">When the AS receives a resource token containing <code>r3_uri</code> and <code>r3_s256</code>, it MUST:<a href="#section-7.1-1" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="compact type-1" id="section-7.1-2">
-<li id="section-7.1-2.1">Validate the resource token signature per AAuth Protocol (<span>[<a href="#I-D.hardt-aauth-protocol" class="cite xref">I-D.hardt-aauth-protocol</a>]</span>).<a href="#section-7.1-2.1" class="pilcrow">¶</a>
+<li id="section-7.1-2.1">Validate the resource token signature per AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>).<a href="#section-7.1-2.1" class="pilcrow">¶</a>
 </li>
           <li id="section-7.1-2.2">Fetch the R3 document at <code>r3_uri</code>. The AS MAY use a cached copy if the cache entry was stored with the same <code>r3_s256</code> value.<a href="#section-7.1-2.2" class="pilcrow">¶</a>
 </li>
@@ -1916,7 +1916,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
       <h2 id="name-auth-token-extensions">
 <a href="#section-8" class="section-number selfRef">8. </a><a href="#name-auth-token-extensions" class="section-name selfRef">Auth Token Extensions</a>
       </h2>
-<p id="section-8-1">R3 extends the auth token defined in AAuth Protocol (<span>[<a href="#I-D.hardt-aauth-protocol" class="cite xref">I-D.hardt-aauth-protocol</a>]</span>) (a JWT with <code>typ: auth+jwt</code>) with claims for audit provenance and vocabulary-based grants. The resource can enforce authorization directly from these claims.<a href="#section-8-1" class="pilcrow">¶</a></p>
+<p id="section-8-1">R3 extends the auth token defined in AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>) (a JWT with <code>typ: auth+jwt</code>) with claims for audit provenance and vocabulary-based grants. The resource can enforce authorization directly from these claims.<a href="#section-8-1" class="pilcrow">¶</a></p>
 <p id="section-8-2">Base claims (from AAuth Protocol):
 - <code>iss</code>: Auth server URL
 - <code>dwk</code>: <code>aauth-access.json</code> (issued by an AS) or <code>aauth-person.json</code> (issued by a PS)
@@ -2092,7 +2092,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
         <h3 id="name-r3-document-access-restrict">
 <a href="#section-10.1" class="section-number selfRef">10.1. </a><a href="#name-r3-document-access-restrict" class="section-name selfRef">R3 Document Access Restriction</a>
         </h3>
-<p id="section-10.1-1">The AS MUST authenticate itself when fetching <code>r3_uri</code> using an HTTP Message Signature as defined in the AAuth Protocol (<span>[<a href="#I-D.hardt-aauth-protocol" class="cite xref">I-D.hardt-aauth-protocol</a>]</span>). The resource MUST reject requests not signed by its AS.<a href="#section-10.1-1" class="pilcrow">¶</a></p>
+<p id="section-10.1-1">The AS MUST authenticate itself when fetching <code>r3_uri</code> using an HTTP Message Signature as defined in the AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>). The resource MUST reject requests not signed by its AS.<a href="#section-10.1-1" class="pilcrow">¶</a></p>
 <p id="section-10.1-2">This prevents agents from fetching R3 documents by following the <code>r3_uri</code> they carry in the resource token. Since a resource has exactly one AS, the resource only needs to recognize signatures from that AS. The agent opacity property (agents carry the hash of a document they cannot read) depends on this restriction.<a href="#section-10.1-2" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -2355,6 +2355,10 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
         </h3>
 <dl class="references">
 <dt id="I-D.hardt-aauth-protocol">[I-D.hardt-aauth-protocol]</dt>
+        <dd>
+<span class="refAuthor">Hardt, D.</span>, <span class="refTitle">"AAuth Protocol"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-hardt-aauth-protocol-02</span>, <time datetime="2026-04-28" class="refDate">28 April 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-hardt-aauth-protocol-02">https://datatracker.ietf.org/doc/html/draft-hardt-aauth-protocol-02</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="I-D.hardt-oauth-aauth-protocol">[I-D.hardt-oauth-aauth-protocol]</dt>
         <dd>
 <span class="refAuthor">Hardt, D.</span>, <span class="refTitle">"AAuth Protocol"</span>, <time datetime="2026" class="refDate">2026</time>, <span>&lt;<a href="https://github.com/dickhardt/AAuth">https://github.com/dickhardt/AAuth</a>&gt;</span>. </dd>
 <dd class="break"></dd>
