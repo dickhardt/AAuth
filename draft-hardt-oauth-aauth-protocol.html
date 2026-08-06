@@ -1766,7 +1766,10 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
                 <p id="section-toc.1-1.16.2.9.1"><a href="#section-16.9" class="auto internal xref">16.9</a>.  <a href="#name-aauth-platform-value-regist" class="internal xref">AAuth Platform Value Registry</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.10">
-                <p id="section-toc.1-1.16.2.10.1"><a href="#section-16.10" class="auto internal xref">16.10</a>. <a href="#name-uri-scheme-registration" class="internal xref">URI Scheme Registration</a></p>
+                <p id="section-toc.1-1.16.2.10.1"><a href="#section-16.10" class="auto internal xref">16.10</a>. <a href="#name-designated-expert-instructi" class="internal xref">Designated Expert Instructions</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.11">
+                <p id="section-toc.1-1.16.2.11.1"><a href="#section-16.11" class="auto internal xref">16.11</a>. <a href="#name-uri-scheme-registration" class="internal xref">URI Scheme Registration</a></p>
 </li>
             </ul>
 </li>
@@ -6897,7 +6900,7 @@ Accept-Signature-Scheme: jwt
         <h3 id="name-aauth-requirement-value-reg">
 <a href="#section-16.7" class="section-number selfRef">16.7. </a><a href="#name-aauth-requirement-value-reg" class="section-name selfRef">AAuth Requirement Value Registry</a>
         </h3>
-<p id="section-16.7-1">This specification establishes the AAuth Requirement Value Registry. The registry policy is Specification Required (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>).<a href="#section-16.7-1" class="pilcrow">¶</a></p>
+<p id="section-16.7-1">This specification establishes the AAuth Requirement Value Registry. The registry policy is Specification Required (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>, Section 4.6). See <a href="#designated-expert-instructions" class="auto internal xref">Section 16.10</a> for instructions to the designated expert.<a href="#section-16.7-1" class="pilcrow">¶</a></p>
 <table class="center" id="table-17">
           <caption><a href="#table-17" class="selfRef">Table 17</a></caption>
 <thead>
@@ -6952,7 +6955,7 @@ Accept-Signature-Scheme: jwt
         <h3 id="name-aauth-capability-value-regi">
 <a href="#section-16.8" class="section-number selfRef">16.8. </a><a href="#name-aauth-capability-value-regi" class="section-name selfRef">AAuth Capability Value Registry</a>
         </h3>
-<p id="section-16.8-1">This specification establishes the AAuth Capability Value Registry. The registry policy is Specification Required (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>).<a href="#section-16.8-1" class="pilcrow">¶</a></p>
+<p id="section-16.8-1">This specification establishes the AAuth Capability Value Registry. The registry policy is Specification Required (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>, Section 4.6). See <a href="#designated-expert-instructions" class="auto internal xref">Section 16.10</a> for instructions to the designated expert.<a href="#section-16.8-1" class="pilcrow">¶</a></p>
 <table class="center" id="table-18">
           <caption><a href="#table-18" class="selfRef">Table 18</a></caption>
 <thead>
@@ -6989,7 +6992,7 @@ Accept-Signature-Scheme: jwt
         <h3 id="name-aauth-platform-value-regist">
 <a href="#section-16.9" class="section-number selfRef">16.9. </a><a href="#name-aauth-platform-value-regist" class="section-name selfRef">AAuth Platform Value Registry</a>
         </h3>
-<p id="section-16.9-1">This specification establishes the AAuth Platform Value Registry, used as values of the <code>platform</code> request parameter sent to the PS token endpoint <a href="#ps-token-endpoint" class="auto internal xref">Section 7.1</a>. The registry policy is Specification Required (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>).<a href="#section-16.9-1" class="pilcrow">¶</a></p>
+<p id="section-16.9-1">This specification establishes the AAuth Platform Value Registry, used as values of the <code>platform</code> request parameter sent to the PS token endpoint <a href="#ps-token-endpoint" class="auto internal xref">Section 7.1</a>. The registry policy is Specification Required (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>, Section 4.6). See <a href="#designated-expert-instructions" class="auto internal xref">Section 16.10</a> for instructions to the designated expert.<a href="#section-16.9-1" class="pilcrow">¶</a></p>
 <table class="center" id="table-19">
           <caption><a href="#table-19" class="selfRef">Table 19</a></caption>
 <thead>
@@ -7039,27 +7042,49 @@ Accept-Signature-Scheme: jwt
         </table>
 </section>
 </div>
-<div id="uri-scheme-registration">
+<div id="designated-expert-instructions">
 <section id="section-16.10">
-        <h3 id="name-uri-scheme-registration">
-<a href="#section-16.10" class="section-number selfRef">16.10. </a><a href="#name-uri-scheme-registration" class="section-name selfRef">URI Scheme Registration</a>
+        <h3 id="name-designated-expert-instructi">
+<a href="#section-16.10" class="section-number selfRef">16.10. </a><a href="#name-designated-expert-instructi" class="section-name selfRef">Designated Expert Instructions</a>
         </h3>
-<p id="section-16.10-1">This specification registers the <code>aauth</code> URI scheme in the "Uniform Resource Identifier (URI) Schemes" registry (<span>[<a href="#RFC7595" class="cite xref">RFC7595</a>]</span>):<a href="#section-16.10-1" class="pilcrow">¶</a></p>
+<p id="section-16.10-1">Registration requests for the AAuth Requirement Value, AAuth Capability Value, and AAuth Platform Value registries are evaluated by a designated expert appointed by the IESG, using the Specification Required policy (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>, Section 4.6).<a href="#section-16.10-1" class="pilcrow">¶</a></p>
+<p id="section-16.10-2">Registration requests should be sent to IANA, which will forward them to the designated expert. The expert is expected to respond within two weeks. Denials should include an explanation and, if applicable, suggestions for how the request could be revised to be successful.<a href="#section-16.10-2" class="pilcrow">¶</a></p>
+<p id="section-16.10-3">A registration request must include the proposed value, a brief description of its meaning, and a reference to the specification defining it. The designated expert should verify that:<a href="#section-16.10-3" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-16.10-2.1">Scheme name: <code>aauth</code><a href="#section-16.10-2.1" class="pilcrow">¶</a>
+<li class="compact" id="section-16.10-4.1">The referenced specification is stable and freely available, and describes the value's semantics in sufficient detail that interoperable, independent implementations are possible.<a href="#section-16.10-4.1" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-16.10-2.2">Status: Permanent<a href="#section-16.10-2.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-16.10-4.2">The proposed value is a lowercase token using only lowercase letters and hyphen, consistent with the registries' existing entries, and is not confusingly similar to an existing entry.<a href="#section-16.10-4.2" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-16.10-2.3">Applications/protocols that use this scheme: AAuth Protocol<a href="#section-16.10-2.3" class="pilcrow">¶</a>
+          <li class="compact" id="section-16.10-4.3">The registration does not duplicate the semantics of an existing entry without clear justification.<a href="#section-16.10-4.3" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-16.10-2.4">Contact: IETF<a href="#section-16.10-2.4" class="pilcrow">¶</a>
+          <li class="compact" id="section-16.10-4.4">For the Requirement Value and Capability Value registries, the specification defines the protocol behavior expected of a party that declares or encounters the value, including how a party that does not understand the value behaves.<a href="#section-16.10-4.4" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-16.10-2.5">Change controller: IETF<a href="#section-16.10-2.5" class="pilcrow">¶</a>
-</li>
-          <li class="compact" id="section-16.10-2.6">Reference: This document, <a href="#agent-identifiers" class="auto internal xref">Section 5.1</a><a href="#section-16.10-2.6" class="pilcrow">¶</a>
+          <li class="compact" id="section-16.10-4.5">For the Platform Value registry, the value describes a distinct runtime context that is meaningful for display to a person at a consent screen or dashboard, and the description does not overstate the security properties the value conveys.<a href="#section-16.10-4.5" class="pilcrow">¶</a>
 </li>
         </ul>
-<p id="section-16.10-3">The <code>aauth</code> URI scheme follows the pattern established by the <code>acct</code> scheme (<span>[<a href="#RFC7565" class="cite xref">RFC7565</a>]</span>). An <code>aauth</code> URI identifies an agent instance and has the syntax <code>aauth:local@domain</code>, where <code>local</code> is the agent-specific part and <code>domain</code> is the agent provider's domain name. The <code>aauth</code> URI is used in the <code>sub</code> claim of agent tokens, the <code>agent</code> field of resource tokens and the mission blob, and the <code>agent</code> and <code>act.agent</code> fields of auth tokens.<a href="#section-16.10-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="uri-scheme-registration">
+<section id="section-16.11">
+        <h3 id="name-uri-scheme-registration">
+<a href="#section-16.11" class="section-number selfRef">16.11. </a><a href="#name-uri-scheme-registration" class="section-name selfRef">URI Scheme Registration</a>
+        </h3>
+<p id="section-16.11-1">This specification registers the <code>aauth</code> URI scheme in the "Uniform Resource Identifier (URI) Schemes" registry (<span>[<a href="#RFC7595" class="cite xref">RFC7595</a>]</span>):<a href="#section-16.11-1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-16.11-2.1">Scheme name: <code>aauth</code><a href="#section-16.11-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-16.11-2.2">Status: Permanent<a href="#section-16.11-2.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-16.11-2.3">Applications/protocols that use this scheme: AAuth Protocol<a href="#section-16.11-2.3" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-16.11-2.4">Contact: IETF<a href="#section-16.11-2.4" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-16.11-2.5">Change controller: IETF<a href="#section-16.11-2.5" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-16.11-2.6">Reference: This document, <a href="#agent-identifiers" class="auto internal xref">Section 5.1</a><a href="#section-16.11-2.6" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-16.11-3">The <code>aauth</code> URI scheme follows the pattern established by the <code>acct</code> scheme (<span>[<a href="#RFC7565" class="cite xref">RFC7565</a>]</span>). An <code>aauth</code> URI identifies an agent instance and has the syntax <code>aauth:local@domain</code>, where <code>local</code> is the agent-specific part and <code>domain</code> is the agent provider's domain name. The <code>aauth</code> URI is used in the <code>sub</code> claim of agent tokens, the <code>agent</code> field of resource tokens and the mission blob, and the <code>agent</code> and <code>act.agent</code> fields of auth tokens.<a href="#section-16.11-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -7129,6 +7154,8 @@ Accept-Signature-Scheme: jwt
             <li class="compact normal" id="section-18-2.1.2.15">Required every key published at an AAuth server's <code>jwks_uri</code> to carry <code>alg</code>. A discovered key has no other channel for it, so a JWKS that omits the member cannot be used even though <span>[<a href="#RFC7517" class="cite xref">RFC7517</a>]</span> makes it OPTIONAL.<a href="#section-18-2.1.2.15" class="pilcrow">¶</a>
 </li>
             <li class="compact normal" id="section-18-2.1.2.16">Required a verifier to select the key matching <code>kid</code> without requiring other JWKS members to be usable, so that an issuer can publish a post-quantum key alongside a classical one without breaking verifiers that implement only the latter.<a href="#section-18-2.1.2.16" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.1.2.17">IANA review feedback: added Designated Expert Instructions for the AAuth Requirement Value, Capability Value, and Platform Value registries per RFC 8126 Section 4.5.<a href="#section-18-2.1.2.17" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>

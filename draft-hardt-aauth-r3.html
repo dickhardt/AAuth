@@ -1277,6 +1277,11 @@ svg {
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.2">
                 <p id="section-toc.1-1.11.2.2.1"><a href="#section-11.2" class="auto internal xref">11.2</a>.  <a href="#name-r3-vocabulary-registry" class="internal xref">R3 Vocabulary Registry</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.2.2.1">
+                    <p id="section-toc.1-1.11.2.2.2.1.1"><a href="#section-11.2.1" class="auto internal xref">11.2.1</a>.  <a href="#name-designated-expert-instructi" class="internal xref">Designated Expert Instructions</a></p>
+</li>
+                </ul>
 </li>
             </ul>
 </li>
@@ -2260,7 +2265,24 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
             </tr>
           </tbody>
         </table>
-<p id="section-11.2-3">New values may be registered following the Specification Required policy (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>).<a href="#section-11.2-3" class="pilcrow">¶</a></p>
+<p id="section-11.2-3">New values may be registered following the Specification Required policy (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>, Section 4.6).<a href="#section-11.2-3" class="pilcrow">¶</a></p>
+<div id="designated-expert-instructions">
+<section id="section-11.2.1">
+          <h4 id="name-designated-expert-instructi">
+<a href="#section-11.2.1" class="section-number selfRef">11.2.1. </a><a href="#name-designated-expert-instructi" class="section-name selfRef">Designated Expert Instructions</a>
+          </h4>
+<p id="section-11.2.1-1">Registration requests for the AAuth R3 Vocabulary Registry are evaluated by a designated expert appointed by the IESG. Registration requests should be sent to IANA, which will forward them to the designated expert. The expert is expected to respond within two weeks. Denials should include an explanation and, if applicable, suggestions for how the request could be revised to be successful.<a href="#section-11.2.1-1" class="pilcrow">¶</a></p>
+<p id="section-11.2.1-2">A registration request must include the proposed vocabulary URI, the interface type it describes, and a reference to the specification defining it. The designated expert should verify that:<a href="#section-11.2.1-2" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-11.2.1-3.1">The vocabulary URI follows the <code>urn:aauth:vocabulary:&lt;name&gt;</code> pattern, where <code>&lt;name&gt;</code> is a lowercase token using only lowercase letters, digits, and hyphen, and is not confusingly similar to an existing entry.<a href="#section-11.2.1-3.1" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-11.2.1-3.2">The referenced specification is stable and freely available, and defines how operation identifiers are derived from the interface description in sufficient detail that independent implementations produce the same identifiers for the same interface.<a href="#section-11.2.1-3.2" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-11.2.1-3.3">The vocabulary covers an interface type not already served by an existing entry, or provides clear justification for an alternative vocabulary for an existing interface type.<a href="#section-11.2.1-3.3" class="pilcrow">¶</a>
+</li>
+          </ul>
+</section>
+</div>
 </section>
 </div>
 </section>
@@ -2289,17 +2311,19 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 </li>
             <li class="compact normal" id="section-13-2.1.2.2">Corrected the JWT header examples: <code>alg</code> is <code>Ed25519</code> rather than the deprecated polymorphic <code>EdDSA</code>, <code>typ</code> values are <code>aa-resource+jwt</code> and <code>aa-auth+jwt</code> to match the media types the protocol spec registers, and the <code>cnf.jwk</code> carries the <code>alg</code> member now required of every conveyed key.<a href="#section-13-2.1.2.2" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.3">Added per-call proposals for conditional operations<a href="#section-13-2.1.2.3" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.3">IANA review feedback: added Designated Expert Instructions for the AAuth R3 Vocabulary Registry per RFC 8126 Section 4.5.<a href="#section-13-2.1.2.3" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.4">Content addressing hashes the bytes as served; removed canonicalization<a href="#section-13-2.1.2.4" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.4">Added per-call proposals for conditional operations<a href="#section-13-2.1.2.4" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.5">Defined composition when requested operations span multiple R3 documents<a href="#section-13-2.1.2.5" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.5">Content addressing hashes the bytes as served; removed canonicalization<a href="#section-13-2.1.2.5" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.6">Added operation identifier scope rules and the OpenAPI Gateway vocabulary for resources fronting multiple services<a href="#section-13-2.1.2.6" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.6">Defined composition when requested operations span multiple R3 documents<a href="#section-13-2.1.2.6" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.7">Aligned with AAuth Protocol: <code>issuer</code> in resource metadata, <code>dwk</code> values <code>aauth-access.json</code>/<code>aauth-person.json</code> in auth tokens<a href="#section-13-2.1.2.7" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.7">Added operation identifier scope rules and the OpenAPI Gateway vocabulary for resources fronting multiple services<a href="#section-13-2.1.2.7" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.8">Renamed MM to PS; examples use EdDSA<a href="#section-13-2.1.2.8" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.8">Aligned with AAuth Protocol: <code>issuer</code> in resource metadata, <code>dwk</code> values <code>aauth-access.json</code>/<code>aauth-person.json</code> in auth tokens<a href="#section-13-2.1.2.8" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-13-2.1.2.9">Renamed MM to PS; examples use EdDSA<a href="#section-13-2.1.2.9" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>

@@ -250,7 +250,8 @@ Table of Contents
      16.7.  AAuth Requirement Value Registry
      16.8.  AAuth Capability Value Registry
      16.9.  AAuth Platform Value Registry
-     16.10. URI Scheme Registration
+     16.10. Designated Expert Instructions
+     16.11. URI Scheme Registration
    17. Implementation Status
    18. Document History
    19. Acknowledgments
@@ -5374,7 +5375,9 @@ Initial request (with Prefer: wait=N)
 16.7.  AAuth Requirement Value Registry
 
    This specification establishes the AAuth Requirement Value Registry.
-   The registry policy is Specification Required ([RFC8126]).
+   The registry policy is Specification Required ([RFC8126],
+   Section 4.6).  See Section 16.10 for instructions to the designated
+   expert.
 
                      +===============+===============+
                      | Value         | Reference     |
@@ -5397,7 +5400,9 @@ Initial request (with Prefer: wait=N)
 16.8.  AAuth Capability Value Registry
 
    This specification establishes the AAuth Capability Value Registry.
-   The registry policy is Specification Required ([RFC8126]).
+   The registry policy is Specification Required ([RFC8126],
+   Section 4.6).  See Section 16.10 for instructions to the designated
+   expert.
 
                      +===============+===============+
                      | Value         | Reference     |
@@ -5416,7 +5421,8 @@ Initial request (with Prefer: wait=N)
    This specification establishes the AAuth Platform Value Registry,
    used as values of the platform request parameter sent to the PS token
    endpoint Section 7.1.  The registry policy is Specification Required
-   ([RFC8126]).
+   ([RFC8126], Section 4.6).  See Section 16.10 for instructions to the
+   designated expert.
 
        +=============+================================+===========+
        | Value       | Description                    | Reference |
@@ -5441,7 +5447,40 @@ Initial request (with Prefer: wait=N)
 
                                  Table 19
 
-16.10.  URI Scheme Registration
+16.10.  Designated Expert Instructions
+
+   Registration requests for the AAuth Requirement Value, AAuth
+   Capability Value, and AAuth Platform Value registries are evaluated
+   by a designated expert appointed by the IESG, using the Specification
+   Required policy ([RFC8126], Section 4.6).
+
+   Registration requests should be sent to IANA, which will forward them
+   to the designated expert.  The expert is expected to respond within
+   two weeks.  Denials should include an explanation and, if applicable,
+   suggestions for how the request could be revised to be successful.
+
+   A registration request must include the proposed value, a brief
+   description of its meaning, and a reference to the specification
+   defining it.  The designated expert should verify that:
+
+   *  The referenced specification is stable and freely available, and
+      describes the value's semantics in sufficient detail that
+      interoperable, independent implementations are possible.
+   *  The proposed value is a lowercase token using only lowercase
+      letters and hyphen, consistent with the registries' existing
+      entries, and is not confusingly similar to an existing entry.
+   *  The registration does not duplicate the semantics of an existing
+      entry without clear justification.
+   *  For the Requirement Value and Capability Value registries, the
+      specification defines the protocol behavior expected of a party
+      that declares or encounters the value, including how a party that
+      does not understand the value behaves.
+   *  For the Platform Value registry, the value describes a distinct
+      runtime context that is meaningful for display to a person at a
+      consent screen or dashboard, and the description does not
+      overstate the security properties the value conveys.
+
+16.11.  URI Scheme Registration
 
    This specification registers the aauth URI scheme in the "Uniform
    Resource Identifier (URI) Schemes" registry ([RFC7595]):
@@ -5589,6 +5628,9 @@ Initial request (with Prefer: wait=N)
          requiring other JWKS members to be usable, so that an issuer
          can publish a post-quantum key alongside a classical one
          without breaking verifiers that implement only the latter.
+      -  IANA review feedback: added Designated Expert Instructions for
+         the AAuth Requirement Value, Capability Value, and Platform
+         Value registries per RFC 8126 Section 4.5.
 
    *  draft-hardt-oauth-aauth-protocol-09
 
