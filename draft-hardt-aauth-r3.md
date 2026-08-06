@@ -375,7 +375,7 @@ The document MUST be served over HTTPS. The resource MUST require a valid HTTP M
 
 **`operations`** (REQUIRED). An array of operations covered by this R3 document, using the vocabulary-specific structure defined in {{mcp-vocabulary}} through {{odata-vocabulary}}. This is the same format used in the agent's `r3_operations` request and in the auth token's `r3_granted` and `r3_conditional` claims.
 
-**`account`** (OPTIONAL). Present when the authorization endpoint request carried an `account` parameter ([@!I-D.hardt-aauth-protocol]), carrying that same value. It identifies which account at the resource this authorization covers.
+**`account`** (OPTIONAL). Present when the authorization endpoint request carried an `account` parameter ([@!I-D.hardt-oauth-aauth-protocol]), carrying that same value. It identifies which account at the resource this authorization covers.
 
 When `account` is present, the `display` section SHOULD name the account in terms the person recognises. The value itself is an identifier in the resource's namespace and may be opaque — a numeric company id, a workspace key — so a consent screen rendering it verbatim tells the person nothing about which of their accounts is being authorized. The resource holds the human-readable name and `display` is where it belongs; a PS renders `display` and is not expected to interpret `account`.
 
@@ -399,7 +399,7 @@ The `r3_s256` hash is the document's identity, not the URI. The AS caches docume
 
 ## Resource Token Extensions
 
-R3 extends the resource token defined in AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]) (a JWT with `typ: resource+jwt`) with two additional payload claims. When a resource includes R3 information, it MUST include both.
+R3 extends the resource token defined in AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]) (a JWT with `typ: aa-resource+jwt`) with two additional payload claims. When a resource includes R3 information, it MUST include both.
 
 Base claims (from AAuth Protocol):
 - `iss`: Resource URL
@@ -468,7 +468,7 @@ Because R3 documents are content-addressed, the AS MAY cache them by `r3_s256` t
 
 # Auth Token Extensions
 
-R3 extends the auth token defined in AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]) (a JWT with `typ: auth+jwt`) with claims for audit provenance and vocabulary-based grants. The resource can enforce authorization directly from these claims.
+R3 extends the auth token defined in AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]) (a JWT with `typ: aa-auth+jwt`) with claims for audit provenance and vocabulary-based grants. The resource can enforce authorization directly from these claims.
 
 Base claims (from AAuth Protocol):
 - `iss`: Auth server URL
@@ -676,6 +676,7 @@ There are currently no known implementations.
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-aauth-r3-01
+  - Corrected three stale references left by concurrent changes: the `account` field cited the pre-rename `I-D.hardt-aauth-protocol` anchor, which after the rename resolved from the datatracker to the abandoned draft-hardt-aauth-protocol-02 without any build error; and the resource token and auth token prose named `typ: resource+jwt` and `typ: auth+jwt` where the registered media types, and this document's own examples, are `aa-resource+jwt` and `aa-auth+jwt`.
   - Added the OPTIONAL `account` field to the R3 document, carrying the `account` value the authorization endpoint request named, and recommended that `display` name the account in terms the person recognises — the value is an identifier in the resource's namespace and may be opaque, so a consent screen rendering it verbatim identifies nothing.
   - Corrected the JWT header examples: `alg` is `Ed25519` rather than the deprecated polymorphic `EdDSA`, `typ` values are `aa-resource+jwt` and `aa-auth+jwt` to match the media types the protocol spec registers, and the `cnf.jwk` carries the `alg` member now required of every conveyed key.
   - IANA review feedback: added Designated Expert Instructions for the AAuth R3 Vocabulary Registry per RFC 8126 Section 4.5.
