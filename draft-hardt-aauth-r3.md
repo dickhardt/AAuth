@@ -317,7 +317,7 @@ This composition is opaque to the agent. The agent sees one `r3_uri`/`r3_s256` i
 
 An R3 document is a JSON object published by the resource at a URI. It describes the authorization semantics for a class of access: what operations are covered (in vocabulary format), what the access means in human terms, and what consequences it carries.
 
-The document MUST be served over HTTPS. The resource MUST require a valid HTTP Message Signature on requests to R3 document URIs, and MUST reject requests not signed by the party it addressed the resource token to (#r3-document-access-restriction). Agents cannot fetch R3 documents.
+The document MUST be served over HTTPS. The resource MUST require a valid HTTP Message Signature on requests to R3 document URIs, and MUST reject requests not signed by the AS or the PS entitled to that document (#r3-document-access-restriction). Agents cannot fetch R3 documents.
 
 ```json
 {
@@ -411,7 +411,7 @@ R3 extension claims:
 
 Resource tokens MAY include both `scope` (as defined in AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol])) and R3 claims. When both are present, the AS MUST enforce both independently.
 
-# R3 Processing
+# R3 Processing {#r3-processing}
 
 Both the PS and the AS fetch R3 documents, but for different purposes:
 
@@ -568,7 +568,12 @@ Whether the AS or PS additionally *machine-evaluates* `parameters` (for example,
 
 ## R3 Document Access Restriction {#r3-document-access-restriction}
 
-A party fetching `r3_uri` MUST authenticate itself with an HTTP Message Signature as defined in the AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]). The resource MUST reject any request not signed by the party it addressed the resource token to — the `aud` of the resource token carrying that `r3_uri`, which is the AS in four-party access and the PS in three-party access. The resource therefore recognizes one signer per document and does not accept fetches from any other party.
+A party fetching `r3_uri` MUST authenticate itself with an HTTP Message Signature as defined in the AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]). The resource MUST reject any request that is not signed by a party entitled to that document. Two parties are:
+
+- the AS named in the `aud` of a resource token carrying that `r3_uri`; and
+- the PS of the agent that resource token was issued to, which the resource knows from the `ps` claim of the agent token the agent presented.
+
+In three-party access these are the same party — `aud` is the PS. In four-party access both fetch, and for different reasons: the AS reads `operations` to evaluate policy, the PS reads `display` to render consent (#r3-processing). Any other signer MUST be rejected.
 
 Agent opacity — the agent carries the hash of a document it cannot read — depends entirely on this restriction. A resource that does not require the signature, or that accepts signatures from other keys, lets an agent follow the `r3_uri` in its resource token and read the document. Implementations SHOULD verify the restriction during deployment testing.
 
