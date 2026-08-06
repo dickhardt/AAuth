@@ -2902,7 +2902,7 @@ AAuth-Requirement: requirement=agent-token
 </pre><a href="#section-6.3-2" class="pilcrow">¶</a>
 </div>
 <p id="section-6.3-3">The header carries no additional parameters: the agent already holds its agent token and need only present it. The agent retries the request, signing it per <a href="#http-message-signatures-profile" class="auto internal xref">Section 12.7</a> and presenting its agent token via the <code>Signature-Key</code> header using <code>sig=jwt;jwt="&lt;agent-token&gt;"</code>.<a href="#section-6.3-3" class="pilcrow">¶</a></p>
-<p id="section-6.3-4"><code>requirement=agent-token</code> is distinct from <code>requirement=auth-token</code>: the former asks for the agent's own identity token, with no PS or AS involved; the latter asks the agent to obtain an auth token from its PS using the enclosed resource token. It is also more specific than an <code>Accept-Signature</code> challenge (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>), which accepts any URI-identified key — <code>requirement=agent-token</code> tells the agent that an AAuth agent token in particular is required.<a href="#section-6.3-4" class="pilcrow">¶</a></p>
+<p id="section-6.3-4"><code>requirement=agent-token</code> is distinct from <code>requirement=auth-token</code>: the former asks for the agent's own identity token, with no PS or AS involved; the latter asks the agent to obtain an auth token from its PS using the enclosed resource token. It is also more specific than an <code>Accept-Signature-Scheme</code> challenge (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>), which names schemes and so would accept any key those schemes can convey — <code>requirement=agent-token</code> tells the agent that an AAuth agent token in particular is required.<a href="#section-6.3-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="aauth-access">
@@ -5203,7 +5203,8 @@ Content-Type: application/json
           <h4 id="name-authentication-errors">
 <a href="#section-12.5.1" class="section-number selfRef">12.5.1. </a><a href="#name-authentication-errors" class="section-name selfRef">Authentication Errors</a>
           </h4>
-<p id="section-12.5.1-1">A <code>401</code> response from any AAuth endpoint uses the <code>Signature-Error</code> header as defined in (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>).<a href="#section-12.5.1-1" class="pilcrow">¶</a></p>
+<p id="section-12.5.1-1">A <code>401</code> response from any AAuth endpoint uses the <code>Signature-Error</code> header as defined in (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). The header, not the response body, is the machine-readable carrier; agents MUST NOT depend on the body for signature error handling.<a href="#section-12.5.1-1" class="pilcrow">¶</a></p>
+<p id="section-12.5.1-2">A server returning <code>unsupported_scheme</code> SHOULD include <code>Accept-Signature-Scheme</code>, and one returning <code>unsupported_algorithm</code> SHOULD include <code>Accept-Signature-Alg</code> <a href="#verification" class="auto internal xref">Section 12.7.4</a>. The error names what went wrong; the header names what would succeed. Because AAuth fixes the scheme <a href="#keying-material" class="auto internal xref">Section 12.7.2</a> and requires <code>Ed25519</code> support of every agent and resource <a href="#signature-algorithms" class="auto internal xref">Section 12.7.1</a>, a conformant agent does not reach either error — the headers exist so that an agent preferring another algorithm, or a client arriving from outside AAuth, can recover in one round trip rather than by trial.<a href="#section-12.5.1-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="error-response-format">
@@ -5384,9 +5385,10 @@ Content-Type: application/problem+json
         <h3 id="name-token-revocation">
 <a href="#section-12.6" class="section-number selfRef">12.6. </a><a href="#name-token-revocation" class="section-name selfRef">Token Revocation</a>
         </h3>
-<p id="section-12.6-1">Any AAuth server that issues tokens MAY provide a revocation endpoint. The endpoint accepts a signed POST with the <code>jti</code> of the token to revoke. The server identifies the token from the <code>jti</code> and its own records — no token type is needed since the <code>jti</code> is unique within the issuer's namespace.<a href="#section-12.6-1" class="pilcrow">¶</a></p>
-<p id="section-12.6-2"><strong>Request:</strong><a href="#section-12.6-2" class="pilcrow">¶</a></p>
-<div class="lang-http sourcecode" id="section-12.6-3">
+<p id="section-12.6-1">Any AAuth server that issues tokens MAY provide a revocation endpoint. The endpoint accepts a signed POST identifying the token to revoke by the pair <code>(iss, jti)</code>. Both members are REQUIRED. The server identifies the token from that pair and its own records; no token type is needed, since <code>(iss, jti)</code> is unique.<a href="#section-12.6-1" class="pilcrow">¶</a></p>
+<p id="section-12.6-2">A <code>jti</code> is unique only within the namespace of the issuer that minted it. A revocation endpoint receives tokens from many issuers — a resource holds auth tokens from every PS and AS its callers use — so a <code>jti</code> alone does not identify a token unambiguously and invites cross-issuer collision, revoking the wrong token or silently failing to revoke the right one. Recipients maintaining revocation state MUST key it by <code>(iss, jti)</code>.<a href="#section-12.6-2" class="pilcrow">¶</a></p>
+<p id="section-12.6-3"><strong>Request:</strong><a href="#section-12.6-3" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-12.6-4">
 <pre>POST /revoke HTTP/1.1
 Host: ps.example
 Content-Type: application/json
@@ -5396,32 +5398,37 @@ Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
+  "iss": "https://ps.example",
   "jti": "unique-token-identifier"
 }
 
-</pre><a href="#section-12.6-3" class="pilcrow">¶</a>
+</pre><a href="#section-12.6-4" class="pilcrow">¶</a>
 </div>
-<p id="section-12.6-4"><strong>Response:</strong> <code>200 OK</code> if the token was revoked or was already invalid. <code>404</code> if the <code>jti</code> is not recognized.<a href="#section-12.6-4" class="pilcrow">¶</a></p>
-<p id="section-12.6-5">Revocation provides real-time termination of access. The PS or AS calls the revocation endpoint of the resource that a token was issued for, passing the <code>jti</code> of the auth token to revoke. The following revocation scenarios are supported:<a href="#section-12.6-5" class="pilcrow">¶</a></p>
+<p id="section-12.6-5"><strong>Response:</strong> <code>200 OK</code> if the token was revoked or was already invalid. <code>404</code> if the <code>(iss, jti)</code> pair is not recognized.<a href="#section-12.6-5" class="pilcrow">¶</a></p>
+<p id="section-12.6-6">Revocation provides real-time termination of access. The PS or AS calls the revocation endpoint of the resource that a token was issued for, passing the <code>iss</code> and <code>jti</code> of the auth token to revoke. The following revocation scenarios are supported:<a href="#section-12.6-6" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-12.6-6.1">
-            <strong>PS revokes an auth token it issued</strong> (three-party): The PS calls the resource's revocation endpoint with the auth token's <code>jti</code>.<a href="#section-12.6-6.1" class="pilcrow">¶</a>
+<li class="compact" id="section-12.6-7.1">
+            <strong>PS revokes an auth token it issued</strong> (three-party): The PS calls the resource's revocation endpoint with the auth token's <code>iss</code> and <code>jti</code>.<a href="#section-12.6-7.1" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-12.6-6.2">
-            <strong>PS revokes an auth token it provided</strong> (four-party): The PS calls the resource's revocation endpoint with the auth token's <code>jti</code>. The PS MAY also notify the AS.<a href="#section-12.6-6.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-12.6-7.2">
+            <strong>PS revokes an auth token it provided</strong> (four-party): The PS calls the resource's revocation endpoint with the auth token's <code>iss</code> and <code>jti</code>. The PS MAY also notify the AS.<a href="#section-12.6-7.2" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-12.6-6.3">
-            <strong>AS revokes an auth token it issued</strong>: The AS calls the resource's revocation endpoint with the auth token's <code>jti</code>.<a href="#section-12.6-6.3" class="pilcrow">¶</a>
+          <li class="compact" id="section-12.6-7.3">
+            <strong>AS revokes an auth token it issued</strong>: The AS calls the resource's revocation endpoint with the auth token's <code>iss</code> and <code>jti</code>.<a href="#section-12.6-7.3" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-12.6-6.4">
-            <strong>PS revokes a mission</strong>: The PS marks the mission as revoked. All subsequent token requests referencing that mission's <code>s256</code> are denied. The PS SHOULD revoke outstanding auth tokens issued under the mission.<a href="#section-12.6-6.4" class="pilcrow">¶</a>
+          <li class="compact" id="section-12.6-7.4">
+            <strong>PS revokes a mission</strong>: The PS marks the mission as revoked. All subsequent token requests referencing that mission's <code>s256</code> are denied. The PS SHOULD revoke outstanding auth tokens issued under the mission.<a href="#section-12.6-7.4" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-12.6-6.5">
-            <strong>Agent provider stops issuing agent tokens</strong>: The agent provider decides not to issue new agent tokens to the agent. Existing agent tokens expire naturally. This is part of the regular token lifecycle — all tokens have limited lifetimes and require periodic re-issuance, which provides a natural policy re-evaluation point.<a href="#section-12.6-6.5" class="pilcrow">¶</a>
+          <li class="compact" id="section-12.6-7.5">
+            <strong>Agent provider revokes an agent token it issued</strong>: The agent provider marks the agent token revoked at its own <code>revocation_endpoint</code> <a href="#agent-provider-metadata" class="auto internal xref">Section 12.10.1</a>. An agent token is issued by the AP, so the AP is the only party that can revoke one; a PS or resource that no longer trusts an agent denies it rather than revoking its token.<a href="#section-12.6-7.5" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-12.6-7.6">
+            <strong>Agent provider stops issuing agent tokens</strong>: The agent provider decides not to issue new agent tokens to the agent. Existing agent tokens expire naturally. This is part of the regular token lifecycle — all tokens have limited lifetimes and require periodic re-issuance, which provides a natural policy re-evaluation point.<a href="#section-12.6-7.6" class="pilcrow">¶</a>
 </li>
         </ul>
-<p id="section-12.6-7">Revocation endpoints are advertised in server metadata as <code>revocation_endpoint</code>. Resources that accept revocation requests MUST verify the caller's identity via HTTP Message Signatures and MUST only accept revocation from the issuer of the token being revoked or from a trusted PS.<a href="#section-12.6-7" class="pilcrow">¶</a></p>
-<p id="section-12.6-8">Auth tokens are short-lived (maximum 1 hour) and proof-of-possession (useless without the bound signing key). All AAuth tokens have limited lifetimes — agent tokens, resource tokens, and auth tokens all expire and require re-issuance. Each re-issuance is a policy evaluation point where the issuer can deny renewal. This natural expiration cycle, combined with real-time revocation, provides layered access control.<a href="#section-12.6-8" class="pilcrow">¶</a></p>
+<p id="section-12.6-8">Revocation endpoints are advertised in server metadata as <code>revocation_endpoint</code>. Recipients of revocation requests MUST verify the caller's identity via HTTP Message Signatures and MUST only accept revocation from the issuer of the token being revoked or from a trusted PS.<a href="#section-12.6-8" class="pilcrow">¶</a></p>
+<p id="section-12.6-9">Auth tokens are verified offline, from their signature and claims, with no call to the issuer. A resource therefore learns of a revocation only when one reaches its revocation endpoint, and a party that cannot reach it is bounded by token lifetime alone — at most one hour for an auth token <a href="#auth-tokens" class="auto internal xref">Section 9.4</a>, five minutes for a resource token <a href="#resource-tokens" class="auto internal xref">Section 6</a>. Revocation shortens exposure; it does not eliminate it, and deployments requiring immediate termination should issue shorter-lived tokens rather than relying on revocation reaching every holder.<a href="#section-12.6-9" class="pilcrow">¶</a></p>
+<p id="section-12.6-10">Auth tokens are short-lived (maximum 1 hour) and proof-of-possession (useless without the bound signing key). All AAuth tokens have limited lifetimes — agent tokens, resource tokens, and auth tokens all expire and require re-issuance. Each re-issuance is a policy evaluation point where the issuer can deny renewal. This natural expiration cycle, combined with real-time revocation, provides layered access control.<a href="#section-12.6-10" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="http-message-signatures-profile">
@@ -5528,6 +5535,8 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZERTQSJ9.PLACEHOLDER.PLACEHOLDER"
                 <code>created</code>: Signature creation timestamp as an Integer (Unix time). The agent MUST set this to the current time.<a href="#section-12.7.3.2-2.1" class="pilcrow">¶</a>
 </li>
             </ul>
+<p id="section-12.7.3.2-3">Agents MUST NOT include the <code>alg</code> signature parameter, and verifiers MUST ignore it if present, per <span>[<a href="#RFC9421" class="cite xref">RFC9421</a>]</span>, Section 3.3.7: under the JOSE signing algorithms this profile uses, the algorithm is signaled by the key rather than requested on the wire, and JWA identifiers are not registered in the HTTP Signature Algorithms registry. The algorithm is determined per <a href="#signature-algorithms" class="auto internal xref">Section 12.7.1</a>.<a href="#section-12.7.3.2-3" class="pilcrow">¶</a></p>
+<p id="section-12.7.3.2-4">Agents SHOULD NOT include the <code>keyid</code> parameter (<span>[<a href="#RFC9421" class="cite xref">RFC9421</a>]</span>, Section 5.1); the key is identified by the <code>Signature-Key</code> header. If <code>keyid</code> is present for a label that also appears in <code>Signature-Key</code>, the two MUST identify the same key, and the verifier MUST take the key from <code>Signature-Key</code>.<a href="#section-12.7.3.2-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -5545,20 +5554,42 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZERTQSJ9.PLACEHOLDER.PLACEHOLDER"
 </li>
             <li id="section-12.7.4-2.3">Verify the <code>created</code> parameter is present and within the server's signature validity window of the server's current time. The default window is 60 seconds. Servers MAY advertise a different window via their metadata (e.g., <code>signature_window</code> in resource metadata). Reject with <code>invalid_signature</code> if outside this window. Servers and agents SHOULD synchronize their clocks using NTP (<span>[<a href="#RFC5905" class="cite xref">RFC5905</a>]</span>).<a href="#section-12.7.4-2.3" class="pilcrow">¶</a>
 </li>
-            <li id="section-12.7.4-2.4">Determine the signature algorithm from the <code>alg</code> parameter in the key. If the algorithm is not supported, return <code>unsupported_algorithm</code>.<a href="#section-12.7.4-2.4" class="pilcrow">¶</a>
+            <li id="section-12.7.4-2.4">Select the <code>Signature-Key</code> dictionary member for the label being verified and read its scheme. If the scheme is not one the server implements — including any scheme this profile does not use <a href="#keying-material" class="auto internal xref">Section 12.7.2</a> and any unregistered value — return <code>unsupported_scheme</code> with an <code>Accept-Signature-Scheme</code> header naming the schemes the server accepts. A server MUST NOT fail in a scheme-specific or undefined manner on an unrecognized scheme.<a href="#section-12.7.4-2.4" class="pilcrow">¶</a>
 </li>
-            <li id="section-12.7.4-2.5">Obtain the public key from the <code>Signature-Key</code> header according to the scheme, as specified in (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). Return <code>invalid_key</code> if the key cannot be parsed, <code>unknown_key</code> if the key is not found at the <code>jwks_uri</code>, <code>invalid_jwt</code> if a JWT scheme fails verification, or <code>expired_jwt</code> if the JWT has expired.<a href="#section-12.7.4-2.5" class="pilcrow">¶</a>
+            <li id="section-12.7.4-2.5">Obtain the public key from the <code>Signature-Key</code> header according to the scheme, as specified in (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). Return <code>invalid_key</code> if the key cannot be parsed, <code>unknown_key</code> if the key is not found at the <code>jwks_uri</code>, <code>invalid_jwt</code> if a JWT scheme fails verification, <code>expired_jwt</code> if the JWT has expired, or <code>issuer_missing</code> / <code>issuer_mismatch</code> if the issuer's metadata document fails the checks in <a href="#metadata-documents" class="auto internal xref">Section 12.10</a>.<a href="#section-12.7.4-2.5" class="pilcrow">¶</a>
 </li>
-            <li id="section-12.7.4-2.6">Verify the HTTP Message Signature (<span>[<a href="#RFC9421" class="cite xref">RFC9421</a>]</span>) using the obtained public key and determined algorithm. Return <code>invalid_signature</code> if verification fails.<a href="#section-12.7.4-2.6" class="pilcrow">¶</a>
+            <li id="section-12.7.4-2.6">Determine the signature algorithm from the <code>alg</code> member of the obtained key, per <a href="#signature-algorithms" class="auto internal xref">Section 12.7.1</a>. Return <code>unsupported_algorithm</code> if <code>alg</code> is absent, is a polymorphic identifier, or names an algorithm or key type the server does not implement, and include an <code>Accept-Signature-Alg</code> header naming the algorithms the server accepts. Return <code>invalid_key</code> if the key's <code>kty</code> or <code>crv</code> disagrees with its <code>alg</code>.<a href="#section-12.7.4-2.6" class="pilcrow">¶</a>
+</li>
+            <li id="section-12.7.4-2.7">Verify the HTTP Message Signature (<span>[<a href="#RFC9421" class="cite xref">RFC9421</a>]</span>) using the obtained public key and determined algorithm. Return <code>invalid_signature</code> if verification fails.<a href="#section-12.7.4-2.7" class="pilcrow">¶</a>
 </li>
           </ol>
-<div id="freshness-and-replay">
+<p id="section-12.7.4-3">Steps 5 and 6 are ordered so that the algorithm is read from the key the scheme resolved to. Under <code>scheme=jwt</code> the key is the <code>cnf.jwk</code> of the presented token, which the server does not hold until the assertion has been verified.<a href="#section-12.7.4-3" class="pilcrow">¶</a></p>
+<p id="section-12.7.4-4">An <code>Accept-Signature-Alg</code> header names exactly the algorithms the server accepts, neither a subset nor a superset, so an agent that selects an algorithm from that list and presents a key carrying it is assured of clearing step 6. A server MAY omit either <code>Accept-Signature-*</code> header where enumerating what it accepts to an unauthenticated caller is judged a disclosure risk, accepting that agents then have to discover the sets by trial or out of band.<a href="#section-12.7.4-4" class="pilcrow">¶</a></p>
+<p id="section-12.7.4-5">This profile pins the response status to <code>401</code> for every signature failure, where the HTTP Signature Keys specification uses <code>400</code> for most of them and permits <code>401</code> for the recoverable ones. AAuth requests are authenticated by their signature, so a signature that does not verify is an authentication failure rather than a malformed request, and a single status keeps agent retry logic uniform.<a href="#section-12.7.4-5" class="pilcrow">¶</a></p>
+<p id="section-12.7.4-6">A <code>403</code> response denies access after the signature verified — authentication succeeded and authorization did not. Per (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>), such a response MUST NOT include a <code>Signature-Error</code>, <code>Accept-Signature-Scheme</code>, or <code>Accept-Signature-Alg</code> header. This applies to the AAuth errors returned with <code>403</code> (#token-endpoint-error-codes, #polling-error-codes).<a href="#section-12.7.4-6" class="pilcrow">¶</a></p>
+<div id="scheme-rejection">
 <section id="section-12.7.4.1">
-            <h5 id="name-freshness-and-replay">
-<a href="#section-12.7.4.1" class="section-number selfRef">12.7.4.1. </a><a href="#name-freshness-and-replay" class="section-name selfRef">Freshness and Replay</a>
+            <h5 id="name-signature-key-scheme-reject">
+<a href="#section-12.7.4.1" class="section-number selfRef">12.7.4.1. </a><a href="#name-signature-key-scheme-reject" class="section-name selfRef">Signature-Key Scheme Rejection</a>
             </h5>
-<p id="section-12.7.4.1-1">The <code>created</code> parameter is the primary replay defense: the server rejects signatures whose <code>created</code> is outside the validity window (default 60 seconds), so a captured signature becomes unusable once the window closes. <code>expires</code> is OPTIONAL; servers MUST honor it when present and MUST reject requests where <code>expires</code> is in the past.<a href="#section-12.7.4.1-1" class="pilcrow">¶</a></p>
-<p id="section-12.7.4.1-2">Within the validity window, a captured signature could in principle be replayed. For state-changing requests where this matters, a verifier MAY maintain a short-lived cache keyed by <code>(signing-key-thumbprint, created, @method, @authority, @path)</code> for the duration of the window, rejecting duplicate tuples. <code>@authority</code> is included because it is a mandated covered component <a href="#covered-components" class="auto internal xref">Section 12.7.3.1</a> and distinguishes requests across virtual hosts or tenants sharing the same path. Resources are NOT required to maintain replay caches for resource tokens <a href="#resource-tokens" class="auto internal xref">Section 6</a>, which are consumed in a single PS call. This profile defines no nonce mechanism.<a href="#section-12.7.4.1-2" class="pilcrow">¶</a></p>
+<p id="section-12.7.4.1-1">AAuth requires <code>scheme=jwt</code> <a href="#keying-material" class="auto internal xref">Section 12.7.2</a>, so a request presenting any other scheme is rejected under step 4 above:<a href="#section-12.7.4.1-1" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-12.7.4.1-2">
+<pre>HTTP/1.1 401 Unauthorized
+Signature-Error: error=unsupported_scheme
+Accept-Signature-Scheme: jwt
+
+</pre><a href="#section-12.7.4.1-2" class="pilcrow">¶</a>
+</div>
+<p id="section-12.7.4.1-3">A resource that also serves clients outside AAuth — signing per (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>) without an AAuth agent token — MAY accept further schemes and MUST then list all of them. <code>Accept-Signature-Scheme</code> states what the server accepts from any caller; <code>AAuth-Requirement: requirement=agent-token</code> <a href="#requirement-agent-token" class="auto internal xref">Section 6.3</a> is the narrower statement that an AAuth agent token in particular is required, and a server challenging an AAuth agent uses that rather than <code>Accept-Signature-Scheme</code>.<a href="#section-12.7.4.1-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="freshness-and-replay">
+<section id="section-12.7.4.2">
+            <h5 id="name-freshness-and-replay">
+<a href="#section-12.7.4.2" class="section-number selfRef">12.7.4.2. </a><a href="#name-freshness-and-replay" class="section-name selfRef">Freshness and Replay</a>
+            </h5>
+<p id="section-12.7.4.2-1">The <code>created</code> parameter is the primary replay defense: the server rejects signatures whose <code>created</code> is outside the validity window (default 60 seconds), so a captured signature becomes unusable once the window closes. <code>expires</code> is OPTIONAL; servers MUST honor it when present and MUST reject requests where <code>expires</code> is in the past.<a href="#section-12.7.4.2-1" class="pilcrow">¶</a></p>
+<p id="section-12.7.4.2-2">Within the validity window, a captured signature could in principle be replayed. For state-changing requests where this matters, a verifier MAY maintain a short-lived cache keyed by <code>(signing-key-thumbprint, created, @method, @authority, @path)</code> for the duration of the window, rejecting duplicate tuples. <code>@authority</code> is included because it is a mandated covered component <a href="#covered-components" class="auto internal xref">Section 12.7.3.1</a> and distinguishes requests across virtual hosts or tenants sharing the same path. Resources are NOT required to maintain replay caches for resource tokens <a href="#resource-tokens" class="auto internal xref">Section 6</a>, which are consumed in a single PS call. This profile defines no nonce mechanism.<a href="#section-12.7.4.2-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -5664,7 +5695,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZERTQSJ9.PLACEHOLDER.PLACEHOLDER"
 <a href="#section-12.10" class="section-number selfRef">12.10. </a><a href="#name-metadata-documents" class="section-name selfRef">Metadata Documents</a>
         </h3>
 <p id="section-12.10-1">Participants publish metadata at well-known URLs (<span>[<a href="#RFC8615" class="cite xref">RFC8615</a>]</span>) to enable discovery.<a href="#section-12.10-1" class="pilcrow">¶</a></p>
-<p id="section-12.10-2">When fetching a metadata document, implementations MUST verify that the <code>issuer</code> value in the document matches the URL the document was retrieved from (the URL minus the <code>/.well-known/{dwk}</code> suffix). If the values do not match, the metadata document MUST be rejected.<a href="#section-12.10-2" class="pilcrow">¶</a></p>
+<p id="section-12.10-2">When fetching a metadata document, implementations MUST verify that it contains an <code>issuer</code> member, and that the <code>issuer</code> value matches the URL the document was retrieved from (the URL minus the <code>/.well-known/{dwk}</code> suffix), compared by byte equality as presented. A document with no <code>issuer</code> MUST be rejected with <code>issuer_missing</code>; one whose <code>issuer</code> does not match MUST be rejected with <code>issuer_mismatch</code> (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). This is the check <span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span>, Section 3.3 requires of authorization server metadata.<a href="#section-12.10-2" class="pilcrow">¶</a></p>
 <p id="section-12.10-3">This check prevents host-poisoned metadata: an attacker hosting a metadata document at one domain that claims an <code>issuer</code> of a different domain. Without it, a permissive verifier following the <code>jwks_uri</code> in such a document could end up trusting attacker-controlled keys for tokens claiming the impersonated issuer.<a href="#section-12.10-3" class="pilcrow">¶</a></p>
 <p id="section-12.10-4">The following fields are defined identically across all four metadata documents (<code>aauth-agent.json</code>, <code>aauth-resource.json</code>, <code>aauth-person.json</code>, <code>aauth-access.json</code>):<a href="#section-12.10-4" class="pilcrow">¶</a></p>
 <table class="center" id="table-11">
@@ -5761,6 +5792,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZERTQSJ9.PLACEHOLDER.PLACEHOLDER"
   "documentation_uri": "https://agent.example/docs",
   "callback_endpoint": "https://agent.example/callback",
   "event_endpoint": "https://agent.example/events",
+  "revocation_endpoint": "https://agent.example/revoke",
   "localhost_callback_allowed": true,
   "tos_uri": "https://agent.example/tos",
   "policy_uri": "https://agent.example/privacy"
@@ -5801,13 +5833,16 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZERTQSJ9.PLACEHOLDER.PLACEHOLDER"
               <code>login_endpoint</code> (OPTIONAL): URL where third parties can direct users to initiate authentication <a href="#third-party-login" class="auto internal xref">Section 11</a><a href="#section-12.10.1-4.10" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-12.10.1-4.11">
-              <code>localhost_callback_allowed</code> (OPTIONAL): Boolean. Default: <code>false</code>.<a href="#section-12.10.1-4.11" class="pilcrow">¶</a>
+              <code>revocation_endpoint</code> (OPTIONAL): URL where authorized parties can revoke agent tokens the agent provider issued <a href="#token-revocation" class="auto internal xref">Section 12.6</a><a href="#section-12.10.1-4.11" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-12.10.1-4.12">
-              <code>tos_uri</code> (OPTIONAL): URL to terms of service (per <span>[<a href="#RFC7591" class="cite xref">RFC7591</a>]</span>)<a href="#section-12.10.1-4.12" class="pilcrow">¶</a>
+              <code>localhost_callback_allowed</code> (OPTIONAL): Boolean. Default: <code>false</code>.<a href="#section-12.10.1-4.12" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-12.10.1-4.13">
-              <code>policy_uri</code> (OPTIONAL): URL to privacy policy (per <span>[<a href="#RFC7591" class="cite xref">RFC7591</a>]</span>)<a href="#section-12.10.1-4.13" class="pilcrow">¶</a>
+              <code>tos_uri</code> (OPTIONAL): URL to terms of service (per <span>[<a href="#RFC7591" class="cite xref">RFC7591</a>]</span>)<a href="#section-12.10.1-4.13" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-12.10.1-4.14">
+              <code>policy_uri</code> (OPTIONAL): URL to privacy policy (per <span>[<a href="#RFC7591" class="cite xref">RFC7591</a>]</span>)<a href="#section-12.10.1-4.14" class="pilcrow">¶</a>
 </li>
           </ul>
 </section>
@@ -6988,13 +7023,29 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZERTQSJ9.PLACEHOLDER.PLACEHOLDER"
 <li class="normal" id="section-18-2.1">
           <p id="section-18-2.1.1">draft-hardt-oauth-aauth-protocol-10<a href="#section-18-2.1.1" class="pilcrow">¶</a></p>
 <ul class="compact normal">
-<li class="compact normal" id="section-18-2.1.2.1">Algorithm identifiers: adopted the fully-specified <code>Ed25519</code> identifier registered by <span>[<a href="#RFC9864" class="cite xref">RFC9864</a>]</span> in place of the polymorphic <code>EdDSA</code>, which that RFC deprecates. Rewrote <a href="#signature-algorithms" class="auto internal xref">Section 12.7.1</a> to state the Algorithm Determination rules AAuth inherits from <span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>: <code>alg</code> is REQUIRED and MUST be fully specified, <code>EdDSA</code> and <code>none</code> and symmetric algorithms MUST NOT be used, and a verifier MUST reject a key whose <code>kty</code> or <code>crv</code> disagrees with its <code>alg</code>. Cited the IANA JOSE algorithms registry itself rather than <span>[<a href="#RFC7518" class="cite xref">RFC7518</a>]</span>, which established it but no longer holds all of it. Addresses issue #57.<a href="#section-18-2.1.2.1" class="pilcrow">¶</a>
+<li class="compact normal" id="section-18-2.1.2.1">Revocation identifies a token by <code>(iss, jti)</code> rather than <code>jti</code> alone, and recipients key revocation state by that pair. A <code>jti</code> is unique only within its issuer's namespace, while a revocation endpoint receives tokens from many issuers, so <code>jti</code> alone invites cross-issuer collision. Addresses issue #59.<a href="#section-18-2.1.2.1" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-18-2.1.2.2">Required the JWK in a <code>cnf</code> claim to carry a fully-specified <code>alg</code>, in agent tokens and auth tokens alike, and updated the examples, which previously conveyed a JWK with no <code>alg</code> and would now be rejected.<a href="#section-18-2.1.2.2" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-18-2.1.2.2">Added an OPTIONAL <code>revocation_endpoint</code> to agent provider metadata. Agent tokens are issued by the AP, which was the only role with no way to revoke what it issues. Addresses issue #60.<a href="#section-18-2.1.2.2" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-18-2.1.2.3">Required every key published at an AAuth server's <code>jwks_uri</code> to carry <code>alg</code>. A discovered key has no other channel for it, so a JWKS that omits the member cannot be used even though <span>[<a href="#RFC7517" class="cite xref">RFC7517</a>]</span> makes it OPTIONAL.<a href="#section-18-2.1.2.3" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-18-2.1.2.3">Stated what revocation does not do: auth tokens verify offline, so a holder that no revocation request reaches is bounded by token lifetime alone.<a href="#section-18-2.1.2.3" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-18-2.1.2.4">Required a verifier to select the key matching <code>kid</code> without requiring other JWKS members to be usable, so that an issuer can publish a post-quantum key alongside a classical one without breaking verifiers that implement only the latter.<a href="#section-18-2.1.2.4" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-18-2.1.2.4">Verification: reordered the steps so the algorithm is read from the key the scheme resolved to, which under <code>scheme=jwt</code> is not held until the assertion verifies. Added a scheme-rejection step returning <code>unsupported_scheme</code> with <code>Accept-Signature-Scheme</code>, made mandatory and conformance-testable by <span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>; replaced "determine the algorithm from the <code>alg</code> parameter" with the specific checks, reporting <code>unsupported_algorithm</code> with <code>Accept-Signature-Alg</code>, and <code>invalid_key</code> where <code>kty</code> or <code>crv</code> disagrees with <code>alg</code>.<a href="#section-18-2.1.2.4" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.1.2.5">Mapped the metadata document issuer check to the <code>issuer_missing</code> and <code>issuer_mismatch</code> error codes, and required the <code>issuer</code> member to be present rather than only to match.<a href="#section-18-2.1.2.5" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.1.2.6">Stated that this profile pins signature failures to <code>401</code> where the base specification uses <code>400</code> for most of them, and that a <code>403</code> MUST NOT carry <code>Signature-Error</code> or either <code>Accept-Signature-*</code> header.<a href="#section-18-2.1.2.6" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.1.2.7">Forbade the <code>alg</code> signature parameter and discouraged <code>keyid</code>, per <span>[<a href="#RFC9421" class="cite xref">RFC9421</a>]</span>, Section 3.3.7 and Section 5.1: under the JOSE signing algorithms the algorithm is signaled by the key, and the key is identified by <code>Signature-Key</code>.<a href="#section-18-2.1.2.7" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.1.2.8">Rewrote the <code>requirement=agent-token</code> comparison, which described the <code>sigkey</code> parameter of <code>Accept-Signature</code> — removed in draft-hardt-httpbis-signature-key-08 — rather than <code>Accept-Signature-Scheme</code>.<a href="#section-18-2.1.2.8" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.1.2.9">Algorithm identifiers: adopted the fully-specified <code>Ed25519</code> identifier registered by <span>[<a href="#RFC9864" class="cite xref">RFC9864</a>]</span> in place of the polymorphic <code>EdDSA</code>, which that RFC deprecates. Rewrote <a href="#signature-algorithms" class="auto internal xref">Section 12.7.1</a> to state the Algorithm Determination rules AAuth inherits from <span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>: <code>alg</code> is REQUIRED and MUST be fully specified, <code>EdDSA</code> and <code>none</code> and symmetric algorithms MUST NOT be used, and a verifier MUST reject a key whose <code>kty</code> or <code>crv</code> disagrees with its <code>alg</code>. Cited the IANA JOSE algorithms registry itself rather than <span>[<a href="#RFC7518" class="cite xref">RFC7518</a>]</span>, which established it but no longer holds all of it. Addresses issue #57.<a href="#section-18-2.1.2.9" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.1.2.10">Required the JWK in a <code>cnf</code> claim to carry a fully-specified <code>alg</code>, in agent tokens and auth tokens alike, and updated the examples, which previously conveyed a JWK with no <code>alg</code> and would now be rejected.<a href="#section-18-2.1.2.10" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.1.2.11">Required every key published at an AAuth server's <code>jwks_uri</code> to carry <code>alg</code>. A discovered key has no other channel for it, so a JWKS that omits the member cannot be used even though <span>[<a href="#RFC7517" class="cite xref">RFC7517</a>]</span> makes it OPTIONAL.<a href="#section-18-2.1.2.11" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-18-2.1.2.12">Required a verifier to select the key matching <code>kid</code> without requiring other JWKS members to be usable, so that an issuer can publish a post-quantum key alongside a classical one without breaking verifiers that implement only the latter.<a href="#section-18-2.1.2.12" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
@@ -7204,6 +7255,10 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZERTQSJ9.PLACEHOLDER.PLACEHOLDER"
         <dd>
 <span class="refAuthor">Cotton, M.</span>, <span class="refAuthor">Leiba, B.</span>, and <span class="refAuthor">T. Narten</span>, <span class="refTitle">"Guidelines for Writing an IANA Considerations Section in RFCs"</span>, <span class="seriesInfo">BCP 26</span>, <span class="seriesInfo">RFC 8126</span>, <span class="seriesInfo">DOI 10.17487/RFC8126</span>, <time datetime="2017-06" class="refDate">June 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8126">https://www.rfc-editor.org/info/rfc8126</a>&gt;</span>. </dd>
 <dd class="break"></dd>
+<dt id="RFC8414">[RFC8414]</dt>
+        <dd>
+<span class="refAuthor">Jones, M.</span>, <span class="refAuthor">Sakimura, N.</span>, and <span class="refAuthor">J. Bradley</span>, <span class="refTitle">"OAuth 2.0 Authorization Server Metadata"</span>, <span class="seriesInfo">RFC 8414</span>, <span class="seriesInfo">DOI 10.17487/RFC8414</span>, <time datetime="2018-06" class="refDate">June 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8414">https://www.rfc-editor.org/info/rfc8414</a>&gt;</span>. </dd>
+<dd class="break"></dd>
 <dt id="RFC8615">[RFC8615]</dt>
         <dd>
 <span class="refAuthor">Nottingham, M.</span>, <span class="refTitle">"Well-Known Uniform Resource Identifiers (URIs)"</span>, <span class="seriesInfo">RFC 8615</span>, <span class="seriesInfo">DOI 10.17487/RFC8615</span>, <time datetime="2019-05" class="refDate">May 2019</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8615">https://www.rfc-editor.org/info/rfc8615</a>&gt;</span>. </dd>
@@ -7306,10 +7361,6 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZERTQSJ9.PLACEHOLDER.PLACEHOLDER"
 <dt id="RFC7942">[RFC7942]</dt>
         <dd>
 <span class="refAuthor">Sheffer, Y.</span> and <span class="refAuthor">A. Farrel</span>, <span class="refTitle">"Improving Awareness of Running Code: The Implementation Status Section"</span>, <span class="seriesInfo">BCP 205</span>, <span class="seriesInfo">RFC 7942</span>, <span class="seriesInfo">DOI 10.17487/RFC7942</span>, <time datetime="2016-07" class="refDate">July 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7942">https://www.rfc-editor.org/info/rfc7942</a>&gt;</span>. </dd>
-<dd class="break"></dd>
-<dt id="RFC8414">[RFC8414]</dt>
-        <dd>
-<span class="refAuthor">Jones, M.</span>, <span class="refAuthor">Sakimura, N.</span>, and <span class="refAuthor">J. Bradley</span>, <span class="refTitle">"OAuth 2.0 Authorization Server Metadata"</span>, <span class="seriesInfo">RFC 8414</span>, <span class="seriesInfo">DOI 10.17487/RFC8414</span>, <time datetime="2018-06" class="refDate">June 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8414">https://www.rfc-editor.org/info/rfc8414</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC8628">[RFC8628]</dt>
         <dd>
