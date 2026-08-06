@@ -25,6 +25,16 @@ organization = "Hellō"
 
 %%%
 
+<reference anchor="I-D.hardt-oauth-aauth-protocol" target="https://datatracker.ietf.org/doc/draft-hardt-oauth-aauth-protocol">
+  <front>
+    <title>AAuth Protocol</title>
+    <author initials="D." surname="Hardt" fullname="Dick Hardt">
+      <organization>Hellō</organization>
+    </author>
+    <date year="2026"/>
+  </front>
+</reference>
+
 <reference anchor="I-D.hardt-httpbis-signature-key" target="https://datatracker.ietf.org/doc/draft-hardt-httpbis-signature-key">
   <front>
     <title>HTTP Signature Keys</title>
@@ -389,7 +399,7 @@ TBD
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-aauth-bootstrap-02
-  - Dropped the hand-maintained reference block for the AAuth Protocol so the citation resolves from the datatracker.
+  - Referenced the AAuth Protocol by its datatracker document URL, which tracks the latest revision.
   - Algorithm identifiers: `Ed25519` rather than the deprecated polymorphic `EdDSA`; the `cnf.jwk` example carries the `alg` member now required of every conveyed key.
 
 - draft-hardt-aauth-bootstrap-01

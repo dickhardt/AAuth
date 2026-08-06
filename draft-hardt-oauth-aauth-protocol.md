@@ -59,6 +59,29 @@ organization = "Hellō"
   </front>
 </reference>
 
+<reference anchor="I-D.hardt-httpbis-signature-key" target="https://datatracker.ietf.org/doc/draft-hardt-httpbis-signature-key">
+  <front>
+    <title>HTTP Signature Keys</title>
+    <author initials="D." surname="Hardt" fullname="Dick Hardt">
+      <organization>Hellō</organization>
+    </author>
+    <author initials="T." surname="Meunier" fullname="Thibault Meunier">
+      <organization>Cloudflare</organization>
+    </author>
+    <date year="2026"/>
+  </front>
+</reference>
+
+<reference anchor="I-D.hardt-aauth-bootstrap" target="https://datatracker.ietf.org/doc/draft-hardt-aauth-bootstrap">
+  <front>
+    <title>AAuth Bootstrap Guidance</title>
+    <author initials="D." surname="Hardt" fullname="Dick Hardt">
+      <organization>Hellō</organization>
+    </author>
+    <date year="2026"/>
+  </front>
+</reference>
+
 <reference anchor="I-D.hardt-aauth-r3" target="https://github.com/dickhardt/AAuth">
   <front>
     <title>AAuth Rich Resource Requests (R3)</title>
@@ -3117,6 +3140,7 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-10
+  - Referenced HTTP Signature Keys and AAuth Bootstrap by their datatracker document URLs, which track the latest revision, rather than letting them resolve to a pinned draft revision. Companion drafts not yet on the datatracker (R3, Events) continue to reference the repository.
   - Acknowledgments: identified the contributor previously listed by the handle hegu-1 as He Gu.
   - Added (#account-binding): an OPTIONAL `account` parameter on the authorization endpoint request, echoed as an OPTIONAL claim in the resource token and copied into the auth token, binding an authorization to one of several accounts a resource may hold for the same person. The value is an opaque string in the resource's own namespace. Where the agent does not know which account to name, the resource returns `requirement=interaction` and the person selects at the resource; a resource MUST NOT enumerate a person's accounts to an agent, having nothing to gate that disclosure on at the authorization endpoint. Addresses issue #52.
   - Added (#approved-tools-accountability), stating that approved-tool actions MAY execute while the PS is unreachable, that the mission log is consequently not a complete record, and that granting `approved_tools` is a trust decision about offline accountability whose blast radius is what the granted tools can do offline. A PS needing complete coverage declines the grant and requires per-action permission calls. Addresses issue #49.

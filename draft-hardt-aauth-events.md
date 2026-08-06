@@ -25,6 +25,16 @@ organization = "Hellō"
 
 %%%
 
+<reference anchor="I-D.hardt-oauth-aauth-protocol" target="https://datatracker.ietf.org/doc/draft-hardt-oauth-aauth-protocol">
+  <front>
+    <title>AAuth Protocol</title>
+    <author initials="D." surname="Hardt" fullname="Dick Hardt">
+      <organization>Hellō</organization>
+    </author>
+    <date year="2026"/>
+  </front>
+</reference>
+
 <reference anchor="I-D.hardt-httpbis-signature-key" target="https://datatracker.ietf.org/doc/draft-hardt-httpbis-signature-key">
   <front>
     <title>HTTP Signature Keys</title>
@@ -48,7 +58,7 @@ organization = "Hellō"
   </front>
 </reference>
 
-<reference anchor="I-D.hardt-aauth-bootstrap" target="https://github.com/dickhardt/AAuth">
+<reference anchor="I-D.hardt-aauth-bootstrap" target="https://datatracker.ietf.org/doc/draft-hardt-aauth-bootstrap">
   <front>
     <title>AAuth Bootstrap Guidance</title>
     <author initials="D." surname="Hardt" fullname="Dick Hardt">
@@ -640,7 +650,7 @@ TBD
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-aauth-events-00
-  - Dropped the hand-maintained reference block for the AAuth Protocol so the citation resolves from the datatracker.
+  - Referenced the AAuth Protocol and AAuth Bootstrap by their datatracker document URLs, which track the latest revision.
   - Algorithm identifiers: `Ed25519` rather than the deprecated polymorphic `EdDSA`; the `cnf.jwk` example carries the `alg` member now required of every conveyed key.
   - Initial draft.
 
