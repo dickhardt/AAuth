@@ -1778,7 +1778,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <p id="section-6.1-1"><strong><code>version</code></strong> (RECOMMENDED). A string identifying the version of this R3 document. The combination of <code>r3_uri</code> + SHA-256 hash provides content-addressing independent of this field; <code>version</code> is for human readability.<a href="#section-6.1-1" class="pilcrow">¶</a></p>
 <p id="section-6.1-2"><strong><code>vocabulary</code></strong> (REQUIRED). The vocabulary URI identifying how operations are expressed. MUST match one of the vocabularies the resource advertises in <code>r3_vocabularies</code>.<a href="#section-6.1-2" class="pilcrow">¶</a></p>
 <p id="section-6.1-3"><strong><code>operations</code></strong> (REQUIRED). An array of operations covered by this R3 document, using the vocabulary-specific structure defined in {{mcp-vocabulary}} through {{odata-vocabulary}}. This is the same format used in the agent's <code>r3_operations</code> request and in the auth token's <code>r3_granted</code> and <code>r3_conditional</code> claims.<a href="#section-6.1-3" class="pilcrow">¶</a></p>
-<p id="section-6.1-4"><strong><code>account</code></strong> (OPTIONAL). Present when the authorization endpoint request carried an <code>account</code> parameter (<span>[<a href="#I-D.hardt-aauth-protocol" class="cite xref">I-D.hardt-aauth-protocol</a>]</span>), carrying that same value. It identifies which account at the resource this authorization covers.<a href="#section-6.1-4" class="pilcrow">¶</a></p>
+<p id="section-6.1-4"><strong><code>account</code></strong> (OPTIONAL). Present when the authorization endpoint request carried an <code>account</code> parameter (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>), carrying that same value. It identifies which account at the resource this authorization covers.<a href="#section-6.1-4" class="pilcrow">¶</a></p>
 <p id="section-6.1-5">When <code>account</code> is present, the <code>display</code> section SHOULD name the account in terms the person recognises. The value itself is an identifier in the resource's namespace and may be opaque — a numeric company id, a workspace key — so a consent screen rendering it verbatim tells the person nothing about which of their accounts is being authorized. The resource holds the human-readable name and <code>display</code> is where it belongs; a PS renders <code>display</code> and is not expected to interpret <code>account</code>.<a href="#section-6.1-5" class="pilcrow">¶</a></p>
 <p id="section-6.1-6"><strong><code>display</code></strong> (RECOMMENDED). Human-readable descriptions of the consequences of granting this access. The resource describes what <em>it</em> does, not what the agent intends:<a href="#section-6.1-6" class="pilcrow">¶</a></p>
 <ul class="compact">
@@ -1820,7 +1820,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
         <h3 id="name-resource-token-extensions">
 <a href="#section-6.3" class="section-number selfRef">6.3. </a><a href="#name-resource-token-extensions" class="section-name selfRef">Resource Token Extensions</a>
         </h3>
-<p id="section-6.3-1">R3 extends the resource token defined in AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>) (a JWT with <code>typ: resource+jwt</code>) with two additional payload claims. When a resource includes R3 information, it MUST include both.<a href="#section-6.3-1" class="pilcrow">¶</a></p>
+<p id="section-6.3-1">R3 extends the resource token defined in AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>) (a JWT with <code>typ: aa-resource+jwt</code>) with two additional payload claims. When a resource includes R3 information, it MUST include both.<a href="#section-6.3-1" class="pilcrow">¶</a></p>
 <p id="section-6.3-2">Base claims (from AAuth Protocol):
 - <code>iss</code>: Resource URL
 - <code>dwk</code>: <code>aauth-resource.json</code>
@@ -1916,7 +1916,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
       <h2 id="name-auth-token-extensions">
 <a href="#section-8" class="section-number selfRef">8. </a><a href="#name-auth-token-extensions" class="section-name selfRef">Auth Token Extensions</a>
       </h2>
-<p id="section-8-1">R3 extends the auth token defined in AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>) (a JWT with <code>typ: auth+jwt</code>) with claims for audit provenance and vocabulary-based grants. The resource can enforce authorization directly from these claims.<a href="#section-8-1" class="pilcrow">¶</a></p>
+<p id="section-8-1">R3 extends the auth token defined in AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>) (a JWT with <code>typ: aa-auth+jwt</code>) with claims for audit provenance and vocabulary-based grants. The resource can enforce authorization directly from these claims.<a href="#section-8-1" class="pilcrow">¶</a></p>
 <p id="section-8-2">Base claims (from AAuth Protocol):
 - <code>iss</code>: Auth server URL
 - <code>dwk</code>: <code>aauth-access.json</code> (issued by an AS) or <code>aauth-person.json</code> (issued by a PS)
@@ -2307,23 +2307,25 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <li class="normal" id="section-13-2.1">
           <p id="section-13-2.1.1">draft-hardt-aauth-r3-01<a href="#section-13-2.1.1" class="pilcrow">¶</a></p>
 <ul class="compact normal">
-<li class="compact normal" id="section-13-2.1.2.1">Added the OPTIONAL <code>account</code> field to the R3 document, carrying the <code>account</code> value the authorization endpoint request named, and recommended that <code>display</code> name the account in terms the person recognises — the value is an identifier in the resource's namespace and may be opaque, so a consent screen rendering it verbatim identifies nothing.<a href="#section-13-2.1.2.1" class="pilcrow">¶</a>
+<li class="compact normal" id="section-13-2.1.2.1">Corrected three stale references left by concurrent changes: the <code>account</code> field cited the pre-rename <code>I-D.hardt-aauth-protocol</code> anchor, which after the rename resolved from the datatracker to the abandoned draft-hardt-aauth-protocol-02 without any build error; and the resource token and auth token prose named <code>typ: resource+jwt</code> and <code>typ: auth+jwt</code> where the registered media types, and this document's own examples, are <code>aa-resource+jwt</code> and <code>aa-auth+jwt</code>.<a href="#section-13-2.1.2.1" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.2">Corrected the JWT header examples: <code>alg</code> is <code>Ed25519</code> rather than the deprecated polymorphic <code>EdDSA</code>, <code>typ</code> values are <code>aa-resource+jwt</code> and <code>aa-auth+jwt</code> to match the media types the protocol spec registers, and the <code>cnf.jwk</code> carries the <code>alg</code> member now required of every conveyed key.<a href="#section-13-2.1.2.2" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.2">Added the OPTIONAL <code>account</code> field to the R3 document, carrying the <code>account</code> value the authorization endpoint request named, and recommended that <code>display</code> name the account in terms the person recognises — the value is an identifier in the resource's namespace and may be opaque, so a consent screen rendering it verbatim identifies nothing.<a href="#section-13-2.1.2.2" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.3">IANA review feedback: added Designated Expert Instructions for the AAuth R3 Vocabulary Registry per RFC 8126 Section 4.5.<a href="#section-13-2.1.2.3" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.3">Corrected the JWT header examples: <code>alg</code> is <code>Ed25519</code> rather than the deprecated polymorphic <code>EdDSA</code>, <code>typ</code> values are <code>aa-resource+jwt</code> and <code>aa-auth+jwt</code> to match the media types the protocol spec registers, and the <code>cnf.jwk</code> carries the <code>alg</code> member now required of every conveyed key.<a href="#section-13-2.1.2.3" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.4">Added per-call proposals for conditional operations<a href="#section-13-2.1.2.4" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.4">IANA review feedback: added Designated Expert Instructions for the AAuth R3 Vocabulary Registry per RFC 8126 Section 4.5.<a href="#section-13-2.1.2.4" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.5">Content addressing hashes the bytes as served; removed canonicalization<a href="#section-13-2.1.2.5" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.5">Added per-call proposals for conditional operations<a href="#section-13-2.1.2.5" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.6">Defined composition when requested operations span multiple R3 documents<a href="#section-13-2.1.2.6" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.6">Content addressing hashes the bytes as served; removed canonicalization<a href="#section-13-2.1.2.6" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.7">Added operation identifier scope rules and the OpenAPI Gateway vocabulary for resources fronting multiple services<a href="#section-13-2.1.2.7" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.7">Defined composition when requested operations span multiple R3 documents<a href="#section-13-2.1.2.7" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.8">Aligned with AAuth Protocol: <code>issuer</code> in resource metadata, <code>dwk</code> values <code>aauth-access.json</code>/<code>aauth-person.json</code> in auth tokens<a href="#section-13-2.1.2.8" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.8">Added operation identifier scope rules and the OpenAPI Gateway vocabulary for resources fronting multiple services<a href="#section-13-2.1.2.8" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.9">Renamed MM to PS; examples use EdDSA<a href="#section-13-2.1.2.9" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.9">Aligned with AAuth Protocol: <code>issuer</code> in resource metadata, <code>dwk</code> values <code>aauth-access.json</code>/<code>aauth-person.json</code> in auth tokens<a href="#section-13-2.1.2.9" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-13-2.1.2.10">Renamed MM to PS; examples use EdDSA<a href="#section-13-2.1.2.10" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
@@ -2354,10 +2356,6 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <a href="#section-15.1" class="section-number selfRef">15.1. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
         </h3>
 <dl class="references">
-<dt id="I-D.hardt-aauth-protocol">[I-D.hardt-aauth-protocol]</dt>
-        <dd>
-<span class="refAuthor">Hardt, D.</span>, <span class="refTitle">"AAuth Protocol"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-hardt-aauth-protocol-02</span>, <time datetime="2026-04-28" class="refDate">28 April 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-hardt-aauth-protocol-02">https://datatracker.ietf.org/doc/html/draft-hardt-aauth-protocol-02</a>&gt;</span>. </dd>
-<dd class="break"></dd>
 <dt id="I-D.hardt-oauth-aauth-protocol">[I-D.hardt-oauth-aauth-protocol]</dt>
         <dd>
 <span class="refAuthor">Hardt, D.</span>, <span class="refTitle">"AAuth Protocol"</span>, <time datetime="2026" class="refDate">2026</time>, <span>&lt;<a href="https://github.com/dickhardt/AAuth">https://github.com/dickhardt/AAuth</a>&gt;</span>. </dd>

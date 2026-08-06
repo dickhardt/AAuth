@@ -574,9 +574,9 @@ Table of Contents
    r3_granted and r3_conditional claims.
 
    *account* (OPTIONAL).  Present when the authorization endpoint
-   request carried an account parameter ([I-D.hardt-aauth-protocol]),
-   carrying that same value.  It identifies which account at the
-   resource this authorization covers.
+   request carried an account parameter
+   ([I-D.hardt-oauth-aauth-protocol]), carrying that same value.  It
+   identifies which account at the resource this authorization covers.
 
    When account is present, the display section SHOULD name the account
    in terms the person recognises.  The value itself is an identifier in
@@ -633,7 +633,7 @@ Table of Contents
 6.3.  Resource Token Extensions
 
    R3 extends the resource token defined in AAuth Protocol
-   ([I-D.hardt-oauth-aauth-protocol]) (a JWT with typ: resource+jwt)
+   ([I-D.hardt-oauth-aauth-protocol]) (a JWT with typ: aa-resource+jwt)
    with two additional payload claims.  When a resource includes R3
    information, it MUST include both.
 
@@ -718,7 +718,7 @@ Table of Contents
 8.  Auth Token Extensions
 
    R3 extends the auth token defined in AAuth Protocol
-   ([I-D.hardt-oauth-aauth-protocol]) (a JWT with typ: auth+jwt) with
+   ([I-D.hardt-oauth-aauth-protocol]) (a JWT with typ: aa-auth+jwt) with
    claims for audit provenance and vocabulary-based grants.  The
    resource can enforce authorization directly from these claims.
 
@@ -1072,6 +1072,14 @@ Table of Contents
 
    *  draft-hardt-aauth-r3-01
 
+      -  Corrected three stale references left by concurrent changes:
+         the account field cited the pre-rename I-D.hardt-aauth-protocol
+         anchor, which after the rename resolved from the datatracker to
+         the abandoned draft-hardt-aauth-protocol-02 without any build
+         error; and the resource token and auth token prose named typ:
+         resource+jwt and typ: auth+jwt where the registered media
+         types, and this document's own examples, are aa-resource+jwt
+         and aa-auth+jwt.
       -  Added the OPTIONAL account field to the R3 document, carrying
          the account value the authorization endpoint request named, and
          recommended that display name the account in terms the person
@@ -1109,12 +1117,6 @@ Table of Contents
 15.  References
 
 15.1.  Normative References
-
-   [I-D.hardt-aauth-protocol]
-              Hardt, D., "AAuth Protocol", Work in Progress, Internet-
-              Draft, draft-hardt-aauth-protocol-02, 28 April 2026,
-              <https://datatracker.ietf.org/doc/html/draft-hardt-aauth-
-              protocol-02>.
 
    [I-D.hardt-oauth-aauth-protocol]
               Hardt, D., "AAuth Protocol", 2026,
