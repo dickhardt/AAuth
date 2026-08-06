@@ -1754,8 +1754,9 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
     { "tool": "create_calendar_event" },
     { "tool": "modify_calendar_event" }
   ],
+  "account": "dick@example.com",
   "display": {
-    "summary": "Create and modify events on your work calendar",
+    "summary": "Create and modify events on your work calendar (dick@example.com)",
     "implications": "Meetings can be scheduled or rescheduled. Existing events can be modified.",
     "data_accessed": "Event titles, times, attendees, and descriptions in the work calendar",
     "irreversible": "Sent meeting invitations cannot be unsent"
@@ -1772,19 +1773,21 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <p id="section-6.1-1"><strong><code>version</code></strong> (RECOMMENDED). A string identifying the version of this R3 document. The combination of <code>r3_uri</code> + SHA-256 hash provides content-addressing independent of this field; <code>version</code> is for human readability.<a href="#section-6.1-1" class="pilcrow">¶</a></p>
 <p id="section-6.1-2"><strong><code>vocabulary</code></strong> (REQUIRED). The vocabulary URI identifying how operations are expressed. MUST match one of the vocabularies the resource advertises in <code>r3_vocabularies</code>.<a href="#section-6.1-2" class="pilcrow">¶</a></p>
 <p id="section-6.1-3"><strong><code>operations</code></strong> (REQUIRED). An array of operations covered by this R3 document, using the vocabulary-specific structure defined in {{mcp-vocabulary}} through {{odata-vocabulary}}. This is the same format used in the agent's <code>r3_operations</code> request and in the auth token's <code>r3_granted</code> and <code>r3_conditional</code> claims.<a href="#section-6.1-3" class="pilcrow">¶</a></p>
-<p id="section-6.1-4"><strong><code>display</code></strong> (RECOMMENDED). Human-readable descriptions of the consequences of granting this access. The resource describes what <em>it</em> does, not what the agent intends:<a href="#section-6.1-4" class="pilcrow">¶</a></p>
+<p id="section-6.1-4"><strong><code>account</code></strong> (OPTIONAL). Present when the authorization endpoint request carried an <code>account</code> parameter (<span>[<a href="#I-D.hardt-aauth-protocol" class="cite xref">I-D.hardt-aauth-protocol</a>]</span>), carrying that same value. It identifies which account at the resource this authorization covers.<a href="#section-6.1-4" class="pilcrow">¶</a></p>
+<p id="section-6.1-5">When <code>account</code> is present, the <code>display</code> section SHOULD name the account in terms the person recognises. The value itself is an identifier in the resource's namespace and may be opaque — a numeric company id, a workspace key — so a consent screen rendering it verbatim tells the person nothing about which of their accounts is being authorized. The resource holds the human-readable name and <code>display</code> is where it belongs; a PS renders <code>display</code> and is not expected to interpret <code>account</code>.<a href="#section-6.1-5" class="pilcrow">¶</a></p>
+<p id="section-6.1-6"><strong><code>display</code></strong> (RECOMMENDED). Human-readable descriptions of the consequences of granting this access. The resource describes what <em>it</em> does, not what the agent intends:<a href="#section-6.1-6" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-6.1-5.1">
-            <code>summary</code> (REQUIRED if <code>display</code> present). A short plain-language description suitable for a consent UI or auth agent.<a href="#section-6.1-5.1" class="pilcrow">¶</a>
+<li class="compact" id="section-6.1-7.1">
+            <code>summary</code> (REQUIRED if <code>display</code> present). A short plain-language description suitable for a consent UI or auth agent.<a href="#section-6.1-7.1" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-6.1-5.2">
-            <code>implications</code> (OPTIONAL). Side effects of granting this access: emails sent, records modified, costs incurred.<a href="#section-6.1-5.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-6.1-7.2">
+            <code>implications</code> (OPTIONAL). Side effects of granting this access: emails sent, records modified, costs incurred.<a href="#section-6.1-7.2" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-6.1-5.3">
-            <code>data_accessed</code> (OPTIONAL). What data becomes visible to the caller.<a href="#section-6.1-5.3" class="pilcrow">¶</a>
+          <li class="compact" id="section-6.1-7.3">
+            <code>data_accessed</code> (OPTIONAL). What data becomes visible to the caller.<a href="#section-6.1-7.3" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-6.1-5.4">
-            <code>irreversible</code> (OPTIONAL). Plain-language description of actions that cannot be undone.<a href="#section-6.1-5.4" class="pilcrow">¶</a>
+          <li class="compact" id="section-6.1-7.4">
+            <code>irreversible</code> (OPTIONAL). Plain-language description of actions that cannot be undone.<a href="#section-6.1-7.4" class="pilcrow">¶</a>
 </li>
         </ul>
 </section>
@@ -2282,19 +2285,21 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <li class="normal" id="section-13-2.1">
           <p id="section-13-2.1.1">draft-hardt-aauth-r3-01<a href="#section-13-2.1.1" class="pilcrow">¶</a></p>
 <ul class="compact normal">
-<li class="compact normal" id="section-13-2.1.2.1">Corrected the JWT header examples: <code>alg</code> is <code>Ed25519</code> rather than the deprecated polymorphic <code>EdDSA</code>, <code>typ</code> values are <code>aa-resource+jwt</code> and <code>aa-auth+jwt</code> to match the media types the protocol spec registers, and the <code>cnf.jwk</code> carries the <code>alg</code> member now required of every conveyed key.<a href="#section-13-2.1.2.1" class="pilcrow">¶</a>
+<li class="compact normal" id="section-13-2.1.2.1">Added the OPTIONAL <code>account</code> field to the R3 document, carrying the <code>account</code> value the authorization endpoint request named, and recommended that <code>display</code> name the account in terms the person recognises — the value is an identifier in the resource's namespace and may be opaque, so a consent screen rendering it verbatim identifies nothing.<a href="#section-13-2.1.2.1" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.2">Added per-call proposals for conditional operations<a href="#section-13-2.1.2.2" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.2">Corrected the JWT header examples: <code>alg</code> is <code>Ed25519</code> rather than the deprecated polymorphic <code>EdDSA</code>, <code>typ</code> values are <code>aa-resource+jwt</code> and <code>aa-auth+jwt</code> to match the media types the protocol spec registers, and the <code>cnf.jwk</code> carries the <code>alg</code> member now required of every conveyed key.<a href="#section-13-2.1.2.2" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.3">Content addressing hashes the bytes as served; removed canonicalization<a href="#section-13-2.1.2.3" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.3">Added per-call proposals for conditional operations<a href="#section-13-2.1.2.3" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.4">Defined composition when requested operations span multiple R3 documents<a href="#section-13-2.1.2.4" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.4">Content addressing hashes the bytes as served; removed canonicalization<a href="#section-13-2.1.2.4" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.5">Added operation identifier scope rules and the OpenAPI Gateway vocabulary for resources fronting multiple services<a href="#section-13-2.1.2.5" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.5">Defined composition when requested operations span multiple R3 documents<a href="#section-13-2.1.2.5" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.6">Aligned with AAuth Protocol: <code>issuer</code> in resource metadata, <code>dwk</code> values <code>aauth-access.json</code>/<code>aauth-person.json</code> in auth tokens<a href="#section-13-2.1.2.6" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.6">Added operation identifier scope rules and the OpenAPI Gateway vocabulary for resources fronting multiple services<a href="#section-13-2.1.2.6" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-13-2.1.2.7">Renamed MM to PS; examples use EdDSA<a href="#section-13-2.1.2.7" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-13-2.1.2.7">Aligned with AAuth Protocol: <code>issuer</code> in resource metadata, <code>dwk</code> values <code>aauth-access.json</code>/<code>aauth-person.json</code> in auth tokens<a href="#section-13-2.1.2.7" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-13-2.1.2.8">Renamed MM to PS; examples use EdDSA<a href="#section-13-2.1.2.8" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
