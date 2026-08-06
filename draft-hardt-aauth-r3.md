@@ -24,16 +24,6 @@ organization = "Hellō"
 
 %%%
 
-<reference anchor="I-D.hardt-oauth-aauth-protocol" target="https://github.com/dickhardt/AAuth">
-  <front>
-    <title>AAuth Protocol</title>
-    <author initials="D." surname="Hardt" fullname="Dick Hardt">
-      <organization>Hellō</organization>
-    </author>
-    <date year="2026"/>
-  </front>
-</reference>
-
 <reference anchor="I-D.hardt-aauth-events" target="https://github.com/dickhardt/AAuth">
   <front>
     <title>AAuth Events</title>
@@ -676,6 +666,7 @@ There are currently no known implementations.
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-aauth-r3-01
+  - Dropped the hand-maintained reference block for the AAuth Protocol so the citation resolves from the datatracker, giving the draft revision, date, and datatracker URL rather than a bare repository link.
   - Corrected three stale references left by concurrent changes: the `account` field cited the pre-rename `I-D.hardt-aauth-protocol` anchor, which after the rename resolved from the datatracker to the abandoned draft-hardt-aauth-protocol-02 without any build error; and the resource token and auth token prose named `typ: resource+jwt` and `typ: auth+jwt` where the registered media types, and this document's own examples, are `aa-resource+jwt` and `aa-auth+jwt`.
   - Added the OPTIONAL `account` field to the R3 document, carrying the `account` value the authorization endpoint request named, and recommended that `display` name the account in terms the person recognises — the value is an identifier in the resource's namespace and may be opaque, so a consent screen rendering it verbatim identifies nothing.
   - Corrected the JWT header examples: `alg` is `Ed25519` rather than the deprecated polymorphic `EdDSA`, `typ` values are `aa-resource+jwt` and `aa-auth+jwt` to match the media types the protocol spec registers, and the `cnf.jwk` carries the `alg` member now required of every conveyed key.
