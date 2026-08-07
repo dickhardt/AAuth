@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                           6 August 2026
-Expires: 7 February 2027
+Intended status: Standards Track                           7 August 2026
+Expires: 8 February 2027
 
 
                    AAuth Rich Resource Requests (R3)
@@ -48,7 +48,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 7 February 2027.
+   This Internet-Draft will expire on 8 February 2027.
 
 Copyright Notice
 
@@ -500,8 +500,8 @@ Table of Contents
 
    The document MUST be served over HTTPS.  The resource MUST require a
    valid HTTP Message Signature on requests to R3 document URIs, and
-   MUST reject requests not signed by the party it addressed the
-   resource token to Section 10.1.  Agents cannot fetch R3 documents.
+   MUST reject requests not signed by the AS or the PS entitled to that
+   document Section 10.1.  Agents cannot fetch R3 documents.
 
    {
      "version": "2",
@@ -876,11 +876,19 @@ Table of Contents
    A party fetching r3_uri MUST authenticate itself with an HTTP Message
    Signature as defined in the AAuth Protocol
    ([I-D.hardt-oauth-aauth-protocol]).  The resource MUST reject any
-   request not signed by the party it addressed the resource token to —
-   the aud of the resource token carrying that r3_uri, which is the AS
-   in four-party access and the PS in three-party access.  The resource
-   therefore recognizes one signer per document and does not accept
-   fetches from any other party.
+   request that is not signed by a party entitled to that document.  Two
+   parties are:
+
+   *  the AS named in the aud of a resource token carrying that r3_uri;
+      and
+   *  the PS of the agent that resource token was issued to, which the
+      resource knows from the ps claim of the agent token the agent
+      presented.
+
+   In three-party access these are the same party — aud is the PS.  In
+   four-party access both fetch, and for different reasons: the AS reads
+   operations to evaluate policy, the PS reads display to render consent
+   Section 7.  Any other signer MUST be rejected.
 
    Agent opacity — the agent carries the hash of a document it cannot
    read — depends entirely on this restriction.  A resource that does
