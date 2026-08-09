@@ -641,7 +641,9 @@ The agent MUST make a signed POST with an HTTP Sig (#http-message-signatures-pro
 
 **Request parameters:**
 
-- `resource` (REQUIRED): The HTTPS URL of the resource the person token is for, conforming to the Server Identifier requirements (#server-identifiers). Becomes the `aud` of the issued token. The PS MUST validate the URL and MUST apply its egress admission policy to it before issuing a token naming it.
+- `resource` (REQUIRED): The HTTPS URL of the resource the person token is for, conforming to the Server Identifier requirements (#server-identifiers). Becomes the `aud` of the issued token. The PS MUST validate it against those requirements before issuing a token naming it.
+
+Each distinct `resource` value obliges the PS to derive and retain a directed `sub` for that pair (#directed-identifiers), so a PS SHOULD rate-limit the number of distinct values it accepts from one agent.
 
 ```http
 POST /person HTTP/1.1
@@ -670,9 +672,7 @@ Issuing a person token discloses the person's identity to a resource they may no
 
 Errors use the token endpoint error codes (#token-endpoint-error-codes); `invalid_request` covers a missing or malformed `resource` value.
 
-The PS SHOULD issue person tokens that the agent can reuse across requests to the same resource. An agent SHOULD cache a person token for a resource until it expires rather than requesting one per call.
-
-A PS MAY also return a `person_token` member alongside `auth_token` in an auth token response (#ps-response), carrying a person token for the same resource. An agent that receives one uses it as if it had requested it here. This makes the dedicated call a first-contact cost: after the first authorization at a resource, the agent is handed a fresh person token with every auth token it receives.
+The PS SHOULD issue person tokens that the agent can reuse across requests to the same resource. An agent SHOULD cache a person token for a resource until it expires rather than requesting one per call. Because a person token cannot outlive the agent token it was issued against, and both are bound to the same key, an agent that refreshes its agent token obtains a new person token for each resource it is still working with.
 
 ## Person Token Structure {#person-token-structure}
 
@@ -1094,8 +1094,6 @@ In both cases, the PS handles user consent if needed and returns one of:
   "expires_in": 3600
 }
 ```
-
-The response MAY also include a `person_token` member carrying a person token (#person-tokens) for the same resource, sparing the agent a separate call before its next authorization request there (#person-token-endpoint).
 
 **User interaction required response** (`202`):
 ```http
@@ -1666,6 +1664,13 @@ The PS MUST make a signed POST to the AS's `auth_token_endpoint`. The PS authent
 - `agent_token` (REQUIRED): The agent's agent token. For a parent-mediated sub-agent authorization, this is the parent (top-level) agent's token.
 - `subagent_token` (OPTIONAL): A sub-agent's agent token, present when the PS federates a parent-mediated sub-agent authorization (#sub-agents). When present, the AS binds the issued auth token to the sub-agent (verifying `resource_token`'s `agent_jkt` against the `subagent_token`'s `cnf.jwk`) and records the parent — named by the `subagent_token`'s `parent_agent`, which MUST match `agent_token` — in the `act` chain.
 - `upstream_token` (OPTIONAL): An auth token from an upstream authorization, used in call chaining (#call-chaining).
+- `sub` (OPTIONAL): The directed user identifier the PS would assert for this resource — the same value it uses in the person token (#person-token-structure) and in auth tokens for that `aud` (#directed-identifiers).
+
+The AS mints the auth token and so needs `sub` whenever the authorization it is being asked for names a person. Without this parameter the only way to obtain it is `requirement=claims` (#requirement-claims), which costs a `202` and a POST back to the pending URL — for the one claim the AS almost always needs. Supplying it in the initial request collapses that exchange. `requirement=claims` remains for everything else the AS may need, and for the case where the PS did not volunteer `sub`.
+
+The parameter is OPTIONAL rather than REQUIRED because not every four-party authorization names a person: an auth token needs `sub` or `scope`, not both (#auth-token-structure), and sending an identifier to an AS that has no use for it discloses the person for nothing. A PS SHOULD include `sub` when the agent requested identity scopes, or when it has previously learned through `requirement=claims` that this AS needs one — the same per-AS caching it already applies to billing relationships (#ps-as-trust-establishment). A PS MUST NOT send a `sub` value it would not put in the auth token for that resource.
+
+There is no reason to carry a person token (#person-tokens) on this hop. A person token exists so that a party which is not the PS can present a PS assertion and prove it holds the bound key. Here the PS is the caller and authenticates with its own signature, so a PS-signed JWT nested inside a PS-signed request adds nothing that the request itself does not already carry — which is why the existing claims mechanism sends bare claim values too.
 
 **Example request:**
 ```http
@@ -1758,7 +1763,7 @@ The recipient MUST provide the requested claims (including a directed user ident
 
 The PS is the only entity that calls AS token endpoints. When the PS receives a resource token from an agent, the resource token's `aud` claim identifies where to send the token request. If `aud` matches the PS's own identifier, the PS issues an auth token asserting identity and consent for the requested scope (three-party). If `aud` identifies a different server (an AS), the PS discovers the AS's metadata at `{aud}/.well-known/aauth-access.json` (#access-server-metadata) and calls the AS's `auth_token_endpoint` (#as-token-endpoint) (four-party).
 
-### PS-AS Trust Establishment
+### PS-AS Trust Establishment {#ps-as-trust-establishment}
 
 Trust between the PS and AS may be pre-established out of band or emerge dynamically from the AS's response to the PS's first token request — AAuth does not require a separate registration step before the protocol can be used. The AS evaluates the token request and responds based on its current policy:
 
@@ -3320,8 +3325,9 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-11
-  - Added the person token (`aa-person+jwt`), a PS-issued JWT that identifies the person to one resource and grants nothing. The agent presents it via `Signature-Key` in place of its agent token, and it is REQUIRED on authorization endpoint requests, so a resource knows which person a request is for before it issues a resource token. Obtained from a new `person_token_endpoint`, REQUIRED of every PS, which MAY require user interaction the first time an agent identifies the person to a resource, and whose result MAY also be returned alongside an auth token to save the round trip thereafter.
-  - Renamed the PS and AS metadata field `token_endpoint` to `auth_token_endpoint`. With two PS endpoints issuing tokens, the bare name no longer says which one, and the pair `auth_token_endpoint` / `person_token_endpoint` does. This diverges from the OAuth and OpenID Connect term the field was named after.
+  - Added the person token (`aa-person+jwt`), a PS-issued JWT that identifies the person to one resource and grants nothing. The agent presents it via `Signature-Key` in place of its agent token, and it is REQUIRED on authorization endpoint requests, so a resource knows which person a request is for before it issues a resource token. Obtained from a new `person_token_endpoint`, REQUIRED of every PS, which MAY require user interaction the first time an agent identifies the person to a resource.
+  - Renamed the PS and AS metadata field `token_endpoint` to `auth_token_endpoint`. With two PS endpoints issuing tokens, the bare name no longer says which one, and the pair `auth_token_endpoint` / `person_token_endpoint` does. AAuth's token endpoint does not behave like the OAuth endpoint it was named after — no grant types, no client authentication, signed POST, deferred responses — so the shared name was asserting a similarity that is not there.
+  - Added the OPTIONAL `sub` parameter to the PS-to-AS token request, letting the PS volunteer the directed identifier the AS needs to mint an auth token instead of asking for it through `requirement=claims`. Kept OPTIONAL because an auth token needs `sub` or `scope`, not both, and an AS with no use for an identifier should not be sent one.
   - A resource's relationship with a person now survives the person changing agents or agent providers, since it is keyed on `(iss, sub)` rather than on an agent identifier that a reinstall replaces.
   - The resource token's `agent` claim is omitted when the authorization request presented a person token; `agent_jkt` remains the binding, and the two verification steps that compared `agent` became conditional.
   - Added `requirement=person-token`, the `invalid_person_token` and `invalid_account` authorization endpoint errors, and registrations for the `aa-person+jwt` media type and JWT type.
