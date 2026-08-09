@@ -343,7 +343,7 @@ Agent                                 Resource       PS
   |<-------------------------------------|            |
   |                                      |            |
   | HTTPSig w/ agent_token               |            |
-  | POST token_endpoint                  |            |
+  | POST auth_token_endpoint             |            |
   | w/ resource_token                    |            |
   |-------------------------------------------------->|
   |                                      |            |
@@ -374,12 +374,13 @@ Agent                                Resource   PS                    AS
   |<------------------------------------|       |                      |
   |                                     |       |                      |
   | HTTPSig w/ agent_token              |       |                      |
-  | POST token_endpoint                 |       |                      |
+  | POST auth_token_endpoint            |       |                      |
   | w/ resource_token                   |       |                      |
   |-------------------------------------------->|                      |
   |                                     |       |                      |
   |                                     |       | HTTPSig w/ jwks_uri  |
-  |                                     |       | POST token_endpoint  |
+  |                                     |       | POST                 |
+  |                                     |       | auth_token_endpoint  |
   |                                     |       | w/ resource_token    |
   |                                     |       |--------------------->|
   |                                     |       |                      |
@@ -632,13 +633,15 @@ Two properties motivate it:
 
 A person token asserts identity only. It conveys no scope, no account, and no permission, and a resource MUST NOT treat it as authorizing any access.
 
-## Person Endpoint {#person-endpoint}
+## Person Token Endpoint {#person-token-endpoint}
 
-A PS that issues person tokens publishes a `person_endpoint` in its metadata (#ps-metadata). The agent MUST make a signed POST with an HTTP Sig (#http-message-signatures-profile), presenting its agent token via the `Signature-Key` header using `scheme=jwt`.
+Every PS MUST publish a `person_token_endpoint` in its metadata (#ps-metadata) and MUST issue person tokens from it. A PS already derives a directed `sub` per resource when it issues auth tokens; this endpoint exposes that derivation one step earlier, and requiring it means an agent never has to discover whether its own PS can reach a given resource's authorization endpoint.
+
+The agent MUST make a signed POST with an HTTP Sig (#http-message-signatures-profile), presenting its agent token via the `Signature-Key` header using `scheme=jwt`.
 
 **Request parameters:**
 
-- `resource` (REQUIRED): The HTTPS URL of the resource the person token is for, conforming to the Server Identifier requirements (#server-identifiers). Becomes the `aud` of the issued token.
+- `resource` (REQUIRED): The HTTPS URL of the resource the person token is for, conforming to the Server Identifier requirements (#server-identifiers). Becomes the `aud` of the issued token. The PS MUST validate the URL and MUST apply its egress admission policy to it before issuing a token naming it.
 
 ```http
 POST /person HTTP/1.1
@@ -668,6 +671,8 @@ Issuing a person token discloses the person's identity to a resource they may no
 Errors use the token endpoint error codes (#token-endpoint-error-codes); `invalid_request` covers a missing or malformed `resource` value.
 
 The PS SHOULD issue person tokens that the agent can reuse across requests to the same resource. An agent SHOULD cache a person token for a resource until it expires rather than requesting one per call.
+
+A PS MAY also return a `person_token` member alongside `auth_token` in an auth token response (#ps-response), carrying a person token for the same resource. An agent that receives one uses it as if it had requested it here. This makes the dedicated call a first-contact cost: after the first authorization at a resource, the agent is handed a fresh person token with every auth token it receives.
 
 ## Person Token Structure {#person-token-structure}
 
@@ -903,7 +908,7 @@ HTTP/1.1 401 Unauthorized
 AAuth-Requirement: requirement=person-token
 ```
 
-The header carries no additional parameters. The agent obtains a person token for this resource from its PS's person endpoint (#person-endpoint) and retries.
+The header carries no additional parameters. The agent obtains a person token for this resource from its PS's person endpoint (#person-token-endpoint) and retries.
 
 An agent with no person server cannot satisfy this requirement and surfaces it as an error per (#requirement-values). That outcome is correct: the authorization endpoint exists to obtain a resource token, which only a PS can act on, so an agent with no PS had nothing to gain there. Such an agent reaches the resource's other access modes by calling its endpoints directly.
 
@@ -1027,7 +1032,7 @@ This section defines how agents obtain authorization from their person server. W
 
 ## PS Token Endpoint {#ps-token-endpoint}
 
-The PS's `token_endpoint` is where agents send token requests. The PS evaluates the request, handles user consent if needed, and either issues the auth token directly or federates with the resource's AS.
+The PS's `auth_token_endpoint` is where agents send token requests. The PS evaluates the request, handles user consent if needed, and either issues the auth token directly or federates with the resource's AS.
 
 ### Token Endpoint Modes
 
@@ -1043,7 +1048,7 @@ An agent MAY have multiple token requests pending at the PS simultaneously — f
 
 ### Agent Token Request
 
-The agent MUST make a signed POST to the PS's `token_endpoint`. The request MUST include an HTTP Sig (#http-message-signatures-profile) and the agent MUST present its agent token via the `Signature-Key` header using `scheme=jwt`.
+The agent MUST make a signed POST to the PS's `auth_token_endpoint`. The request MUST include an HTTP Sig (#http-message-signatures-profile) and the agent MUST present its agent token via the `Signature-Key` header using `scheme=jwt`.
 
 **Request parameters:**
 
@@ -1089,6 +1094,8 @@ In both cases, the PS handles user consent if needed and returns one of:
   "expires_in": 3600
 }
 ```
+
+The response MAY also include a `person_token` member carrying a person token (#person-tokens) for the same resource, sparing the agent a separate call before its next authorization request there (#person-token-endpoint).
 
 **User interaction required response** (`202`):
 ```http
@@ -1651,7 +1658,7 @@ The AS evaluates resource policy and issues auth tokens. It accepts JSON POST re
 
 ### PS-to-AS Token Request
 
-The PS MUST make a signed POST to the AS's `token_endpoint`. The PS authenticates via an HTTP Sig (#http-message-signatures-profile).
+The PS MUST make a signed POST to the AS's `auth_token_endpoint`. The PS authenticates via an HTTP Sig (#http-message-signatures-profile).
 
 **Request parameters:**
 
@@ -1749,7 +1756,7 @@ The recipient MUST provide the requested claims (including a directed user ident
 
 ## PS-AS Federation {#ps-as-federation}
 
-The PS is the only entity that calls AS token endpoints. When the PS receives a resource token from an agent, the resource token's `aud` claim identifies where to send the token request. If `aud` matches the PS's own identifier, the PS issues an auth token asserting identity and consent for the requested scope (three-party). If `aud` identifies a different server (an AS), the PS discovers the AS's metadata at `{aud}/.well-known/aauth-access.json` (#access-server-metadata) and calls the AS's `token_endpoint` (#as-token-endpoint) (four-party).
+The PS is the only entity that calls AS token endpoints. When the PS receives a resource token from an agent, the resource token's `aud` claim identifies where to send the token request. If `aud` matches the PS's own identifier, the PS issues an auth token asserting identity and consent for the requested scope (three-party). If `aud` identifies a different server (an AS), the PS discovers the AS's metadata at `{aud}/.well-known/aauth-access.json` (#access-server-metadata) and calls the AS's `auth_token_endpoint` (#as-token-endpoint) (four-party).
 
 ### PS-AS Trust Establishment
 
@@ -2010,7 +2017,7 @@ For genuinely deeper workflows, AAuth already provides chained top-level agents 
 A sub-agent MUST NOT call the PS directly. Instead, the parent obtains auth tokens on the sub-agent's behalf:
 
 1. The sub-agent calls the resource and obtains a resource token bound to its own key (#resource-tokens), exactly as a top-level agent would. It passes the resource token to its parent out of band (for example, via IPC).
-2. The parent POSTs to the PS's `token_endpoint`, signing the request with its own key and presenting its own agent token via the `Signature-Key` header. The request body includes `resource_token` (the sub-agent's resource token) and `subagent_token` (the sub-agent's agent token).
+2. The parent POSTs to the PS's `auth_token_endpoint`, signing the request with its own key and presenting its own agent token via the `Signature-Key` header. The request body includes `resource_token` (the sub-agent's resource token) and `subagent_token` (the sub-agent's agent token).
 3. The PS processes this as an authorization request from the parent (#ps-token-endpoint):
    - It verifies the HTTP Message Signature against the parent's `cnf.jwk`.
    - It verifies the `subagent_token` (#agent-token-verification) and that its `parent_agent` names the parent — the agent that signed the request.
@@ -2099,7 +2106,7 @@ Upon receiving a request at its `login_endpoint`, the agent or resource:
 
 1. Validates the `ps` parameter by fetching the PS's metadata.
 2. Creates a resource token with `aud` = PS URL, binding the request to its own identity.
-3. POSTs to the PS's `token_endpoint` with the resource token and any provided `login_hint`, `domain_hint`, or `tenant` parameters.
+3. POSTs to the PS's `auth_token_endpoint` with the resource token and any provided `login_hint`, `domain_hint`, or `tenant` parameters.
 4. Proceeds with the standard deferred response flow (#deferred-responses) — directing the user to the PS's interaction endpoint with the interaction code.
 5. After obtaining the auth token, redirects the user to `start_path` if provided, or to a default landing page.
 
@@ -2118,7 +2125,7 @@ User         Third Party     Agent/Resource                  PS
   |  login_endpoint               |                           |
   |------------------------------>|                           |
   |               |               |                           |
-  |               |               |  POST token_endpoint      |
+  |               |               |  POST auth_token_endpoint |
   |               |               |  resource_token,          |
   |               |               |  login_hint, tenant       |
   |               |               |-------------------------->|
@@ -2709,7 +2716,7 @@ Implementations MUST perform exact string comparison on server identifiers.
 
 ### Endpoint URLs
 
-The `token_endpoint`, `authorization_endpoint`, `mission_endpoint`, and `callback_endpoint` values MUST conform to the following:
+The `auth_token_endpoint`, `person_token_endpoint`, `authorization_endpoint`, `mission_endpoint`, and `callback_endpoint` values MUST conform to the following:
 
 - MUST use the `https` scheme
 - MUST NOT contain a fragment
@@ -2798,8 +2805,8 @@ Published at `/.well-known/aauth-person.json`:
   "documentation_uri": "https://ps.example/docs",
   "tos_uri": "https://ps.example/tos",
   "policy_uri": "https://ps.example/privacy",
-  "token_endpoint": "https://ps.example/token",
-  "person_endpoint": "https://ps.example/person",
+  "auth_token_endpoint": "https://ps.example/token",
+  "person_token_endpoint": "https://ps.example/person",
   "mission_endpoint": "https://ps.example/mission",
   "permission_endpoint": "https://ps.example/permission",
   "audit_endpoint": "https://ps.example/audit",
@@ -2819,8 +2826,8 @@ Fields:
 - `documentation_uri` (OPTIONAL): URL with developer documentation for the person server
 - `tos_uri` (OPTIONAL): URL to terms of service
 - `policy_uri` (OPTIONAL): URL to privacy policy
-- `token_endpoint` (REQUIRED): URL where agents send token requests
-- `person_endpoint` (OPTIONAL): URL where agents request a person token for a resource (#person-endpoint). A PS that omits it issues no person tokens, and its agents cannot use the authorization endpoint of a resource that requires one.
+- `auth_token_endpoint` (REQUIRED): URL where agents send token requests
+- `person_token_endpoint` (REQUIRED): URL where agents request a person token for a resource (#person-token-endpoint)
 - `mission_endpoint` (OPTIONAL): URL for mission lifecycle operations (proposal, status). Present when the PS supports missions.
 - `permission_endpoint` (OPTIONAL): URL where agents request permission for actions not governed by a remote resource (#permission-endpoint)
 - `audit_endpoint` (OPTIONAL): URL where agents log actions performed (#audit-endpoint)
@@ -2845,7 +2852,7 @@ Published at `/.well-known/aauth-access.json`:
   "documentation_uri": "https://as.resource.example/docs",
   "tos_uri": "https://as.resource.example/tos",
   "policy_uri": "https://as.resource.example/privacy",
-  "token_endpoint": "https://as.resource.example/token",
+  "auth_token_endpoint": "https://as.resource.example/token",
   "jwks_uri": "https://as.resource.example/.well-known/jwks.json"
 }
 ```
@@ -2860,7 +2867,7 @@ Fields:
 - `documentation_uri` (OPTIONAL): URL with developer documentation for the access server
 - `tos_uri` (OPTIONAL): URL to terms of service
 - `policy_uri` (OPTIONAL): URL to privacy policy
-- `token_endpoint` (REQUIRED): URL where PSes send token requests
+- `auth_token_endpoint` (REQUIRED): URL where PSes send token requests
 - `revocation_endpoint` (OPTIONAL): URL where authorized parties can revoke tokens (#token-revocation)
 - `jwks_uri` (REQUIRED): URL to the AS's JSON Web Key Set
 
@@ -3022,7 +3029,7 @@ The PS MUST protect its signing keys with appropriate rigor — compromise of a 
 
 A person token identifies the person to a resource before any authorization decision has been made, and on every authorization endpoint request — including ones the resource or the PS subsequently refuses. A resource therefore learns of people whose agents it never serves, which the protocol did not previously permit.
 
-The exposure is bounded by the directed `sub`: the identifier is scoped to one `(PS, resource)` pair and reveals nothing usable at another resource. What limits the exposure in the first place is the PS, which decides whether to issue a person token at all and MAY require the person's approval before identifying them to a resource for the first time (#person-endpoint). A PS SHOULD treat the first person token for a given resource as a consent-worthy event rather than a lookup.
+The exposure is bounded by the directed `sub`: the identifier is scoped to one `(PS, resource)` pair and reveals nothing usable at another resource. What limits the exposure in the first place is the PS, which decides whether to issue a person token at all and MAY require the person's approval before identifying them to a resource for the first time (#person-token-endpoint). A PS SHOULD treat the first person token for a given resource as a consent-worthy event rather than a lookup.
 
 The person token grants nothing, so its disclosure to an unintended party leaks an identifier and no access. It is nonetheless bound to the agent's key via `cnf`, so a token captured in transit cannot be presented by another party.
 
@@ -3313,7 +3320,8 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-11
-  - Added the person token (`aa-person+jwt`), a PS-issued JWT that identifies the person to one resource and grants nothing. The agent presents it via `Signature-Key` in place of its agent token, and it is REQUIRED on authorization endpoint requests, so a resource knows which person a request is for before it issues a resource token. Obtained from a new PS `person_endpoint`, which MAY require user interaction the first time an agent identifies the person to a resource.
+  - Added the person token (`aa-person+jwt`), a PS-issued JWT that identifies the person to one resource and grants nothing. The agent presents it via `Signature-Key` in place of its agent token, and it is REQUIRED on authorization endpoint requests, so a resource knows which person a request is for before it issues a resource token. Obtained from a new `person_token_endpoint`, REQUIRED of every PS, which MAY require user interaction the first time an agent identifies the person to a resource, and whose result MAY also be returned alongside an auth token to save the round trip thereafter.
+  - Renamed the PS and AS metadata field `token_endpoint` to `auth_token_endpoint`. With two PS endpoints issuing tokens, the bare name no longer says which one, and the pair `auth_token_endpoint` / `person_token_endpoint` does. This diverges from the OAuth and OpenID Connect term the field was named after.
   - A resource's relationship with a person now survives the person changing agents or agent providers, since it is keyed on `(iss, sub)` rather than on an agent identifier that a reinstall replaces.
   - The resource token's `agent` claim is omitted when the authorization request presented a person token; `agent_jkt` remains the binding, and the two verification steps that compared `agent` became conditional.
   - Added `requirement=person-token`, the `invalid_person_token` and `invalid_account` authorization endpoint errors, and registrations for the `aa-person+jwt` media type and JWT type.
@@ -3415,7 +3423,7 @@ Agent        Resource 1       Resource 2          PS
   |              | + resource_tok |                 |
   |              |<---------------|                 |
   |              |                |                 |
-  |              | POST token_endpoint              |
+  |              | POST auth_token_endpoint         |
   |              | resource_token from R2           |
   |              | upstream_token                   |
   |              | agent_token (R1's)               |
