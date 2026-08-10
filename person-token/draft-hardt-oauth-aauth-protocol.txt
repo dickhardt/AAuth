@@ -1177,6 +1177,17 @@ Table of Contents
       token is for, conforming to the Server Identifier requirements
       Section 13.10.1.  Becomes the aud of the issued token.  The PS
       MUST validate it against those requirements.
+   *  upstream_token (OPTIONAL): An auth token issued to the requester
+      for an upstream resource, present when a resource acting as an
+      agent needs a person token for a downstream resource
+      Section 11.1.1.  The PS MUST verify it per Section 10.4.5.
+
+   Without upstream_token the PS issues for the person bound to the
+   requesting agent Section 15.13.  With it, the PS issues for the
+   person the upstream token was issued for, which it determines from
+   the upstream token's mission.approver when that names this PS, or
+   from the upstream token's sub when this PS issued it.  A PS that can
+   determine neither MUST reject the request.
 
    A PS SHOULD rate-limit the number of distinct resource values it
    accepts from one agent; each obliges it to derive and retain a
@@ -3158,6 +3169,10 @@ Table of Contents
    person's PS MUST require a mission.  A mission puts mission.approver
    in the upstream auth token, giving every intermediary a PS URL to
    route to regardless of whether the upstream issuer was a PS or AS.
+
+   An intermediary using a downstream resource's authorization endpoint
+   Section 7.1 obtains the person token it requires from the PS by
+   presenting the upstream auth token as upstream_token Section 6.1.
 
    In every case the intermediary signs the downstream token request
    with its *own* key, presenting its own agent token via the Signature-
@@ -5807,6 +5822,9 @@ Initial request (with Prefer: wait=N)
       -  Renamed the PS and AS metadata field token_endpoint to
          auth_token_endpoint.
       -  Added the OPTIONAL sub parameter to the PS-to-AS token request.
+      -  The person token endpoint accepts an OPTIONAL upstream_token,
+         so a resource acting as an agent in a call chain can obtain a
+         person token for a downstream resource.
 
    *  draft-hardt-oauth-aauth-protocol-10
 

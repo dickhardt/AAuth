@@ -2765,9 +2765,13 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
 <li class="compact" id="section-6.1-4.1">
             <code>resource</code> (REQUIRED): The HTTPS URL of the resource the person token is for, conforming to the Server Identifier requirements <a href="#server-identifiers" class="auto internal xref">Section 13.10.1</a>. Becomes the <code>aud</code> of the issued token. The PS MUST validate it against those requirements.<a href="#section-6.1-4.1" class="pilcrow">¶</a>
 </li>
+          <li class="compact" id="section-6.1-4.2">
+            <code>upstream_token</code> (OPTIONAL): An auth token issued to the requester for an upstream resource, present when a resource acting as an agent needs a person token for a downstream resource <a href="#call-chaining" class="auto internal xref">Section 11.1.1</a>. The PS MUST verify it per <a href="#upstream-token-verification" class="auto internal xref">Section 10.4.5</a>.<a href="#section-6.1-4.2" class="pilcrow">¶</a>
+</li>
         </ul>
-<p id="section-6.1-5">A PS SHOULD rate-limit the number of distinct <code>resource</code> values it accepts from one agent; each obliges it to derive and retain a directed <code>sub</code> <a href="#directed-identifiers" class="auto internal xref">Section 16.1</a>.<a href="#section-6.1-5" class="pilcrow">¶</a></p>
-<div class="lang-http sourcecode" id="section-6.1-6">
+<p id="section-6.1-5">Without <code>upstream_token</code> the PS issues for the person bound to the requesting agent <a href="#agent-person-binding" class="auto internal xref">Section 15.13</a>. With it, the PS issues for the person the upstream token was issued for, which it determines from the upstream token's <code>mission.approver</code> when that names this PS, or from the upstream token's <code>sub</code> when this PS issued it. A PS that can determine neither MUST reject the request.<a href="#section-6.1-5" class="pilcrow">¶</a></p>
+<p id="section-6.1-6">A PS SHOULD rate-limit the number of distinct <code>resource</code> values it accepts from one agent; each obliges it to derive and retain a directed <code>sub</code> <a href="#directed-identifiers" class="auto internal xref">Section 16.1</a>.<a href="#section-6.1-6" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-6.1-7">
 <pre>POST /person HTTP/1.1
 Host: ps.example
 Content-Type: application/json
@@ -2780,20 +2784,20 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
   "resource": "https://resource.example"
 }
 
-</pre><a href="#section-6.1-6" class="pilcrow">¶</a>
+</pre><a href="#section-6.1-7" class="pilcrow">¶</a>
 </div>
-<p id="section-6.1-7"><strong>Response</strong> (<code>200</code>):<a href="#section-6.1-7" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="section-6.1-8">
+<p id="section-6.1-8"><strong>Response</strong> (<code>200</code>):<a href="#section-6.1-8" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-6.1-9">
 <pre>{
   "person_token": "eyJhbGc...",
   "expires_in": 86400
 }
 
-</pre><a href="#section-6.1-8" class="pilcrow">¶</a>
+</pre><a href="#section-6.1-9" class="pilcrow">¶</a>
 </div>
-<p id="section-6.1-9">The PS MAY require user interaction before issuing and return a <code>202 Accepted</code> deferred response with <code>requirement=interaction</code> <a href="#requirement-responses" class="auto internal xref">Section 13.4</a>.<a href="#section-6.1-9" class="pilcrow">¶</a></p>
-<p id="section-6.1-10">Errors use the token endpoint error codes <a href="#token-endpoint-error-codes" class="auto internal xref">Section 13.6.3</a>; <code>invalid_request</code> covers a missing or malformed <code>resource</code> value.<a href="#section-6.1-10" class="pilcrow">¶</a></p>
-<p id="section-6.1-11">An agent SHOULD cache a person token for a resource until it expires rather than requesting one per call.<a href="#section-6.1-11" class="pilcrow">¶</a></p>
+<p id="section-6.1-10">The PS MAY require user interaction before issuing and return a <code>202 Accepted</code> deferred response with <code>requirement=interaction</code> <a href="#requirement-responses" class="auto internal xref">Section 13.4</a>.<a href="#section-6.1-10" class="pilcrow">¶</a></p>
+<p id="section-6.1-11">Errors use the token endpoint error codes <a href="#token-endpoint-error-codes" class="auto internal xref">Section 13.6.3</a>; <code>invalid_request</code> covers a missing or malformed <code>resource</code> value.<a href="#section-6.1-11" class="pilcrow">¶</a></p>
+<p id="section-6.1-12">An agent SHOULD cache a person token for a resource until it expires rather than requesting one per call.<a href="#section-6.1-12" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="person-token-structure">
@@ -4706,8 +4710,9 @@ Content-Type: application/json
 </li>
           </ul>
 <p id="section-11.1.1-3">To ensure the PS is in the loop for every hop in a chain, the person's PS MUST require a mission. A mission puts <code>mission.approver</code> in the upstream auth token, giving every intermediary a PS URL to route to regardless of whether the upstream issuer was a PS or AS.<a href="#section-11.1.1-3" class="pilcrow">¶</a></p>
-<p id="section-11.1.1-4">In every case the intermediary signs the downstream token request with its <strong>own</strong> key, presenting its own agent token via the <code>Signature-Key</code> header <a href="#http-message-signatures-profile" class="auto internal xref">Section 13.8</a>. The <code>upstream_token</code> is a body parameter — it is neither presented via <code>Signature-Key</code> nor used as the signing key. It is the auth token previously issued to the intermediary (its <code>aud</code> is the intermediary and its <code>cnf</code> is the intermediary's key), and it serves only as proof of the upstream authorization that the recipient extends downstream. The signature the recipient verifies is therefore always the intermediary's, over its own key.<a href="#section-11.1.1-4" class="pilcrow">¶</a></p>
-<p id="section-11.1.1-5">The recipient (PS or AS) evaluates the downstream request per <a href="#upstream-token-verification" class="auto internal xref">Section 10.4.5</a>.<a href="#section-11.1.1-5" class="pilcrow">¶</a></p>
+<p id="section-11.1.1-4">An intermediary using a downstream resource's authorization endpoint <a href="#authorization-endpoint-request" class="auto internal xref">Section 7.1</a> obtains the person token it requires from the PS by presenting the upstream auth token as <code>upstream_token</code> <a href="#person-token-endpoint" class="auto internal xref">Section 6.1</a>.<a href="#section-11.1.1-4" class="pilcrow">¶</a></p>
+<p id="section-11.1.1-5">In every case the intermediary signs the downstream token request with its <strong>own</strong> key, presenting its own agent token via the <code>Signature-Key</code> header <a href="#http-message-signatures-profile" class="auto internal xref">Section 13.8</a>. The <code>upstream_token</code> is a body parameter — it is neither presented via <code>Signature-Key</code> nor used as the signing key. It is the auth token previously issued to the intermediary (its <code>aud</code> is the intermediary and its <code>cnf</code> is the intermediary's key), and it serves only as proof of the upstream authorization that the recipient extends downstream. The signature the recipient verifies is therefore always the intermediary's, over its own key.<a href="#section-11.1.1-5" class="pilcrow">¶</a></p>
+<p id="section-11.1.1-6">The recipient (PS or AS) evaluates the downstream request per <a href="#upstream-token-verification" class="auto internal xref">Section 10.4.5</a>.<a href="#section-11.1.1-6" class="pilcrow">¶</a></p>
 <div id="directed-sub-chaining">
 <section id="section-11.1.1.1">
             <h5 id="name-directed-identifiers-across">
@@ -7456,6 +7461,8 @@ Accept-Signature-Scheme: jwt
             <li class="compact normal" id="section-19-2.1.2.6">Renamed the PS and AS metadata field <code>token_endpoint</code> to <code>auth_token_endpoint</code>.<a href="#section-19-2.1.2.6" class="pilcrow">¶</a>
 </li>
             <li class="compact normal" id="section-19-2.1.2.7">Added the OPTIONAL <code>sub</code> parameter to the PS-to-AS token request.<a href="#section-19-2.1.2.7" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-19-2.1.2.8">The person token endpoint accepts an OPTIONAL <code>upstream_token</code>, so a resource acting as an agent in a call chain can obtain a person token for a downstream resource.<a href="#section-19-2.1.2.8" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
