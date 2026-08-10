@@ -1049,7 +1049,7 @@ svg {
 </tr></thead>
 <tfoot><tr>
 <td class="left">Hardt</td>
-<td class="center">Expires 10 February 2027</td>
+<td class="center">Expires 11 February 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1062,12 +1062,12 @@ svg {
 <dd class="internet-draft">draft-hardt-oauth-aauth-protocol-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-08-09" class="published">9 August 2026</time>
+<time datetime="2026-08-10" class="published">10 August 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Standards Track</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-02-10">10 February 2027</time></dd>
+<dd class="expires"><time datetime="2027-02-11">11 February 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1110,7 +1110,7 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 10 February 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 11 February 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -1842,7 +1842,16 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
                     <p id="section-toc.1-1.23.2.1.2.4.1"><a href="#appendix-B.1.4" class="auto internal xref">B.1.4</a>.  <a href="#name-why-every-agent-has-a-perso" class="internal xref">Why Every Agent Has a Person</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23.2.1.2.5">
-                    <p id="section-toc.1-1.23.2.1.2.5.1"><a href="#appendix-B.1.5" class="auto internal xref">B.1.5</a>.  <a href="#name-why-the-ps-claim-in-agent-t" class="internal xref">Why the <code>ps</code> Claim in Agent Tokens</a></p>
+                    <p id="section-toc.1-1.23.2.1.2.5.1"><a href="#appendix-B.1.5" class="auto internal xref">B.1.5</a>.  <a href="#name-why-person-tokens" class="internal xref">Why Person Tokens</a></p>
+</li>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23.2.1.2.6">
+                    <p id="section-toc.1-1.23.2.1.2.6.1"><a href="#appendix-B.1.6" class="auto internal xref">B.1.6</a>.  <a href="#name-why-person-tokens-carry-no-" class="internal xref">Why Person Tokens Carry No Agent Identifier</a></p>
+</li>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23.2.1.2.7">
+                    <p id="section-toc.1-1.23.2.1.2.7.1"><a href="#appendix-B.1.7" class="auto internal xref">B.1.7</a>.  <a href="#name-why-person-tokens-are-not-c" class="internal xref">Why Person Tokens Are Not Carried to the AS</a></p>
+</li>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23.2.1.2.8">
+                    <p id="section-toc.1-1.23.2.1.2.8.1"><a href="#appendix-B.1.8" class="auto internal xref">B.1.8</a>.  <a href="#name-why-the-ps-claim-in-agent-t" class="internal xref">Why the <code>ps</code> Claim in Agent Tokens</a></p>
 </li>
                 </ul>
 </li>
@@ -2742,32 +2751,22 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
       <h2 id="name-person-token">
 <a href="#section-6" class="section-number selfRef">6. </a><a href="#name-person-token" class="section-name selfRef">Person Token</a>
       </h2>
-<p id="section-6-1">An agent token identifies the agent. It does not identify the person the agent acts for, and until the PS issues an auth token the resource has no way to learn who that is. A <strong>person token</strong> fills that gap: a PS-issued JWT, audience-restricted to one resource, that identifies the person and grants nothing.<a href="#section-6-1" class="pilcrow">¶</a></p>
-<p id="section-6-2">The agent presents it in the <code>Signature-Key</code> header in place of its agent token, in the same way it presents an auth token once authorization exists <a href="#keying-material" class="auto internal xref">Section 13.8.2</a>. The three tokens form a progression at a resource — agent token for identity-based access <a href="#requirement-agent-token" class="auto internal xref">Section 7.3</a>, person token at the authorization endpoint <a href="#authorization-endpoint-request" class="auto internal xref">Section 7.1</a>, auth token once the resource is authorized <a href="#auth-token-usage" class="auto internal xref">Section 10.4.2</a> — each conveying the same signing key through <code>cnf</code> and differing only in what they assert.<a href="#section-6-2" class="pilcrow">¶</a></p>
-<p id="section-6-3">Two properties motivate it:<a href="#section-6-3" class="pilcrow">¶</a></p>
-<ul class="compact">
-<li class="compact" id="section-6-4.1">
-          <strong>The resource's relationship is with the person.</strong> A resource that records state against an agent identifier loses that state whenever the person reinstalls the agent, rotates its key, or changes agent providers. Keyed on the person, the relationship survives all three. An agent is a tool the person picks up and puts down; the account, the history, and any standing limits are the person's.<a href="#section-6-4.1" class="pilcrow">¶</a>
-</li>
-        <li class="compact" id="section-6-4.2">
-          <strong>The resource can decide before it commits.</strong> Account selection <a href="#account-binding" class="auto internal xref">Section 13.3</a>, the resource's own standing policy for that person, and any per-person limit it applies can be evaluated when the authorization request arrives rather than after a resource token has been issued and taken to a PS.<a href="#section-6-4.2" class="pilcrow">¶</a>
-</li>
-      </ul>
-<p id="section-6-5">A person token asserts identity only. It conveys no scope, no account, and no permission, and a resource MUST NOT treat it as authorizing any access.<a href="#section-6-5" class="pilcrow">¶</a></p>
+<p id="section-6-1">A person token is a PS-issued JWT that identifies the person an agent acts for to a single resource. It asserts identity only: it conveys no scope, no account, and no permission, and a resource MUST NOT treat it as authorizing any access.<a href="#section-6-1" class="pilcrow">¶</a></p>
+<p id="section-6-2">The agent presents it via the <code>Signature-Key</code> header in place of its agent token <a href="#keying-material" class="auto internal xref">Section 13.8.2</a>. It is REQUIRED on authorization endpoint requests <a href="#authorization-endpoint-request" class="auto internal xref">Section 7.1</a>.<a href="#section-6-2" class="pilcrow">¶</a></p>
 <div id="person-token-endpoint">
 <section id="section-6.1">
         <h3 id="name-person-token-endpoint">
 <a href="#section-6.1" class="section-number selfRef">6.1. </a><a href="#name-person-token-endpoint" class="section-name selfRef">Person Token Endpoint</a>
         </h3>
-<p id="section-6.1-1">Every PS MUST publish a <code>person_token_endpoint</code> in its metadata <a href="#ps-metadata" class="auto internal xref">Section 13.11.2</a> and MUST issue person tokens from it. A PS already derives a directed <code>sub</code> per resource when it issues auth tokens; this endpoint exposes that derivation one step earlier, and requiring it means an agent never has to discover whether its own PS can reach a given resource's authorization endpoint.<a href="#section-6.1-1" class="pilcrow">¶</a></p>
+<p id="section-6.1-1">Every PS MUST publish a <code>person_token_endpoint</code> in its metadata <a href="#ps-metadata" class="auto internal xref">Section 13.11.2</a> and MUST issue person tokens from it.<a href="#section-6.1-1" class="pilcrow">¶</a></p>
 <p id="section-6.1-2">The agent MUST make a signed POST with an HTTP Sig <a href="#http-message-signatures-profile" class="auto internal xref">Section 13.8</a>, presenting its agent token via the <code>Signature-Key</code> header using <code>scheme=jwt</code>.<a href="#section-6.1-2" class="pilcrow">¶</a></p>
 <p id="section-6.1-3"><strong>Request parameters:</strong><a href="#section-6.1-3" class="pilcrow">¶</a></p>
 <ul class="compact">
 <li class="compact" id="section-6.1-4.1">
-            <code>resource</code> (REQUIRED): The HTTPS URL of the resource the person token is for, conforming to the Server Identifier requirements <a href="#server-identifiers" class="auto internal xref">Section 13.10.1</a>. Becomes the <code>aud</code> of the issued token. The PS MUST validate it against those requirements before issuing a token naming it.<a href="#section-6.1-4.1" class="pilcrow">¶</a>
+            <code>resource</code> (REQUIRED): The HTTPS URL of the resource the person token is for, conforming to the Server Identifier requirements <a href="#server-identifiers" class="auto internal xref">Section 13.10.1</a>. Becomes the <code>aud</code> of the issued token. The PS MUST validate it against those requirements.<a href="#section-6.1-4.1" class="pilcrow">¶</a>
 </li>
         </ul>
-<p id="section-6.1-5">Each distinct <code>resource</code> value obliges the PS to derive and retain a directed <code>sub</code> for that pair <a href="#directed-identifiers" class="auto internal xref">Section 16.1</a>, so a PS SHOULD rate-limit the number of distinct values it accepts from one agent.<a href="#section-6.1-5" class="pilcrow">¶</a></p>
+<p id="section-6.1-5">A PS SHOULD rate-limit the number of distinct <code>resource</code> values it accepts from one agent; each obliges it to derive and retain a directed <code>sub</code> <a href="#directed-identifiers" class="auto internal xref">Section 16.1</a>.<a href="#section-6.1-5" class="pilcrow">¶</a></p>
 <div class="lang-http sourcecode" id="section-6.1-6">
 <pre>POST /person HTTP/1.1
 Host: ps.example
@@ -2792,9 +2791,9 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 </pre><a href="#section-6.1-8" class="pilcrow">¶</a>
 </div>
-<p id="section-6.1-9">Issuing a person token discloses the person's identity to a resource they may not have used before, so the PS MAY require user interaction first and return a <code>202 Accepted</code> deferred response with <code>requirement=interaction</code> <a href="#requirement-responses" class="auto internal xref">Section 13.4</a>. This is where a PS binds the person to an agent for a resource, and where it applies whatever policy it has about which resources an agent may identify the person to.<a href="#section-6.1-9" class="pilcrow">¶</a></p>
+<p id="section-6.1-9">The PS MAY require user interaction before issuing and return a <code>202 Accepted</code> deferred response with <code>requirement=interaction</code> <a href="#requirement-responses" class="auto internal xref">Section 13.4</a>.<a href="#section-6.1-9" class="pilcrow">¶</a></p>
 <p id="section-6.1-10">Errors use the token endpoint error codes <a href="#token-endpoint-error-codes" class="auto internal xref">Section 13.6.3</a>; <code>invalid_request</code> covers a missing or malformed <code>resource</code> value.<a href="#section-6.1-10" class="pilcrow">¶</a></p>
-<p id="section-6.1-11">The PS SHOULD issue person tokens that the agent can reuse across requests to the same resource. An agent SHOULD cache a person token for a resource until it expires rather than requesting one per call. Because a person token cannot outlive the agent token it was issued against, and both are bound to the same key, an agent that refreshes its agent token obtains a new person token for each resource it is still working with.<a href="#section-6.1-11" class="pilcrow">¶</a></p>
+<p id="section-6.1-11">An agent SHOULD cache a person token for a resource until it expires rather than requesting one per call.<a href="#section-6.1-11" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="person-token-structure">
@@ -2872,7 +2871,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 </pre><a href="#section-6.2-9" class="pilcrow">¶</a>
 </div>
-<p id="section-6.2-10">A person token MUST NOT contain <code>scope</code>, <code>account</code>, or <code>mission</code>. A PS that wants to convey any of those issues an auth token, which is what those claims belong to.<a href="#section-6.2-10" class="pilcrow">¶</a></p>
+<p id="section-6.2-10">A person token MUST NOT contain <code>scope</code>, <code>account</code>, or <code>mission</code>.<a href="#section-6.2-10" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="person-token-usage">
@@ -2887,8 +2886,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 </pre><a href="#section-6.3-2" class="pilcrow">¶</a>
 </div>
-<p id="section-6.3-3">The person token's <code>cnf.jwk</code> is the same key that signed the request, so HTTP Message Signature verification proceeds identically to the agent-token case.<a href="#section-6.3-3" class="pilcrow">¶</a></p>
-<p id="section-6.3-4">Once an auth token has been issued for a resource, the agent presents the auth token on subsequent requests to that resource <a href="#auth-token-usage" class="auto internal xref">Section 10.4.2</a>. The person token is what the agent presents before that point, at the authorization endpoint.<a href="#section-6.3-4" class="pilcrow">¶</a></p>
+<p id="section-6.3-3">The person token's <code>cnf.jwk</code> is the same key that signed the request, so HTTP Message Signature verification proceeds identically to the agent-token case. Once an auth token has been issued for a resource, the agent presents the auth token on subsequent requests to that resource <a href="#auth-token-usage" class="auto internal xref">Section 10.4.2</a>.<a href="#section-6.3-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="person-token-verification">
@@ -2912,7 +2910,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
             <code>cnf.jwk</code> is REQUIRED. Verify it matches the key used to sign the HTTP request, applying the same structural checks as auth token verification <a href="#request-context-binding" class="auto internal xref">Section 10.4.3.2</a>.<a href="#section-6.4-2.6" class="pilcrow">¶</a>
 </li>
         </ol>
-<p id="section-6.4-3">A PS-issued auth token and a person token share <code>iss</code>, <code>dwk</code>, <code>aud</code>, <code>sub</code>, and <code>cnf</code>; only <code>typ</code> distinguishes them. A recipient MUST determine which it holds from <code>typ</code> alone, and MUST reject an <code>aa-person+jwt</code> wherever an auth token is required. Nothing else in the token indicates that it carries no authorization.<a href="#section-6.4-3" class="pilcrow">¶</a></p>
+<p id="section-6.4-3">A recipient MUST reject an <code>aa-person+jwt</code> wherever an auth token is required. Only <code>typ</code> distinguishes the two <a href="#person-token-not-authorization" class="auto internal xref">Section 15.11</a>.<a href="#section-6.4-3" class="pilcrow">¶</a></p>
 <p id="section-6.4-4"><code>sub</code> is unique within the issuer, not globally. A resource MUST treat <code>(iss, sub)</code> — or <code>(iss, tenant, sub)</code> where <code>tenant</code> is present — as the identifier, MUST treat the value as opaque, and MUST NOT match a <code>sub</code> received from one issuer against a record established under another, however the values compare.<a href="#section-6.4-4" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -2950,19 +2948,18 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <a href="#section-7.1" class="section-number selfRef">7.1. </a><a href="#name-authorization-endpoint-requ" class="section-name selfRef">Authorization Endpoint Request</a>
         </h3>
 <p id="section-7.1-1">A resource MAY publish an <code>authorization_endpoint</code> in its metadata. The agent sends a signed POST to the authorization endpoint. The resource reads the person token from the <code>Signature-Key</code> header and determines how to respond — it may return a resource token, handle authorization itself, or both.<a href="#section-7.1-1" class="pilcrow">¶</a></p>
-<p id="section-7.1-2">The agent MUST present a person token <a href="#person-tokens" class="auto internal xref">Section 6</a> via the <code>Signature-Key</code> header on requests to the authorization endpoint, and the resource MUST verify it per <a href="#person-token-verification" class="auto internal xref">Section 6.4</a>. The resource therefore knows which person the request is for before it decides anything: it can validate the <code>account</code> selection <a href="#account-binding" class="auto internal xref">Section 13.3</a>, apply whatever standing policy it holds for that person, and size what it offers accordingly, rather than issuing a resource token and learning who the person is only if a PS grants against it.<a href="#section-7.1-2" class="pilcrow">¶</a></p>
-<p id="section-7.1-3">An agent with no person server cannot obtain a person token and so cannot use the authorization endpoint. It calls the resource's endpoints directly and takes whatever the resource challenges with — identity-based access <a href="#requirement-agent-token" class="auto internal xref">Section 7.3</a> or resource-managed authorization <a href="#resource-managed-auth" class="auto internal xref">Section 7.6</a>. Nothing else in the protocol requires a person token; the <code>401</code> path <a href="#requirement-auth-token" class="auto internal xref">Section 7.7</a> is reached with an agent token as before.<a href="#section-7.1-3" class="pilcrow">¶</a></p>
-<p id="section-7.1-4">A resource that receives an authorization endpoint request without a person token responds per <a href="#requirement-person-token" class="auto internal xref">Section 7.4</a>. Publishing an <code>authorization_endpoint</code> <a href="#resource-metadata" class="auto internal xref">Section 13.11.4</a> is what declares the requirement; there is no separate metadata flag, because the requirement does not vary by resource.<a href="#section-7.1-4" class="pilcrow">¶</a></p>
-<p id="section-7.1-5"><strong>Request parameters:</strong><a href="#section-7.1-5" class="pilcrow">¶</a></p>
+<p id="section-7.1-2">The agent MUST present a person token <a href="#person-tokens" class="auto internal xref">Section 6</a> via the <code>Signature-Key</code> header on requests to the authorization endpoint, and the resource MUST verify it per <a href="#person-token-verification" class="auto internal xref">Section 6.4</a>. A resource that receives a request without one responds per <a href="#requirement-person-token" class="auto internal xref">Section 7.4</a>.<a href="#section-7.1-2" class="pilcrow">¶</a></p>
+<p id="section-7.1-3">An agent with no person server cannot obtain a person token and so cannot use the authorization endpoint. It calls the resource's endpoints directly and takes whatever the resource challenges with — identity-based access <a href="#requirement-agent-token" class="auto internal xref">Section 7.3</a> or resource-managed authorization <a href="#resource-managed-auth" class="auto internal xref">Section 7.6</a>. The <code>401</code> path <a href="#requirement-auth-token" class="auto internal xref">Section 7.7</a> is reached with an agent token as before.<a href="#section-7.1-3" class="pilcrow">¶</a></p>
+<p id="section-7.1-4"><strong>Request parameters:</strong><a href="#section-7.1-4" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-7.1-6.1">
-            <code>scope</code> (REQUIRED): A space-separated string of scope values the agent is requesting.<a href="#section-7.1-6.1" class="pilcrow">¶</a>
+<li class="compact" id="section-7.1-5.1">
+            <code>scope</code> (REQUIRED): A space-separated string of scope values the agent is requesting.<a href="#section-7.1-5.1" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-7.1-6.2">
-            <code>account</code> (OPTIONAL): A string identifying which account at the resource the authorization is for, drawn from the resource's own account namespace <a href="#account-binding" class="auto internal xref">Section 13.3</a>.<a href="#section-7.1-6.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-7.1-5.2">
+            <code>account</code> (OPTIONAL): A string identifying which account at the resource the authorization is for, drawn from the resource's own account namespace <a href="#account-binding" class="auto internal xref">Section 13.3</a>.<a href="#section-7.1-5.2" class="pilcrow">¶</a>
 </li>
         </ul>
-<div class="lang-http sourcecode" id="section-7.1-7">
+<div class="lang-http sourcecode" id="section-7.1-6">
 <pre>POST /authorize HTTP/1.1
 Host: resource.example
 Content-Type: application/json
@@ -2975,10 +2972,10 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
   "scope": "data.read data.write"
 }
 
-</pre><a href="#section-7.1-7" class="pilcrow">¶</a>
+</pre><a href="#section-7.1-6" class="pilcrow">¶</a>
 </div>
-<p id="section-7.1-8">When the agent is operating in a mission context, it includes the <code>AAuth-Mission</code> header and adds <code>aauth-mission</code> to the signed components:<a href="#section-7.1-8" class="pilcrow">¶</a></p>
-<div class="lang-http sourcecode" id="section-7.1-9">
+<p id="section-7.1-7">When the agent is operating in a mission context, it includes the <code>AAuth-Mission</code> header and adds <code>aauth-mission</code> to the signed components:<a href="#section-7.1-7" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-7.1-8">
 <pre>POST /authorize HTTP/1.1
 Host: resource.example
 Content-Type: application/json
@@ -2995,7 +2992,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
   "scope": "data.read data.write"
 }
 
-</pre><a href="#section-7.1-9" class="pilcrow">¶</a>
+</pre><a href="#section-7.1-8" class="pilcrow">¶</a>
 </div>
 </section>
 </div>
@@ -3157,8 +3154,7 @@ AAuth-Requirement: requirement=person-token
 
 </pre><a href="#section-7.4-2" class="pilcrow">¶</a>
 </div>
-<p id="section-7.4-3">The header carries no additional parameters. The agent obtains a person token for this resource from its PS's person endpoint <a href="#person-token-endpoint" class="auto internal xref">Section 6.1</a> and retries.<a href="#section-7.4-3" class="pilcrow">¶</a></p>
-<p id="section-7.4-4">An agent with no person server cannot satisfy this requirement and surfaces it as an error per <a href="#requirement-values" class="auto internal xref">Section 13.4.2</a>. That outcome is correct: the authorization endpoint exists to obtain a resource token, which only a PS can act on, so an agent with no PS had nothing to gain there. Such an agent reaches the resource's other access modes by calling its endpoints directly.<a href="#section-7.4-4" class="pilcrow">¶</a></p>
+<p id="section-7.4-3">The header carries no additional parameters. The agent obtains a person token for this resource from its PS's person token endpoint <a href="#person-token-endpoint" class="auto internal xref">Section 6.1</a> and retries. An agent with no person server cannot satisfy this requirement and surfaces it as an error per <a href="#requirement-values" class="auto internal xref">Section 13.4.2</a>.<a href="#section-7.4-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="aauth-access">
@@ -3244,7 +3240,7 @@ AAuth-Requirement: requirement=auth-token; resource-token="eyJ..."
 - <code>dwk</code>: <code>aauth-resource.json</code> — the well-known metadata document name for key discovery (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>)
 - <code>aud</code>: Token audience — the PS URL (when the resource delegates authorization to the agent's PS) or the AS URL (when the resource has its own access server)
 - <code>jti</code>: Unique token identifier for replay detection, audit, and revocation
-- <code>agent</code>: Agent identifier. REQUIRED when the request that produced this token presented an agent token; omitted when it presented a person token <a href="#person-tokens" class="auto internal xref">Section 6</a>, which carries no agent identifier. <code>agent_jkt</code> binds the token to the agent in either case.
+- <code>agent</code>: Agent identifier. REQUIRED when the request that produced this token presented an agent token; omitted when it presented a person token <a href="#person-tokens" class="auto internal xref">Section 6</a>. <code>agent_jkt</code> is the binding in either case.
 - <code>agent_jkt</code>: JWK Thumbprint (<span>[<a href="#RFC7638" class="cite xref">RFC7638</a>]</span>) of the agent's current signing key
 - <code>iat</code>: Issued at timestamp
 - <code>exp</code>: Expiration timestamp
@@ -3275,7 +3271,7 @@ AAuth-Requirement: requirement=auth-token; resource-token="eyJ..."
 </li>
             <li id="section-7.8.2-2.4">Verify <code>aud</code> matches the recipient's own identifier (the PS in three-party, or the AS in four-party).<a href="#section-7.8.2-2.4" class="pilcrow">¶</a>
 </li>
-            <li id="section-7.8.2-2.5">If <code>agent</code> is present, verify it matches the requesting agent's identifier. It is absent when the resource issued the token against a person token <a href="#person-tokens" class="auto internal xref">Section 6</a>; step 6 is the binding in either case.<a href="#section-7.8.2-2.5" class="pilcrow">¶</a>
+            <li id="section-7.8.2-2.5">If <code>agent</code> is present, verify it matches the requesting agent's identifier.<a href="#section-7.8.2-2.5" class="pilcrow">¶</a>
 </li>
             <li id="section-7.8.2-2.6">Verify <code>agent_jkt</code> matches the JWK Thumbprint of the key used to sign the HTTP request.<a href="#section-7.8.2-2.6" class="pilcrow">¶</a>
 </li>
@@ -4281,14 +4277,11 @@ Content-Type: application/problem+json
               <code>upstream_token</code> (OPTIONAL): An auth token from an upstream authorization, used in call chaining <a href="#call-chaining" class="auto internal xref">Section 11.1.1</a>.<a href="#section-10.1.1-3.4" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-10.1.1-3.5">
-              <code>sub</code> (OPTIONAL): The directed user identifier the PS would assert for this resource — the same value it uses in the person token <a href="#person-token-structure" class="auto internal xref">Section 6.2</a> and in auth tokens for that <code>aud</code> <a href="#directed-identifiers" class="auto internal xref">Section 16.1</a>.<a href="#section-10.1.1-3.5" class="pilcrow">¶</a>
+              <code>sub</code> (OPTIONAL): The directed user identifier for this resource, saving the AS a <code>requirement=claims</code> exchange <a href="#requirement-claims" class="auto internal xref">Section 10.2</a> when it needs one. MUST be the same value the PS uses in the person token <a href="#person-token-structure" class="auto internal xref">Section 6.2</a> and in auth tokens for that <code>aud</code> <a href="#directed-identifiers" class="auto internal xref">Section 16.1</a>. A PS SHOULD include it when the agent requested identity scopes, or when it has previously learned that this AS requires one.<a href="#section-10.1.1-3.5" class="pilcrow">¶</a>
 </li>
           </ul>
-<p id="section-10.1.1-4">The AS mints the auth token and so needs <code>sub</code> whenever the authorization it is being asked for names a person. Without this parameter the only way to obtain it is <code>requirement=claims</code> <a href="#requirement-claims" class="auto internal xref">Section 10.2</a>, which costs a <code>202</code> and a POST back to the pending URL — for the one claim the AS almost always needs. Supplying it in the initial request collapses that exchange. <code>requirement=claims</code> remains for everything else the AS may need, and for the case where the PS did not volunteer <code>sub</code>.<a href="#section-10.1.1-4" class="pilcrow">¶</a></p>
-<p id="section-10.1.1-5">The parameter is OPTIONAL rather than REQUIRED because not every four-party authorization names a person: an auth token needs <code>sub</code> or <code>scope</code>, not both <a href="#auth-token-structure" class="auto internal xref">Section 10.4.1</a>, and sending an identifier to an AS that has no use for it discloses the person for nothing. A PS SHOULD include <code>sub</code> when the agent requested identity scopes, or when it has previously learned through <code>requirement=claims</code> that this AS needs one — the same per-AS caching it already applies to billing relationships <a href="#ps-as-trust-establishment" class="auto internal xref">Section 10.3.1</a>. A PS MUST NOT send a <code>sub</code> value it would not put in the auth token for that resource.<a href="#section-10.1.1-5" class="pilcrow">¶</a></p>
-<p id="section-10.1.1-6">There is no reason to carry a person token <a href="#person-tokens" class="auto internal xref">Section 6</a> on this hop. A person token exists so that a party which is not the PS can present a PS assertion and prove it holds the bound key. Here the PS is the caller and authenticates with its own signature, so a PS-signed JWT nested inside a PS-signed request adds nothing that the request itself does not already carry — which is why the existing claims mechanism sends bare claim values too.<a href="#section-10.1.1-6" class="pilcrow">¶</a></p>
-<p id="section-10.1.1-7"><strong>Example request:</strong><a href="#section-10.1.1-7" class="pilcrow">¶</a></p>
-<div class="lang-http sourcecode" id="section-10.1.1-8">
+<p id="section-10.1.1-4"><strong>Example request:</strong><a href="#section-10.1.1-4" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-10.1.1-5">
 <pre>POST /token HTTP/1.1
 Host: as.resource.example
 Content-Type: application/json
@@ -4303,7 +4296,7 @@ Signature-Key: sig=jwks_uri;
   "agent_token": "eyJhbGc..."
 }
 
-</pre><a href="#section-10.1.1-8" class="pilcrow">¶</a>
+</pre><a href="#section-10.1.1-5" class="pilcrow">¶</a>
 </div>
 </section>
 </div>
@@ -5776,7 +5769,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <a href="#section-13.8.2" class="section-number selfRef">13.8.2. </a><a href="#name-keying-material" class="section-name selfRef">Keying Material</a>
           </h4>
 <p id="section-13.8.2-1">The signing key is conveyed in the <code>Signature-Key</code> header (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). Because every AAuth agent holds an agent token <a href="#agent-tokens" class="auto internal xref">Section 5.2</a>, AAuth uses the <strong>identity</strong> <code>scheme=jwt</code>: the agent presents a token carrying its public key in a <code>cnf</code> claim, and the key is taken from there. Agents MUST use <code>scheme=jwt</code>; agents MUST NOT use <code>scheme=jwks_uri</code> or <code>scheme=hwk</code> for AAuth resource, PS, or AS requests.<a href="#section-13.8.2-1" class="pilcrow">¶</a></p>
-<p id="section-13.8.2-2">Which token the agent presents depends on what the recipient needs to know, and all three carry the same key:<a href="#section-13.8.2-2" class="pilcrow">¶</a></p>
+<p id="section-13.8.2-2">Which token the agent presents depends on what the recipient needs to know. All three carry the same key in <code>cnf</code>, so signature verification is identical in each case.<a href="#section-13.8.2-2" class="pilcrow">¶</a></p>
 <table class="center" id="table-11">
             <caption><a href="#table-11" class="selfRef">Table 11</a></caption>
 <thead>
@@ -5807,9 +5800,8 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
               </tr>
             </tbody>
           </table>
-<p id="section-13.8.2-4">Verification of the HTTP Message Signature is identical in all three cases, because the key comes from <code>cnf</code> either way.<a href="#section-13.8.2-4" class="pilcrow">¶</a></p>
-<p id="section-13.8.2-5">The Signature-Key specification also defines <code>pseudonym</code> schemes (<code>scheme=hwk</code> for a bare inline public key, <code>scheme=jkt-jwt</code> for hardware-key delegation). AAuth does not use bare <code>hwk</code> access — the agent token is the minimum AAuth credential. <code>scheme=jkt-jwt</code> is used only in the agent provider's key-refresh ceremony (see <span>[<a href="#I-D.hardt-aauth-bootstrap" class="cite xref">I-D.hardt-aauth-bootstrap</a>]</span>), not for protocol access to resources, PSes, or ASes.<a href="#section-13.8.2-5" class="pilcrow">¶</a></p>
-<p id="section-13.8.2-6">See the Signature-Key specification (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>) for scheme definitions, key discovery, and verification procedures.<a href="#section-13.8.2-6" class="pilcrow">¶</a></p>
+<p id="section-13.8.2-4">The Signature-Key specification also defines <code>pseudonym</code> schemes (<code>scheme=hwk</code> for a bare inline public key, <code>scheme=jkt-jwt</code> for hardware-key delegation). AAuth does not use bare <code>hwk</code> access — the agent token is the minimum AAuth credential. <code>scheme=jkt-jwt</code> is used only in the agent provider's key-refresh ceremony (see <span>[<a href="#I-D.hardt-aauth-bootstrap" class="cite xref">I-D.hardt-aauth-bootstrap</a>]</span>), not for protocol access to resources, PSes, or ASes.<a href="#section-13.8.2-4" class="pilcrow">¶</a></p>
+<p id="section-13.8.2-5">See the Signature-Key specification (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>) for scheme definitions, key discovery, and verification procedures.<a href="#section-13.8.2-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="signing-agent">
@@ -6687,9 +6679,9 @@ Accept-Signature-Scheme: jwt
         <h3 id="name-person-token-exposure">
 <a href="#section-15.10" class="section-number selfRef">15.10. </a><a href="#name-person-token-exposure" class="section-name selfRef">Person Token Exposure</a>
         </h3>
-<p id="section-15.10-1">A person token identifies the person to a resource before any authorization decision has been made, and on every authorization endpoint request — including ones the resource or the PS subsequently refuses. A resource therefore learns of people whose agents it never serves, which the protocol did not previously permit.<a href="#section-15.10-1" class="pilcrow">¶</a></p>
-<p id="section-15.10-2">The exposure is bounded by the directed <code>sub</code>: the identifier is scoped to one <code>(PS, resource)</code> pair and reveals nothing usable at another resource. What limits the exposure in the first place is the PS, which decides whether to issue a person token at all and MAY require the person's approval before identifying them to a resource for the first time <a href="#person-token-endpoint" class="auto internal xref">Section 6.1</a>. A PS SHOULD treat the first person token for a given resource as a consent-worthy event rather than a lookup.<a href="#section-15.10-2" class="pilcrow">¶</a></p>
-<p id="section-15.10-3">The person token grants nothing, so its disclosure to an unintended party leaks an identifier and no access. It is nonetheless bound to the agent's key via <code>cnf</code>, so a token captured in transit cannot be presented by another party.<a href="#section-15.10-3" class="pilcrow">¶</a></p>
+<p id="section-15.10-1">A person token identifies the person to a resource before any authorization decision, on every authorization endpoint request including refused ones. A resource therefore learns of people whose agents it never serves.<a href="#section-15.10-1" class="pilcrow">¶</a></p>
+<p id="section-15.10-2">The directed <code>sub</code> bounds the exposure to one <code>(PS, resource)</code> pair. The PS bounds it further: it decides whether to issue at all, and SHOULD treat the first person token for a given resource as requiring the person's approval <a href="#person-token-endpoint" class="auto internal xref">Section 6.1</a>.<a href="#section-15.10-2" class="pilcrow">¶</a></p>
+<p id="section-15.10-3">A person token grants nothing, so disclosure to an unintended party leaks an identifier and no access, and <code>cnf</code> prevents another party from presenting it.<a href="#section-15.10-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="person-token-not-authorization">
@@ -6697,8 +6689,8 @@ Accept-Signature-Scheme: jwt
         <h3 id="name-person-token-is-not-authori">
 <a href="#section-15.11" class="section-number selfRef">15.11. </a><a href="#name-person-token-is-not-authori" class="section-name selfRef">Person Token Is Not Authorization</a>
         </h3>
-<p id="section-15.11-1">A PS-issued auth token and a person token differ in one header parameter. Both carry <code>iss</code> of the PS, <code>dwk</code> of <code>aauth-person.json</code>, an <code>aud</code> naming the resource, a directed <code>sub</code>, and a <code>cnf</code> binding to the agent's key. A resource that verifies the signature and reads <code>sub</code> without checking <code>typ</code> will accept a person token wherever it accepts an auth token, granting whatever access it grants on identity alone.<a href="#section-15.11-1" class="pilcrow">¶</a></p>
-<p id="section-15.11-2">Implementations MUST check <code>typ</code> before acting on any AAuth JWT, and MUST reject <code>aa-person+jwt</code> where an auth token is required <a href="#person-token-verification" class="auto internal xref">Section 6.4</a>. Deployments SHOULD test this case explicitly; it fails open and produces no error anywhere.<a href="#section-15.11-2" class="pilcrow">¶</a></p>
+<p id="section-15.11-1">A PS-issued auth token and a person token carry the same <code>iss</code>, <code>dwk</code>, <code>aud</code>, <code>sub</code>, and <code>cnf</code>. Only <code>typ</code> distinguishes them. A resource that verifies the signature and reads <code>sub</code> without checking <code>typ</code> accepts a person token wherever it accepts an auth token.<a href="#section-15.11-1" class="pilcrow">¶</a></p>
+<p id="section-15.11-2">Implementations MUST check <code>typ</code> before acting on any AAuth JWT, and MUST reject <code>aa-person+jwt</code> where an auth token is required <a href="#person-token-verification" class="auto internal xref">Section 6.4</a>. Deployments SHOULD test this case explicitly; it fails open.<a href="#section-15.11-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="ps-approval-endpoint-auth">
@@ -6801,8 +6793,8 @@ Accept-Signature-Scheme: jwt
 <a href="#section-16.1" class="section-number selfRef">16.1. </a><a href="#name-directed-identifiers" class="section-name selfRef">Directed Identifiers</a>
         </h3>
 <p id="section-16.1-1">The PS SHOULD provide a pairwise pseudonymous user identifier (<code>sub</code>) per resource, preventing resources from correlating users across trust domains. Each resource sees a different <code>sub</code> for the same user, preserving user privacy.<a href="#section-16.1-1" class="pilcrow">¶</a></p>
-<p id="section-16.1-2">The same value MUST be used in the person token <a href="#person-token-structure" class="auto internal xref">Section 6.2</a> and in every auth token the PS issues for that resource. A <code>sub</code> that varied between the two, or between successive agents the person uses, would present the same person to the resource as several, defeating the purpose of identifying them at all.<a href="#section-16.1-2" class="pilcrow">¶</a></p>
-<p id="section-16.1-3">Directed identifiers limit correlation between resources; they do not make the person's activity at one resource unlinkable across agents, and are not intended to. The agent signs with one key at every resource it visits, and that key appears in <code>cnf</code> in every token, so parties able to compare thumbprints can correlate regardless of <code>sub</code>.<a href="#section-16.1-3" class="pilcrow">¶</a></p>
+<p id="section-16.1-2">The same value MUST be used in the person token <a href="#person-token-structure" class="auto internal xref">Section 6.2</a> and in every auth token the PS issues for that resource, and MUST NOT vary with the agent or its key.<a href="#section-16.1-2" class="pilcrow">¶</a></p>
+<p id="section-16.1-3">Directed identifiers limit correlation between resources. They do not make a person's activity at one resource unlinkable across their agents: the agent signs with one key everywhere and that key appears in <code>cnf</code> in every token, so parties able to compare thumbprints correlate regardless of <code>sub</code>.<a href="#section-16.1-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="ps-visibility">
@@ -7451,19 +7443,19 @@ Accept-Signature-Scheme: jwt
 <li class="normal" id="section-19-2.1">
           <p id="section-19-2.1.1">draft-hardt-oauth-aauth-protocol-11<a href="#section-19-2.1.1" class="pilcrow">¶</a></p>
 <ul class="compact normal">
-<li class="compact normal" id="section-19-2.1.2.1">Added the person token (<code>aa-person+jwt</code>), a PS-issued JWT that identifies the person to one resource and grants nothing. The agent presents it via <code>Signature-Key</code> in place of its agent token, and it is REQUIRED on authorization endpoint requests, so a resource knows which person a request is for before it issues a resource token. Obtained from a new <code>person_token_endpoint</code>, REQUIRED of every PS, which MAY require user interaction the first time an agent identifies the person to a resource.<a href="#section-19-2.1.2.1" class="pilcrow">¶</a>
+<li class="compact normal" id="section-19-2.1.2.1">Added the person token (<code>aa-person+jwt</code>), issued by a PS to identify the person to one resource. Presented via <code>Signature-Key</code> in place of the agent token, and REQUIRED on authorization endpoint requests.<a href="#section-19-2.1.2.1" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.2">Renamed the PS and AS metadata field <code>token_endpoint</code> to <code>auth_token_endpoint</code>. With two PS endpoints issuing tokens, the bare name no longer says which one, and the pair <code>auth_token_endpoint</code> / <code>person_token_endpoint</code> does. AAuth's token endpoint does not behave like the OAuth endpoint it was named after — no grant types, no client authentication, signed POST, deferred responses — so the shared name was asserting a similarity that is not there.<a href="#section-19-2.1.2.2" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.2">Added <code>person_token_endpoint</code>, REQUIRED in PS metadata.<a href="#section-19-2.1.2.2" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.3">Added the OPTIONAL <code>sub</code> parameter to the PS-to-AS token request, letting the PS volunteer the directed identifier the AS needs to mint an auth token instead of asking for it through <code>requirement=claims</code>. Kept OPTIONAL because an auth token needs <code>sub</code> or <code>scope</code>, not both, and an AS with no use for an identifier should not be sent one.<a href="#section-19-2.1.2.3" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.3">Resource token <code>agent</code> claim omitted when the request presented a person token; the two verification steps comparing <code>agent</code> are now conditional.<a href="#section-19-2.1.2.3" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.4">A resource's relationship with a person now survives the person changing agents or agent providers, since it is keyed on <code>(iss, sub)</code> rather than on an agent identifier that a reinstall replaces.<a href="#section-19-2.1.2.4" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.4">Added <code>requirement=person-token</code>, the <code>invalid_person_token</code> and <code>invalid_account</code> authorization endpoint errors, and <code>aa-person+jwt</code> media type and JWT type registrations.<a href="#section-19-2.1.2.4" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.5">The resource token's <code>agent</code> claim is omitted when the authorization request presented a person token; <code>agent_jkt</code> remains the binding, and the two verification steps that compared <code>agent</code> became conditional.<a href="#section-19-2.1.2.5" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.5">The directed <code>sub</code> MUST be the same value in the person token and in auth tokens for that resource; <code>(iss, sub)</code>, or <code>(iss, tenant, sub)</code>, is the identifier, and values from different issuers MUST NOT be matched.<a href="#section-19-2.1.2.5" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.6">Added <code>requirement=person-token</code>, the <code>invalid_person_token</code> and <code>invalid_account</code> authorization endpoint errors, and registrations for the <code>aa-person+jwt</code> media type and JWT type.<a href="#section-19-2.1.2.6" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.6">Renamed the PS and AS metadata field <code>token_endpoint</code> to <code>auth_token_endpoint</code>.<a href="#section-19-2.1.2.6" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.7">Stated that the directed <code>sub</code> MUST be the same value in the person token and in auth tokens for that resource, that <code>(iss, sub)</code> — or <code>(iss, tenant, sub)</code> — is the identifier, that <code>sub</code> values from different issuers MUST NOT be matched against each other, and that directed identifiers do not make a person's activity unlinkable across their agents, because <code>cnf</code> carries one key everywhere.<a href="#section-19-2.1.2.7" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.7">Added the OPTIONAL <code>sub</code> parameter to the PS-to-AS token request.<a href="#section-19-2.1.2.7" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
@@ -7990,12 +7982,37 @@ Accept-Signature-Scheme: jwt
 <p id="appendix-B.1.4-1">Every agent acts on behalf of a person — the entity accountable for the agent's actions. AAuth enables a person server to maintain this link, making it visible and enforceable across the protocol. When present, the PS ensures there is always an accountable party for authorization decisions, audit, and liability.<a href="#appendix-B.1.4-1" class="pilcrow">¶</a></p>
 </section>
 </div>
-<div id="why-the-ps-claim-in-agent-tokens">
+<div id="why-person-tokens">
 <section id="appendix-B.1.5">
-          <h4 id="name-why-the-ps-claim-in-agent-t">
-<a href="#appendix-B.1.5" class="section-number selfRef">B.1.5. </a><a href="#name-why-the-ps-claim-in-agent-t" class="section-name selfRef">Why the <code>ps</code> Claim in Agent Tokens</a>
+          <h4 id="name-why-person-tokens">
+<a href="#appendix-B.1.5" class="section-number selfRef">B.1.5. </a><a href="#name-why-person-tokens" class="section-name selfRef">Why Person Tokens</a>
           </h4>
-<p id="appendix-B.1.5-1">Resources need to discover the agent's PS to issue resource tokens in three-party mode. The <code>ps</code> claim in the agent token provides this discovery without requiring the <code>AAuth-Mission</code> header, which is only present when the agent is operating within a mission. This separates PS discovery from mission governance — an agent can use three-party mode without missions.<a href="#appendix-B.1.5-1" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.5-1">An agent identifier embeds its agent provider's domain, so a person moving to another provider necessarily arrives at a resource as someone new, losing whatever state the resource held for them. The person is the party the resource has a relationship with — the account, the history, and any standing limits are theirs — and keying on <code>(iss, sub)</code> makes that relationship survive the change. It also keeps agent providers from becoming gatekeepers: a resource that never learns which agent product is calling cannot condition access on it.<a href="#appendix-B.1.5-1" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.5-2">Identifying the person at the authorization endpoint rather than after authorization also lets the resource decide before it commits. Account selection <a href="#account-binding" class="auto internal xref">Section 13.3</a>, standing policy for that person, and any per-person limit are all evaluable when the request arrives, instead of after a resource token has been issued and taken to a PS.<a href="#appendix-B.1.5-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="why-person-tokens-carry-no-agent-identifier">
+<section id="appendix-B.1.6">
+          <h4 id="name-why-person-tokens-carry-no-">
+<a href="#appendix-B.1.6" class="section-number selfRef">B.1.6. </a><a href="#name-why-person-tokens-carry-no-" class="section-name selfRef">Why Person Tokens Carry No Agent Identifier</a>
+          </h4>
+<p id="appendix-B.1.6-1">Naming the agent, or its provider, in the person token would restore exactly the coupling the token exists to remove: a resource able to read either can pin policy to it, and the person's relationship no longer survives a change of agent. The cost is that the resource takes the agent's key on the PS's word rather than the agent provider's, since it no longer sees the agent token. <code>agent_jkt</code> in the resource token and <code>cnf</code> in every token still bind the request to one key.<a href="#appendix-B.1.6-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="why-person-tokens-are-not-carried-to-the-as">
+<section id="appendix-B.1.7">
+          <h4 id="name-why-person-tokens-are-not-c">
+<a href="#appendix-B.1.7" class="section-number selfRef">B.1.7. </a><a href="#name-why-person-tokens-are-not-c" class="section-name selfRef">Why Person Tokens Are Not Carried to the AS</a>
+          </h4>
+<p id="appendix-B.1.7-1">The PS-to-AS token request conveys <code>sub</code> as a parameter rather than as a person token. A person token exists so that a party which is not the PS can present a PS assertion and prove it holds the bound key. On that hop the PS is the caller and authenticates with its own signature, so a PS-signed JWT nested inside a PS-signed request adds nothing — which is why <code>requirement=claims</code> already sends bare claim values.<a href="#appendix-B.1.7-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="why-the-ps-claim-in-agent-tokens">
+<section id="appendix-B.1.8">
+          <h4 id="name-why-the-ps-claim-in-agent-t">
+<a href="#appendix-B.1.8" class="section-number selfRef">B.1.8. </a><a href="#name-why-the-ps-claim-in-agent-t" class="section-name selfRef">Why the <code>ps</code> Claim in Agent Tokens</a>
+          </h4>
+<p id="appendix-B.1.8-1">Resources need to discover the agent's PS to issue resource tokens in three-party mode. The <code>ps</code> claim in the agent token provides this discovery without requiring the <code>AAuth-Mission</code> header, which is only present when the agent is operating within a mission. This separates PS discovery from mission governance — an agent can use three-party mode without missions.<a href="#appendix-B.1.8-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
