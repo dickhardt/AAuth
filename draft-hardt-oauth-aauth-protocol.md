@@ -1939,7 +1939,7 @@ When a resource needs to access a downstream resource on behalf of the caller, i
 
 To ensure the PS is in the loop for every hop in a chain, the person's PS MUST require a mission. A mission puts `mission.approver` in the upstream auth token, giving every intermediary a PS URL to route to regardless of whether the upstream issuer was a PS or AS.
 
-An intermediary using a downstream resource's authorization endpoint (#authorization-endpoint-request) obtains the person token it requires from the PS by presenting the upstream auth token as `upstream_token` (#person-token-endpoint).
+An intermediary using a downstream resource's authorization endpoint (#authorization-endpoint-request) obtains the person token it requires from the PS by presenting the upstream auth token as `upstream_token` (#person-token-endpoint). On the third path above no PS is reachable — the upstream token names an AS and carries no mission, and the calling agent's `ps` claim is not used for routing — so an intermediary there uses the `401` challenge path (#requirement-auth-token) instead.
 
 In every case the intermediary signs the downstream token request with its **own** key, presenting its own agent token via the `Signature-Key` header (#http-message-signatures-profile). The `upstream_token` is a body parameter — it is neither presented via `Signature-Key` nor used as the signing key. It is the auth token previously issued to the intermediary (its `aud` is the intermediary and its `cnf` is the intermediary's key), and it serves only as proof of the upstream authorization that the recipient extends downstream. The signature the recipient verifies is therefore always the intermediary's, over its own key.
 
