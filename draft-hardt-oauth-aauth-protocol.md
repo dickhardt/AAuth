@@ -635,6 +635,9 @@ The agent MUST make a signed POST with an HTTP Sig (#http-message-signatures-pro
 **Request parameters:**
 
 - `resource` (REQUIRED): The HTTPS URL of the resource the person token is for, conforming to the Server Identifier requirements (#server-identifiers). Becomes the `aud` of the issued token. The PS MUST validate it against those requirements.
+- `upstream_token` (OPTIONAL): An auth token issued to the requester for an upstream resource, present when a resource acting as an agent needs a person token for a downstream resource (#call-chaining). The PS MUST verify it per (#upstream-token-verification).
+
+Without `upstream_token` the PS issues for the person bound to the requesting agent (#agent-person-binding). With it, the PS issues for the person the upstream token was issued for, which it determines from the upstream token's `mission.approver` when that names this PS, or from the upstream token's `sub` when this PS issued it. A PS that can determine neither MUST reject the request.
 
 A PS SHOULD rate-limit the number of distinct `resource` values it accepts from one agent; each obliges it to derive and retain a directed `sub` (#directed-identifiers).
 
@@ -1935,6 +1938,8 @@ When a resource needs to access a downstream resource on behalf of the caller, i
 - **No mission, `iss` is an AS** (four-party upstream, no governance): The resource sends the downstream resource token to the AS identified by `iss`, along with its own agent token and the `upstream_token`. The AS evaluates the request based on resource policy. No PS is involved — no governance context is available.
 
 To ensure the PS is in the loop for every hop in a chain, the person's PS MUST require a mission. A mission puts `mission.approver` in the upstream auth token, giving every intermediary a PS URL to route to regardless of whether the upstream issuer was a PS or AS.
+
+An intermediary using a downstream resource's authorization endpoint (#authorization-endpoint-request) obtains the person token it requires from the PS by presenting the upstream auth token as `upstream_token` (#person-token-endpoint).
 
 In every case the intermediary signs the downstream token request with its **own** key, presenting its own agent token via the `Signature-Key` header (#http-message-signatures-profile). The `upstream_token` is a body parameter — it is neither presented via `Signature-Key` nor used as the signing key. It is the auth token previously issued to the intermediary (its `aud` is the intermediary and its `cnf` is the intermediary's key), and it serves only as proof of the upstream authorization that the recipient extends downstream. The signature the recipient verifies is therefore always the intermediary's, over its own key.
 
@@ -3312,6 +3317,7 @@ The following implementations are known:
   - The directed `sub` MUST be the same value in the person token and in auth tokens for that resource; `(iss, sub)`, or `(iss, tenant, sub)`, is the identifier, and values from different issuers MUST NOT be matched.
   - Renamed the PS and AS metadata field `token_endpoint` to `auth_token_endpoint`.
   - Added the OPTIONAL `sub` parameter to the PS-to-AS token request.
+  - The person token endpoint accepts an OPTIONAL `upstream_token`, so a resource acting as an agent in a call chain can obtain a person token for a downstream resource.
 
 - draft-hardt-oauth-aauth-protocol-10
   - Adopted the fully-specified `Ed25519` of [@!RFC9864] in place of the `EdDSA` it deprecates. `alg` is REQUIRED and MUST be fully specified; `EdDSA`, `none`, and symmetric algorithms MUST NOT be used; a verifier MUST reject a key whose `kty` or `crv` disagrees with its `alg`. Addresses issue #57.
