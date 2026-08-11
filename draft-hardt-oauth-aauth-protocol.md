@@ -1600,6 +1600,8 @@ The mission blob MAY include:
 - `approved_tools`: Array of tool objects (each with `name` and `description`) that the agent may use without per-call permission at the PS's permission endpoint (#permission-endpoint). Nothing in the protocol enforces this list; see (#why-tools-are-not-enforced).
 - `approved_resources`: Array of resource identifiers the person approved for this mission, drawn from the `resources` the proposal named. It records which resources were pre-approved, so an audit of the mission shows what the person agreed to before the agent began. It is not a limit: the agent MAY obtain person tokens for other resources during the mission, subject to the PS's policy, and those accesses appear in the mission log rather than in the blob.
 
+The member lists above are a floor, not a closed set. A PS MAY include additional members, and a companion specification MAY define them; a reader MUST ignore members it does not recognize (#aauth-capabilities). Because `s256` covers the bytes the PS persists, a blob carrying an additional member has a different identifier from one without — which is correct, since they are different missions. Member names in the mission blob are governed by this specification; a companion specification defining one SHOULD coordinate the name to avoid collision.
+
 ### Mission Identifier {#mission-identifier}
 
 `s256` identifies the mission everywhere it appears — as the `mission_s256` claim of person, resource, and auth tokens, and as the `mission_s256` parameter of PS requests.
@@ -2773,7 +2775,7 @@ Fields:
 - `permission_endpoint` (OPTIONAL): URL where agents request permission for actions not governed by a remote resource (#permission-endpoint)
 - `audit_endpoint` (OPTIONAL): URL where agents log actions performed (#audit-endpoint)
 - `interaction_endpoint` (OPTIONAL): URL where agents relay interactions to the user through the PS (#interaction-endpoint)
-- `mission_control_endpoint` (OPTIONAL): URL for mission administrative interface
+- `mission_control_endpoint` (OPTIONAL): URL of the PS's administrative interface for missions — a human-facing deployment surface where a person or an organization's administrator reviews and manages missions. **Work in progress:** this document defines no protocol behind it, and it is distinct from the interoperable lifecycle operations at `mission_endpoint`. A separate specification is expected to define it; companion specifications SHOULD NOT build interoperable behavior on it in the meantime.
 - `revocation_endpoint` (OPTIONAL): URL where authorized parties can revoke tokens (#token-revocation). This is also where an agent provider revokes an agent token it issued, so that the PS denies the agent token and revokes what it issued for that agent.
 - `jwks_uri` (REQUIRED): URL to the PS's JSON Web Key Set
 - `scopes_supported` (RECOMMENDED): Array of scope values the PS supports, including identity scopes (e.g., `openid`, `profile`, `email`) and enterprise scopes (e.g., `tenant`, `groups`, `roles`)
@@ -3284,6 +3286,8 @@ The following implementations are known:
   - Chain routing uses the auth token's `ps` claim. Removed the branch routing a downstream request to the upstream AS, which required the two resources to share an access server and was never stated as such.
   - `sub` MUST be unique within the issuer; `(iss, sub)` is the identifier and `tenant` is organizational context, not part of it. `sub` values from different issuers MUST NOT be matched.
   - Stated the extensibility posture: recipients ignore what they do not recognize, and no document carries a version or schema a recipient must understand.
+  - Stated that the mission blob's member lists are a floor: a PS MAY add members, readers ignore what they do not recognize, and a blob with an extra member has a different identifier because it is a different mission.
+  - `mission_control_endpoint` marked work in progress — a human-facing administrative surface with no protocol defined here, distinct from the lifecycle operations at `mission_endpoint`.
   - Named the opaque credential a resource issues in resource-managed access the **session token**. It was the only credential in the protocol without a name. The `access_mode` value `aauth-access-token` becomes `session-token`.
 
 - draft-hardt-oauth-aauth-protocol-10
