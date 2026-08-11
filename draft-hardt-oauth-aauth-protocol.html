@@ -1794,10 +1794,13 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
                 <p id="section-toc.1-1.17.2.9.1"><a href="#section-17.9" class="auto internal xref">17.9</a>.  <a href="#name-aauth-platform-value-regist" class="internal xref">AAuth Platform Value Registry</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17.2.10">
-                <p id="section-toc.1-1.17.2.10.1"><a href="#section-17.10" class="auto internal xref">17.10</a>. <a href="#name-designated-expert-instructi" class="internal xref">Designated Expert Instructions</a></p>
+                <p id="section-toc.1-1.17.2.10.1"><a href="#section-17.10" class="auto internal xref">17.10</a>. <a href="#name-aauth-access-mode-value-reg" class="internal xref">AAuth Access Mode Value Registry</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17.2.11">
-                <p id="section-toc.1-1.17.2.11.1"><a href="#section-17.11" class="auto internal xref">17.11</a>. <a href="#name-uri-scheme-registration" class="internal xref">URI Scheme Registration</a></p>
+                <p id="section-toc.1-1.17.2.11.1"><a href="#section-17.11" class="auto internal xref">17.11</a>. <a href="#name-designated-expert-instructi" class="internal xref">Designated Expert Instructions</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17.2.12">
+                <p id="section-toc.1-1.17.2.12.1"><a href="#section-17.12" class="auto internal xref">17.12</a>. <a href="#name-uri-scheme-registration" class="internal xref">URI Scheme Registration</a></p>
 </li>
             </ul>
 </li>
@@ -2156,7 +2159,7 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
         <h3 id="name-resource-access-modes">
 <a href="#section-4.1" class="section-number selfRef">4.1. </a><a href="#name-resource-access-modes" class="section-name selfRef">Resource Access Modes</a>
         </h3>
-<p id="section-4.1-1">AAuth supports five resource access modes. They differ in what the resource ends up knowing and which party established it — not in how much of the protocol they use. The protocol works in every mode, and adoption does not require coordination between parties. A resource MAY apply different modes to different endpoints.<a href="#section-4.1-1" class="pilcrow">¶</a></p>
+<p id="section-4.1-1">AAuth supports five resource access modes. They differ in what the resource ends up knowing and which party established it — not in how much of the protocol they use. The protocol works in every mode, and adoption does not require coordination between parties. A resource MAY apply different modes to different endpoints, and one advertising an R3 vocabulary states the mode for an individual operation there (<span>[<a href="#I-D.hardt-aauth-r3" class="cite xref">I-D.hardt-aauth-r3</a>]</span>).<a href="#section-4.1-1" class="pilcrow">¶</a></p>
 <table class="center" id="table-1">
           <caption><a href="#table-1" class="selfRef">Table 1</a></caption>
 <thead>
@@ -6542,7 +6545,7 @@ Accept-Signature-Scheme: jwt
               <code>jwks_uri</code> (REQUIRED when the resource issues resource tokens or makes signed calls): URL to the resource's JSON Web Key Set. A resource that only verifies agent signatures for identity-based access — issuing no resource tokens and making no signed requests of its own (e.g., as an agent in multi-hop, #multi-hop) — has no keys to publish and MAY omit <code>jwks_uri</code>.<a href="#section-13.11.4-4.2" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.11.4-4.3">
-              <code>access_mode</code> (OPTIONAL): The credential flow the resource expects, letting an agent plan its first call without a speculative challenge. One of <code>agent-token</code> (identity-only — the agent signs with its agent token), <code>person-token</code> (the resource authorizes on the person's identity alone — the agent signs with a person token), <code>session-token</code> (resource-managed — the agent completes the resource's interaction/consent flow and receives a session token via <code>AAuth-Access</code>), or <code>auth-token</code> (the agent obtains an auth token from its PS using a resource token; the initial call MUST present a person token). Default: <code>agent-token</code>. The declaration is advisory: a resource MAY return any <code>AAuth-Requirement</code> at runtime regardless of the declared mode <a href="#requirement-responses" class="auto internal xref">Section 13.4</a>, and MAY apply different modes to different endpoints. An agent MAY use <code>access_mode</code> to skip resources its setup cannot satisfy — for example, a PS-less agent (no <code>ps</code> claim in its agent token) cannot complete the <code>auth-token</code> flow.<a href="#section-13.11.4-4.3" class="pilcrow">¶</a>
+              <code>access_mode</code> (OPTIONAL): The credential flow the resource expects, letting an agent plan its first call without a speculative challenge. This document defines <code>agent-token</code> (identity-only — the agent signs with its agent token), <code>person-token</code> (the resource authorizes on the person's identity alone — the agent signs with a person token), <code>session-token</code> (resource-managed — the agent completes the resource's interaction/consent flow and receives a session token via <code>AAuth-Access</code>), and <code>auth-token</code> (the agent obtains an auth token from its PS using a resource token; the initial call MUST present a person token). Extensions MAY define further values, which are recorded in the AAuth Access Mode Value Registry <a href="#aauth-access-mode-value-registry" class="auto internal xref">Section 17.10</a>; R3 (<span>[<a href="#I-D.hardt-aauth-r3" class="cite xref">I-D.hardt-aauth-r3</a>]</span>) defines <code>per-call</code>, for a resource that authorizes each invocation individually against that call's parameters. An agent that does not recognize a declared value proceeds as it would with no declaration, calling the resource and reading the <code>AAuth-Requirement</code> it gets back. Default: <code>agent-token</code>. The declaration is advisory: a resource MAY return any <code>AAuth-Requirement</code> at runtime regardless of the declared mode <a href="#requirement-responses" class="auto internal xref">Section 13.4</a>, and MAY apply different modes to different endpoints — a resource advertising an R3 vocabulary states the mode for an individual operation there (<span>[<a href="#I-D.hardt-aauth-r3" class="cite xref">I-D.hardt-aauth-r3</a>]</span>), and otherwise an agent learns of any variation from the runtime requirement. An agent MAY use <code>access_mode</code> to skip resources its setup cannot satisfy — for example, a PS-less agent (no <code>ps</code> claim in its agent token) cannot complete the <code>auth-token</code> flow.<a href="#section-13.11.4-4.3" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.11.4-4.4">
               <code>name</code> (OPTIONAL): Human-readable resource name<a href="#section-13.11.4-4.4" class="pilcrow">¶</a>
@@ -7411,7 +7414,7 @@ Accept-Signature-Scheme: jwt
         <h3 id="name-aauth-requirement-value-reg">
 <a href="#section-17.7" class="section-number selfRef">17.7. </a><a href="#name-aauth-requirement-value-reg" class="section-name selfRef">AAuth Requirement Value Registry</a>
         </h3>
-<p id="section-17.7-1">This specification establishes the AAuth Requirement Value Registry. The registry policy is Specification Required (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>, Section 4.6). See <a href="#designated-expert-instructions" class="auto internal xref">Section 17.10</a> for instructions to the designated expert.<a href="#section-17.7-1" class="pilcrow">¶</a></p>
+<p id="section-17.7-1">This specification establishes the AAuth Requirement Value Registry. The registry policy is Specification Required (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>, Section 4.6). See <a href="#designated-expert-instructions" class="auto internal xref">Section 17.11</a> for instructions to the designated expert.<a href="#section-17.7-1" class="pilcrow">¶</a></p>
 <table class="center" id="table-21">
           <caption><a href="#table-21" class="selfRef">Table 21</a></caption>
 <thead>
@@ -7472,7 +7475,7 @@ Accept-Signature-Scheme: jwt
         <h3 id="name-aauth-capability-value-regi">
 <a href="#section-17.8" class="section-number selfRef">17.8. </a><a href="#name-aauth-capability-value-regi" class="section-name selfRef">AAuth Capability Value Registry</a>
         </h3>
-<p id="section-17.8-1">This specification establishes the AAuth Capability Value Registry. The registry policy is Specification Required (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>, Section 4.6). See <a href="#designated-expert-instructions" class="auto internal xref">Section 17.10</a> for instructions to the designated expert.<a href="#section-17.8-1" class="pilcrow">¶</a></p>
+<p id="section-17.8-1">This specification establishes the AAuth Capability Value Registry. The registry policy is Specification Required (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>, Section 4.6). See <a href="#designated-expert-instructions" class="auto internal xref">Section 17.11</a> for instructions to the designated expert.<a href="#section-17.8-1" class="pilcrow">¶</a></p>
 <table class="center" id="table-22">
           <caption><a href="#table-22" class="selfRef">Table 22</a></caption>
 <thead>
@@ -7509,7 +7512,7 @@ Accept-Signature-Scheme: jwt
         <h3 id="name-aauth-platform-value-regist">
 <a href="#section-17.9" class="section-number selfRef">17.9. </a><a href="#name-aauth-platform-value-regist" class="section-name selfRef">AAuth Platform Value Registry</a>
         </h3>
-<p id="section-17.9-1">This specification establishes the AAuth Platform Value Registry, used as values of the <code>platform</code> request parameter sent to the PS token endpoint <a href="#ps-token-endpoint" class="auto internal xref">Section 8.1</a>. The registry policy is Specification Required (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>, Section 4.6). See <a href="#designated-expert-instructions" class="auto internal xref">Section 17.10</a> for instructions to the designated expert.<a href="#section-17.9-1" class="pilcrow">¶</a></p>
+<p id="section-17.9-1">This specification establishes the AAuth Platform Value Registry, used as values of the <code>platform</code> request parameter sent to the PS token endpoint <a href="#ps-token-endpoint" class="auto internal xref">Section 8.1</a>. The registry policy is Specification Required (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>, Section 4.6). See <a href="#designated-expert-instructions" class="auto internal xref">Section 17.11</a> for instructions to the designated expert.<a href="#section-17.9-1" class="pilcrow">¶</a></p>
 <table class="center" id="table-23">
           <caption><a href="#table-23" class="selfRef">Table 23</a></caption>
 <thead>
@@ -7559,49 +7562,99 @@ Accept-Signature-Scheme: jwt
         </table>
 </section>
 </div>
-<div id="designated-expert-instructions">
+<div id="aauth-access-mode-value-registry">
 <section id="section-17.10">
-        <h3 id="name-designated-expert-instructi">
-<a href="#section-17.10" class="section-number selfRef">17.10. </a><a href="#name-designated-expert-instructi" class="section-name selfRef">Designated Expert Instructions</a>
+        <h3 id="name-aauth-access-mode-value-reg">
+<a href="#section-17.10" class="section-number selfRef">17.10. </a><a href="#name-aauth-access-mode-value-reg" class="section-name selfRef">AAuth Access Mode Value Registry</a>
         </h3>
-<p id="section-17.10-1">Registration requests for the AAuth Requirement Value, AAuth Capability Value, and AAuth Platform Value registries are evaluated by a designated expert appointed by the IESG, using the Specification Required policy (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>, Section 4.6).<a href="#section-17.10-1" class="pilcrow">¶</a></p>
-<p id="section-17.10-2">Registration requests should be sent to IANA, which will forward them to the designated expert. The expert is expected to respond within two weeks. Denials should include an explanation and, if applicable, suggestions for how the request could be revised to be successful.<a href="#section-17.10-2" class="pilcrow">¶</a></p>
-<p id="section-17.10-3">A registration request must include the proposed value, a brief description of its meaning, and a reference to the specification defining it. The designated expert should verify that:<a href="#section-17.10-3" class="pilcrow">¶</a></p>
+<p id="section-17.10-1">This specification establishes the AAuth Access Mode Value Registry, used as values of the <code>access_mode</code> field in resource metadata <a href="#resource-metadata" class="auto internal xref">Section 13.11.4</a>. The registry policy is Specification Required (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>, Section 4.6). See <a href="#designated-expert-instructions" class="auto internal xref">Section 17.11</a> for instructions to the designated expert.<a href="#section-17.10-1" class="pilcrow">¶</a></p>
+<table class="center" id="table-24">
+          <caption><a href="#table-24" class="selfRef">Table 24</a></caption>
+<thead>
+            <tr>
+              <th class="text-left" rowspan="1" colspan="1">Value</th>
+              <th class="text-left" rowspan="1" colspan="1">Description</th>
+              <th class="text-left" rowspan="1" colspan="1">Reference</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>agent-token</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">The resource authorizes on the agent's identity alone</td>
+              <td class="text-left" rowspan="1" colspan="1">This document</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>person-token</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">The resource authorizes on the person's identity alone</td>
+              <td class="text-left" rowspan="1" colspan="1">This document</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>session-token</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">The resource manages authorization itself and issues a session token</td>
+              <td class="text-left" rowspan="1" colspan="1">This document</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>auth-token</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">The agent obtains an auth token from its PS using a resource token</td>
+              <td class="text-left" rowspan="1" colspan="1">This document</td>
+            </tr>
+          </tbody>
+        </table>
+</section>
+</div>
+<div id="designated-expert-instructions">
+<section id="section-17.11">
+        <h3 id="name-designated-expert-instructi">
+<a href="#section-17.11" class="section-number selfRef">17.11. </a><a href="#name-designated-expert-instructi" class="section-name selfRef">Designated Expert Instructions</a>
+        </h3>
+<p id="section-17.11-1">Registration requests for the AAuth Requirement Value, AAuth Capability Value, AAuth Platform Value, and AAuth Access Mode Value registries are evaluated by a designated expert appointed by the IESG, using the Specification Required policy (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>, Section 4.6).<a href="#section-17.11-1" class="pilcrow">¶</a></p>
+<p id="section-17.11-2">Registration requests should be sent to IANA, which will forward them to the designated expert. The expert is expected to respond within two weeks. Denials should include an explanation and, if applicable, suggestions for how the request could be revised to be successful.<a href="#section-17.11-2" class="pilcrow">¶</a></p>
+<p id="section-17.11-3">A registration request must include the proposed value, a brief description of its meaning, and a reference to the specification defining it. The designated expert should verify that:<a href="#section-17.11-3" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-17.10-4.1">The referenced specification is stable and freely available, and describes the value's semantics in sufficient detail that interoperable, independent implementations are possible.<a href="#section-17.10-4.1" class="pilcrow">¶</a>
+<li class="compact" id="section-17.11-4.1">The referenced specification is stable and freely available, and describes the value's semantics in sufficient detail that interoperable, independent implementations are possible.<a href="#section-17.11-4.1" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-17.10-4.2">The proposed value is a lowercase token using only lowercase letters and hyphen, consistent with the registries' existing entries, and is not confusingly similar to an existing entry.<a href="#section-17.10-4.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-17.11-4.2">The proposed value is a lowercase token using only lowercase letters and hyphen, consistent with the registries' existing entries, and is not confusingly similar to an existing entry.<a href="#section-17.11-4.2" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-17.10-4.3">The registration does not duplicate the semantics of an existing entry without clear justification.<a href="#section-17.10-4.3" class="pilcrow">¶</a>
+          <li class="compact" id="section-17.11-4.3">The registration does not duplicate the semantics of an existing entry without clear justification.<a href="#section-17.11-4.3" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-17.10-4.4">For the Requirement Value and Capability Value registries, the specification defines the protocol behavior expected of a party that declares or encounters the value, including how a party that does not understand the value behaves.<a href="#section-17.10-4.4" class="pilcrow">¶</a>
+          <li class="compact" id="section-17.11-4.4">For the Requirement Value and Capability Value registries, the specification defines the protocol behavior expected of a party that declares or encounters the value, including how a party that does not understand the value behaves.<a href="#section-17.11-4.4" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-17.10-4.5">For the Platform Value registry, the value describes a distinct runtime context that is meaningful for display to a person at a consent screen or dashboard, and the description does not overstate the security properties the value conveys.<a href="#section-17.10-4.5" class="pilcrow">¶</a>
+          <li class="compact" id="section-17.11-4.5">For the Platform Value registry, the value describes a distinct runtime context that is meaningful for display to a person at a consent screen or dashboard, and the description does not overstate the security properties the value conveys.<a href="#section-17.11-4.5" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-17.11-4.6">For the Access Mode Value registry, the value names a credential flow an agent can carry out, the specification defines what the agent presents and how it obtains it, and an agent that does not understand the value can still fall back to the runtime <code>AAuth-Requirement</code>.<a href="#section-17.11-4.6" class="pilcrow">¶</a>
 </li>
         </ul>
 </section>
 </div>
 <div id="uri-scheme-registration">
-<section id="section-17.11">
+<section id="section-17.12">
         <h3 id="name-uri-scheme-registration">
-<a href="#section-17.11" class="section-number selfRef">17.11. </a><a href="#name-uri-scheme-registration" class="section-name selfRef">URI Scheme Registration</a>
+<a href="#section-17.12" class="section-number selfRef">17.12. </a><a href="#name-uri-scheme-registration" class="section-name selfRef">URI Scheme Registration</a>
         </h3>
-<p id="section-17.11-1">This specification registers the <code>aauth</code> URI scheme in the "Uniform Resource Identifier (URI) Schemes" registry (<span>[<a href="#RFC7595" class="cite xref">RFC7595</a>]</span>):<a href="#section-17.11-1" class="pilcrow">¶</a></p>
+<p id="section-17.12-1">This specification registers the <code>aauth</code> URI scheme in the "Uniform Resource Identifier (URI) Schemes" registry (<span>[<a href="#RFC7595" class="cite xref">RFC7595</a>]</span>):<a href="#section-17.12-1" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-17.11-2.1">Scheme name: <code>aauth</code><a href="#section-17.11-2.1" class="pilcrow">¶</a>
+<li class="compact" id="section-17.12-2.1">Scheme name: <code>aauth</code><a href="#section-17.12-2.1" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-17.11-2.2">Status: Permanent<a href="#section-17.11-2.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-17.12-2.2">Status: Permanent<a href="#section-17.12-2.2" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-17.11-2.3">Applications/protocols that use this scheme: AAuth Protocol<a href="#section-17.11-2.3" class="pilcrow">¶</a>
+          <li class="compact" id="section-17.12-2.3">Applications/protocols that use this scheme: AAuth Protocol<a href="#section-17.12-2.3" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-17.11-2.4">Contact: IETF<a href="#section-17.11-2.4" class="pilcrow">¶</a>
+          <li class="compact" id="section-17.12-2.4">Contact: IETF<a href="#section-17.12-2.4" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-17.11-2.5">Change controller: IETF<a href="#section-17.11-2.5" class="pilcrow">¶</a>
+          <li class="compact" id="section-17.12-2.5">Change controller: IETF<a href="#section-17.12-2.5" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-17.11-2.6">Reference: This document, <a href="#agent-identifiers" class="auto internal xref">Section 5.1</a><a href="#section-17.11-2.6" class="pilcrow">¶</a>
+          <li class="compact" id="section-17.12-2.6">Reference: This document, <a href="#agent-identifiers" class="auto internal xref">Section 5.1</a><a href="#section-17.12-2.6" class="pilcrow">¶</a>
 </li>
         </ul>
-<p id="section-17.11-3">The <code>aauth</code> URI scheme follows the pattern established by the <code>acct</code> scheme (<span>[<a href="#RFC7565" class="cite xref">RFC7565</a>]</span>). An <code>aauth</code> URI identifies an agent instance and has the syntax <code>aauth:local@domain</code>, where <code>local</code> is the agent-specific part and <code>domain</code> is the agent provider's domain name. The <code>aauth</code> URI is used in the <code>sub</code> and <code>parent_agent</code> claims of agent tokens and in the <code>agent</code> field of the mission blob.<a href="#section-17.11-3" class="pilcrow">¶</a></p>
+<p id="section-17.12-3">The <code>aauth</code> URI scheme follows the pattern established by the <code>acct</code> scheme (<span>[<a href="#RFC7565" class="cite xref">RFC7565</a>]</span>). An <code>aauth</code> URI identifies an agent instance and has the syntax <code>aauth:local@domain</code>, where <code>local</code> is the agent-specific part and <code>domain</code> is the agent provider's domain name. The <code>aauth</code> URI is used in the <code>sub</code> and <code>parent_agent</code> claims of agent tokens and in the <code>agent</code> field of the mission blob.<a href="#section-17.12-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -7640,57 +7693,61 @@ Accept-Signature-Scheme: jwt
 <li class="normal" id="section-19-2.1">
           <p id="section-19-2.1.1">draft-hardt-oauth-aauth-protocol-11<a href="#section-19-2.1.1" class="pilcrow">¶</a></p>
 <ul class="compact normal">
-<li class="compact normal" id="section-19-2.1.2.1">Added the person token (<code>aa-person+jwt</code>), issued by a PS to identify the person to one resource. Presented via <code>Signature-Key</code> in place of the agent token. A resource MUST verify one before issuing a resource token. Lifetime capped at 1 hour, as for auth tokens.<a href="#section-19-2.1.2.1" class="pilcrow">¶</a>
+<li class="compact normal" id="section-19-2.1.2.1">Established the AAuth Access Mode Value Registry, seeded with <code>agent-token</code>, <code>person-token</code>, <code>session-token</code>, and <code>auth-token</code>. The <code>access_mode</code> field was described as a closed list of four, which left no room for the <code>per-call</code> value R3 defines; the registry is how the other extensible AAuth value spaces are already handled.<a href="#section-19-2.1.2.1" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.2">Added <code>person_token_endpoint</code>, REQUIRED in PS metadata, taking <code>resource</code>, <code>mission_s256</code>, <code>subagent_token</code>, and <code>upstream_token</code>.<a href="#section-19-2.1.2.2" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.2">Pointed <code>access_mode</code> at R3 operation access annotations. Two places said a resource MAY apply different modes to different endpoints without naming a mechanism for saying which.<a href="#section-19-2.1.2.2" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.3">Five resource access modes instead of four, sorted by what the resource ends up knowing and which party established it: agent identity, resource-managed, person identity, PS authorization, federated authorization. A resource MAY apply different modes to different endpoints.<a href="#section-19-2.1.2.3" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.3">Added the person token (<code>aa-person+jwt</code>), issued by a PS to identify the person to one resource. Presented via <code>Signature-Key</code> in place of the agent token. A resource MUST verify one before issuing a resource token. Lifetime capped at 1 hour, as for auth tokens.<a href="#section-19-2.1.2.3" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.4">A person token carries no authorization from the PS, but a resource MAY serve requests on identity alone, so holding one is effectively access at such a resource. The consent question at first issuance is whether the agent may act at the resource as the person.<a href="#section-19-2.1.2.4" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.4">Added <code>person_token_endpoint</code>, REQUIRED in PS metadata, taking <code>resource</code>, <code>mission_s256</code>, <code>subagent_token</code>, and <code>upstream_token</code>.<a href="#section-19-2.1.2.4" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.5">Renamed the PS and AS metadata field <code>token_endpoint</code> to <code>auth_token_endpoint</code>; added <code>person-token</code> to <code>access_mode</code>.<a href="#section-19-2.1.2.5" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.5">Five resource access modes instead of four, sorted by what the resource ends up knowing and which party established it: agent identity, resource-managed, person identity, PS authorization, federated authorization. A resource MAY apply different modes to different endpoints.<a href="#section-19-2.1.2.5" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.6">Added <code>requirement=person-token</code>, and the <code>invalid_person_token</code> and <code>invalid_account</code> authorization endpoint errors.<a href="#section-19-2.1.2.6" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.6">A person token carries no authorization from the PS, but a resource MAY serve requests on identity alone, so holding one is effectively access at such a resource. The consent question at first issuance is whether the agent may act at the resource as the person.<a href="#section-19-2.1.2.6" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.7">Resource tokens carry <code>ps</code>, <code>sub</code>, and <code>person_token_jti</code>, and no agent identifier. The PS resolves the named person token and rejects any mismatch, which makes mission stripping detectable — comparing claims alone cannot, because concurrent missions mean several person tokens per agent and resource.<a href="#section-19-2.1.2.7" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.7">Renamed the PS and AS metadata field <code>token_endpoint</code> to <code>auth_token_endpoint</code>; added <code>person-token</code> to <code>access_mode</code>.<a href="#section-19-2.1.2.7" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.8">Auth tokens carry <code>ps</code> and a REQUIRED <code>sub</code>, and no agent identifier. <code>act</code> and the delegation chain are removed.<a href="#section-19-2.1.2.8" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.8">Added <code>requirement=person-token</code>, and the <code>invalid_person_token</code> and <code>invalid_account</code> authorization endpoint errors.<a href="#section-19-2.1.2.8" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.9">Replaced the <code>mission</code> object with the <code>mission_s256</code> claim in person, resource, and auth tokens; <code>approver</code> is dropped everywhere but the mission blob.<a href="#section-19-2.1.2.9" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.9">Resource tokens carry <code>ps</code>, <code>sub</code>, and <code>person_token_jti</code>, and no agent identifier. The PS resolves the named person token and rejects any mismatch, which makes mission stripping detectable — comparing claims alone cannot, because concurrent missions mean several person tokens per agent and resource.<a href="#section-19-2.1.2.9" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.10">Removed the <code>AAuth-Mission</code> header and its registration. A mission reaches a resource only inside a PS-issued token, so it is no longer agent-asserted. The approval response carries the mission blob base64url-encoded, with <code>s256</code> alongside it, so the digest covers an unambiguous byte sequence and the agent can verify it as it would a JWT payload.<a href="#section-19-2.1.2.10" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.10">Auth tokens carry <code>ps</code> and a REQUIRED <code>sub</code>, and no agent identifier. <code>act</code> and the delegation chain are removed.<a href="#section-19-2.1.2.10" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.11">Mission blob gained <code>approved_resources</code> and MAY carry <code>expires_at</code>; no token carrying <code>mission_s256</code> may outlive it, and every PS decision path compares the current time to it. Added the <code>mission_expired</code> status.<a href="#section-19-2.1.2.11" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.11">Replaced the <code>mission</code> object with the <code>mission_s256</code> claim in person, resource, and auth tokens; <code>approver</code> is dropped everywhere but the mission blob.<a href="#section-19-2.1.2.11" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.12">Moved <code>capabilities</code> out of the mission blob to the approval response — it describes whether the PS can currently reach the person, which is not a term of the mission and should not perturb its digest.<a href="#section-19-2.1.2.12" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.12">Removed the <code>AAuth-Mission</code> header and its registration. A mission reaches a resource only inside a PS-issued token, so it is no longer agent-asserted. The approval response carries the mission blob base64url-encoded, with <code>s256</code> alongside it, so the digest covers an unambiguous byte sequence and the agent can verify it as it would a JWT payload.<a href="#section-19-2.1.2.12" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.13">A mission proposal MAY name the <code>resources</code> it expects to use; the approval response returns a person token for each.<a href="#section-19-2.1.2.13" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.13">Mission blob gained <code>approved_resources</code> and MAY carry <code>expires_at</code>; no token carrying <code>mission_s256</code> may outlive it, and every PS decision path compares the current time to it. Added the <code>mission_expired</code> status.<a href="#section-19-2.1.2.13" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.14">Chain routing uses the auth token's <code>ps</code> claim. Removed the branch routing a downstream request to the upstream AS, which required the two resources to share an access server and was never stated as such.<a href="#section-19-2.1.2.14" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.14">Moved <code>capabilities</code> out of the mission blob to the approval response — it describes whether the PS can currently reach the person, which is not a term of the mission and should not perturb its digest.<a href="#section-19-2.1.2.14" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.15">
-              <code>sub</code> MUST be unique within the issuer; <code>(iss, sub)</code> is the identifier and <code>tenant</code> is organizational context, not part of it. <code>sub</code> values from different issuers MUST NOT be matched.<a href="#section-19-2.1.2.15" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.15">A mission proposal MAY name the <code>resources</code> it expects to use; the approval response returns a person token for each.<a href="#section-19-2.1.2.15" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.16">Stated the extensibility posture: recipients ignore what they do not recognize, and no document carries a version or schema a recipient must understand.<a href="#section-19-2.1.2.16" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.16">Chain routing uses the auth token's <code>ps</code> claim. Removed the branch routing a downstream request to the upstream AS, which required the two resources to share an access server and was never stated as such.<a href="#section-19-2.1.2.16" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.17">Defined the mission endpoint's error responses, including that a PS MUST answer identically — status, body, headers, and timing — whether a mission does not exist or the agent does not own it. Without that the agent surface is an existence oracle for any party that has seen a <code>mission_s256</code> in an auth token. Adopted from <code>draft-mcguinness-mission-aauth-management</code>.<a href="#section-19-2.1.2.17" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.17">
+              <code>sub</code> MUST be unique within the issuer; <code>(iss, sub)</code> is the identifier and <code>tenant</code> is organizational context, not part of it. <code>sub</code> values from different issuers MUST NOT be matched.<a href="#section-19-2.1.2.17" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.18">The mission endpoint is the owning agent's surface, with three operations of one shape: <code>POST {mission_endpoint}</code> proposes a mission, and <code>POST {mission_endpoint}/{mission_s256}</code> carries <code>action: update</code> or <code>action: completion</code>. The <code>action</code> discriminator is the one the pending route already uses.<a href="#section-19-2.1.2.18" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.18">Stated the extensibility posture: recipients ignore what they do not recognize, and no document carries a version or schema a recipient must understand.<a href="#section-19-2.1.2.18" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.19">Added mission update. An update records a change in the work, is appended to the mission log, and is digested so the sequence is verifiable. It does not change the blob, <code>mission_s256</code>, or any token carrying it; what it changes is the context the PS evaluates against, so the mission's meaning becomes the approved blob plus its accepted updates and an audit MUST read both.<a href="#section-19-2.1.2.19" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.19">Defined the mission endpoint's error responses, including that a PS MUST answer identically — status, body, headers, and timing — whether a mission does not exist or the agent does not own it. Without that the agent surface is an existence oracle for any party that has seen a <code>mission_s256</code> in an auth token. Adopted from <code>draft-mcguinness-mission-aauth-management</code>.<a href="#section-19-2.1.2.19" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.20">Moved completion off the interaction endpoint. It is a lifecycle transition, not transport: creation and completion are the same shape — the agent proposes, the person decides, clarification is available, the response is deferred — and were split across two endpoints for no structural reason. The interaction endpoint keeps <code>interaction</code>, <code>payment</code>, and <code>question</code>, which are the things the agent genuinely cannot do itself.<a href="#section-19-2.1.2.20" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.20">The mission endpoint is the owning agent's surface, with three operations of one shape: <code>POST {mission_endpoint}</code> proposes a mission, and <code>POST {mission_endpoint}/{mission_s256}</code> carries <code>action: update</code> or <code>action: completion</code>. The <code>action</code> discriminator is the one the pending route already uses.<a href="#section-19-2.1.2.20" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.21">Defined the termination reasons <code>completed</code>, <code>revoked</code>, <code>expired</code>, <code>superseded</code>, and <code>administrative</code> as an open set recorded outside the immutable blob, and folded <code>mission_expired</code> back into <code>mission_terminated</code> with an OPTIONAL <code>termination_reason</code> member. One error rather than one per reason, because the reason set is open.<a href="#section-19-2.1.2.21" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.21">Added mission update. An update records a change in the work, is appended to the mission log, and is digested so the sequence is verifiable. It does not change the blob, <code>mission_s256</code>, or any token carrying it; what it changes is the context the PS evaluates against, so the mission's meaning becomes the approved blob plus its accepted updates and an audit MUST read both.<a href="#section-19-2.1.2.21" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.22">
-              <code>mission_control_endpoint</code> is the mission control plane: where parties other than the owning agent read and manage missions. Its authentication model and operations are left to a companion specification, because AAuth defines no administrative principal.<a href="#section-19-2.1.2.22" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.22">Moved completion off the interaction endpoint. It is a lifecycle transition, not transport: creation and completion are the same shape — the agent proposes, the person decides, clarification is available, the response is deferred — and were split across two endpoints for no structural reason. The interaction endpoint keeps <code>interaction</code>, <code>payment</code>, and <code>question</code>, which are the things the agent genuinely cannot do itself.<a href="#section-19-2.1.2.22" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.23">A request carrying a body to a PS or AS endpoint MUST additionally sign <code>content-digest</code> and <code>content-type</code>. Those requests decide what is authorized and only their tokens were self-protecting. Resources keep declaring what they need through <code>additional_signature_components</code>, since bodyless requests and streamed uploads make a blanket requirement wrong there.<a href="#section-19-2.1.2.23" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.23">Defined the termination reasons <code>completed</code>, <code>revoked</code>, <code>expired</code>, <code>superseded</code>, and <code>administrative</code> as an open set recorded outside the immutable blob, and folded <code>mission_expired</code> back into <code>mission_terminated</code> with an OPTIONAL <code>termination_reason</code> member. One error rather than one per reason, because the reason set is open.<a href="#section-19-2.1.2.23" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.24">Stated that the mission blob's member lists are a floor: a PS MAY add members, readers ignore what they do not recognize, and a blob with an extra member has a different identifier because it is a different mission.<a href="#section-19-2.1.2.24" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.24">
+              <code>mission_control_endpoint</code> is the mission control plane: where parties other than the owning agent read and manage missions. Its authentication model and operations are left to a companion specification, because AAuth defines no administrative principal.<a href="#section-19-2.1.2.24" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.25">Named the opaque credential a resource issues in resource-managed access the <strong>session token</strong>. It was the only credential in the protocol without a name. The <code>access_mode</code> value <code>aauth-access-token</code> becomes <code>session-token</code>.<a href="#section-19-2.1.2.25" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.25">A request carrying a body to a PS or AS endpoint MUST additionally sign <code>content-digest</code> and <code>content-type</code>. Those requests decide what is authorized and only their tokens were self-protecting. Resources keep declaring what they need through <code>additional_signature_components</code>, since bodyless requests and streamed uploads make a blanket requirement wrong there.<a href="#section-19-2.1.2.25" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-19-2.1.2.26">Stated that the mission blob's member lists are a floor: a PS MAY add members, readers ignore what they do not recognize, and a blob with an extra member has a different identifier because it is a different mission.<a href="#section-19-2.1.2.26" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-19-2.1.2.27">Named the opaque credential a resource issues in resource-managed access the <strong>session token</strong>. It was the only credential in the protocol without a name. The <code>access_mode</code> value <code>aauth-access-token</code> becomes <code>session-token</code>.<a href="#section-19-2.1.2.27" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>

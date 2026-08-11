@@ -260,8 +260,9 @@ Table of Contents
      17.7.  AAuth Requirement Value Registry
      17.8.  AAuth Capability Value Registry
      17.9.  AAuth Platform Value Registry
-     17.10. Designated Expert Instructions
-     17.11. URI Scheme Registration
+     17.10. AAuth Access Mode Value Registry
+     17.11. Designated Expert Instructions
+     17.12. URI Scheme Registration
    18. Implementation Status
    19. Document History
    20. Acknowledgments
@@ -553,7 +554,9 @@ Table of Contents
    resource ends up knowing and which party established it — not in how
    much of the protocol they use.  The protocol works in every mode, and
    adoption does not require coordination between parties.  A resource
-   MAY apply different modes to different endpoints.
+   MAY apply different modes to different endpoints, and one advertising
+   an R3 vocabulary states the mode for an individual operation there
+   ([I-D.hardt-aauth-r3]).
 
         +==================+============+=============+==========+
         | Mode             | Resource   | Established | Parties  |
@@ -5133,20 +5136,29 @@ Initial request (with Prefer: wait=N)
       keys to publish and MAY omit jwks_uri.
    *  access_mode (OPTIONAL): The credential flow the resource expects,
       letting an agent plan its first call without a speculative
-      challenge.  One of agent-token (identity-only — the agent signs
-      with its agent token), person-token (the resource authorizes on
-      the person's identity alone — the agent signs with a person
-      token), session-token (resource-managed — the agent completes the
-      resource's interaction/consent flow and receives a session token
-      via AAuth-Access), or auth-token (the agent obtains an auth token
-      from its PS using a resource token; the initial call MUST present
-      a person token).  Default: agent-token.  The declaration is
-      advisory: a resource MAY return any AAuth-Requirement at runtime
-      regardless of the declared mode Section 13.4, and MAY apply
-      different modes to different endpoints.  An agent MAY use
-      access_mode to skip resources its setup cannot satisfy — for
-      example, a PS-less agent (no ps claim in its agent token) cannot
-      complete the auth-token flow.
+      challenge.  This document defines agent-token (identity-only — the
+      agent signs with its agent token), person-token (the resource
+      authorizes on the person's identity alone — the agent signs with a
+      person token), session-token (resource-managed — the agent
+      completes the resource's interaction/consent flow and receives a
+      session token via AAuth-Access), and auth-token (the agent obtains
+      an auth token from its PS using a resource token; the initial call
+      MUST present a person token).  Extensions MAY define further
+      values, which are recorded in the AAuth Access Mode Value Registry
+      Section 17.10; R3 ([I-D.hardt-aauth-r3]) defines per-call, for a
+      resource that authorizes each invocation individually against that
+      call's parameters.  An agent that does not recognize a declared
+      value proceeds as it would with no declaration, calling the
+      resource and reading the AAuth-Requirement it gets back.  Default:
+      agent-token.  The declaration is advisory: a resource MAY return
+      any AAuth-Requirement at runtime regardless of the declared mode
+      Section 13.4, and MAY apply different modes to different endpoints
+      — a resource advertising an R3 vocabulary states the mode for an
+      individual operation there ([I-D.hardt-aauth-r3]), and otherwise
+      an agent learns of any variation from the runtime requirement.  An
+      agent MAY use access_mode to skip resources its setup cannot
+      satisfy — for example, a PS-less agent (no ps claim in its agent
+      token) cannot complete the auth-token flow.
    *  name (OPTIONAL): Human-readable resource name
    *  description (OPTIONAL): A Markdown string describing the resource,
       for display to users (for example, at a consent screen).
@@ -5923,7 +5935,7 @@ Initial request (with Prefer: wait=N)
 
    This specification establishes the AAuth Requirement Value Registry.
    The registry policy is Specification Required ([RFC8126],
-   Section 4.6).  See Section 17.10 for instructions to the designated
+   Section 4.6).  See Section 17.11 for instructions to the designated
    expert.
 
                      +===============+===============+
@@ -5950,7 +5962,7 @@ Initial request (with Prefer: wait=N)
 
    This specification establishes the AAuth Capability Value Registry.
    The registry policy is Specification Required ([RFC8126],
-   Section 4.6).  See Section 17.10 for instructions to the designated
+   Section 4.6).  See Section 17.11 for instructions to the designated
    expert.
 
                      +===============+===============+
@@ -5970,7 +5982,7 @@ Initial request (with Prefer: wait=N)
    This specification establishes the AAuth Platform Value Registry,
    used as values of the platform request parameter sent to the PS token
    endpoint Section 8.1.  The registry policy is Specification Required
-   ([RFC8126], Section 4.6).  See Section 17.10 for instructions to the
+   ([RFC8126], Section 4.6).  See Section 17.11 for instructions to the
    designated expert.
 
        +=============+================================+===========+
@@ -5996,12 +6008,39 @@ Initial request (with Prefer: wait=N)
 
                                  Table 23
 
-17.10.  Designated Expert Instructions
+17.10.  AAuth Access Mode Value Registry
+
+   This specification establishes the AAuth Access Mode Value Registry,
+   used as values of the access_mode field in resource metadata
+   Section 13.11.4.  The registry policy is Specification Required
+   ([RFC8126], Section 4.6).  See Section 17.11 for instructions to the
+   designated expert.
+
+    +===============+====================================+===========+
+    | Value         | Description                        | Reference |
+    +===============+====================================+===========+
+    | agent-token   | The resource authorizes on the     | This      |
+    |               | agent's identity alone             | document  |
+    +---------------+------------------------------------+-----------+
+    | person-token  | The resource authorizes on the     | This      |
+    |               | person's identity alone            | document  |
+    +---------------+------------------------------------+-----------+
+    | session-token | The resource manages authorization | This      |
+    |               | itself and issues a session token  | document  |
+    +---------------+------------------------------------+-----------+
+    | auth-token    | The agent obtains an auth token    | This      |
+    |               | from its PS using a resource token | document  |
+    +---------------+------------------------------------+-----------+
+
+                                 Table 24
+
+17.11.  Designated Expert Instructions
 
    Registration requests for the AAuth Requirement Value, AAuth
-   Capability Value, and AAuth Platform Value registries are evaluated
-   by a designated expert appointed by the IESG, using the Specification
-   Required policy ([RFC8126], Section 4.6).
+   Capability Value, AAuth Platform Value, and AAuth Access Mode Value
+   registries are evaluated by a designated expert appointed by the
+   IESG, using the Specification Required policy ([RFC8126],
+   Section 4.6).
 
    Registration requests should be sent to IANA, which will forward them
    to the designated expert.  The expert is expected to respond within
@@ -6028,8 +6067,13 @@ Initial request (with Prefer: wait=N)
       runtime context that is meaningful for display to a person at a
       consent screen or dashboard, and the description does not
       overstate the security properties the value conveys.
+   *  For the Access Mode Value registry, the value names a credential
+      flow an agent can carry out, the specification defines what the
+      agent presents and how it obtains it, and an agent that does not
+      understand the value can still fall back to the runtime AAuth-
+      Requirement.
 
-17.11.  URI Scheme Registration
+17.12.  URI Scheme Registration
 
    This specification registers the aauth URI scheme in the "Uniform
    Resource Identifier (URI) Schemes" registry ([RFC7595]):
@@ -6089,6 +6133,15 @@ Initial request (with Prefer: wait=N)
 
    *  draft-hardt-oauth-aauth-protocol-11
 
+      -  Established the AAuth Access Mode Value Registry, seeded with
+         agent-token, person-token, session-token, and auth-token.  The
+         access_mode field was described as a closed list of four, which
+         left no room for the per-call value R3 defines; the registry is
+         how the other extensible AAuth value spaces are already
+         handled.
+      -  Pointed access_mode at R3 operation access annotations.  Two
+         places said a resource MAY apply different modes to different
+         endpoints without naming a mechanism for saying which.
       -  Added the person token (aa-person+jwt), issued by a PS to
          identify the person to one resource.  Presented via Signature-
          Key in place of the agent token.  A resource MUST verify one

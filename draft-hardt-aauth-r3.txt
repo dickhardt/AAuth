@@ -114,8 +114,9 @@ Table of Contents
      11.6.  Grant Enforcement
    12. IANA Considerations
      12.1.  JWT Claims Registration
-     12.2.  R3 Vocabulary Registry
-       12.2.1.  Designated Expert Instructions
+     12.2.  AAuth Access Mode Value Registration
+     12.3.  R3 Vocabulary Registry
+       12.3.1.  Designated Expert Instructions
    13. Implementation Status
    14. Document History
    15. Acknowledgments
@@ -242,11 +243,13 @@ Table of Contents
    endpoint, etc.).  A resource MAY advertise multiple vocabularies
    simultaneously.
 
-   R3 also defines an additional value for the access_mode field: *per-
-   call*, meaning the resource authorizes each invocation individually
-   against that call's parameters Section 10.  A resource declares it
-   here when every operation it exposes works that way, and on
-   individual operations otherwise Section 5.
+   R3 also defines an additional value for the access_mode field,
+   registered in the AAuth Access Mode Value Registry
+   ([I-D.hardt-oauth-aauth-protocol]): *per-call*, meaning the resource
+   authorizes each invocation individually against that call's
+   parameters Section 10.  A resource declares it here when every
+   operation it exposes works that way, and on individual operations
+   otherwise Section 5.
 
 4.2.  Operation Identifier Scope
 
@@ -1166,7 +1169,23 @@ Table of Contents
 
                                   Table 3
 
-12.2.  R3 Vocabulary Registry
+12.2.  AAuth Access Mode Value Registration
+
+   This document requests registration of the following value in the
+   AAuth Access Mode Value Registry established by AAuth Protocol
+   ([I-D.hardt-oauth-aauth-protocol]):
+
+         +==========+================================+===========+
+         | Value    | Description                    | Reference |
+         +==========+================================+===========+
+         | per-call | The resource authorizes each   | This      |
+         |          | invocation individually        | document  |
+         |          | against that call's parameters |           |
+         +----------+--------------------------------+-----------+
+
+                                  Table 4
+
+12.3.  R3 Vocabulary Registry
 
    This specification establishes the AAuth R3 Vocabulary Registry.  The
    initial contents are:
@@ -1189,12 +1208,12 @@ Table of Contents
     | urn:aauth:vocabulary:odata    | OData          | This document |
     +-------------------------------+----------------+---------------+
 
-                                 Table 4
+                                 Table 5
 
    New values may be registered following the Specification Required
    policy ([RFC8126], Section 4.6).
 
-12.2.1.  Designated Expert Instructions
+12.3.1.  Designated Expert Instructions
 
    Registration requests for the AAuth R3 Vocabulary Registry are
    evaluated by a designated expert appointed by the IESG.  Registration
@@ -1251,7 +1270,8 @@ Table of Contents
          carry annotations to a generic caller.
       -  Added the access_mode value per-call, for a resource or an
          operation that authorizes each invocation individually against
-         its parameters.
+         its parameters, and registered it in the AAuth Access Mode
+         Value Registry.
       -  Renamed the auth token claim r3_conditional to r3_per_call,
          matching the per-call access mode.  "Conditional" did not say
          what the condition was.
@@ -1393,7 +1413,7 @@ Appendix B.  Vocabulary Summary
    |                             |         |bound operation |             |
    +-----------------------------+---------+----------------+-------------+
 
-                                  Table 5
+                                  Table 6
 
 Appendix C.  Comparison with RAR
 
@@ -1421,7 +1441,7 @@ Appendix C.  Comparison with RAR
        | signal          |                  | field                |
        +-----------------+------------------+----------------------+
 
-                                  Table 6
+                                  Table 7
 
 Author's Address
 
