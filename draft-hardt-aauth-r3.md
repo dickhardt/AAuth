@@ -125,7 +125,7 @@ R3 extends the `/.well-known/aauth-resource.json` document defined in AAuth Prot
 
 **`r3_vocabularies`** (OPTIONAL). A JSON object mapping vocabulary URIs to their discovery endpoints. Keys MUST be vocabulary URIs from the `urn:aauth:vocabulary:` namespace for standard vocabularies defined in this document, or third-party URI namespaces for proprietary vocabularies. Values are vocabulary-specific discovery endpoints (the MCP server URL, the OpenAPI spec URL, the gRPC reflection endpoint, etc.). A resource MAY advertise multiple vocabularies simultaneously.
 
-R3 also defines an additional value for the `access_mode` field: **`per-call`**, meaning the resource authorizes each invocation individually against that call's parameters (#per-call-proposals). A resource declares it here when every operation it exposes works that way, and on individual operations otherwise (#operation-access-annotations).
+R3 also defines an additional value for the `access_mode` field, registered in the AAuth Access Mode Value Registry ([@!I-D.hardt-oauth-aauth-protocol]): **`per-call`**, meaning the resource authorizes each invocation individually against that call's parameters (#per-call-proposals). A resource declares it here when every operation it exposes works that way, and on individual operations otherwise (#operation-access-annotations).
 
 ## Operation Identifier Scope {#operation-identifier-scope}
 
@@ -717,6 +717,14 @@ This document requests registration of the following JWT claims in the IANA JSON
 | `r3_granted` | Fully authorized operations in vocabulary format | This document |
 | `r3_per_call` | Operations authorized in principle, requiring approval of each call | This document |
 
+## AAuth Access Mode Value Registration
+
+This document requests registration of the following value in the AAuth Access Mode Value Registry established by AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]):
+
+| Value | Description | Reference |
+|-------|-------------|-----------|
+| `per-call` | The resource authorizes each invocation individually against that call's parameters | This document |
+
 ## R3 Vocabulary Registry
 
 This specification establishes the AAuth R3 Vocabulary Registry. The initial contents are:
@@ -757,7 +765,7 @@ There are currently no known implementations.
 
 - draft-hardt-aauth-r3-02
   - Added operation access annotations: a resource states, on the operation in its own vocabulary, which credential the operation requires and whether it consumes budget. The vocabulary is where they go because it is the only description of the resource's operations an agent can read — R3 documents are PS- and AS-only. Annotations are sparse against the resource-wide `access_mode`, replace it rather than intersect with it, and stay advisory: the runtime `AAuth-Requirement` remains authoritative. Encodings defined for MCP, OpenAPI, AsyncAPI, and OData; none for gRPC, GraphQL, or WSDL, whose discovery mechanisms do not carry annotations to a generic caller.
-  - Added the `access_mode` value `per-call`, for a resource or an operation that authorizes each invocation individually against its parameters.
+  - Added the `access_mode` value `per-call`, for a resource or an operation that authorizes each invocation individually against its parameters, and registered it in the AAuth Access Mode Value Registry.
   - Renamed the auth token claim `r3_conditional` to `r3_per_call`, matching the `per-call` access mode. "Conditional" did not say what the condition was.
   - Removed the `version` field. R3 documents are content-addressed, so a revision is a different document at a different hash; `version` named nothing the hash did not, and nothing prevented two different documents carrying the same value.
 
