@@ -112,6 +112,14 @@ Rich Resource Requests. Vocabulary-based authorization using formats agents alre
 
 * [Editor's Copy](https://dickhardt.github.io/AAuth/draft-hardt-aauth-r3.html)
 
+### AAuth Budgets (Exploratory)
+
+**[draft-hardt-aauth-budgets](draft-hardt-aauth-budgets.md)**
+
+A spending ceiling for metered resources. A budget is a hard cap on what an agent may consume at one resource, denominated in a unit the resource declares, granted through the same narrowing chain as scope, and enforced by the resource. Defines the `budget` and `budget_consumed` claims, the `AAuth-Budget` response header, usage counters for the person server, and a balance endpoint for the agent. The AAuth counterpart to [TPX](https://tokenpony.dev/spec/), generalized beyond metered inference.
+
+* [Editor's Copy](https://dickhardt.github.io/AAuth/draft-hardt-aauth-budgets.html)
+
 ### AAuth Events (Exploratory)
 
 **[draft-hardt-aauth-events](draft-hardt-aauth-events.md)**
