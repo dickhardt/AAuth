@@ -149,7 +149,8 @@ Table of Contents
      9.4.  Mission Update
      9.5.  Mission Completion
      9.6.  Mission Management
-     9.7.  Mission Status Errors
+     9.7.  Mission Endpoint Errors
+     9.8.  Mission Status Errors
    10. Access Server Federation
      10.1.  AS Token Endpoint
        10.1.1.  PS-to-AS Token Request
@@ -2267,7 +2268,7 @@ Table of Contents
       reason field with a Markdown string explaining why.
 
    If the mission is no longer active, the PS returns a mission status
-   error Section 9.7.
+   error Section 9.8.
 
    If the PS requires user input, it returns a deferred response
    Section 13.5 using the same pattern as other AAuth endpoints.  The
@@ -2338,7 +2339,7 @@ Table of Contents
    user, or revoke the mission.
 
    If the mission is no longer active, the PS returns a mission status
-   error Section 9.7.
+   error Section 9.8.
 
 8.6.  Interaction Endpoint
 
@@ -2448,7 +2449,7 @@ Table of Contents
    interaction capability, the PS returns user_unreachable
    Section 13.6.3 — a terminal error, since no party can reach the user.
    If the mission is no longer active, the PS returns a mission status
-   error Section 9.7.  The PS SHOULD record all interaction requests and
+   error Section 9.8.  The PS SHOULD record all interaction requests and
    responses.  When a mission is active, the PS records the interaction
    in the mission log.
 
@@ -2540,7 +2541,8 @@ Table of Contents
    a PS MUST reject a request with a missing or unrecognized action with
    400 Bad Request.  This is the same discriminator the pending route
    uses Section 8.3.2, for the same reason: it makes each POST self-
-   describing and leaves the route extensible.
+   describing and leaves the route extensible.  Errors at these requests
+   are defined in Section 9.7.
 
 9.1.  Mission Creation
 
@@ -2683,7 +2685,7 @@ Table of Contents
       mission as terminated.  When absent, the mission runs until it is
       completed or revoked.  Every PS decision path that acts on a
       mission MUST compare the current time to expires_at and MUST treat
-      a mission past it as terminated Section 9.7.  No token carrying
+      a mission past it as terminated Section 9.8.  No token carrying
       mission_s256 — person, resource, or auth — may have an exp later
       than expires_at; an issuer MUST shorten the token's lifetime to
       fit.
@@ -2893,7 +2895,47 @@ Table of Contents
    in a companion specification, along with the administrative
    principals that invoke them.
 
-9.7.  Mission Status Errors
+9.7.  Mission Endpoint Errors
+
+     +====================+========+=================================+
+     | Error              | Status | Meaning                         |
+     +====================+========+=================================+
+     | invalid_request    | 400    | The {mission_s256} path segment |
+     |                    |        | is malformed, or action is      |
+     |                    |        | missing or unrecognized         |
+     +--------------------+--------+---------------------------------+
+     | mission_not_found  | 404    | No such mission, or it is not   |
+     |                    |        | this agent's                    |
+     +--------------------+--------+---------------------------------+
+     | mission_terminated | 403    | This agent's mission,           |
+     |                    |        | permanently ended Section 9.8   |
+     +--------------------+--------+---------------------------------+
+
+                                  Table 8
+
+   A PS MUST return the same status, error, body, header set, and
+   observably equivalent timing whether the mission does not exist or
+   the authenticated agent does not own it, and MUST NOT disclose
+   anything about a mission before authorization succeeds.  Note that
+   the natural arrangement — checking ownership only after a successful
+   lookup — leaks the difference in timing.
+
+   The distinction matters because mission_s256 travels in auth tokens
+   to resources.  Without this rule, a resource operator running an
+   agent could POST a mission reference it had observed and learn from
+   the response whether that mission was still live, reading mission
+   status through a side channel instead of through the control plane,
+   where the read would be authorized.
+
+   A terminated mission is deliberately distinguishable: the agent that
+   owns it already knows it exists, and needs termination_reason to
+   decide whether to propose a new mission.
+
+   A PS SHOULD rate-limit and security-log repeated failures, and SHOULD
+   NOT retain raw mission references from failed requests longer than
+   abuse correlation requires.
+
+9.8.  Mission Status Errors
 
    When an agent makes a request to any PS endpoint with a mission_s256
    parameter referencing a mission that is no longer active, the PS MUST
@@ -2917,7 +2959,7 @@ Table of Contents
      |                    |            | acting on this mission.     |
      +--------------------+------------+-----------------------------+
 
-                                  Table 8
+                                  Table 9
 
    termination_reason is OPTIONAL and carries a value from Section 9.6.
    It is one error rather than one per reason because the reason set is
@@ -3741,7 +3783,7 @@ Table of Contents
          |               | interaction endpoint                 |
          +---------------+--------------------------------------+
 
-                                 Table 9
+                                 Table 10
 
    The agent determines its capabilities by combining what it can do
    directly with what its PS can do on its behalf.  When the agent has a
@@ -3927,7 +3969,7 @@ Table of Contents
      |               |        | required       |          |    |    |
      +---------------+--------+----------------+----------+----+----+
 
-                                 Table 10
+                                 Table 11
 
    The agent-token requirement is defined in Section 7.3; the person-
    token requirement in Section 7.4; the auth-token requirement in
@@ -4291,7 +4333,7 @@ Initial request (with Prefer: wait=N)
    | server_error           | 500    | Internal error                 |
    +------------------------+--------+--------------------------------+
 
-                                 Table 11
+                                 Table 12
 
    Example — the resource token presented to the token endpoint has
    expired:
@@ -4327,7 +4369,7 @@ Initial request (with Prefer: wait=N)
         | server_error | 500    | Internal error                 |
         +--------------+--------+--------------------------------+
 
-                                 Table 12
+                                 Table 13
 
    Example — the user denied the pending request:
 
@@ -4505,7 +4547,7 @@ Initial request (with Prefer: wait=N)
     | Section 10.4 | the agent                          | authorized |
     +--------------+------------------------------------+------------+
 
-                                 Table 13
+                                 Table 14
 
    The Signature-Key specification also defines pseudonym schemes
    (scheme=hwk for a bare inline public key, scheme=jkt-jwt for
@@ -4883,7 +4925,7 @@ Initial request (with Prefer: wait=N)
    |                 |           |https.                              |
    +-----------------+-----------+------------------------------------+
 
-                                 Table 14
+                                 Table 15
 
    AAuth intentionally diverges from RFC 9728 on two points: AAuth uses
    issuer (not resource) as the primary identifier field so that a
@@ -5321,7 +5363,7 @@ Initial request (with Prefer: wait=N)
    |         |               |                  | access              |
    +---------+---------------+------------------+---------------------+
 
-                                 Table 15
+                                 Table 16
 
 15.  Security Considerations
 
@@ -5744,7 +5786,7 @@ Initial request (with Prefer: wait=N)
        |                     |                   | Section 13.11.4 |
        +---------------------+-------------------+-----------------+
 
-                                  Table 16
+                                  Table 17
 
 17.4.  Media Type Registrations
 
@@ -5826,7 +5868,7 @@ Initial request (with Prefer: wait=N)
              | aa-resource+jwt | This document, Section 7    |
              +-----------------+-----------------------------+
 
-                                  Table 17
+                                  Table 18
 
    The following JWT typ values are registered by AAuth Events
    ([I-D.hardt-aauth-events]):
@@ -5839,7 +5881,7 @@ Initial request (with Prefer: wait=N)
               | aa-event+jwt     | [I-D.hardt-aauth-events] |
               +------------------+--------------------------+
 
-                                  Table 18
+                                  Table 19
 
 17.6.  JWT Claims Registrations
 
@@ -5875,7 +5917,7 @@ Initial request (with Prefer: wait=N)
     |              | an auth token          |            | document  |
     +--------------+------------------------+------------+-----------+
 
-                                 Table 19
+                                 Table 20
 
 17.7.  AAuth Requirement Value Registry
 
@@ -5902,7 +5944,7 @@ Initial request (with Prefer: wait=N)
                      | claims        | This document |
                      +---------------+---------------+
 
-                                  Table 20
+                                  Table 21
 
 17.8.  AAuth Capability Value Registry
 
@@ -5921,7 +5963,7 @@ Initial request (with Prefer: wait=N)
                      | payment       | This document |
                      +---------------+---------------+
 
-                                  Table 21
+                                  Table 22
 
 17.9.  AAuth Platform Value Registry
 
@@ -5952,7 +5994,7 @@ Initial request (with Prefer: wait=N)
        |             | controls                       |           |
        +-------------+--------------------------------+-----------+
 
-                                 Table 22
+                                 Table 23
 
 17.10.  Designated Expert Instructions
 
@@ -6104,6 +6146,12 @@ Initial request (with Prefer: wait=N)
       -  Stated the extensibility posture: recipients ignore what they
          do not recognize, and no document carries a version or schema a
          recipient must understand.
+      -  Defined the mission endpoint's error responses, including that
+         a PS MUST answer identically — status, body, headers, and
+         timing — whether a mission does not exist or the agent does not
+         own it.  Without that the agent surface is an existence oracle
+         for any party that has seen a mission_s256 in an auth token.
+         Adopted from draft-mcguinness-mission-aauth-management.
       -  The mission endpoint is the owning agent's surface, with three
          operations of one shape: POST {mission_endpoint} proposes a
          mission, and POST {mission_endpoint}/{mission_s256} carries
