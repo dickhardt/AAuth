@@ -46,7 +46,7 @@ Agents don't work this way. They discover resources at runtime. They execute lon
 
 ### AAuth Protocol
 
-The authorization protocol for agent-to-resource access. Defines four resource access modes (identity-based, resource-managed, PS-asserted, federated), three proof-of-possession token types (agent, resource, auth), agent governance (missions, permissions, audit), deferred responses with clarification chat, and call chaining for multi-hop resource access.
+The authorization protocol for agent-to-resource access. Defines five resource access modes (agent identity, resource-managed, person identity, PS authorization, federated authorization), four proof-of-possession token types (agent, person, resource, auth), agent governance (missions, permissions, audit), deferred responses with clarification chat, and call chaining for multi-hop resource access.
 
 * [Editor's Copy](https://dickhardt.github.io/AAuth/draft-hardt-oauth-aauth-protocol.html)
 * [Datatracker Page](https://datatracker.ietf.org/doc/draft-hardt-oauth-aauth-protocol)
@@ -124,7 +124,7 @@ Event subscription and delivery for agents. Defines the subscribe token agents u
 
 **[interop-demo-profile.md](interop-demo-profile.md)**
 
-Non-normative guidance for implementers on the minimum live pieces needed to demonstrate end-to-end AAuth interoperability. Describes five verifiable surfaces — PS mission approval, `AAuth-Mission` presentation, resource-token issuance, auth-token issuance and presentation, and parent-mediated sub-agent handling — and which surfaces require a live PS, AS, or resource.
+Non-normative guidance for implementers on the minimum live pieces needed to demonstrate end-to-end AAuth interoperability. Describes five verifiable surfaces — PS mission approval, person-token presentation, resource-token issuance, auth-token issuance and presentation, and parent-mediated sub-agent handling — and which surfaces require a live PS, AS, or resource.
 
 ### AAuth Bootstrap Guidance (Informational)
 
