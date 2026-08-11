@@ -1912,7 +1912,7 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
                     <p id="section-toc.1-1.23.2.3.2.3.1"><a href="#appendix-B.3.3" class="auto internal xref">B.3.3</a>.  <a href="#name-why-resource-tokens" class="internal xref">Why Resource Tokens</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23.2.3.2.4">
-                    <p id="section-toc.1-1.23.2.3.2.4.1"><a href="#appendix-B.3.4" class="auto internal xref">B.3.4</a>.  <a href="#name-why-opaque-aauth-access-tok" class="internal xref">Why Opaque AAuth-Access Tokens</a></p>
+                    <p id="section-toc.1-1.23.2.3.2.4.1"><a href="#appendix-B.3.4" class="auto internal xref">B.3.4</a>.  <a href="#name-why-session-tokens-are-opaq" class="internal xref">Why Session Tokens Are Opaque</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23.2.3.2.5">
                     <p id="section-toc.1-1.23.2.3.2.5.1"><a href="#appendix-B.3.5" class="auto internal xref">B.3.5</a>.  <a href="#name-why-missions-are-not-a-poli" class="internal xref">Why Missions Are Not a Policy Language</a></p>
@@ -2105,6 +2105,9 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
         <li class="compact" id="section-3-4.4">
           <strong>Auth Token</strong>: Issued by a PS or AS to grant an agent access to a resource, containing identity claims and/or authorized scopes <a href="#auth-tokens" class="auto internal xref">Section 10.4</a>.<a href="#section-3-4.4" class="pilcrow">¶</a>
 </li>
+        <li class="compact" id="section-3-4.5">
+          <strong>Session Token</strong>: Issued by a resource to an agent when the resource manages authorization itself. Opaque to the agent, carried in the <code>AAuth-Access</code> header and presented back via <code>Authorization: AAuth</code> <a href="#aauth-access" class="auto internal xref">Section 7.5</a>.<a href="#section-3-4.5" class="pilcrow">¶</a>
+</li>
       </ul>
 <p id="section-3-5">Protocol concepts:<a href="#section-3-5" class="pilcrow">¶</a></p>
 <ul class="compact">
@@ -2282,7 +2285,7 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
           <h4 id="name-resource-managed-access-two">
 <a href="#section-4.1.2" class="section-number selfRef">4.1.2. </a><a href="#name-resource-managed-access-two" class="section-name selfRef">Resource-Managed Access (Two-Party)</a>
           </h4>
-<p id="section-4.1.2-1">The resource handles authorization itself — via interaction <a href="#user-interaction" class="auto internal xref">Section 8.2</a>, existing OAuth/OIDC infrastructure, or internal policy. After authorization, the resource MAY return an <code>AAuth-Access</code> header <a href="#aauth-access" class="auto internal xref">Section 7.5</a> with an opaque access token for subsequent calls.<a href="#section-4.1.2-1" class="pilcrow">¶</a></p>
+<p id="section-4.1.2-1">The resource handles authorization itself — via interaction <a href="#user-interaction" class="auto internal xref">Section 8.2</a>, existing OAuth/OIDC infrastructure, or internal policy. After authorization, the resource MAY return an <code>AAuth-Access</code> header <a href="#aauth-access" class="auto internal xref">Section 7.5</a> with a session token for subsequent calls.<a href="#section-4.1.2-1" class="pilcrow">¶</a></p>
 <span id="name-resource-managed-access-two-"></span><div id="fig-resource-managed">
 <figure id="figure-3">
             <div class="lang-ascii-art sourcecode" id="section-4.1.2-2.1">
@@ -2300,11 +2303,11 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
   |--------------------------------------------&gt;|
   |                                             |
   | 200 OK                                      |
-  | AAuth-Access: opaque-token                  |
+  | AAuth-Access: session-token                 |
   |&lt;--------------------------------------------|
   |                                             |
   | HTTPSig w/ agent_token                      |
-  | Authorization: AAuth opaque-token           |
+  | Authorization: AAuth session-token          |
   |--------------------------------------------&gt;|
   |                                             |
   | 200 OK                                      |
@@ -3070,10 +3073,10 @@ Content-Type: application/json
 
 </pre><a href="#section-7.2.1-2" class="pilcrow">¶</a>
 </div>
-<p id="section-7.2.1-3">The user completes interaction at the resource's own consent page. The agent polls the <code>Location</code> URL. When authorization is complete, the resource returns <code>200 OK</code> and MAY include an <code>AAuth-Access</code> header <a href="#aauth-access" class="auto internal xref">Section 7.5</a> containing an opaque access token for subsequent calls.<a href="#section-7.2.1-3" class="pilcrow">¶</a></p>
+<p id="section-7.2.1-3">The user completes interaction at the resource's own consent page. The agent polls the <code>Location</code> URL. When authorization is complete, the resource returns <code>200 OK</code> and MAY include an <code>AAuth-Access</code> header <a href="#aauth-access" class="auto internal xref">Section 7.5</a> containing a session token for subsequent calls.<a href="#section-7.2.1-3" class="pilcrow">¶</a></p>
 <div class="lang-http sourcecode" id="section-7.2.1-4">
 <pre>HTTP/1.1 200 OK
-AAuth-Access: wrapped-opaque-token-value
+AAuth-Access: wrapped-session-token-value
 Content-Type: application/json
 
 {
@@ -3209,11 +3212,11 @@ AAuth-Requirement: requirement=person-token
         <h3 id="name-aauth-access-response-heade">
 <a href="#section-7.5" class="section-number selfRef">7.5. </a><a href="#name-aauth-access-response-heade" class="section-name selfRef">AAuth-Access Response Header</a>
         </h3>
-<p id="section-7.5-1">The <code>AAuth-Access</code> response header carries an opaque access token from a resource to an agent. The token is opaque to the agent — the resource wraps its internal authorization state (which MAY be an existing OAuth access token or other credential). The agent passes the token back to the resource via the <code>Authorization</code> header on subsequent requests:<a href="#section-7.5-1" class="pilcrow">¶</a></p>
+<p id="section-7.5-1">The <code>AAuth-Access</code> response header carries a <strong>session token</strong> from a resource to an agent. The token is opaque to the agent — the resource wraps its internal authorization state (which MAY be an existing OAuth access token or other credential). It is the one AAuth credential a resource issues for its own consumption, and it names the continuing relationship the resource has established with this agent for this person. The agent passes the token back to the resource via the <code>Authorization</code> header on subsequent requests:<a href="#section-7.5-1" class="pilcrow">¶</a></p>
 <div class="lang-http sourcecode" id="section-7.5-2">
 <pre>GET /api/data HTTP/1.1
 Host: resource.example
-Authorization: AAuth wrapped-opaque-token-value
+Authorization: AAuth wrapped-session-token-value
 Signature-Input: sig=("@method" "@authority" "@path" \
     "authorization" "signature-key");created=1730217600
 Signature: sig=:...signature bytes...:
@@ -3221,8 +3224,8 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 </pre><a href="#section-7.5-2" class="pilcrow">¶</a>
 </div>
-<p id="section-7.5-3">The agent MUST include <code>authorization</code> in the covered components of its HTTP signature, binding the access token to the signed request. This prevents the token from being stolen and replayed as a standalone bearer token — the token is useless without a valid AAuth signature from the agent.<a href="#section-7.5-3" class="pilcrow">¶</a></p>
-<p id="section-7.5-4">A resource MAY return a new <code>AAuth-Access</code> header on any response, replacing the agent's current access token. This enables rolling refresh without an explicit refresh flow. When the agent receives a new <code>AAuth-Access</code> value, it MUST use the new value on subsequent requests.<a href="#section-7.5-4" class="pilcrow">¶</a></p>
+<p id="section-7.5-3">The agent MUST include <code>authorization</code> in the covered components of its HTTP signature, binding the session token to the signed request. This prevents the token from being stolen and replayed as a standalone bearer token — the token is useless without a valid AAuth signature from the agent.<a href="#section-7.5-3" class="pilcrow">¶</a></p>
+<p id="section-7.5-4">A resource MAY return a new <code>AAuth-Access</code> header on any response, replacing the agent's current session token. This enables rolling refresh without an explicit refresh flow. When the agent receives a new <code>AAuth-Access</code> value, it MUST use the new value on subsequent requests.<a href="#section-7.5-4" class="pilcrow">¶</a></p>
 <p id="section-7.5-5">The <code>AAuth-Access</code> value, and the credential carried in <code>Authorization: AAuth</code>, is a <code>token68</code> (<span>[<a href="#RFC9110" class="cite xref">RFC9110</a>]</span>, Section 11.2). Recipients MUST reject empty values, values containing embedded whitespace or control characters, and responses carrying more than one credential.<a href="#section-7.5-5" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -3247,7 +3250,7 @@ Content-Type: application/json
 
 </pre><a href="#section-7.6-2" class="pilcrow">¶</a>
 </div>
-<p id="section-7.6-3">The agent directs the user to the interaction URL <a href="#user-interaction" class="auto internal xref">Section 8.2</a> and polls the <code>Location</code> URL per the deferred response pattern <a href="#deferred-responses" class="auto internal xref">Section 13.5</a>. When the interaction completes, the resource returns <code>200 OK</code> and MAY include an <code>AAuth-Access</code> header <a href="#aauth-access" class="auto internal xref">Section 7.5</a> with an opaque access token for subsequent calls.<a href="#section-7.6-3" class="pilcrow">¶</a></p>
+<p id="section-7.6-3">The agent directs the user to the interaction URL <a href="#user-interaction" class="auto internal xref">Section 8.2</a> and polls the <code>Location</code> URL per the deferred response pattern <a href="#deferred-responses" class="auto internal xref">Section 13.5</a>. When the interaction completes, the resource returns <code>200 OK</code> and MAY include an <code>AAuth-Access</code> header <a href="#aauth-access" class="auto internal xref">Section 7.5</a> with a session token for subsequent calls.<a href="#section-7.6-3" class="pilcrow">¶</a></p>
 <p id="section-7.6-4">A resource MAY also authorize the agent based solely on its identity (from the agent token) without any interaction — for example, when the agent's key is already known or the agent's domain is trusted.<a href="#section-7.6-4" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -5815,7 +5818,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
             </ul>
 <p id="section-13.8.3.1-3">These four are mandated rather than advisory because each closes a request-substitution attack and all four are derivable by the agent at signing time on every platform, including browsers: <code>@method</code> prevents a captured signature from being replayed with a different method (a signed <code>GET</code> reused as a <code>DELETE</code>); <code>@authority</code> binds the signature to the target host, preventing cross-host replay; <code>@path</code> binds it to the specific endpoint; and <code>signature-key</code> binds the signature to the presented key material, preventing key substitution. Omitting any one would let a captured signature be replayed against a different method, host, path, or key.<a href="#section-13.8.3.1-3" class="pilcrow">¶</a></p>
 <p id="section-13.8.3.1-4">Servers MAY require additional covered components (e.g., <code>content-digest</code> (<span>[<a href="#RFC9530" class="cite xref">RFC9530</a>]</span>) for request body integrity). The agent learns about additional requirements from server metadata or from an <code>invalid_input</code> error response that includes <code>required_input</code>.<a href="#section-13.8.3.1-4" class="pilcrow">¶</a></p>
-<p id="section-13.8.3.1-5">The following example shows a fully bound request combining an opaque <code>AAuth-Access</code> token and an HTTP Message Signature. Token and key values are illustrative placeholders, not parseable test vectors. <code>Authorization: AAuth</code> carries the opaque resource access token; <code>Signature-Key</code> carries the auth token (four-party) or agent token, whose <code>cnf.jwk</code> is the signing key. A valid signature over these components proves request-component integrity; authorization still depends on auth-token claims and resource enforcement.<a href="#section-13.8.3.1-5" class="pilcrow">¶</a></p>
+<p id="section-13.8.3.1-5">The following example shows a fully bound request combining a session token and an HTTP Message Signature. Token and key values are illustrative placeholders, not parseable test vectors. <code>Authorization: AAuth</code> carries the opaque resource access token; <code>Signature-Key</code> carries the auth token (four-party) or agent token, whose <code>cnf.jwk</code> is the signing key. A valid signature over these components proves request-component integrity; authorization still depends on auth-token claims and resource enforcement.<a href="#section-13.8.3.1-5" class="pilcrow">¶</a></p>
 <div class="lang-http sourcecode" id="section-13.8.3.1-6">
 <pre>GET /api/documents HTTP/1.1
 Host: resource.example
@@ -6336,7 +6339,7 @@ Accept-Signature-Scheme: jwt
               <code>jwks_uri</code> (REQUIRED when the resource issues resource tokens or makes signed calls): URL to the resource's JSON Web Key Set. A resource that only verifies agent signatures for identity-based access — issuing no resource tokens and making no signed requests of its own (e.g., as an agent in multi-hop, #multi-hop) — has no keys to publish and MAY omit <code>jwks_uri</code>.<a href="#section-13.11.4-4.2" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.11.4-4.3">
-              <code>access_mode</code> (OPTIONAL): The credential flow the resource expects, letting an agent plan its first call without a speculative challenge. One of <code>agent-token</code> (identity-only — the agent signs with its agent token), <code>person-token</code> (the resource authorizes on the person's identity alone — the agent signs with a person token), <code>aauth-access-token</code> (resource-managed — the agent completes the resource's interaction/consent flow and receives an opaque token via <code>AAuth-Access</code>), or <code>auth-token</code> (the agent obtains an auth token from its PS using a resource token; the initial call MUST present a person token). Default: <code>agent-token</code>. The declaration is advisory: a resource MAY return any <code>AAuth-Requirement</code> at runtime regardless of the declared mode <a href="#requirement-responses" class="auto internal xref">Section 13.4</a>, and MAY apply different modes to different endpoints. An agent MAY use <code>access_mode</code> to skip resources its setup cannot satisfy — for example, a PS-less agent (no <code>ps</code> claim in its agent token) cannot complete the <code>auth-token</code> flow.<a href="#section-13.11.4-4.3" class="pilcrow">¶</a>
+              <code>access_mode</code> (OPTIONAL): The credential flow the resource expects, letting an agent plan its first call without a speculative challenge. One of <code>agent-token</code> (identity-only — the agent signs with its agent token), <code>person-token</code> (the resource authorizes on the person's identity alone — the agent signs with a person token), <code>session-token</code> (resource-managed — the agent completes the resource's interaction/consent flow and receives a session token via <code>AAuth-Access</code>), or <code>auth-token</code> (the agent obtains an auth token from its PS using a resource token; the initial call MUST present a person token). Default: <code>agent-token</code>. The declaration is advisory: a resource MAY return any <code>AAuth-Requirement</code> at runtime regardless of the declared mode <a href="#requirement-responses" class="auto internal xref">Section 13.4</a>, and MAY apply different modes to different endpoints. An agent MAY use <code>access_mode</code> to skip resources its setup cannot satisfy — for example, a PS-less agent (no <code>ps</code> claim in its agent token) cannot complete the <code>auth-token</code> flow.<a href="#section-13.11.4-4.3" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.11.4-4.4">
               <code>name</code> (OPTIONAL): Human-readable resource name<a href="#section-13.11.4-4.4" class="pilcrow">¶</a>
@@ -6413,7 +6416,7 @@ Accept-Signature-Scheme: jwt
 <p id="section-14.1.1-1">A resource that wants agents to discover and use it with no prior integration publishes two things in its <code>aauth-resource.json</code> <a href="#resource-metadata" class="auto internal xref">Section 13.11.4</a>:<a href="#section-14.1.1-1" class="pilcrow">¶</a></p>
 <ul class="compact">
 <li class="compact" id="section-14.1.1-2.1">
-              <strong><code>access_mode</code></strong> — the credential flow the agent should expect: <code>agent-token</code>, <code>person-token</code>, <code>aauth-access-token</code>, or <code>auth-token</code>.<a href="#section-14.1.1-2.1" class="pilcrow">¶</a>
+              <strong><code>access_mode</code></strong> — the credential flow the agent should expect: <code>agent-token</code>, <code>person-token</code>, <code>session-token</code>, or <code>auth-token</code>.<a href="#section-14.1.1-2.1" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-14.1.1-2.2">
               <strong>An R3 vocabulary.</strong> Resources SHOULD advertise an R3 vocabulary (<code>r3_vocabularies</code>, <span>[<a href="#I-D.hardt-aauth-r3" class="cite xref">I-D.hardt-aauth-r3</a>]</span>) describing their operations, so that an agent that knows only the resource's hostname can learn the API and begin using it. The R3 document itself is fetched only by the AS and PS, not the agent; the vocabulary (an OpenAPI, MCP, gRPC, or similar API description) is the agent-facing surface.<a href="#section-14.1.1-2.2" class="pilcrow">¶</a>
@@ -6434,7 +6437,7 @@ Accept-Signature-Scheme: jwt
                   <strong><code>agent-token</code></strong> — the agent signs with its agent token and calls. If the resource needs to bind the agent to a user account (the equivalent of associating an API key with an account), it returns a <code>202</code> with <code>requirement=interaction</code> <a href="#requirement-responses" class="auto internal xref">Section 13.4</a> pointing at a login or account-link page; the agent brings the user there, directly or via the PS's interaction endpoint <a href="#interaction-endpoint" class="auto internal xref">Section 8.6</a>. Once bound, subsequent calls with the same agent token are recognized with no further interaction. No token is issued — the account-bound agent token is the durable credential.<a href="#section-14.1.1-4.4.2.1" class="pilcrow">¶</a>
 </li>
                 <li class="compact" id="section-14.1.1-4.4.2.2">
-                  <strong><code>aauth-access-token</code></strong> — the agent's call, or a request to the <code>authorization_endpoint</code>, triggers a <code>202</code> with <code>requirement=interaction</code> pointing at the resource's existing consent or login flow. After the user completes it, the resource returns an opaque token via the <code>AAuth-Access</code> header <a href="#aauth-access" class="auto internal xref">Section 7.5</a>; the agent presents that token in <code>Authorization: AAuth ...</code>, bound to its signature, on subsequent calls.<a href="#section-14.1.1-4.4.2.2" class="pilcrow">¶</a>
+                  <strong><code>session-token</code></strong> — the agent's call, or a request to the <code>authorization_endpoint</code>, triggers a <code>202</code> with <code>requirement=interaction</code> pointing at the resource's existing consent or login flow. After the user completes it, the resource returns an opaque token via the <code>AAuth-Access</code> header <a href="#aauth-access" class="auto internal xref">Section 7.5</a>; the agent presents that token in <code>Authorization: AAuth ...</code>, bound to its signature, on subsequent calls.<a href="#section-14.1.1-4.4.2.2" class="pilcrow">¶</a>
 </li>
                 <li class="compact" id="section-14.1.1-4.4.2.3">
                   <strong><code>auth-token</code></strong> — the resource issues a resource token via the <code>authorization_endpoint</code> or a <code>401</code> <a href="#requirement-auth-token" class="auto internal xref">Section 7.7</a>. The agent sends it to its PS, which runs consent — bringing the user in at the PS, not the resource — and returns an auth token the agent signs with. Whether the PS asserts identity directly (three-party) or federates with the resource's AS (four-party) is invisible to the agent.<a href="#section-14.1.1-4.4.2.3" class="pilcrow">¶</a>
@@ -6857,7 +6860,7 @@ Accept-Signature-Scheme: jwt
 </li>
           <li class="compact" id="section-17.2-2.2">Reference: This document, <a href="#aauth-access" class="auto internal xref">Section 7.5</a><a href="#section-17.2-2.2" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-17.2-2.3">Notes: Used with opaque access tokens returned via the <code>AAuth-Access</code> header. The token MUST be bound to an HTTP Message Signature — the <code>authorization</code> field MUST be included in the signature's covered components.<a href="#section-17.2-2.3" class="pilcrow">¶</a>
+          <li class="compact" id="section-17.2-2.3">Notes: Used with session tokens returned via the <code>AAuth-Access</code> header. The token MUST be bound to an HTTP Message Signature — the <code>authorization</code> field MUST be included in the signature's covered components.<a href="#section-17.2-2.3" class="pilcrow">¶</a>
 </li>
         </ul>
 </section>
@@ -7456,6 +7459,8 @@ Accept-Signature-Scheme: jwt
               <code>sub</code> MUST be unique within the issuer; <code>(iss, sub)</code> is the identifier and <code>tenant</code> is organizational context, not part of it. <code>sub</code> values from different issuers MUST NOT be matched.<a href="#section-19-2.1.2.15" class="pilcrow">¶</a>
 </li>
             <li class="compact normal" id="section-19-2.1.2.16">Stated the extensibility posture: recipients ignore what they do not recognize, and no document carries a version or schema a recipient must understand.<a href="#section-19-2.1.2.16" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-19-2.1.2.17">Named the opaque credential a resource issues in resource-managed access the <strong>session token</strong>. It was the only credential in the protocol without a name. The <code>access_mode</code> value <code>aauth-access-token</code> becomes <code>session-token</code>.<a href="#section-19-2.1.2.17" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
@@ -8159,10 +8164,10 @@ Accept-Signature-Scheme: jwt
 <p id="appendix-B.3.3-1">In GNAP and OAuth, the resource server is a passive consumer of tokens — it verifies them but never produces signed artifacts. AAuth inverts this: the resource cryptographically asserts what is being requested by issuing a resource token that binds the resource's own identity, the agent's key thumbprint, the requested scope, and the mission context into a single signed JWT. This prevents confused deputy attacks — an attacker cannot substitute a different resource in the authorization flow because the resource token is signed by the resource. It also gives the resource a voice in every authorization and re-authorization, and provides a complete audit artifact linking the request to a specific resource, agent, scope, and mission.<a href="#appendix-B.3.3-1" class="pilcrow">¶</a></p>
 </section>
 </div>
-<div id="why-opaque-aauth-access-tokens">
+<div id="why-session-tokens-are-opaque">
 <section id="appendix-B.3.4">
-          <h4 id="name-why-opaque-aauth-access-tok">
-<a href="#appendix-B.3.4" class="section-number selfRef">B.3.4. </a><a href="#name-why-opaque-aauth-access-tok" class="section-name selfRef">Why Opaque AAuth-Access Tokens</a>
+          <h4 id="name-why-session-tokens-are-opaq">
+<a href="#appendix-B.3.4" class="section-number selfRef">B.3.4. </a><a href="#name-why-session-tokens-are-opaq" class="section-name selfRef">Why Session Tokens Are Opaque</a>
           </h4>
 <p id="appendix-B.3.4-1">In two-party mode, the resource returns an opaque wrapped token via the <code>AAuth-Access</code> header rather than a JWT auth token. This allows the resource to wrap its existing authorization infrastructure (OAuth access tokens, session tokens, etc.) without exposing internal structure. The token is bound to the AAuth signature — the agent includes it in the <code>Authorization</code> header as a covered component — so it cannot be stolen and replayed as a standalone bearer token.<a href="#appendix-B.3.4-1" class="pilcrow">¶</a></p>
 </section>
