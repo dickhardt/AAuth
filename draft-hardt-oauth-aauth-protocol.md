@@ -496,14 +496,14 @@ Figure: Mission Context at Resource {#fig-mission-context}
 
 #### Mission Completion {#mission-completion-overview}
 
-When the agent believes the mission is complete, it proposes completion via the interaction endpoint with a summary. The PS presents the summary to the user. The user either accepts (mission terminates) or responds with follow-up questions (mission continues).
+When the agent believes the mission is complete, it proposes completion at the mission's own URL with a summary. The PS presents the summary to the user. The user either accepts (mission terminates) or responds with follow-up questions (mission continues).
 
 ~~~ ascii-art
 Agent                                     PS                        User
   |                                        |                          |
   | HTTPSig w/ agent_token                 |                          |
-  | POST interaction_endpoint              |                          |
-  | type=completion, summary               |                          |
+  | POST mission_endpoint/{s256}           |                          |
+  | action=completion, summary             |                          |
   |--------------------------------------->|                          |
   |                                        |                          |
   |                                        | present summary          |
@@ -667,8 +667,10 @@ A PS SHOULD rate-limit the number of distinct `resource` values it accepts from 
 POST /person HTTP/1.1
 Host: ps.example
 Content-Type: application/json
-Signature-Input: sig=("@method" "@authority"
-    "@path" "signature-key");created=1730217600
+Content-Digest: sha-256=:...:
+Signature-Input: sig=("@method" "@authority" "@path"
+    "content-type" "content-digest"
+    "signature-key");created=1730217600
 Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
@@ -1073,8 +1075,9 @@ POST /token HTTP/1.1
 Host: ps.example
 Content-Type: application/json
 Prefer: wait=45
-Signature-Input: sig=("@method" "@authority"
-    "@path" "signature-key");created=1730217600
+Signature-Input: sig=("@method" "@authority" "@path"
+    "content-type" "content-digest"
+    "signature-key");created=1730217600
 Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
@@ -1218,8 +1221,10 @@ The agent responds by POSTing JSON with an `action` of `clarification_response` 
 POST /pending/abc123 HTTP/1.1
 Host: ps.example
 Content-Type: application/json
-Signature-Input: sig=("@method" "@authority"
-    "@path" "signature-key");created=1730217600
+Content-Digest: sha-256=:...:
+Signature-Input: sig=("@method" "@authority" "@path"
+    "content-type" "content-digest"
+    "signature-key");created=1730217600
 Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
@@ -1241,8 +1246,10 @@ The agent MAY obtain a new resource token from the resource (e.g., with reduced 
 POST /pending/abc123 HTTP/1.1
 Host: ps.example
 Content-Type: application/json
-Signature-Input: sig=("@method" "@authority"
-    "@path" "signature-key");created=1730217600
+Content-Digest: sha-256=:...:
+Signature-Input: sig=("@method" "@authority" "@path"
+    "content-type" "content-digest"
+    "signature-key");created=1730217600
 Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
@@ -1295,7 +1302,9 @@ The agent MUST make a signed POST to the PS's `permission_endpoint`. The request
 POST /permission HTTP/1.1
 Host: ps.example
 Content-Type: application/json
-Signature-Input: sig=("@method" "@authority" "@path" \
+Content-Digest: sha-256=:...:
+Signature-Input: sig=("@method" "@authority" "@path"
+    "content-type" "content-digest"
     "signature-key");created=1730217600
 Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
@@ -1355,7 +1364,9 @@ The agent MUST make a signed POST to the PS's `audit_endpoint`. The request MUST
 POST /audit HTTP/1.1
 Host: ps.example
 Content-Type: application/json
-Signature-Input: sig=("@method" "@authority" "@path" \
+Content-Digest: sha-256=:...:
+Signature-Input: sig=("@method" "@authority" "@path"
+    "content-type" "content-digest"
     "signature-key");created=1730217600
 Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
@@ -1388,7 +1399,7 @@ If the mission is no longer active, the PS returns a mission status error (#miss
 
 ## Interaction Endpoint {#interaction-endpoint}
 
-The interaction endpoint enables the agent to reach the user through the PS. The agent uses this endpoint to forward interaction requirements from resources that it cannot handle directly, to ask the user questions, to relay payment approvals, or to propose mission completion. The `interaction_endpoint` URL is published in the PS's well-known metadata (#ps-metadata). The interaction endpoint MAY be used with or without a mission.
+The interaction endpoint enables the agent to reach the user through the PS. The agent uses this endpoint to forward interaction requirements from resources that it cannot handle directly, to ask the user questions, and to relay payment approvals. Each is something the agent cannot do itself and needs the person for. Proposing mission completion is not among them: it is a mission lifecycle transition and belongs at the `mission_endpoint` (#mission-completion), alongside the proposal that started the mission. The `interaction_endpoint` URL is published in the PS's well-known metadata (#ps-metadata). The interaction endpoint MAY be used with or without a mission.
 
 ### Interaction Request
 
@@ -1396,13 +1407,12 @@ The agent MUST make a signed POST to the PS's `interaction_endpoint`. The reques
 
 **Request parameters:**
 
-- `type` (REQUIRED): The type of interaction. One of `interaction`, `payment`, `question`, or `completion`.
+- `type` (REQUIRED): The type of interaction. One of `interaction`, `payment`, or `question`.
 - `description` (OPTIONAL): A Markdown string providing context for the user.
 - `url` (OPTIONAL): The interaction URL to relay to the user (for `interaction` and `payment` types).
 - `code` (OPTIONAL): The interaction code associated with the URL.
 - `max_wait` (OPTIONAL): Maximum seconds the PS SHOULD hold the relay's deferred response before resolving it (for `interaction` and `payment` types). When the interaction URL is resource-hosted, the PS resolves its deferred response once the user has engaged or when this window elapses, whichever comes first; the agent then relies on the resource's pending URL for completion (#interaction-response-poll-authority). Absent `max_wait`, the PS resolves the relay when the user has engaged or it can make no further progress.
 - `question` (OPTIONAL): A Markdown string containing a question for the user (for `question` type).
-- `summary` (OPTIONAL): A Markdown string summarizing what the agent accomplished (for `completion` type).
 - `mission_s256` (OPTIONAL): The mission this request belongs to.
 
 **Relay interaction example:**
@@ -1411,7 +1421,9 @@ The agent MUST make a signed POST to the PS's `interaction_endpoint`. The reques
 POST /interaction HTTP/1.1
 Host: ps.example
 Content-Type: application/json
-Signature-Input: sig=("@method" "@authority" "@path" \
+Content-Digest: sha-256=:...:
+Signature-Input: sig=("@method" "@authority" "@path"
+    "content-type" "content-digest"
     "signature-key");created=1730217600
 Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
@@ -1421,28 +1433,6 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
   "description": "The booking service needs you to confirm payment",
   "url": "https://booking.example/confirm",
   "code": "X7K2-M9P4",
-  "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
-}
-```
-
-**Completion example:**
-
-```http
-POST /interaction HTTP/1.1
-Host: ps.example
-Content-Type: application/json
-Signature-Input: sig=("@method" "@authority" "@path" \
-    "signature-key");created=1730217600
-Signature: sig=:...signature bytes...:
-Signature-Key: sig=jwt;jwt="eyJhbGc..."
-
-{
-  "type": "completion",
-  "summary": "# Japan Trip Booked\n\n
-    Booked round-trip flights on ANA and
-    10 nights across three cities.
-    Total cost: $4,850.
-    Itinerary sent to your email.",
   "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
 }
 ```
@@ -1468,8 +1458,6 @@ Content-Type: application/json
 }
 ```
 
-For `completion` type, the PS presents the summary to the user. The user either accepts — the PS terminates the mission and returns `200 OK` — or responds with follow-up questions via clarification (#clarification-chat), keeping the mission active. The PS returns a deferred response while the user reviews.
-
 If the PS cannot reach the user and the agent does not have the `interaction` capability, the PS returns `user_unreachable` (#token-endpoint-error-codes) — a terminal error, since no party can reach the user. If the mission is no longer active, the PS returns a mission status error (#mission-status-errors). The PS SHOULD record all interaction requests and responses. When a mission is active, the PS records the interaction in the mission log.
 
 ### Interaction Endpoint Errors {#interaction-endpoint-errors}
@@ -1491,6 +1479,18 @@ Agents SHOULD proactively obtain a new agent token and refresh all auth tokens b
 # Mission {#missions}
 
 Missions are OPTIONAL. The protocol operates in all modes without missions. When used, missions provide scoped authorization contexts that guide an agent's work across multiple resource accesses — enabling scope pre-approval, reduced consent fatigue, and centralized audit. A mission is a natural-language description of what the agent intends to accomplish, proposed by the agent and approved by the PS. The PS uses the mission to evaluate every subsequent request in context — it is the only party with the mission content, the user relationship, and the full history of the agent's actions. Once approved, the agent names the mission's `s256` when it obtains person tokens (#person-token-endpoint), from where it flows into resource tokens and auth tokens.
+
+The `mission_endpoint` is the agent's surface for the missions it owns. Parties other than the owning agent — the person, an administrator, a management service — read and manage missions at the `mission_control_endpoint` (#ps-metadata) instead, under a different authentication model.
+
+The agent has three operations, all of the same shape: it proposes, the person decides, and the PS returns a deferred response (#deferred-responses) with clarification chat available (#clarification-chat) whenever the person must be asked.
+
+| Request | Operation |
+|---|---|
+| `POST {mission_endpoint}` | Propose a mission (#mission-creation) |
+| `POST {mission_endpoint}/{mission_s256}` with `action: update` | Record a change in the work (#mission-update) |
+| `POST {mission_endpoint}/{mission_s256}` with `action: completion` | Propose that the mission is finished (#mission-completion) |
+
+The `action` member is REQUIRED on requests to a mission's own URL, and a PS MUST reject a request with a missing or unrecognized `action` with `400 Bad Request`. This is the same discriminator the pending route uses (#agent-response-to-clarification), for the same reason: it makes each POST self-describing and leaves the route extensible.
 
 ## Mission Creation {#mission-creation}
 
@@ -1616,22 +1616,102 @@ The approved description MAY differ from the proposal — the PS or user may ref
 
 The approved mission description is immutable — the `s256` hash binds it permanently. Missions do not change; they accumulate context.
 
-All agent interactions with the PS within a mission context form the **mission log**: token requests (with justifications), permission requests and responses, audit records, interaction requests, and clarification chats. The PS maintains this log as an ordered record of the agent's actions and the governance decisions made. The mission log gives the PS the full history it needs to evaluate whether each new request is consistent with the mission's intent.
+All agent interactions with the PS within a mission context form the **mission log**: token requests (with justifications), accepted updates (#mission-update), permission requests and responses, audit records, interaction requests, and clarification chats. The PS maintains this log as an ordered record of the agent's actions and the governance decisions made. The mission log gives the PS the full history it needs to evaluate whether each new request is consistent with the mission's intent.
 
 The agent names the mission when it requests a person token (#person-token-endpoint); the PS validates it and stamps `mission_s256` into the token, from where it flows into the resource token and the auth token. When the agent sends a resource token to its PS, the PS evaluates the request against the mission context and log history before federating with the resource's AS.
 
+## Mission Update {#mission-update}
+
+Work changes. When what the agent is doing no longer matches the description the person approved, it records the change rather than proceeding silently:
+
+```http
+POST /mission/dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk HTTP/1.1
+Host: ps.example
+Content-Type: application/json
+Content-Digest: sha-256=:...:
+Signature-Input: sig=("@method" "@authority" "@path"
+    "content-type" "content-digest"
+    "signature-key");created=1730217600
+Signature: sig=:...signature bytes...:
+Signature-Key: sig=jwt;jwt="eyJhbGc..."
+
+{
+  "action": "update",
+  "description": "# Hotel unavailable\n\n
+    The hotel in the itinerary has no availability.
+    Proposing a comparable property two blocks away
+    at a similar rate."
+}
+```
+
+- `action` (REQUIRED): `update`.
+- `description` (REQUIRED): A Markdown string describing what changed.
+
+The PS MAY accept the update on its own, or return a `202 Accepted` deferred response while the person reviews it. On acceptance it appends the update to the mission log and returns its `s256` — the unpadded base64url SHA-256 digest of the update's bytes as the PS persists them — so the sequence of accepted updates is verifiable, not merely stored:
+
+```json
+{
+  "s256": "Q2h1Y2sgSW50ZWdyaXR5IENoZWNr..."
+}
+```
+
+An update does not change the mission. The blob is immutable, `mission_s256` is unchanged, and every token carrying it remains valid — which is the point: the agent keeps working while the record catches up.
+
+What the update changes is the context the PS evaluates against. From acceptance onward, the mission's meaning is the approved blob **plus its accepted updates**, and a party auditing the mission MUST read both. The blob alone records what the person approved at the outset, not what they approved in total.
+
+An update may narrow or broaden the work. Both require the person's acceptance when the PS decides the change warrants it, and the PS applies the same judgment to an update that it applied to the proposal. When the work has changed enough that the original description no longer describes it, that is a new mission rather than an update, and the old one is terminated as `superseded` (#mission-management).
+
 ## Mission Completion {#mission-completion}
 
-When the agent believes the mission is complete, it sends a `completion` interaction to the PS's interaction endpoint (#interaction-endpoint) with a summary of what was accomplished. The PS presents the summary to the user. The user either accepts — the PS terminates the mission — or responds with follow-up questions via clarification, keeping the mission active. This is the most common mission lifecycle path.
+When the agent believes the mission is complete, it proposes completion with a summary of what was accomplished:
 
-## Mission Management
+```http
+POST /mission/dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk HTTP/1.1
+Host: ps.example
+Content-Type: application/json
+Content-Digest: sha-256=:...:
+Signature-Input: sig=("@method" "@authority" "@path"
+    "content-type" "content-digest"
+    "signature-key");created=1730217600
+Signature: sig=:...signature bytes...:
+Signature-Key: sig=jwt;jwt="eyJhbGc..."
+
+{
+  "action": "completion",
+  "summary": "Booked flights and hotel for 7-14 May.
+    Itinerary sent. Total $4,180."
+}
+```
+
+- `action` (REQUIRED): `completion`.
+- `summary` (REQUIRED): A Markdown string summarizing what the agent accomplished.
+
+The PS presents the summary to the person, returning a deferred response while they review. The person either accepts — the PS terminates the mission with reason `completed` and returns `200 OK` — or responds with follow-up questions via clarification chat (#clarification-chat), leaving the mission active. This is the most common mission lifecycle path.
+
+The agent proposes completion; it does not declare it. Only the person's acceptance terminates the mission.
+
+## Mission Management {#mission-management}
 
 A mission has one of two states:
 
 - **active**: The mission is in progress. The agent can make requests against it.
 - **terminated**: The mission is permanently ended. The PS MUST reject requests with `mission_terminated`.
 
-The mechanisms for state transitions beyond completion — revocation, delegation tree queries, and administrative interfaces — will be defined in a companion specification.
+A terminated mission MUST NOT return to `active`. A caller that needs to continue the work proposes a new mission.
+
+The PS records why a mission terminated, alongside the mission rather than inside the immutable blob. This document defines the following reasons; the list is open, and a recipient that does not recognize a reason MUST retain the `terminated` state and treat the reason as an opaque audit value.
+
+| Reason | Meaning |
+|---|---|
+| `completed` | The person accepted the agent's completion proposal (#mission-completion) |
+| `revoked` | The person, the owning agent, or an authorized administrator withdrew the mission |
+| `expired` | The mission reached its `expires_at` (#mission-approval) |
+| `superseded` | The mission was replaced by another approved mission |
+| `administrative` | An authorized administrator ended the mission under local policy |
+
+A termination reason MUST NOT be exposed as a mission state or used to permit a later transition.
+
+Reading a mission's status, terminating one, and querying delegation are operations for parties other than the owning agent, and belong at the `mission_control_endpoint` (#ps-metadata). They will be defined in a companion specification, along with the administrative principals that invoke them.
 
 ## Mission Status Errors {#mission-status-errors}
 
@@ -1643,14 +1723,16 @@ Content-Type: application/problem+json
 
 {
   "error": "mission_terminated",
-  "mission_status": "terminated"
+  "mission_status": "terminated",
+  "termination_reason": "expired"
 }
 ```
 
 | Error | Mission Status | Meaning |
 |-------|---------------|---------|
 | `mission_terminated` | `terminated` | The mission is permanently ended. The agent MUST stop acting on this mission. |
-| `mission_expired` | `terminated` | The mission passed its `expires_at`. The agent MUST stop acting on this mission and MAY propose a new one. |
+
+`termination_reason` is OPTIONAL and carries a value from (#mission-management). It is one error rather than one per reason because the reason set is open: an agent keys its behaviour on `mission_terminated` and reads the reason for context — `expired` invites proposing a new mission, `revoked` does not.
 
 # Access Server Federation {#access-server-federation}
 
@@ -2554,14 +2636,21 @@ The signature MUST cover the following derived components and header fields:
 
 These four are mandated rather than advisory because each closes a request-substitution attack and all four are derivable by the agent at signing time on every platform, including browsers: `@method` prevents a captured signature from being replayed with a different method (a signed `GET` reused as a `DELETE`); `@authority` binds the signature to the target host, preventing cross-host replay; `@path` binds it to the specific endpoint; and `signature-key` binds the signature to the presented key material, preventing key substitution. Omitting any one would let a captured signature be replayed against a different method, host, path, or key.
 
-Servers MAY require additional covered components (e.g., `content-digest` ([@RFC9530]) for request body integrity). The agent learns about additional requirements from server metadata or from an `invalid_input` error response that includes `required_input`.
+On a request carrying a body to a PS or AS endpoint, the signature MUST additionally cover:
 
-The following example shows a fully bound request combining a session token and an HTTP Message Signature. Token and key values are illustrative placeholders, not parseable test vectors. `Authorization: AAuth` carries the opaque resource access token; `Signature-Key` carries the auth token (four-party) or agent token, whose `cnf.jwk` is the signing key. A valid signature over these components proves request-component integrity; authorization still depends on auth-token claims and resource enforcement.
+- `content-digest`: The Content-Digest header value ([@!RFC9530])
+- `content-type`: The Content-Type header value
+
+Without them a request body is not integrity-protected, and PS and AS requests carry members that decide what is authorized — `justification`, `mission_s256`, `resource`, `sub`, and the mission proposal itself. Only the tokens among those members are self-protecting; the rest are plain JSON. The requirement is unconditional at these endpoints because every one of them takes a JSON body of known shape, so computing a digest costs the sender nothing it was not already doing.
+
+Resources are different: they serve arbitrary APIs, including bodyless requests, streamed uploads, and payloads large enough that digesting them is a real cost. A resource therefore declares what it needs through `additional_signature_components` (#resource-metadata) rather than the protocol mandating it. Servers MAY require further covered components; the agent learns about them from server metadata or from an `invalid_input` error response that includes `required_input`.
+
+The following example shows a fully bound request combining a session token and an HTTP Message Signature. Token and key values are illustrative placeholders, not parseable test vectors. `Authorization: AAuth` carries the session token; `Signature-Key` carries the auth token (four-party) or agent token, whose `cnf.jwk` is the signing key. A valid signature over these components proves request-component integrity; authorization still depends on auth-token claims and resource enforcement.
 
 ```http
 GET /api/documents HTTP/1.1
 Host: resource.example
-Authorization: AAuth opaque-access-token-placeholder
+Authorization: AAuth session-token-placeholder
 Signature-Input: sig=("@method" "@authority" "@path"
     "authorization" "signature-key");created=1730217600
 Signature: sig=:BASE64URL-SIGNATURE-PLACEHOLDER:
@@ -2771,11 +2860,11 @@ Fields:
 - `policy_uri` (OPTIONAL): URL to privacy policy
 - `auth_token_endpoint` (REQUIRED): URL where agents send token requests
 - `person_token_endpoint` (REQUIRED): URL where agents request a person token for a resource (#person-token-endpoint)
-- `mission_endpoint` (OPTIONAL): URL for mission lifecycle operations (proposal, status). Present when the PS supports missions.
+- `mission_endpoint` (OPTIONAL): URL where an agent proposes, updates, and completes the missions it owns (#missions). Present when the PS supports missions. A mission's own URL is `{mission_endpoint}/{mission_s256}`.
 - `permission_endpoint` (OPTIONAL): URL where agents request permission for actions not governed by a remote resource (#permission-endpoint)
 - `audit_endpoint` (OPTIONAL): URL where agents log actions performed (#audit-endpoint)
 - `interaction_endpoint` (OPTIONAL): URL where agents relay interactions to the user through the PS (#interaction-endpoint)
-- `mission_control_endpoint` (OPTIONAL): URL of the PS's administrative interface for missions — a human-facing deployment surface where a person or an organization's administrator reviews and manages missions. **Work in progress:** this document defines no protocol behind it, and it is distinct from the interoperable lifecycle operations at `mission_endpoint`. A separate specification is expected to define it; companion specifications SHOULD NOT build interoperable behavior on it in the meantime.
+- `mission_control_endpoint` (OPTIONAL): URL of the PS's mission control plane — where parties other than the owning agent read and manage missions: the person, an organization's administrator, or a management service. `mission_endpoint` is the agent's surface and authenticates callers by agent token; this endpoint serves principals AAuth does not define, so its authentication model, operations, and responses are left to a companion specification (#mission-management). A PS MAY also use it for a deployment's human-facing administrative interface.
 - `revocation_endpoint` (OPTIONAL): URL where authorized parties can revoke tokens (#token-revocation). This is also where an agent provider revokes an agent token it issued, so that the PS denies the agent token and revokes what it issued for that agent.
 - `jwks_uri` (REQUIRED): URL to the PS's JSON Web Key Set
 - `scopes_supported` (RECOMMENDED): Array of scope values the PS supports, including identity scopes (e.g., `openid`, `profile`, `email`) and enterprise scopes (e.g., `tenant`, `groups`, `roles`)
@@ -2990,6 +3079,14 @@ That is deliberate. It lets a resource apply organizational policy before it iss
 A PS-issued auth token and a person token carry the same `iss`, `dwk`, `aud`, `sub`, and `cnf`. Only `typ` distinguishes them. A resource that verifies the signature and reads `sub` without checking `typ` accepts a person token wherever it accepts an auth token.
 
 Implementations MUST check `typ` before acting on any AAuth JWT, and MUST reject `aa-person+jwt` where an auth token is required (#person-token-verification). Deployments SHOULD test this case explicitly; it fails open.
+
+## Incremental Consent {#incremental-consent}
+
+A mission can be updated (#mission-update), and an update may broaden the work as well as narrow it. An agent could therefore propose a modest mission, obtain easy approval, and broaden it in steps each small enough to wave through, arriving somewhere the person would have refused had it been proposed at the outset.
+
+The person's acceptance is required at every step, so no single step is unauthorized. What erodes is the person's sense of the whole. A PS SHOULD present the accumulated picture — the approved description together with the updates already accepted — when asking the person to accept another, rather than the increment alone.
+
+The same erosion is available through a series of separate missions, so this is a property of incremental approval rather than of the update mechanism. It is stated here because the update mechanism makes it cheap.
 
 ## PS Approval Endpoint Authentication {#ps-approval-endpoint-auth}
 
@@ -3286,8 +3383,13 @@ The following implementations are known:
   - Chain routing uses the auth token's `ps` claim. Removed the branch routing a downstream request to the upstream AS, which required the two resources to share an access server and was never stated as such.
   - `sub` MUST be unique within the issuer; `(iss, sub)` is the identifier and `tenant` is organizational context, not part of it. `sub` values from different issuers MUST NOT be matched.
   - Stated the extensibility posture: recipients ignore what they do not recognize, and no document carries a version or schema a recipient must understand.
+  - The mission endpoint is the owning agent's surface, with three operations of one shape: `POST {mission_endpoint}` proposes a mission, and `POST {mission_endpoint}/{mission_s256}` carries `action: update` or `action: completion`. The `action` discriminator is the one the pending route already uses.
+  - Added mission update. An update records a change in the work, is appended to the mission log, and is digested so the sequence is verifiable. It does not change the blob, `mission_s256`, or any token carrying it; what it changes is the context the PS evaluates against, so the mission's meaning becomes the approved blob plus its accepted updates and an audit MUST read both.
+  - Moved completion off the interaction endpoint. It is a lifecycle transition, not transport: creation and completion are the same shape — the agent proposes, the person decides, clarification is available, the response is deferred — and were split across two endpoints for no structural reason. The interaction endpoint keeps `interaction`, `payment`, and `question`, which are the things the agent genuinely cannot do itself.
+  - Defined the termination reasons `completed`, `revoked`, `expired`, `superseded`, and `administrative` as an open set recorded outside the immutable blob, and folded `mission_expired` back into `mission_terminated` with an OPTIONAL `termination_reason` member. One error rather than one per reason, because the reason set is open.
+  - `mission_control_endpoint` is the mission control plane: where parties other than the owning agent read and manage missions. Its authentication model and operations are left to a companion specification, because AAuth defines no administrative principal.
+  - A request carrying a body to a PS or AS endpoint MUST additionally sign `content-digest` and `content-type`. Those requests decide what is authorized and only their tokens were self-protecting. Resources keep declaring what they need through `additional_signature_components`, since bodyless requests and streamed uploads make a blanket requirement wrong there.
   - Stated that the mission blob's member lists are a floor: a PS MAY add members, readers ignore what they do not recognize, and a blob with an extra member has a different identifier because it is a different mission.
-  - `mission_control_endpoint` marked work in progress — a human-facing administrative surface with no protocol defined here, distinct from the lifecycle operations at `mission_endpoint`.
   - Named the opaque credential a resource issues in resource-managed access the **session token**. It was the only credential in the protocol without a name. The `access_mode` value `aauth-access-token` becomes `session-token`.
 
 - draft-hardt-oauth-aauth-protocol-10
