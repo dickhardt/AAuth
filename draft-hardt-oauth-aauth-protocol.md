@@ -207,7 +207,7 @@ Parties:
 - **Person**: A user or organization — the legal person — on whose behalf an agent acts and who is accountable for the agent's actions.
 - **Agent**: An HTTP client ([@!RFC9110], Section 3.5) acting on behalf of a person. Identified by an agent identifier URI using the `aauth` scheme, of the form `aauth:local@domain` (#agent-identifiers). An agent MAY have a person server, declared via the `ps` claim in the agent token.
 - **Agent Provider (AP)**: A server that manages agent identity and issues agent tokens to agents. Trusted by the person to issue agent tokens only to authorized agents. Identified by an HTTPS URL (#server-identifiers) and publishes metadata at `/.well-known/aauth-agent.json`.
-- **Resource**: A server that requires authentication and/or authorization to protect access to its APIs and data. A resource MAY enforce access policy itself or delegate policy evaluation to an access server. Identified by an HTTPS URL (#server-identifiers) and publishes metadata at `/.well-known/aauth-resource.json`. A mission-aware resource includes the mission reference from the `AAuth-Mission` header in the resource tokens it issues.
+- **Resource**: A server that requires authentication and/or authorization to protect access to its APIs and data. A resource MAY enforce access policy itself or delegate policy evaluation to an access server. Identified by an HTTPS URL (#server-identifiers) and publishes metadata at `/.well-known/aauth-resource.json`.
 - **Person Server (PS)**: A server that represents the person to the rest of the protocol. The person chooses their PS; it is not imposed by any other party. The PS manages missions, handles consent, asserts user identity, and brokers authorization on behalf of agents. Identified by an HTTPS URL (#server-identifiers) and publishes metadata at `/.well-known/aauth-person.json`.
 - **Access Server (AS)**: A policy engine that evaluates token requests, applies resource policy, and issues auth tokens on behalf of a resource. Identified by an HTTPS URL (#server-identifiers) and publishes metadata at `/.well-known/aauth-access.json`.
 
@@ -221,7 +221,6 @@ Tokens:
 Protocol concepts:
 
 - **Mission**: A scoped authorization context for agent governance (#missions). Required when the person's PS requires governance over the agent's actions. A mission is a JSON object containing structured fields (approver, agent, approved_at, approved tools) and a Markdown description. Identified by the PS and SHA-256 hash of the mission JSON (`s256`). Missions are proposed by agents and approved by the PS and person.
-- **Mission Reference**: The pair of the `approver` URL and the `s256` hash that identifies a mission in the `AAuth-Mission` header and in the `mission` claim of resource tokens and auth tokens, without carrying the mission's content. Distinct from the full mission JSON (the **mission blob**), which only the agent and PS hold (#mission-approval).
 - **Mission Log**: The ordered record of all agent↔PS interactions within a mission — token requests, permission requests, audit records, interaction requests, and clarification chats. The PS maintains the log and uses it to evaluate whether each new request is consistent with the mission's intent (#mission-log).
 - **HTTP Sig**: An HTTP Message Signature ([@!RFC9421]) created per the AAuth HTTP Message Signatures profile defined in this specification (#http-message-signatures-profile), using a key conveyed via the `Signature-Key` header ([@!I-D.hardt-httpbis-signature-key]).
 - **Markdown**: AAuth uses Markdown ([@CommonMark]) as the human-readable content format for mission descriptions, justifications, clarifications, and scope descriptions. Implementations MUST sanitize Markdown before rendering to users.
@@ -450,7 +449,7 @@ Agent                                     PS                        User
   |<-------------------------------------->|<------------------------>|
   |                                        |                          |
   | 200 OK                                 |                          |
-  | AAuth-Mission: approver=...; s256=...  |                          |
+  | AAuth-Mission-S256: "dBjft..."         |                          |
   | {mission blob}                         |                          |
   |<---------------------------------------|                          |
 ~~~
@@ -458,18 +457,17 @@ Figure: Mission Creation and Approval {#fig-mission}
 
 #### Mission Context at Resources
 
-The agent includes the `AAuth-Mission` header when sending requests to resources, unless the mission is already conveyed in an auth token. The resource includes the mission reference in the resource token it issues:
+The agent names the mission when it obtains a person token for the resource. The resource copies `mission_s256` from that token into the resource token it issues:
 
 ~~~ ascii-art
 Agent                                        Resource
   |                                             |
-  | HTTPSig w/ agent_token                      |
-  | AAuth-Mission: approver=...; s256=...       |
+  | HTTPSig w/ person_token (mission_s256)      |
   | POST authorization_endpoint                 |
   |-------------------------------------------->|
   |                                             |
   | resource_token                              |
-  | (mission reference included)                |
+  | (mission_s256 included)                     |
   |<--------------------------------------------|
 ~~~
 Figure: Mission Context at Resource {#fig-mission-context}
@@ -624,7 +622,7 @@ Verify the agent token per [@!RFC7515] and [@!RFC7519]:
 
 A person token is a PS-issued JWT that identifies the person an agent acts for to a single resource. It asserts identity only: it conveys no scope, no account, and no permission, and a resource MUST NOT treat it as authorizing any access.
 
-The agent presents it via the `Signature-Key` header in place of its agent token (#keying-material). It is REQUIRED on authorization endpoint requests (#authorization-endpoint-request).
+The agent presents it via the `Signature-Key` header in place of its agent token (#keying-material). A resource MUST have verified a person token before it issues a resource token (#resource-tokens), so the identity and mission a resource records are PS-asserted rather than agent-asserted.
 
 ## Person Token Endpoint {#person-token-endpoint}
 
@@ -635,9 +633,11 @@ The agent MUST make a signed POST with an HTTP Sig (#http-message-signatures-pro
 **Request parameters:**
 
 - `resource` (REQUIRED): The HTTPS URL of the resource the person token is for, conforming to the Server Identifier requirements (#server-identifiers). Becomes the `aud` of the issued token. The PS MUST validate it against those requirements.
+- `mission_s256` (OPTIONAL): The mission the agent is operating under (#missions). The PS MUST verify the mission exists, is active, and belongs to this agent, and MUST reject the request otherwise. When present, the PS includes it in the issued token.
+- `subagent_token` (OPTIONAL): A sub-agent's agent token, present when a parent agent obtains a person token on behalf of one of its sub-agents (#sub-agents). The signing agent MUST be named by the `subagent_token`'s `parent_agent`. The issued token's `cnf` is the sub-agent's key.
 - `upstream_token` (OPTIONAL): An auth token issued to the requester for an upstream resource, present when a resource acting as an agent needs a person token for a downstream resource (#call-chaining). The PS MUST verify it per (#upstream-token-verification).
 
-Without `upstream_token` the PS issues for the person bound to the requesting agent (#agent-person-binding). With it, the PS issues for the person the upstream token was issued for, which it determines from the upstream token's `mission.approver` when that names this PS, or from the upstream token's `sub` when this PS issued it. A PS that can determine neither MUST reject the request.
+Without `upstream_token` the PS issues for the person bound to the requesting agent (#agent-person-binding). With it, the PS issues for the person the upstream token was issued for, determined from the upstream token's `sub`, which this PS MUST have issued. A PS that cannot determine the person MUST reject the request.
 
 A PS SHOULD rate-limit the number of distinct `resource` values it accepts from one agent; each obliges it to derive and retain a directed `sub` (#directed-identifiers).
 
@@ -651,7 +651,8 @@ Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
-  "resource": "https://resource.example"
+  "resource": "https://resource.example",
+  "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
 }
 ```
 
@@ -666,9 +667,9 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 The PS MAY require user interaction before issuing and return a `202 Accepted` deferred response with `requirement=interaction` (#requirement-responses).
 
-Errors use the token endpoint error codes (#token-endpoint-error-codes); `invalid_request` covers a missing or malformed `resource` value.
+Errors use the token endpoint error codes (#token-endpoint-error-codes); `invalid_request` covers a missing or malformed `resource` or `mission_s256` value.
 
-An agent SHOULD cache a person token for a resource until it expires rather than requesting one per call.
+An agent SHOULD cache a person token for a resource until it expires rather than requesting one per call. A person token is scoped to one resource and, when it carries `mission_s256`, to one mission, so an agent working across several resources or several concurrent missions holds one per combination. All of them bind the same key through `cnf`, so an agent that rotates its signing key invalidates all of them at once; the agent SHOULD re-request lazily, on next use of each resource, rather than re-minting the whole set.
 
 ## Person Token Structure {#person-token-structure}
 
@@ -693,7 +694,8 @@ Required payload claims:
 
 Optional payload claims:
 
-- `tenant`: Tenant identifier per OpenID Connect Enterprise Extensions 1.0 [@OpenID.Enterprise], with the same semantics as in the auth token (#auth-token-structure).
+- `mission_s256`: The mission the agent is operating under (#missions), when the request named one. The base64url-encoded SHA-256 hash of the approved mission JSON, without padding.
+- `tenant`: Tenant identifier per OpenID Connect Enterprise Extensions 1.0 [@OpenID.Enterprise], declaring the organization the person belongs to. It lets a resource apply organizational policy before it issues anything (#person-token-org-policy). It is not part of the identifier; see (#directed-identifiers).
 
 ```json
 {
@@ -711,13 +713,14 @@ Optional payload claims:
   "sub": "8f14e45fceea167a5a36dedd4bea2543",
   "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519",
                     "x": "NzbLsXh8uDCcd...", "alg": "Ed25519" } },
+  "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
   "jti": "pt-3ab910",
   "iat": 1730217600,
   "exp": 1730304000
 }
 ```
 
-A person token MUST NOT contain `scope`, `account`, or `mission`.
+A person token MUST NOT contain `scope` or `account`.
 
 ## Person Token Usage {#person-token-usage}
 
@@ -743,7 +746,7 @@ Verify the person token per [@!RFC7515] and [@!RFC7519]:
 
 A recipient MUST reject an `aa-person+jwt` wherever an auth token is required. Only `typ` distinguishes the two (#person-token-not-authorization).
 
-`sub` is unique within the issuer, not globally. A resource MUST treat `(iss, sub)` — or `(iss, tenant, sub)` where `tenant` is present — as the identifier, MUST treat the value as opaque, and MUST NOT match a `sub` received from one issuer against a record established under another, however the values compare.
+`sub` is unique within the issuer, not globally. A resource MUST treat `(iss, sub)` as the identifier, MUST treat the value as opaque, and MUST NOT match a `sub` received from one issuer against a record established under another, however the values compare.
 
 # Resource Access and Resource Tokens {#resource-tokens}
 
@@ -756,7 +759,9 @@ A resource token can be returned in two ways:
 
 A resource MAY return a `401` with `AAuth-Requirement` even when the agent presents a valid auth token — for example, when the endpoint requires additional scopes or a different authorization context beyond what the current auth token grants (nested authorization).
 
-A resource token is a signed JWT that cryptographically binds the resource's identity, the agent's identity, and the requested scope. The resource sets the token's audience based on its configuration:
+A resource MUST have verified a person token (#person-tokens) before it issues a resource token, and MUST challenge with `requirement=person-token` (#requirement-person-token) when it has not. Only a person server can act on a resource token — in three-party it is the audience, and in four-party it is the only party that may call the AS token endpoint — so a resource token issued to an agent that cannot name a person is one nobody can redeem.
+
+A resource token is a signed JWT that cryptographically binds the resource's identity, the person's identity, the agent's signing key, and the requested scope. The resource sets the token's audience based on its configuration:
 
 - If the resource has its own AS: `aud` = AS URL (four-party)
 - If the resource has no AS but the agent has a PS (`ps` claim in agent token): `aud` = PS URL (three-party)
@@ -783,26 +788,6 @@ Host: resource.example
 Content-Type: application/json
 Signature-Input: sig=("@method" "@authority"
     "@path" "signature-key");created=1730217600
-Signature: sig=:...signature bytes...:
-Signature-Key: sig=jwt;jwt="eyJhbGc..."
-
-{
-  "scope": "data.read data.write"
-}
-```
-
-When the agent is operating in a mission context, it includes the `AAuth-Mission` header and adds `aauth-mission` to the signed components:
-
-```http
-POST /authorize HTTP/1.1
-Host: resource.example
-Content-Type: application/json
-AAuth-Mission:
-    approver="https://ps.example";
-    s256="dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
-Signature-Input: sig=("@method" "@authority"
-    "@path" "signature-key"
-    "aauth-mission");created=1730217600
 Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
@@ -855,7 +840,7 @@ Alternatively, the resource MAY return a resource token. The resource sets the `
 - If the resource has its own AS: `aud` = AS URL (four-party)
 - If the resource has no AS but the agent has a PS (`ps` claim): `aud` = PS URL (three-party)
 
-When the `AAuth-Mission` header is present, the resource includes the mission reference (`approver` and `s256`) in the resource token.
+When the person token carries `mission_s256`, the resource copies it into the resource token.
 
 ```json
 {
@@ -974,17 +959,19 @@ Payload:
 - `dwk`: `aauth-resource.json` — the well-known metadata document name for key discovery ([@!I-D.hardt-httpbis-signature-key])
 - `aud`: Token audience — the PS URL (when the resource delegates authorization to the agent's PS) or the AS URL (when the resource has its own access server)
 - `jti`: Unique token identifier for replay detection, audit, and revocation
-- `agent`: Agent identifier. REQUIRED when the request that produced this token presented an agent token; omitted when it presented a person token (#person-tokens). `agent_jkt` is the binding in either case.
+- `ps`: The `iss` of the person token the resource verified — the person server whose namespace `sub` belongs to
+- `sub`: The `sub` of that person token, identifying the person this authorization is for
 - `agent_jkt`: JWK Thumbprint ([@!RFC7638]) of the agent's current signing key
 - `iat`: Issued at timestamp
 - `exp`: Expiration timestamp
 - `scope`: Requested scopes, as a space-separated string of scope values. Companion specifications MAY define alternative authorization claims that replace `scope`.
 
+A resource token carries no agent identifier. `agent_jkt` binds it to the agent's key, and the recipient learns the agent's identity from the agent token that signs the token request.
+
 Optional payload claims:
 - `account`: The account the authorization is for, echoing the `account` parameter of the request that produced this token (#account-binding).
-- `mission`: Mission reference (present when the resource is mission-aware and the agent sent an `AAuth-Mission` header). Contains:
-  - `approver`: HTTPS URL of the entity that approved the mission
-  - `s256`: SHA-256 hash of the approved mission JSON (base64url)
+- `mission_s256`: Copied from the person token when it carried one (#person-token-structure).
+- `tenant`: Copied from the person token when it carried one.
 - `interaction`: Present when the resource requires its own user-facing flow — for example, obtaining OAuth authorization from a third-party service — before the PS can issue an auth token. Contains:
   - `url`: HTTPS URL of the resource's interaction endpoint
   - `code`: Interaction code to present at that URL
@@ -999,11 +986,13 @@ Verify the resource token per [@!RFC7515] and [@!RFC7519]:
 2. Verify `dwk` is `aauth-resource.json`. Discover the issuer's JWKS via `{iss}/.well-known/{dwk}` per the HTTP Signature Keys specification ([@!I-D.hardt-httpbis-signature-key]). Locate the key matching the JWT header `kid` and verify the JWT signature.
 3. Verify `exp` is in the future and `iat` is not in the future.
 4. Verify `aud` matches the recipient's own identifier (the PS in three-party, or the AS in four-party).
-5. If `agent` is present, verify it matches the requesting agent's identifier.
-6. Verify `agent_jkt` matches the JWK Thumbprint of the key used to sign the HTTP request.
-7. If `mission` is present, verify `mission.approver` matches the PS that sent the token request.
+5. Verify `agent_jkt` matches the JWK Thumbprint of the key used to sign the HTTP request.
+6. A PS MUST verify that `ps` is its own identifier and that `sub` is the directed identifier it issues for this person at `iss`. An AS MUST verify that `ps` names the PS that sent the token request.
+7. If `mission_s256` is present, a PS MUST verify the mission exists, is active, and belongs to this agent.
 
-For a parent-mediated sub-agent authorization (a `subagent_token` is present, see (#sub-agents)), step 6 instead verifies `agent_jkt` against the `subagent_token`'s `cnf.jwk` — the sub-agent's key — because the parent, not the sub-agent, signs the HTTP request.
+For a parent-mediated sub-agent authorization (a `subagent_token` is present, see (#sub-agents)), step 5 instead verifies `agent_jkt` against the `subagent_token`'s `cnf.jwk` — the sub-agent's key — because the parent, not the sub-agent, signs the HTTP request.
+
+A `sub` that disagrees with the PS's own directed value means the resource verified a person token the PS did not issue for this person and resource, or one that has since been superseded. The PS MUST reject the resource token.
 
 ### Resource Challenge Verification
 
@@ -1012,10 +1001,10 @@ When an agent receives a `401` response with `AAuth-Requirement: requirement=aut
 1. Extract the `resource-token` parameter.
 2. Decode and verify the resource token JWT.
 3. Verify `iss` matches the resource the agent sent the request to.
-4. If `agent` is present, verify it matches the agent's own identifier.
-5. Verify `agent_jkt` matches the JWK Thumbprint of the agent's signing key.
+4. Verify `agent_jkt` matches the JWK Thumbprint of the agent's signing key.
+5. Verify `ps` matches the agent's own person server, and `sub` the value in the person token the agent presented.
 6. Verify `exp` is in the future.
-7. Send the resource token to the agent's PS's token endpoint.
+7. Send the resource token to the agent's PS's auth token endpoint.
 
 # Person Server {#person-server}
 
@@ -1277,7 +1266,7 @@ The agent MUST make a signed POST to the PS's `permission_endpoint`. The request
 - `action` (REQUIRED): A string identifying the action the agent wants to perform (e.g., a tool name).
 - `description` (OPTIONAL): A Markdown string describing what the action will do and why.
 - `parameters` (OPTIONAL): A JSON object containing the parameters the agent intends to pass to the action.
-- `mission` (OPTIONAL): Mission reference with `approver` and `s256` fields, binding the request to a mission. When present, the PS evaluates the request against the mission context and log history.
+- `mission_s256` (OPTIONAL): The mission this request belongs to. When present, the PS evaluates the request against the mission context and log history.
 
 ```http
 POST /permission HTTP/1.1
@@ -1295,10 +1284,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
     "to": "user@example.com",
     "subject": "Japan trip itinerary"
   },
-  "mission": {
-    "approver": "https://ps.example",
-    "s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
-  }
+  "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
 }
 ```
 
@@ -1336,7 +1322,7 @@ The agent MUST make a signed POST to the PS's `audit_endpoint`. The request MUST
 
 **Request parameters:**
 
-- `mission` (REQUIRED): Mission reference with `approver` and `s256` fields.
+- `mission_s256` (REQUIRED): The mission this record belongs to.
 - `action` (REQUIRED): A string identifying the action that was performed.
 - `description` (OPTIONAL): A Markdown string describing what was done and the outcome.
 - `parameters` (OPTIONAL): A JSON object containing the parameters that were used.
@@ -1352,10 +1338,7 @@ Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
-  "mission": {
-    "approver": "https://ps.example",
-    "s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
-  },
+  "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
   "action": "WebSearch",
   "description": "Searched for flights to Tokyo in May",
   "parameters": {
@@ -1397,7 +1380,7 @@ The agent MUST make a signed POST to the PS's `interaction_endpoint`. The reques
 - `max_wait` (OPTIONAL): Maximum seconds the PS SHOULD hold the relay's deferred response before resolving it (for `interaction` and `payment` types). When the interaction URL is resource-hosted, the PS resolves its deferred response once the user has engaged or when this window elapses, whichever comes first; the agent then relies on the resource's pending URL for completion (#interaction-response-poll-authority). Absent `max_wait`, the PS resolves the relay when the user has engaged or it can make no further progress.
 - `question` (OPTIONAL): A Markdown string containing a question for the user (for `question` type).
 - `summary` (OPTIONAL): A Markdown string summarizing what the agent accomplished (for `completion` type).
-- `mission` (OPTIONAL): Mission reference with `approver` and `s256` fields, binding the request to a mission.
+- `mission_s256` (OPTIONAL): The mission this request belongs to.
 
 **Relay interaction example:**
 
@@ -1415,10 +1398,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
   "description": "The booking service needs you to confirm payment",
   "url": "https://booking.example/confirm",
   "code": "X7K2-M9P4",
-  "mission": {
-    "approver": "https://ps.example",
-    "s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
-  }
+  "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
 }
 ```
 
@@ -1440,10 +1420,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
     10 nights across three cities.
     Total cost: $4,850.
     Itinerary sent to your email.",
-  "mission": {
-    "approver": "https://ps.example",
-    "s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
-  }
+  "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
 }
 ```
 
@@ -1490,7 +1467,7 @@ Agents SHOULD proactively obtain a new agent token and refresh all auth tokens b
 
 # Mission {#missions}
 
-Missions are OPTIONAL. The protocol operates in all modes without missions. When used, missions provide scoped authorization contexts that guide an agent's work across multiple resource accesses — enabling scope pre-approval, reduced consent fatigue, and centralized audit. A mission is a natural-language description of what the agent intends to accomplish, proposed by the agent and approved by the PS. The PS uses the mission to evaluate every subsequent request in context — it is the only party with the mission content, the user relationship, and the full history of the agent's actions. Once approved, the mission's `s256` identifier is included in subsequent resource interactions via the `AAuth-Mission` header.
+Missions are OPTIONAL. The protocol operates in all modes without missions. When used, missions provide scoped authorization contexts that guide an agent's work across multiple resource accesses — enabling scope pre-approval, reduced consent fatigue, and centralized audit. A mission is a natural-language description of what the agent intends to accomplish, proposed by the agent and approved by the PS. The PS uses the mission to evaluate every subsequent request in context — it is the only party with the mission content, the user relationship, and the full history of the agent's actions. Once approved, the agent names the mission's `s256` when it obtains person tokens (#person-token-endpoint), from where it flows into resource tokens and auth tokens.
 
 ## Mission Creation {#mission-creation}
 
@@ -1525,13 +1502,12 @@ The PS MAY return a `202 Accepted` deferred response (#deferred-responses) if hu
 
 ## Mission Approval {#mission-approval}
 
-When the PS approves the mission, the response body is a JSON object — the **mission blob** — containing the approved mission and session-specific information. The PS returns the `AAuth-Mission` header with the `approver` and `s256` values:
+When the PS approves the mission, the response body is a JSON object — the **mission blob** — containing the approved mission and session-specific information. The PS returns the mission's `s256` in the `AAuth-Mission-S256` response header:
 
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/json
-AAuth-Mission: approver="https://ps.example";
-    s256="dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+AAuth-Mission-S256: "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
 
 {
   "approver": "https://ps.example",
@@ -1570,9 +1546,9 @@ The mission blob MAY include:
 - `approved_tools`: Array of tool objects (each with `name` and `description`) that the agent may use without per-call permission at the PS's permission endpoint (#permission-endpoint).
 - `capabilities`: Array of capability strings (e.g., `interaction`, `payment`) that the PS can provide on behalf of the user for this session. The PS determines these based on whether it can reach the specific user — for example, via push notification, email, or an active session. The agent unions these with its own capabilities when constructing the `AAuth-Capabilities` request header (#aauth-capabilities).
 
-The response body — the mission blob — is the mission JSON that `s256` hashes everywhere it appears (the `AAuth-Mission` header and the `mission` reference in resource and auth tokens). The `s256` is the base64url-encoded SHA-256 hash of the response body bytes. The agent verifies the hash by computing SHA-256 over the exact response body bytes, and MUST store those bytes exactly as received — no re-serialization.
+The response body — the mission blob — is the mission JSON that `mission_s256` hashes everywhere it appears. The value is the base64url-encoded SHA-256 hash of the response body bytes, without padding. The agent verifies the hash by computing SHA-256 over the exact response body bytes, and MUST store those bytes exactly as received — no re-serialization.
 
-The approved description MAY differ from the proposal — the PS or user may refine, constrain, or expand the mission during review. The approved tools MAY be a subset of the proposed tools. The agent MUST use the `approver` and `s256` from the `AAuth-Mission` header in all subsequent `AAuth-Mission` request headers.
+The approved description MAY differ from the proposal — the PS or user may refine, constrain, or expand the mission during review. The approved tools MAY be a subset of the proposed tools. The agent MUST use this value as `mission_s256` when requesting person tokens (#person-token-endpoint).
 
 ## Mission Log {#mission-log}
 
@@ -1580,7 +1556,7 @@ The approved mission description is immutable — the `s256` hash binds it perma
 
 All agent interactions with the PS within a mission context form the **mission log**: token requests (with justifications), permission requests and responses, audit records, interaction requests, and clarification chats. The PS maintains this log as an ordered record of the agent's actions and the governance decisions made. The mission log gives the PS the full history it needs to evaluate whether each new request is consistent with the mission's intent.
 
-The agent includes the mission context in all resource interactions via the `AAuth-Mission` header. When the agent sends a resource token to its PS, the PS evaluates the request against the mission context and log history before federating with the resource's AS.
+The agent names the mission when it requests a person token (#person-token-endpoint); the PS validates it and stamps `mission_s256` into the token, from where it flows into the resource token and the auth token. When the agent sends a resource token to its PS, the PS evaluates the request against the mission context and log history before federating with the resource's AS.
 
 ## Mission Completion {#mission-completion}
 
@@ -1597,7 +1573,7 @@ The mechanisms for state transitions beyond completion — revocation, delegatio
 
 ## Mission Status Errors {#mission-status-errors}
 
-When an agent makes a request to any PS endpoint with a `mission` parameter referencing a mission that is no longer active, the PS MUST return an error:
+When an agent makes a request to any PS endpoint with a `mission_s256` parameter referencing a mission that is no longer active, the PS MUST return an error:
 
 ```http
 HTTP/1.1 403 Forbidden
@@ -1612,30 +1588,6 @@ Content-Type: application/problem+json
 | Error | Mission Status | Meaning |
 |-------|---------------|---------|
 | `mission_terminated` | `terminated` | The mission is permanently ended. The agent MUST stop acting on this mission. |
-
-## AAuth-Mission Request Header
-
-The `AAuth-Mission` header is a request header sent by the agent on initial requests to a resource when operating in a mission context. It signals to the resource that the agent has a person server and is operating within a mission.
-
-```http
-AAuth-Mission:
-    approver="https://ps.example";
-    s256="dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
-```
-
-Parameters:
-
-- `approver`: The HTTPS URL of the entity that approved the mission
-- `s256`: The base64url-encoded SHA-256 hash of the approved mission JSON
-
-When a mission-aware resource receives a request with the `AAuth-Mission` header, it includes the mission reference (`approver` and `s256`) in the resource token it issues. When a resource does not support missions, it ignores the header.
-
-Agents operating in a mission context MUST include the `AAuth-Mission` header on requests to resources that do not include an auth token containing a `mission` claim.
-
-`AAuth-Mission` carries a *mission reference* — the `{approver, s256}` pair — not the mission body. A resource or AS MUST NOT dereference the reference to fetch the mission blob; the full mission JSON is held only by the agent and the PS (#mission-approval). A mission-aware resource copies the reference into the resource token's `mission` claim unchanged; downstream parties receive mission semantics through resource/auth token claims and PS evaluation, never by resolving the blob.
-
-- `approver` MUST be an HTTPS URL conforming to the Server Identifier requirements (#server-identifiers) — scheme and host only, no port, path, query, or fragment — and is compared by exact string match.
-- `s256` MUST be the unpadded base64url encoding of the 32-byte SHA-256 digest of the approved mission JSON bytes (#mission-approval).
 
 # Access Server Federation {#access-server-federation}
 
@@ -1653,9 +1605,12 @@ The PS MUST make a signed POST to the AS's `auth_token_endpoint`. The PS authent
 
 - `resource_token` (REQUIRED): The resource token issued by the resource.
 - `agent_token` (REQUIRED): The agent's agent token. For a parent-mediated sub-agent authorization, this is the parent (top-level) agent's token.
-- `subagent_token` (OPTIONAL): A sub-agent's agent token, present when the PS federates a parent-mediated sub-agent authorization (#sub-agents). When present, the AS binds the issued auth token to the sub-agent (verifying `resource_token`'s `agent_jkt` against the `subagent_token`'s `cnf.jwk`) and records the parent — named by the `subagent_token`'s `parent_agent`, which MUST match `agent_token` — in the `act` chain.
+- `subagent_token` (OPTIONAL): A sub-agent's agent token, present when the PS federates a parent-mediated sub-agent authorization (#sub-agents). When present, the AS binds the issued auth token to the sub-agent, verifying `resource_token`'s `agent_jkt` against the `subagent_token`'s `cnf.jwk`.
 - `upstream_token` (OPTIONAL): An auth token from an upstream authorization, used in call chaining (#call-chaining).
-- `sub` (OPTIONAL): The directed user identifier for this resource, saving the AS a `requirement=claims` exchange (#requirement-claims) when it needs one. MUST be the same value the PS uses in the person token (#person-token-structure) and in auth tokens for that `aud` (#directed-identifiers). A PS SHOULD include it when the agent requested identity scopes, or when it has previously learned that this AS requires one.
+
+The resource token carries the person's identity as `ps` and `sub` (#resource-token-structure), so the AS needs no separate identity parameter and `requirement=claims` (#requirement-claims) is reserved for claims beyond it.
+
+`agent_token` remains REQUIRED even though the resource never sees an agent identifier. A resource deploys an AS because it wants policy evaluated, and an agent token MAY carry claims bearing on that decision — software attestation, platform integrity, secure enclave status, workload identity (#agent-token-structure). The resource enforces; the AS evaluates; posture goes to the evaluator.
 
 **Example request:**
 ```http
@@ -1715,14 +1670,13 @@ When the AS issues an auth token (`200` response), the PS MUST verify the auth t
 1. Verify the auth token JWT signature using the AS's JWKS (#jwks-discovery).
 2. Verify `iss` matches the AS the PS sent the token request to.
 3. Verify `aud` matches the resource identified by the resource token's `iss`.
-4. Verify `agent` matches the agent that submitted the token request.
-5. Verify `cnf.jwk` matches the agent's signing key.
-6. If `act` is present, verify `act.agent` identifies the upstream agent that delegated to the requesting agent, and any nested `act` claims accurately reflect the upstream delegation context.
-7. Verify `scope` is consistent with what was requested — not broader than the scope in the resource token.
+4. Verify `cnf.jwk` matches the agent's signing key.
+5. Verify `sub` matches the directed identifier the PS issues for this person at this resource.
+6. Verify `scope` is consistent with what was requested — not broader than the scope in the resource token.
 
 After verification, the PS returns the auth token to the agent. The agent presents the auth token to the resource via the `Signature-Key` header (#auth-token-usage). The resource verifies the auth token against the AS's JWKS (#auth-token-verification).
 
-The agent receives the auth token from its trusted PS, so signature verification is not strictly required. However, agents SHOULD verify the auth token's signature to detect errors early. Agents MUST verify that `aud`, `cnf`, `agent`, and `act` match their own values.
+The agent receives the auth token from its trusted PS, so signature verification is not strictly required. However, agents SHOULD verify the auth token's signature to detect errors early. Agents MUST verify that `aud` and `cnf` match their own values.
 
 ## Claims Required {#requirement-claims}
 
@@ -1847,24 +1801,19 @@ Required payload claims:
 - `dwk`: The well-known metadata document name for key discovery ([@!I-D.hardt-httpbis-signature-key]). `aauth-access.json` when issued by an AS, `aauth-person.json` when issued by a PS.
 - `aud`: The URL of the resource the agent is authorized to access.
 - `jti`: Unique token identifier for replay detection, audit, and revocation
-- `agent`: Agent identifier
+- `ps`: The person server the person is represented by. Equal to `iss` when a PS issued the token. An intermediary acting as an agent routes its downstream token request here (#call-chaining).
+- `sub`: Directed user identifier, copied from the resource token. An opaque string, unique within `iss`, that identifies the person. The PS SHOULD derive a pairwise pseudonymous value per resource (`aud`), so different resources see different values for the same person (#directed-identifiers).
 - `cnf`: Confirmation claim with `jwk` containing the agent's public key. The JWK MUST carry a fully-specified `alg` member (#signature-algorithms).
-- `act`: Delegation chain ([@!RFC8693], Section 4.1). OPTIONAL. See (#delegation-chain).
 - `iat`: Issued at timestamp
 - `exp`: Expiration timestamp. Auth tokens MUST NOT have a lifetime exceeding 1 hour.
 
-Conditional payload claims (at least one MUST be present):
-- `sub`: Directed user identifier. An opaque string that identifies the user. The PS SHOULD provide a pairwise pseudonymous identifier per resource (`aud`), preserving user privacy — different resources see different `sub` values for the same user.
-- `scope`: Authorized scopes, as a space-separated string of scope values consistent with [@!RFC9068] Section 2.2.3
-
-At least one of `sub` or `scope` MUST be present.
+An auth token carries no agent identifier and no delegation chain. `cnf` binds it to one key, and the resource enforces against `sub` and `scope`.
 
 Optional payload claims:
+- `scope`: Authorized scopes, as a space-separated string of scope values consistent with [@!RFC9068] Section 2.2.3
 - `account`: The account the authorization is for, copied from the resource token (#account-binding).
-- `mission`: Mission reference. Present when the auth token was issued in the context of a mission. Contains:
-  - `approver`: HTTPS URL of the entity that approved the mission
-  - `s256`: SHA-256 hash of the approved mission JSON (base64url)
-- `tenant`: Tenant identifier per OpenID Connect Enterprise Extensions 1.0 [@OpenID.Enterprise]. When present, `(iss, tenant, sub)` identifies a user within an organization, and `(iss, tenant)` identifies the organization itself.
+- `mission_s256`: Copied from the resource token when it carried one. Present when the auth token was issued in the context of a mission.
+- `tenant`: Tenant identifier per OpenID Connect Enterprise Extensions 1.0 [@OpenID.Enterprise], declaring the organization the person belongs to. `(iss, tenant)` identifies the organization. It is not part of the person's identifier, which is `(iss, sub)`.
 
 The auth token MAY include additional claims registered in the IANA JSON Web Token Claims Registry [@!RFC7519] or defined in OpenID Connect Core 1.0 [@!OpenID.Core] Section 5.1.
 
@@ -1893,10 +1842,8 @@ When a resource receives an auth token, verify per [@!RFC7515] and [@!RFC7519]. 
 #### Request-Context Binding
 
 5. Verify `aud` matches the resource's own identifier.
-6. Verify `agent` matches the agent identifier from the request's signing context.
-7. `cnf.jwk` is REQUIRED. If it is absent, or if its JWK is missing `kty` or the members required for that key type (e.g., `crv` and `x` for OKP keys; `crv`, `x`, and `y` for EC keys; `n` and `e` for RSA keys), reject the token as structurally incomplete before attempting key decoding. If present but not parseable as a supported public key, reject it as invalid key material. Otherwise verify `cnf.jwk` matches the key used to sign the HTTP request.
-8. If `act` is present, verify `act.agent` is a valid AAuth agent identifier and accurately reflects the upstream delegation context.
-9. Verify that at least one of `sub` or `scope` is present.
+6. `cnf.jwk` is REQUIRED. If it is absent, or if its JWK is missing `kty` or the members required for that key type (e.g., `crv` and `x` for OKP keys; `crv`, `x`, and `y` for EC keys; `n` and `e` for RSA keys), reject the token as structurally incomplete before attempting key decoding. If present but not parseable as a supported public key, reject it as invalid key material. Otherwise verify `cnf.jwk` matches the key used to sign the HTTP request.
+7. Verify `sub` is present, and that `(iss, sub)` matches or establishes the resource's record for this person (#trust-posture-in-ps-asserted-access).
 
 ### Auth Token Response Verification {#auth-token-response-verification}
 
@@ -1906,8 +1853,7 @@ When an agent receives an auth token:
 2. Verify `iss` matches the resource token's `aud` claim.
 3. Verify `aud` matches the resource the agent intends to access.
 4. Verify `cnf.jwk` matches the agent's own signing key.
-5. Verify `agent` matches the agent's own identifier.
-6. If `act` is present, verify `act.agent` identifies the upstream agent that delegated to this agent.
+5. Verify `sub` matches the value in the person token it presented to that resource.
 
 ### Upstream Token Verification {#upstream-token-verification}
 
@@ -1916,12 +1862,11 @@ When the PS or AS receives an `upstream_token` parameter in a call chaining requ
 1. Perform Auth Token Verification (#auth-token-verification) on the upstream token.
 2. Verify `iss` is a trusted issuer (a PS or AS whose auth token the recipient previously brokered or is authorized to extend).
 3. Verify the `aud` in the upstream token equals the `iss` of the intermediary's agent token (presented in the `Signature-Key` header). This binding confirms the upstream token was issued to the resource now making the downstream request.
-4. The PS constructs the `act` claim for the downstream auth token: `act.agent` is set to the intermediary resource's agent identifier, and if the upstream token contained an `act` claim, it is nested inside as the new `act.act`. This preserves the complete upstream delegation chain.
-5. The PS evaluates its mission and governance policy based on the upstream token's claims and mission context. The resulting downstream authorization is not required to be a subset of the upstream scopes — see (#call-chaining).
+4. The PS evaluates its mission and governance policy based on the upstream token's claims and mission context. The resulting downstream authorization is not required to be a subset of the upstream scopes — see (#call-chaining).
 
 # Agent Delegation {#agent-delegation}
 
-Agent delegation covers the scenarios where more than one agent is involved in fulfilling a request: a resource that acts as an agent to call a downstream resource (call chaining), an orchestrating agent that spawns sub-agents, and the delegation chain recorded in auth tokens that spans both.
+Agent delegation covers the scenarios where more than one agent is involved in fulfilling a request: a resource that acts as an agent to call a downstream resource (call chaining), and an orchestrating agent that spawns sub-agents.
 
 ## Multi-Hop Resource Access {#multi-hop}
 
@@ -1929,21 +1874,13 @@ This section defines how resources act as agents (an instance of role collocatio
 
 ### Call Chaining {#call-chaining}
 
-When a resource needs to access a downstream resource on behalf of the caller, it acts as an agent. The resource determines where to route the downstream token request from the upstream auth token it received — specifically from `mission.approver` (if a mission is present) or from `iss` (the identity of the PS or AS that issued the upstream token). The `ps` claim in the calling agent's agent token is NOT used for this routing; the upstream auth token is the authoritative source.
+When a resource needs to access a downstream resource on behalf of the caller, it acts as an agent. It routes the downstream token request to the person server named by the `ps` claim of the upstream auth token it received. The `ps` claim in the calling agent's own agent token is NOT used for this routing — that names the intermediary's person server, not the person's.
 
-- **Mission present** (`mission.approver` in the upstream auth token): The resource sends the downstream resource token to the PS identified by `mission.approver`, along with its own agent token and the upstream auth token as the `upstream_token`. The PS has mission context and evaluates the downstream request against the mission scope. This is the governed path — the PS sees the full delegation chain for audit.
-
-- **No mission, `iss` is a PS** (three-party upstream): The upstream auth token was issued directly by the PS (`iss` = PS URL). The resource sends the downstream resource token to that PS, along with its own agent token and the `upstream_token`. The PS evaluates the request without mission context.
-
-- **No mission, `iss` is an AS** (four-party upstream, no governance): The resource sends the downstream resource token to the AS identified by `iss`, along with its own agent token and the `upstream_token`. The AS evaluates the request based on resource policy. No PS is involved — no governance context is available.
-
-To ensure the PS is in the loop for every hop in a chain, the person's PS MUST require a mission. A mission puts `mission.approver` in the upstream auth token, giving every intermediary a PS URL to route to regardless of whether the upstream issuer was a PS or AS.
-
-An intermediary using a downstream resource's authorization endpoint (#authorization-endpoint-request) obtains the person token it requires from the PS by presenting the upstream auth token as `upstream_token` (#person-token-endpoint). On the third path above no PS is reachable — the upstream token names an AS and carries no mission, and the calling agent's `ps` claim is not used for routing — so an intermediary there uses the `401` challenge path (#requirement-auth-token) instead.
+The intermediary first obtains a person token for the downstream resource, presenting the upstream auth token as `upstream_token` (#person-token-endpoint). It then presents that person token at the downstream resource, receives a resource token, and sends it to the person server named by `ps`, along with its own agent token and the upstream auth token as `upstream_token`. The PS evaluates the downstream request against the mission context when the upstream token carries `mission_s256`.
 
 In every case the intermediary signs the downstream token request with its **own** key, presenting its own agent token via the `Signature-Key` header (#http-message-signatures-profile). The `upstream_token` is a body parameter — it is neither presented via `Signature-Key` nor used as the signing key. It is the auth token previously issued to the intermediary (its `aud` is the intermediary and its `cnf` is the intermediary's key), and it serves only as proof of the upstream authorization that the recipient extends downstream. The signature the recipient verifies is therefore always the intermediary's, over its own key.
 
-The recipient (PS or AS) evaluates the downstream request per (#upstream-token-verification).
+The recipient evaluates the downstream request per (#upstream-token-verification).
 
 #### Directed Identifiers Across a Chain {#directed-sub-chaining}
 
@@ -1952,11 +1889,9 @@ The `sub` of an auth token is a directed identifier: a PS SHOULD issue a pairwis
 A downstream issuer sees the upstream `sub` in the `upstream_token` it is handed. It MUST NOT carry that value forward:
 
 1. An issuer MUST NOT copy a directed `sub` from an upstream token into a token it issues.
-2. It MAY include `sub` only where it obtained or derived a downstream-directed identifier for the person itself, through an authenticated PS or claims federation step of its own.
-3. Otherwise the token it issues omits `sub` and carries only the verified agent and delegation facts — `agent` and, where present, `act`.
-4. The `act` chain records agent identity provenance only and MUST NOT carry any identifier for the person.
+2. The `sub` it issues is the directed identifier for the person at the downstream resource, taken from the downstream resource token, which the resource copied from the person token the PS issued for that resource.
 
-Clause 3 leaves a well-formed token: §(#auth-tokens) requires at least one of `sub` or `scope`, so a downstream token carrying `scope` and no `sub` satisfies the structure. Losing the user identifier is the intended outcome where no mapping exists — a downstream resource learns what the agent is authorized to do without learning who, which is the correct answer when nobody has established who the person is in that issuer's namespace.
+Because the intermediary obtains a person token for the downstream resource before calling it (#person-token-endpoint), the PS has already minted a downstream-directed identifier by the time the resource token exists. The chain never needs to carry a `sub` forward, and never leaves a downstream token without one.
 
 Copying instead would fail in both directions at once. The value would be meaningless under the new issuer, so the downstream resource would either misidentify the person or key state to an identifier no one can resolve; and the same string appearing at two resources is exactly the correlation handle pairwise identifiers exist to prevent, handed to a party the user never consented to share it with.
 
@@ -1997,7 +1932,7 @@ Acquisition of a sub-agent token from the agent provider is platform-dependent a
 
 ### Single-Level Depth
 
-The delegation chain is at most one level deep: a top-level agent may have sub-agents, but a sub-agent MUST NOT have sub-agents of its own. Two rules enforce this:
+Delegation is at most one level deep: a top-level agent may have sub-agents, but a sub-agent MUST NOT have sub-agents of its own. Two rules enforce this:
 
 - A PS MUST reject a token request signed by an agent whose agent token has a `parent_agent` claim — a sub-agent cannot request authorization on its own behalf or on behalf of a further sub-agent.
 - An agent provider MUST NOT issue a sub-agent token whose parent (`parent_agent`) is itself a sub-agent.
@@ -2008,64 +1943,19 @@ For genuinely deeper workflows, AAuth already provides chained top-level agents 
 
 A sub-agent MUST NOT call the PS directly. Instead, the parent obtains auth tokens on the sub-agent's behalf:
 
-1. The sub-agent calls the resource and obtains a resource token bound to its own key (#resource-tokens), exactly as a top-level agent would. It passes the resource token to its parent out of band (for example, via IPC).
-2. The parent POSTs to the PS's `auth_token_endpoint`, signing the request with its own key and presenting its own agent token via the `Signature-Key` header. The request body includes `resource_token` (the sub-agent's resource token) and `subagent_token` (the sub-agent's agent token).
-3. The PS processes this as an authorization request from the parent (#ps-token-endpoint):
+1. The parent obtains a person token for the sub-agent by POSTing to the PS's `person_token_endpoint` with `subagent_token` (#person-token-endpoint); the issued token's `cnf` is the sub-agent's key. It passes the person token to the sub-agent out of band (for example, via IPC).
+2. The sub-agent presents that person token at the resource and obtains a resource token bound to its own key (#resource-tokens), exactly as a top-level agent would. It passes the resource token back to its parent.
+3. The parent POSTs to the PS's `auth_token_endpoint`, signing the request with its own key and presenting its own agent token via the `Signature-Key` header. The request body includes `resource_token` (the sub-agent's resource token) and `subagent_token` (the sub-agent's agent token).
+4. The PS processes this as an authorization request from the parent (#ps-token-endpoint):
    - It verifies the HTTP Message Signature against the parent's `cnf.jwk`.
    - It verifies the `subagent_token` (#agent-token-verification) and that its `parent_agent` names the parent — the agent that signed the request.
-   - It verifies the `resource_token` is bound to the sub-agent's key: `agent_jkt` matches the `subagent_token`'s `cnf.jwk` (not the signing key) and `agent` matches the sub-agent's identifier (#resource-token-verification).
+   - It verifies the `resource_token` is bound to the sub-agent's key: `agent_jkt` matches the `subagent_token`'s `cnf.jwk`, not the signing key (#resource-token-verification).
    - It evaluates the parent's grant for the requested scope, exactly as for a direct request from the parent. If the user has already consented, the response is immediate; otherwise consent surfaces for the parent as usual.
-4. On success the issuer — the PS in three-party, or the AS in four-party — issues an auth token bound to the sub-agent's key (`cnf` = the sub-agent's `jwk`, `agent` = the sub-agent's identifier), with `act.agent` set to the parent agent's identifier (taken from the `subagent_token`'s `parent_agent`). If the parent was itself in a delegation chain (e.g., the parent received an `upstream_token`), the parent's upstream `act` chain is nested inside. In four-party, the PS federates by passing the parent as `agent_token` and the sub-agent as `subagent_token` to the AS (#as-token-endpoint), so the AS records the parent authoritatively from those tokens. The parent passes the auth token to the sub-agent, which presents it to the resource signing with its own key.
+5. On success the issuer — the PS in three-party, or the AS in four-party — issues an auth token bound to the sub-agent's key (`cnf` = the sub-agent's `jwk`). In four-party, the PS federates by passing the parent as `agent_token` and the sub-agent as `subagent_token` to the AS (#as-token-endpoint), so the AS records the parent authoritatively from those tokens. The parent passes the auth token to the sub-agent, which presents it to the resource signing with its own key.
+
+The sub-agent relationship is recorded by the PS, which issued both tokens and holds the `parent_agent` binding. It does not appear in the tokens the resource sees.
 
 Because every sub-agent authorization passes through the parent, the parent retains control — it can refuse, attenuate, or rate-limit — and revocation propagates naturally: revoking the parent's grant causes the next sub-agent authorization to fail, while existing auth tokens expire normally (≤1 hour).
-
-## Delegation Chain {#delegation-chain}
-
-The `act` claim records the upstream delegation chain in an auth token. It is OPTIONAL — absent when the agent obtained the auth token directly (no chaining, no sub-agent). When present:
-
-- `act.agent` is the `aauth:` URI of the immediate upstream agent: the intermediary resource in call chaining, or the parent agent in sub-agent authorization.
-- If that upstream agent was itself delegated to, its upstream is recorded as a nested `act` claim, and so on.
-- AAuth uses `agent` (not RFC 8693's `sub`) as the identifier field within each `act` node, making explicit that the value is an AAuth agent identifier.
-- The presenter's own identity is in the top-level `agent` claim and is not repeated inside `act`.
-
-The relationship type — call chain vs sub-agent — is distinguishable from the `+` delimiter in AAuth identifiers without a separate field.
-
-### Delegation Chain Examples {#delegation-chain-examples}
-
-**Just chaining.** A top-level agent `asst` calls `booking`, which acts as an agent to call `payments`. No sub-agents.
-
-```json
-// auth token asst presents at booking — direct auth, no act
-{ "aud": "booking.example", "sub": "3d9e77c2-booking",
-  "agent": "aauth:asst@agent.example" }
-
-// auth token booking presents at payments — booking was delegated by asst.
-// The PS issues a sub directed at payments, unrelated to the one it
-// issued for booking; had it no mapping for the person there, it would
-// omit sub and carry scope alone.
-{ "aud": "payments.example", "sub": "8f2c1ab4-payments",
-  "agent": "aauth:booking@booking.example",
-  "act": { "agent": "aauth:asst@agent.example" } }
-```
-
-**Just a sub-agent.** The parent `planner.7f3c` mediates; the sub-agent `planner.7f3c+search1` calls `search`. The `+` in the identifier marks the sub-agent relationship.
-
-```json
-// auth token search1 presents at search — delegated by its parent
-{ "aud": "search.example", "sub": "b41f0d6e-search",
-  "agent": "aauth:planner.7f3c+search1@vendor.example",
-  "act": { "agent": "aauth:planner.7f3c@vendor.example" } }
-```
-
-**A sub-agent inside a chain.** `asst` calls `booking`; `booking` spawns sub-agent `booking+search1`; `booking+search1` calls `maps`. The `act` chain records both the sub-agent relationship and the upstream call chain.
-
-```json
-// auth token booking+search1 presents at maps
-{ "aud": "maps.example", "sub": "c07a5b13-maps",
-  "agent": "aauth:booking+search1@booking.example",
-  "act": { "agent": "aauth:booking@booking.example",
-           "act": { "agent": "aauth:asst@agent.example" } } }
-```
 
 # Third-Party Login {#third-party-login}
 
@@ -2601,16 +2491,14 @@ These four are mandated rather than advisory because each closes a request-subst
 
 Servers MAY require additional covered components (e.g., `content-digest` ([@RFC9530]) for request body integrity). The agent learns about additional requirements from server metadata or from an `invalid_input` error response that includes `required_input`.
 
-The following example shows a fully bound request combining an opaque `AAuth-Access` token, an `AAuth-Mission` reference, and an HTTP Message Signature. Token and key values are illustrative placeholders, not parseable test vectors. `Authorization: AAuth` carries the opaque resource access token; `Signature-Key` carries the auth token (four-party) or agent token, whose `cnf.jwk` is the signing key. A valid signature over these components proves request-component integrity; authorization still depends on auth-token claims and resource enforcement.
+The following example shows a fully bound request combining an opaque `AAuth-Access` token and an HTTP Message Signature. Token and key values are illustrative placeholders, not parseable test vectors. `Authorization: AAuth` carries the opaque resource access token; `Signature-Key` carries the auth token (four-party) or agent token, whose `cnf.jwk` is the signing key. A valid signature over these components proves request-component integrity; authorization still depends on auth-token claims and resource enforcement.
 
 ```http
 GET /api/documents HTTP/1.1
 Host: resource.example
 Authorization: AAuth opaque-access-token-placeholder
-AAuth-Mission: approver="https://ps.example";
-    s256="dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
 Signature-Input: sig=("@method" "@authority" "@path"
-    "authorization" "aauth-mission" "signature-key");created=1730217600
+    "authorization" "signature-key");created=1730217600
 Signature: sig=:BASE64URL-SIGNATURE-PLACEHOLDER:
 Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZERTQSJ9.PLACEHOLDER.PLACEHOLDER"
 ```
@@ -2891,7 +2779,7 @@ Fields:
 
 - `issuer` (REQUIRED): The resource's HTTPS URL. This is the value placed in the `iss` claim of resource tokens.
 - `jwks_uri` (REQUIRED when the resource issues resource tokens or makes signed calls): URL to the resource's JSON Web Key Set. A resource that only verifies agent signatures for identity-based access — issuing no resource tokens and making no signed requests of its own (e.g., as an agent in multi-hop, #multi-hop) — has no keys to publish and MAY omit `jwks_uri`.
-- `access_mode` (OPTIONAL): The credential flow the resource expects, letting an agent plan its first call without a speculative challenge. One of `agent-token` (identity-only — the agent signs with its agent token), `aauth-access-token` (resource-managed — the agent completes the resource's interaction/consent flow and receives an opaque token via `AAuth-Access`), or `auth-token` (the agent obtains an auth token from its PS using a resource token). Default: `agent-token`. The declaration is advisory: a resource MAY return any `AAuth-Requirement` at runtime regardless of the declared mode (#requirement-responses), and MAY apply different modes to different endpoints. An agent MAY use `access_mode` to skip resources its setup cannot satisfy — for example, a PS-less agent (no `ps` claim in its agent token) cannot complete the `auth-token` flow.
+- `access_mode` (OPTIONAL): The credential flow the resource expects, letting an agent plan its first call without a speculative challenge. One of `agent-token` (identity-only — the agent signs with its agent token), `person-token` (the resource authorizes on the person's identity alone — the agent signs with a person token), `aauth-access-token` (resource-managed — the agent completes the resource's interaction/consent flow and receives an opaque token via `AAuth-Access`), or `auth-token` (the agent obtains an auth token from its PS using a resource token; the initial call MUST present a person token). Default: `agent-token`. The declaration is advisory: a resource MAY return any `AAuth-Requirement` at runtime regardless of the declared mode (#requirement-responses), and MAY apply different modes to different endpoints. An agent MAY use `access_mode` to skip resources its setup cannot satisfy — for example, a PS-less agent (no `ps` claim in its agent token) cannot complete the `auth-token` flow.
 - `name` (OPTIONAL): Human-readable resource name
 - `description` (OPTIONAL): A Markdown string describing the resource, for display to users (for example, at a consent screen). Implementations MUST sanitize the Markdown before rendering to users.
 - `logo_uri` (OPTIONAL): URL to resource logo
@@ -2923,7 +2811,7 @@ Both modes are complete and useful on their own. Adding a PS (PS-asserted, three
 
 A resource that wants agents to discover and use it with no prior integration publishes two things in its `aauth-resource.json` (#resource-metadata):
 
-- **`access_mode`** — the credential flow the agent should expect: `agent-token`, `aauth-access-token`, or `auth-token`.
+- **`access_mode`** — the credential flow the agent should expect: `agent-token`, `person-token`, `aauth-access-token`, or `auth-token`.
 - **An R3 vocabulary.** Resources SHOULD advertise an R3 vocabulary (`r3_vocabularies`, [@?I-D.hardt-aauth-r3]) describing their operations, so that an agent that knows only the resource's hostname can learn the API and begin using it. The R3 document itself is fetched only by the AS and PS, not the agent; the vocabulary (an OpenAPI, MCP, gRPC, or similar API description) is the agent-facing surface.
 
 An agent onboards as follows:
@@ -3017,11 +2905,19 @@ The PS MUST protect its signing keys with appropriate rigor — compromise of a 
 
 ## Person Token Exposure {#person-token-exposure}
 
-A person token identifies the person to a resource before any authorization decision, on every authorization endpoint request including refused ones. A resource therefore learns of people whose agents it never serves.
+A person token identifies the person to a resource before any authorization decision, on every request that carries one including those the resource refuses. A resource therefore learns of people whose agents it never serves.
 
 The directed `sub` bounds the exposure to one `(PS, resource)` pair. The PS bounds it further: it decides whether to issue at all, and SHOULD treat the first person token for a given resource as requiring the person's approval (#person-token-endpoint).
 
 A person token grants nothing, so disclosure to an unintended party leaks an identifier and no access, and `cnf` prevents another party from presenting it.
+
+## Organization Identification {#person-token-org-policy}
+
+The OPTIONAL `tenant` claim declares the organization the person belongs to, and unlike `sub` it is not directed — the same value appears at every resource the organization's agents reach.
+
+That is deliberate. It lets a resource apply organizational policy before it issues anything: recognise a contracted customer, or rate-limit and refuse an organization whose agents are abusing it. Without it a resource's only lever at first contact is the person server, which is far too coarse — refusing one would refuse every organization that uses it — and pairwise `sub` otherwise makes one organization's agents indistinguishable from many unrelated people.
+
+`tenant` is organizational context and MUST NOT be treated as part of the person's identifier, which is `(iss, sub)` (#directed-identifiers).
 
 ## Person Token Is Not Authorization {#person-token-not-authorization}
 
@@ -3084,9 +2980,11 @@ These measures trade privacy for durability: archived signatures and keys are co
 
 The PS SHOULD provide a pairwise pseudonymous user identifier (`sub`) per resource, preventing resources from correlating users across trust domains. Each resource sees a different `sub` for the same user, preserving user privacy.
 
-The same value MUST be used in the person token (#person-token-structure) and in every auth token the PS issues for that resource, and MUST NOT vary with the agent or its key.
+A `sub` MUST be unique within the issuer, so `(iss, sub)` identifies the person unambiguously and `tenant` is never part of the identifier. The same value MUST be used in the person token (#person-token-structure), in the resource token the resource derives from it, and in every auth token issued for that resource, and MUST NOT vary with the agent or its key.
 
 Directed identifiers limit correlation between resources. They do not make a person's activity at one resource unlinkable across their agents: the agent signs with one key everywhere and that key appears in `cnf` in every token, so parties able to compare thumbprints correlate regardless of `sub`.
+
+The person token reduces what a resource learns before authorization rather than increasing it. Presenting an agent token discloses the agent provider's domain and an agent identifier that is the same at every resource the agent visits — and because each agent belongs to exactly one person (#agent-person-binding), that identifier is a globally correlatable pseudonym for the person. A person token replaces both with an identifier scoped to the one resource receiving it.
 
 ## PS Visibility
 
@@ -3117,11 +3015,6 @@ This specification registers the following HTTP header fields in the "Hypertext 
 - Status: permanent
 - Structured Type: List
 - Reference: This document, (#aauth-capabilities)
-
-- Header Field Name: `AAuth-Mission`
-- Status: permanent
-- Structured Type: Dictionary
-- Reference: This document, (#aauth-mission-request-header)
 
 ## HTTP Authentication Scheme Registration
 
@@ -3227,7 +3120,8 @@ This specification registers the following claims in the IANA "JSON Web Token Cl
 | `agent` | Agent identifier | IETF | This document |
 | `agent_jkt` | JWK Thumbprint of the agent's signing key | IETF | This document |
 | `parent_agent` | Parent agent identifier in a sub-agent's agent token | IETF | This document |
-| `mission` | Mission reference (approver, s256) in resource tokens and auth tokens | IETF | This document |
+| `mission_s256` | SHA-256 hash of the approved mission JSON, in person, resource, and auth tokens | IETF | This document |
+| `ps` | Person server URL in an auth token | IETF | This document |
 
 ## AAuth Requirement Value Registry
 
@@ -3290,7 +3184,7 @@ This specification registers the `aauth` URI scheme in the "Uniform Resource Ide
 - Change controller: IETF
 - Reference: This document, (#agent-identifiers)
 
-The `aauth` URI scheme follows the pattern established by the `acct` scheme ([@RFC7565]). An `aauth` URI identifies an agent instance and has the syntax `aauth:local@domain`, where `local` is the agent-specific part and `domain` is the agent provider's domain name. The `aauth` URI is used in the `sub` claim of agent tokens, the `agent` field of resource tokens and the mission blob, and the `agent` and `act.agent` fields of auth tokens.
+The `aauth` URI scheme follows the pattern established by the `acct` scheme ([@RFC7565]). An `aauth` URI identifies an agent instance and has the syntax `aauth:local@domain`, where `local` is the agent-specific part and `domain` is the agent provider's domain name. The `aauth` URI is used in the `sub` and `parent_agent` claims of agent tokens and in the `agent` field of the mission blob.
 
 # Implementation Status
 
@@ -3310,14 +3204,17 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-11
-  - Added the person token (`aa-person+jwt`), issued by a PS to identify the person to one resource. Presented via `Signature-Key` in place of the agent token, and REQUIRED on authorization endpoint requests.
-  - Added `person_token_endpoint`, REQUIRED in PS metadata.
-  - Resource token `agent` claim omitted when the request presented a person token; the two verification steps comparing `agent` are now conditional.
-  - Added `requirement=person-token`, the `invalid_person_token` and `invalid_account` authorization endpoint errors, and `aa-person+jwt` media type and JWT type registrations.
-  - The directed `sub` MUST be the same value in the person token and in auth tokens for that resource; `(iss, sub)`, or `(iss, tenant, sub)`, is the identifier, and values from different issuers MUST NOT be matched.
+  - Added the person token (`aa-person+jwt`), issued by a PS to identify the person to one resource. Presented via `Signature-Key` in place of the agent token. A resource MUST verify one before issuing a resource token.
+  - Added `person_token_endpoint`, REQUIRED in PS metadata, taking `resource`, `mission_s256`, `subagent_token`, and `upstream_token`.
   - Renamed the PS and AS metadata field `token_endpoint` to `auth_token_endpoint`.
-  - Added the OPTIONAL `sub` parameter to the PS-to-AS token request.
-  - The person token endpoint accepts an OPTIONAL `upstream_token`, so a resource acting as an agent in a call chain can obtain a person token for a downstream resource.
+  - Added `person-token` to `access_mode`; `auth-token` now means the initial call presents a person token.
+  - Added `requirement=person-token`, and the `invalid_person_token` and `invalid_account` authorization endpoint errors.
+  - Resource tokens carry `ps` and `sub`, copied from the person token, and no agent identifier. The PS MUST reject a `sub` that disagrees with its own directed value.
+  - Auth tokens carry `ps` and a REQUIRED `sub`, and no agent identifier. `act` and the delegation chain are removed.
+  - Replaced the `mission` object with the `mission_s256` claim in person, resource, and auth tokens; `approver` is dropped everywhere but the mission blob.
+  - Removed the `AAuth-Mission` request header. A mission reaches a resource only inside a PS-issued token, so it is no longer agent-asserted. Mission creation and status remain at `mission_endpoint`.
+  - Chain routing uses the auth token's `ps` claim. Removed the branch routing a downstream request to the upstream AS, which required the two resources to share an access server and was never stated as such.
+  - `sub` MUST be unique within the issuer; `(iss, sub)` is the identifier and `tenant` is organizational context, not part of it. `sub` values from different issuers MUST NOT be matched.
 
 - draft-hardt-oauth-aauth-protocol-10
   - Adopted the fully-specified `Ed25519` of [@!RFC9864] in place of the `EdDSA` it deprecates. `alg` is REQUIRED and MUST be fully specified; `EdDSA`, `none`, and symmetric algorithms MUST NOT be used; a verifier MUST reject a key whose `kty` or `crv` disagrees with its `alg`. Addresses issue #57.
@@ -3407,8 +3304,7 @@ Agent        Resource 1       Resource 2          PS
   |------------->|                |                 |
   |              |                |                 |
   |              | HTTPSig w/     |                 |
-  |              | R1 agent_token |                 |
-  |              | AAuth-Mission  |                 |
+  |              | R1 person_token|                 |
   |              |--------------->|                 |
   |              |                |                 |
   |              | 401            |                 |
@@ -3450,7 +3346,6 @@ User      Agent       Resource 1      Resource 2    PS
   |         |              |               |          |
   |         |              | HTTPSig req   |          |
   |         |              | (as agent)    |          |
-  |         |              | AAuth-Mission |          |
   |         |              |-------------->|          |
   |         |              |               |          |
   |         |              | 401           |          |
@@ -3535,17 +3430,21 @@ An agent identifier embeds its agent provider's domain, so a person moving to an
 
 Identifying the person at the authorization endpoint rather than after authorization also lets the resource decide before it commits. Account selection (#account-binding), standing policy for that person, and any per-person limit are all evaluable when the request arrives, instead of after a resource token has been issued and taken to a PS.
 
-### Why Person Tokens Carry No Agent Identifier
+### Why No Agent Identifier Reaches a Resource
 
-Naming the agent, or its provider, in the person token would restore exactly the coupling the token exists to remove: a resource able to read either can pin policy to it, and the person's relationship no longer survives a change of agent. The cost is that the resource takes the agent's key on the PS's word rather than the agent provider's, since it no longer sees the agent token. `agent_jkt` in the resource token and `cnf` in every token still bind the request to one key.
+Naming the agent, or its provider, in a token the resource reads would restore exactly the coupling the person token exists to remove: a resource able to see either can pin policy to it, and the person's relationship stops surviving a change of agent. So neither the person token, the resource token, nor the auth token carries one. `agent_jkt` and `cnf` still bind every request to one key.
 
-### Why Person Tokens Are Not Carried to the AS
+The agent token still reaches the AS, because a resource deploys an AS to have policy evaluated and an agent token MAY carry claims bearing on that — attestation, platform integrity, workload identity. The resource enforces; the AS evaluates; posture goes to the evaluator. The consequence is that agent-provider independence is complete in three-party and partial in four-party, where the resource has explicitly delegated policy to an AS.
 
-The PS-to-AS token request conveys `sub` as a parameter rather than as a person token. A person token exists so that a party which is not the PS can present a PS assertion and prove it holds the bound key. On that hop the PS is the caller and authenticates with its own signature, so a PS-signed JWT nested inside a PS-signed request adds nothing — which is why `requirement=claims` already sends bare claim values.
+### Why There Is No Delegation Chain Claim
+
+Earlier revisions recorded the upstream chain in an `act` claim. It served no reader. The immediate caller in a chain signs the request with its own key and presents its own credentials, so a downstream resource already knows who is calling; `act` named the parties one and two hops further up, which the downstream has no relationship with and cannot evaluate. Those parties are also the person's tooling, disclosed to a resource that did not need them.
+
+The chain is held by the person server, which authorizes every hop and holds the mission log. The same reasoning that made the resource stop attributing missions makes it stop recording delegation: the resource enforces, the person server attributes.
 
 ### Why the `ps` Claim in Agent Tokens
 
-Resources need to discover the agent's PS to issue resource tokens in three-party mode. The `ps` claim in the agent token provides this discovery without requiring the `AAuth-Mission` header, which is only present when the agent is operating within a mission. This separates PS discovery from mission governance — an agent can use three-party mode without missions.
+A resource learns the agent's PS from the person token it verifies, but it needs to know the agent has one before that — to decide whether to challenge for a person token at all, and to know that the `auth-token` flow is available. The `ps` claim in the agent token provides that, separately from mission governance.
 
 ## Protocol Mechanics
 
