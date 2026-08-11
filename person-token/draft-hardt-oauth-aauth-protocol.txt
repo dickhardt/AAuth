@@ -146,9 +146,10 @@ Table of Contents
      9.2.  Mission Approval
        9.2.1.  Mission Identifier
      9.3.  Mission Log
-     9.4.  Mission Completion
-     9.5.  Mission Management
-     9.6.  Mission Status Errors
+     9.4.  Mission Update
+     9.5.  Mission Completion
+     9.6.  Mission Management
+     9.7.  Mission Status Errors
    10. Access Server Federation
      10.1.  AS Token Endpoint
        10.1.1.  PS-to-AS Token Request
@@ -232,13 +233,14 @@ Table of Contents
      15.10. Person Token Exposure
      15.11. Organization Identification
      15.12. Person Token Is Not Authorization
-     15.13. PS Approval Endpoint Authentication
-     15.14. Agent-Person Binding
-     15.15. PS as High-Value Target
-     15.16. Call Chaining Identity
-     15.17. Token Revocation and Lifecycle
-     15.18. TLS Requirements
-     15.19. Non-Repudiation and Audit After Key Rotation
+     15.13. Incremental Consent
+     15.14. PS Approval Endpoint Authentication
+     15.15. Agent-Person Binding
+     15.16. PS as High-Value Target
+     15.17. Call Chaining Identity
+     15.18. Token Revocation and Lifecycle
+     15.19. TLS Requirements
+     15.20. Non-Repudiation and Audit After Key Rotation
    16. Privacy Considerations
      16.1.  Directed Identifiers
      16.2.  PS Visibility
@@ -943,15 +945,15 @@ Table of Contents
 4.4.1.3.  Mission Completion
 
    When the agent believes the mission is complete, it proposes
-   completion via the interaction endpoint with a summary.  The PS
-   presents the summary to the user.  The user either accepts (mission
+   completion at the mission's own URL with a summary.  The PS presents
+   the summary to the user.  The user either accepts (mission
    terminates) or responds with follow-up questions (mission continues).
 
    Agent                                     PS                        User
      |                                        |                          |
      | HTTPSig w/ agent_token                 |                          |
-     | POST interaction_endpoint              |                          |
-     | type=completion, summary               |                          |
+     | POST mission_endpoint/{s256}           |                          |
+     | action=completion, summary             |                          |
      |--------------------------------------->|                          |
      |                                        |                          |
      |                                        | present summary          |
@@ -1233,7 +1235,7 @@ Table of Contents
       Section 11.1.1.  The PS MUST verify it per Section 10.4.5.
 
    Without upstream_token the PS issues for the person bound to the
-   requesting agent Section 15.14.  With it, the PS issues for the
+   requesting agent Section 15.15.  With it, the PS issues for the
    person the upstream token was issued for, determined from the
    upstream token's sub, which this PS MUST have issued.  A PS that
    cannot determine the person MUST reject the request.
@@ -1245,8 +1247,10 @@ Table of Contents
    POST /person HTTP/1.1
    Host: ps.example
    Content-Type: application/json
-   Signature-Input: sig=("@method" "@authority"
-       "@path" "signature-key");created=1730217600
+   Content-Digest: sha-256=:...:
+   Signature-Input: sig=("@method" "@authority" "@path"
+       "content-type" "content-digest"
+       "signature-key");created=1730217600
    Signature: sig=:...signature bytes...:
    Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
@@ -1902,8 +1906,9 @@ Table of Contents
    Host: ps.example
    Content-Type: application/json
    Prefer: wait=45
-   Signature-Input: sig=("@method" "@authority"
-       "@path" "signature-key");created=1730217600
+   Signature-Input: sig=("@method" "@authority" "@path"
+       "content-type" "content-digest"
+       "signature-key");created=1730217600
    Signature: sig=:...signature bytes...:
    Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
@@ -2126,8 +2131,10 @@ Table of Contents
    POST /pending/abc123 HTTP/1.1
    Host: ps.example
    Content-Type: application/json
-   Signature-Input: sig=("@method" "@authority"
-       "@path" "signature-key");created=1730217600
+   Content-Digest: sha-256=:...:
+   Signature-Input: sig=("@method" "@authority" "@path"
+       "content-type" "content-digest"
+       "signature-key");created=1730217600
    Signature: sig=:...signature bytes...:
    Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
@@ -2150,8 +2157,10 @@ Table of Contents
    POST /pending/abc123 HTTP/1.1
    Host: ps.example
    Content-Type: application/json
-   Signature-Input: sig=("@method" "@authority"
-       "@path" "signature-key");created=1730217600
+   Content-Digest: sha-256=:...:
+   Signature-Input: sig=("@method" "@authority" "@path"
+       "content-type" "content-digest"
+       "signature-key");created=1730217600
    Signature: sig=:...signature bytes...:
    Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
@@ -2223,7 +2232,9 @@ Table of Contents
    POST /permission HTTP/1.1
    Host: ps.example
    Content-Type: application/json
-   Signature-Input: sig=("@method" "@authority" "@path" \
+   Content-Digest: sha-256=:...:
+   Signature-Input: sig=("@method" "@authority" "@path"
+       "content-type" "content-digest"
        "signature-key");created=1730217600
    Signature: sig=:...signature bytes...:
    Signature-Key: sig=jwt;jwt="eyJhbGc..."
@@ -2256,7 +2267,7 @@ Table of Contents
       reason field with a Markdown string explaining why.
 
    If the mission is no longer active, the PS returns a mission status
-   error Section 9.6.
+   error Section 9.7.
 
    If the PS requires user input, it returns a deferred response
    Section 13.5 using the same pattern as other AAuth endpoints.  The
@@ -2295,7 +2306,9 @@ Table of Contents
    POST /audit HTTP/1.1
    Host: ps.example
    Content-Type: application/json
-   Signature-Input: sig=("@method" "@authority" "@path" \
+   Content-Digest: sha-256=:...:
+   Signature-Input: sig=("@method" "@authority" "@path"
+       "content-type" "content-digest"
        "signature-key");created=1730217600
    Signature: sig=:...signature bytes...:
    Signature-Key: sig=jwt;jwt="eyJhbGc..."
@@ -2325,17 +2338,21 @@ Table of Contents
    user, or revoke the mission.
 
    If the mission is no longer active, the PS returns a mission status
-   error Section 9.6.
+   error Section 9.7.
 
 8.6.  Interaction Endpoint
 
    The interaction endpoint enables the agent to reach the user through
    the PS.  The agent uses this endpoint to forward interaction
    requirements from resources that it cannot handle directly, to ask
-   the user questions, to relay payment approvals, or to propose mission
-   completion.  The interaction_endpoint URL is published in the PS's
-   well-known metadata Section 13.11.2.  The interaction endpoint MAY be
-   used with or without a mission.
+   the user questions, and to relay payment approvals.  Each is
+   something the agent cannot do itself and needs the person for.
+   Proposing mission completion is not among them: it is a mission
+   lifecycle transition and belongs at the mission_endpoint Section 9.5,
+   alongside the proposal that started the mission.  The
+   interaction_endpoint URL is published in the PS's well-known metadata
+   Section 13.11.2.  The interaction endpoint MAY be used with or
+   without a mission.
 
 8.6.1.  Interaction Request
 
@@ -2346,7 +2363,7 @@ Table of Contents
    *Request parameters:*
 
    *  type (REQUIRED): The type of interaction.  One of interaction,
-      payment, question, or completion.
+      payment, or question.
    *  description (OPTIONAL): A Markdown string providing context for
       the user.
    *  url (OPTIONAL): The interaction URL to relay to the user (for
@@ -2362,8 +2379,6 @@ Table of Contents
       engaged or it can make no further progress.
    *  question (OPTIONAL): A Markdown string containing a question for
       the user (for question type).
-   *  summary (OPTIONAL): A Markdown string summarizing what the agent
-      accomplished (for completion type).
    *  mission_s256 (OPTIONAL): The mission this request belongs to.
 
    *Relay interaction example:*
@@ -2371,7 +2386,9 @@ Table of Contents
    POST /interaction HTTP/1.1
    Host: ps.example
    Content-Type: application/json
-   Signature-Input: sig=("@method" "@authority" "@path" \
+   Content-Digest: sha-256=:...:
+   Signature-Input: sig=("@method" "@authority" "@path"
+       "content-type" "content-digest"
        "signature-key");created=1730217600
    Signature: sig=:...signature bytes...:
    Signature-Key: sig=jwt;jwt="eyJhbGc..."
@@ -2381,26 +2398,6 @@ Table of Contents
      "description": "The booking service needs you to confirm payment",
      "url": "https://booking.example/confirm",
      "code": "X7K2-M9P4",
-     "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
-   }
-
-   *Completion example:*
-
-   POST /interaction HTTP/1.1
-   Host: ps.example
-   Content-Type: application/json
-   Signature-Input: sig=("@method" "@authority" "@path" \
-       "signature-key");created=1730217600
-   Signature: sig=:...signature bytes...:
-   Signature-Key: sig=jwt;jwt="eyJhbGc..."
-
-   {
-     "type": "completion",
-     "summary": "# Japan Trip Booked\n\n
-       Booked round-trip flights on ANA and
-       10 nights across three cities.
-       Total cost: $4,850.
-       Itinerary sent to your email.",
      "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
    }
 
@@ -2447,17 +2444,11 @@ Table of Contents
      "answer": "Yes, go ahead with the refundable option."
    }
 
-   For completion type, the PS presents the summary to the user.  The
-   user either accepts — the PS terminates the mission and returns 200
-   OK — or responds with follow-up questions via clarification
-   Section 8.3, keeping the mission active.  The PS returns a deferred
-   response while the user reviews.
-
    If the PS cannot reach the user and the agent does not have the
    interaction capability, the PS returns user_unreachable
    Section 13.6.3 — a terminal error, since no party can reach the user.
    If the mission is no longer active, the PS returns a mission status
-   error Section 9.6.  The PS SHOULD record all interaction requests and
+   error Section 9.7.  The PS SHOULD record all interaction requests and
    responses.  When a mission is active, the PS records the interaction
    in the mission log.
 
@@ -2517,6 +2508,39 @@ Table of Contents
    approved, the agent names the mission's s256 when it obtains person
    tokens Section 6.1, from where it flows into resource tokens and auth
    tokens.
+
+   The mission_endpoint is the agent's surface for the missions it owns.
+   Parties other than the owning agent — the person, an administrator, a
+   management service — read and manage missions at the
+   mission_control_endpoint Section 13.11.2 instead, under a different
+   authentication model.
+
+   The agent has three operations, all of the same shape: it proposes,
+   the person decides, and the PS returns a deferred response
+   Section 13.5 with clarification chat available Section 8.3 whenever
+   the person must be asked.
+
+   +========================================+==========================+
+   | Request                                | Operation                |
+   +========================================+==========================+
+   | POST {mission_endpoint}                | Propose a mission        |
+   |                                        | Section 9.1              |
+   +----------------------------------------+--------------------------+
+   | POST {mission_endpoint}/{mission_s256} | Record a change in       |
+   | with action: update                    | the work Section 9.4     |
+   +----------------------------------------+--------------------------+
+   | POST {mission_endpoint}/{mission_s256} | Propose that the         |
+   | with action: completion                | mission is finished      |
+   |                                        | Section 9.5              |
+   +----------------------------------------+--------------------------+
+
+                                  Table 6
+
+   The action member is REQUIRED on requests to a mission's own URL, and
+   a PS MUST reject a request with a missing or unrecognized action with
+   400 Bad Request.  This is the same discriminator the pending route
+   uses Section 8.3.2, for the same reason: it makes each POST self-
+   describing and leaves the route extensible.
 
 9.1.  Mission Creation
 
@@ -2659,7 +2683,7 @@ Table of Contents
       mission as terminated.  When absent, the mission runs until it is
       completed or revoked.  Every PS decision path that acts on a
       mission MUST compare the current time to expires_at and MUST treat
-      a mission past it as terminated Section 9.6.  No token carrying
+      a mission past it as terminated Section 9.7.  No token carrying
       mission_s256 — person, resource, or auth — may have an exp later
       than expires_at; an issuer MUST shorten the token's lifetime to
       fit.
@@ -2715,12 +2739,13 @@ Table of Contents
    it permanently.  Missions do not change; they accumulate context.
 
    All agent interactions with the PS within a mission context form the
-   *mission log*: token requests (with justifications), permission
-   requests and responses, audit records, interaction requests, and
-   clarification chats.  The PS maintains this log as an ordered record
-   of the agent's actions and the governance decisions made.  The
-   mission log gives the PS the full history it needs to evaluate
-   whether each new request is consistent with the mission's intent.
+   *mission log*: token requests (with justifications), accepted updates
+   Section 9.4, permission requests and responses, audit records,
+   interaction requests, and clarification chats.  The PS maintains this
+   log as an ordered record of the agent's actions and the governance
+   decisions made.  The mission log gives the PS the full history it
+   needs to evaluate whether each new request is consistent with the
+   mission's intent.
 
    The agent names the mission when it requests a person token
    Section 6.1; the PS validates it and stamps mission_s256 into the
@@ -2729,16 +2754,98 @@ Table of Contents
    evaluates the request against the mission context and log history
    before federating with the resource's AS.
 
-9.4.  Mission Completion
+9.4.  Mission Update
 
-   When the agent believes the mission is complete, it sends a
-   completion interaction to the PS's interaction endpoint Section 8.6
-   with a summary of what was accomplished.  The PS presents the summary
-   to the user.  The user either accepts — the PS terminates the mission
-   — or responds with follow-up questions via clarification, keeping the
-   mission active.  This is the most common mission lifecycle path.
+   Work changes.  When what the agent is doing no longer matches the
+   description the person approved, it records the change rather than
+   proceeding silently:
 
-9.5.  Mission Management
+   POST /mission/dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk HTTP/1.1
+   Host: ps.example
+   Content-Type: application/json
+   Content-Digest: sha-256=:...:
+   Signature-Input: sig=("@method" "@authority" "@path"
+       "content-type" "content-digest"
+       "signature-key");created=1730217600
+   Signature: sig=:...signature bytes...:
+   Signature-Key: sig=jwt;jwt="eyJhbGc..."
+
+   {
+     "action": "update",
+     "description": "# Hotel unavailable\n\n
+       The hotel in the itinerary has no availability.
+       Proposing a comparable property two blocks away
+       at a similar rate."
+   }
+
+   *  action (REQUIRED): update.
+   *  description (REQUIRED): A Markdown string describing what changed.
+
+   The PS MAY accept the update on its own, or return a 202 Accepted
+   deferred response while the person reviews it.  On acceptance it
+   appends the update to the mission log and returns its s256 — the
+   unpadded base64url SHA-256 digest of the update's bytes as the PS
+   persists them — so the sequence of accepted updates is verifiable,
+   not merely stored:
+
+   {
+     "s256": "Q2h1Y2sgSW50ZWdyaXR5IENoZWNr..."
+   }
+
+   An update does not change the mission.  The blob is immutable,
+   mission_s256 is unchanged, and every token carrying it remains valid
+   — which is the point: the agent keeps working while the record
+   catches up.
+
+   What the update changes is the context the PS evaluates against.
+   From acceptance onward, the mission's meaning is the approved blob
+   *plus its accepted updates*, and a party auditing the mission MUST
+   read both.  The blob alone records what the person approved at the
+   outset, not what they approved in total.
+
+   An update may narrow or broaden the work.  Both require the person's
+   acceptance when the PS decides the change warrants it, and the PS
+   applies the same judgment to an update that it applied to the
+   proposal.  When the work has changed enough that the original
+   description no longer describes it, that is a new mission rather than
+   an update, and the old one is terminated as superseded Section 9.6.
+
+9.5.  Mission Completion
+
+   When the agent believes the mission is complete, it proposes
+   completion with a summary of what was accomplished:
+
+   POST /mission/dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk HTTP/1.1
+   Host: ps.example
+   Content-Type: application/json
+   Content-Digest: sha-256=:...:
+   Signature-Input: sig=("@method" "@authority" "@path"
+       "content-type" "content-digest"
+       "signature-key");created=1730217600
+   Signature: sig=:...signature bytes...:
+   Signature-Key: sig=jwt;jwt="eyJhbGc..."
+
+   {
+     "action": "completion",
+     "summary": "Booked flights and hotel for 7-14 May.
+       Itinerary sent. Total $4,180."
+   }
+
+   *  action (REQUIRED): completion.
+   *  summary (REQUIRED): A Markdown string summarizing what the agent
+      accomplished.
+
+   The PS presents the summary to the person, returning a deferred
+   response while they review.  The person either accepts — the PS
+   terminates the mission with reason completed and returns 200 OK — or
+   responds with follow-up questions via clarification chat Section 8.3,
+   leaving the mission active.  This is the most common mission
+   lifecycle path.
+
+   The agent proposes completion; it does not declare it.  Only the
+   person's acceptance terminates the mission.
+
+9.6.  Mission Management
 
    A mission has one of two states:
 
@@ -2747,11 +2854,46 @@ Table of Contents
    *  *terminated*: The mission is permanently ended.  The PS MUST
       reject requests with mission_terminated.
 
-   The mechanisms for state transitions beyond completion — revocation,
-   delegation tree queries, and administrative interfaces — will be
-   defined in a companion specification.
+   A terminated mission MUST NOT return to active.  A caller that needs
+   to continue the work proposes a new mission.
 
-9.6.  Mission Status Errors
+   The PS records why a mission terminated, alongside the mission rather
+   than inside the immutable blob.  This document defines the following
+   reasons; the list is open, and a recipient that does not recognize a
+   reason MUST retain the terminated state and treat the reason as an
+   opaque audit value.
+
+    +================+===============================================+
+    | Reason         | Meaning                                       |
+    +================+===============================================+
+    | completed      | The person accepted the agent's completion    |
+    |                | proposal Section 9.5                          |
+    +----------------+-----------------------------------------------+
+    | revoked        | The person, the owning agent, or an           |
+    |                | authorized administrator withdrew the mission |
+    +----------------+-----------------------------------------------+
+    | expired        | The mission reached its expires_at            |
+    |                | Section 9.2                                   |
+    +----------------+-----------------------------------------------+
+    | superseded     | The mission was replaced by another approved  |
+    |                | mission                                       |
+    +----------------+-----------------------------------------------+
+    | administrative | An authorized administrator ended the mission |
+    |                | under local policy                            |
+    +----------------+-----------------------------------------------+
+
+                                 Table 7
+
+   A termination reason MUST NOT be exposed as a mission state or used
+   to permit a later transition.
+
+   Reading a mission's status, terminating one, and querying delegation
+   are operations for parties other than the owning agent, and belong at
+   the mission_control_endpoint Section 13.11.2.  They will be defined
+   in a companion specification, along with the administrative
+   principals that invoke them.
+
+9.7.  Mission Status Errors
 
    When an agent makes a request to any PS endpoint with a mission_s256
    parameter referencing a mission that is no longer active, the PS MUST
@@ -2762,7 +2904,8 @@ Table of Contents
 
    {
      "error": "mission_terminated",
-     "mission_status": "terminated"
+     "mission_status": "terminated",
+     "termination_reason": "expired"
    }
 
      +====================+============+=============================+
@@ -2773,13 +2916,14 @@ Table of Contents
      |                    |            | ended.  The agent MUST stop |
      |                    |            | acting on this mission.     |
      +--------------------+------------+-----------------------------+
-     | mission_expired    | terminated | The mission passed its      |
-     |                    |            | expires_at.  The agent MUST |
-     |                    |            | stop acting on this mission |
-     |                    |            | and MAY propose a new one.  |
-     +--------------------+------------+-----------------------------+
 
-                                  Table 6
+                                  Table 8
+
+   termination_reason is OPTIONAL and carries a value from Section 9.6.
+   It is one error rather than one per reason because the reason set is
+   open: an agent keys its behaviour on mission_terminated and reads the
+   reason for context — expired invites proposing a new mission, revoked
+   does not.
 
 10.  Access Server Federation
 
@@ -3597,7 +3741,7 @@ Table of Contents
          |               | interaction endpoint                 |
          +---------------+--------------------------------------+
 
-                                 Table 7
+                                 Table 9
 
    The agent determines its capabilities by combining what it can do
    directly with what its PS can do on its behalf.  When the agent has a
@@ -3783,7 +3927,7 @@ Table of Contents
      |               |        | required       |          |    |    |
      +---------------+--------+----------------+----------+----+----+
 
-                                 Table 8
+                                 Table 10
 
    The agent-token requirement is defined in Section 7.3; the person-
    token requirement in Section 7.4; the auth-token requirement in
@@ -4147,7 +4291,7 @@ Initial request (with Prefer: wait=N)
    | server_error           | 500    | Internal error                 |
    +------------------------+--------+--------------------------------+
 
-                                 Table 9
+                                 Table 11
 
    Example — the resource token presented to the token endpoint has
    expired:
@@ -4183,7 +4327,7 @@ Initial request (with Prefer: wait=N)
         | server_error | 500    | Internal error                 |
         +--------------+--------+--------------------------------+
 
-                                 Table 10
+                                 Table 12
 
    Example — the user denied the pending request:
 
@@ -4361,7 +4505,7 @@ Initial request (with Prefer: wait=N)
     | Section 10.4 | the agent                          | authorized |
     +--------------+------------------------------------+------------+
 
-                                 Table 11
+                                 Table 13
 
    The Signature-Key specification also defines pseudonym schemes
    (scheme=hwk for a bare inline public key, scheme=jkt-jwt for
@@ -4406,23 +4550,41 @@ Initial request (with Prefer: wait=N)
    Omitting any one would let a captured signature be replayed against a
    different method, host, path, or key.
 
-   Servers MAY require additional covered components (e.g., content-
-   digest ([RFC9530]) for request body integrity).  The agent learns
-   about additional requirements from server metadata or from an
-   invalid_input error response that includes required_input.
+   On a request carrying a body to a PS or AS endpoint, the signature
+   MUST additionally cover:
+
+   *  content-digest: The Content-Digest header value ([RFC9530])
+   *  content-type: The Content-Type header value
+
+   Without them a request body is not integrity-protected, and PS and AS
+   requests carry members that decide what is authorized —
+   justification, mission_s256, resource, sub, and the mission proposal
+   itself.  Only the tokens among those members are self-protecting; the
+   rest are plain JSON.  The requirement is unconditional at these
+   endpoints because every one of them takes a JSON body of known shape,
+   so computing a digest costs the sender nothing it was not already
+   doing.
+
+   Resources are different: they serve arbitrary APIs, including
+   bodyless requests, streamed uploads, and payloads large enough that
+   digesting them is a real cost.  A resource therefore declares what it
+   needs through additional_signature_components Section 13.11.4 rather
+   than the protocol mandating it.  Servers MAY require further covered
+   components; the agent learns about them from server metadata or from
+   an invalid_input error response that includes required_input.
 
    The following example shows a fully bound request combining a session
    token and an HTTP Message Signature.  Token and key values are
    illustrative placeholders, not parseable test vectors.
-   Authorization: AAuth carries the opaque resource access token;
-   Signature-Key carries the auth token (four-party) or agent token,
-   whose cnf.jwk is the signing key.  A valid signature over these
-   components proves request-component integrity; authorization still
-   depends on auth-token claims and resource enforcement.
+   Authorization: AAuth carries the session token; Signature-Key carries
+   the auth token (four-party) or agent token, whose cnf.jwk is the
+   signing key.  A valid signature over these components proves request-
+   component integrity; authorization still depends on auth-token claims
+   and resource enforcement.
 
    GET /api/documents HTTP/1.1
    Host: resource.example
-   Authorization: AAuth opaque-access-token-placeholder
+   Authorization: AAuth session-token-placeholder
    Signature-Input: sig=("@method" "@authority" "@path"
        "authorization" "signature-key");created=1730217600
    Signature: sig=:BASE64URL-SIGNATURE-PLACEHOLDER:
@@ -4721,7 +4883,7 @@ Initial request (with Prefer: wait=N)
    |                 |           |https.                              |
    +-----------------+-----------+------------------------------------+
 
-                                 Table 12
+                                 Table 14
 
    AAuth intentionally diverges from RFC 9728 on two points: AAuth uses
    issuer (not resource) as the primary identifier field so that a
@@ -4824,8 +4986,10 @@ Initial request (with Prefer: wait=N)
       requests
    *  person_token_endpoint (REQUIRED): URL where agents request a
       person token for a resource Section 6.1
-   *  mission_endpoint (OPTIONAL): URL for mission lifecycle operations
-      (proposal, status).  Present when the PS supports missions.
+   *  mission_endpoint (OPTIONAL): URL where an agent proposes, updates,
+      and completes the missions it owns Section 9.  Present when the PS
+      supports missions.  A mission's own URL is
+      {mission_endpoint}/{mission_s256}.
    *  permission_endpoint (OPTIONAL): URL where agents request
       permission for actions not governed by a remote resource
       Section 8.4
@@ -4833,14 +4997,15 @@ Initial request (with Prefer: wait=N)
       Section 8.5
    *  interaction_endpoint (OPTIONAL): URL where agents relay
       interactions to the user through the PS Section 8.6
-   *  mission_control_endpoint (OPTIONAL): URL of the PS's
-      administrative interface for missions — a human-facing deployment
-      surface where a person or an organization's administrator reviews
-      and manages missions. *Work in progress:* this document defines no
-      protocol behind it, and it is distinct from the interoperable
-      lifecycle operations at mission_endpoint.  A separate
-      specification is expected to define it; companion specifications
-      SHOULD NOT build interoperable behavior on it in the meantime.
+   *  mission_control_endpoint (OPTIONAL): URL of the PS's mission
+      control plane — where parties other than the owning agent read and
+      manage missions: the person, an organization's administrator, or a
+      management service. mission_endpoint is the agent's surface and
+      authenticates callers by agent token; this endpoint serves
+      principals AAuth does not define, so its authentication model,
+      operations, and responses are left to a companion specification
+      Section 9.6.  A PS MAY also use it for a deployment's human-facing
+      administrative interface.
    *  revocation_endpoint (OPTIONAL): URL where authorized parties can
       revoke tokens Section 13.7.  This is also where an agent provider
       revokes an agent token it issued, so that the PS denies the agent
@@ -5156,7 +5321,7 @@ Initial request (with Prefer: wait=N)
    |         |               |                  | access              |
    +---------+---------------+------------------+---------------------+
 
-                                 Table 13
+                                 Table 15
 
 15.  Security Considerations
 
@@ -5318,7 +5483,26 @@ Initial request (with Prefer: wait=N)
    Section 6.4.  Deployments SHOULD test this case explicitly; it fails
    open.
 
-15.13.  PS Approval Endpoint Authentication
+15.13.  Incremental Consent
+
+   A mission can be updated Section 9.4, and an update may broaden the
+   work as well as narrow it.  An agent could therefore propose a modest
+   mission, obtain easy approval, and broaden it in steps each small
+   enough to wave through, arriving somewhere the person would have
+   refused had it been proposed at the outset.
+
+   The person's acceptance is required at every step, so no single step
+   is unauthorized.  What erodes is the person's sense of the whole.  A
+   PS SHOULD present the accumulated picture — the approved description
+   together with the updates already accepted — when asking the person
+   to accept another, rather than the increment alone.
+
+   The same erosion is available through a series of separate missions,
+   so this is a property of incremental approval rather than of the
+   update mechanism.  It is stated here because the update mechanism
+   makes it cheap.
+
+15.14.  PS Approval Endpoint Authentication
 
    When the PS approval/consent endpoint is reachable beyond a single-
    user local deployment, the PS MUST authenticate the approving party
@@ -5328,12 +5512,12 @@ Initial request (with Prefer: wait=N)
 
    An unauthenticated approval endpoint allows a remote party to consent
    on the user's behalf — a privilege escalation that breaks the agent-
-   person binding invariant Section 15.14.  A locally-trusted PS
+   person binding invariant Section 15.15.  A locally-trusted PS
    (loopback only, no external network reachability) is exempt from this
    requirement provided it enforces OS-level access controls on the
    loopback interface.
 
-15.14.  Agent-Person Binding
+15.15.  Agent-Person Binding
 
    The PS MUST ensure that each agent is associated with exactly one
    person.  This one-to-one binding is a trust invariant — it ensures
@@ -5365,7 +5549,7 @@ Initial request (with Prefer: wait=N)
    *  *Revocation*: Revoking an agent's association with its person
       immediately prevents the agent from obtaining new auth tokens.
 
-15.15.  PS as High-Value Target
+15.16.  PS as High-Value Target
 
    The PS is a centralized authority that sees every authorization in a
    mission.  PS implementations MUST apply appropriate security controls
@@ -5384,13 +5568,13 @@ Initial request (with Prefer: wait=N)
    presents a single interface regardless of how it is composed
    internally.
 
-15.16.  Call Chaining Identity
+15.17.  Call Chaining Identity
 
    When a resource acts as an agent in call chaining, it uses its own
    signing key and presents its own credentials.  The resource MUST
    publish agent metadata so downstream parties can verify its identity.
 
-15.17.  Token Revocation and Lifecycle
+15.18.  Token Revocation and Lifecycle
 
    Real-time revocation Section 13.7 and short token lifetimes provide
    layered access control.  Organizations have multiple control points —
@@ -5398,12 +5582,12 @@ Initial request (with Prefer: wait=N)
    tokens independently.  Shorter auth token lifetimes reduce the window
    between a control action and natural expiration.
 
-15.18.  TLS Requirements
+15.19.  TLS Requirements
 
    All HTTPS connections MUST use TLS 1.2 or later, following the
    recommendations in BCP 195 [RFC9325].
 
-15.19.  Non-Repudiation and Audit After Key Rotation
+15.20.  Non-Repudiation and Audit After Key Rotation
 
    AAuth signatures prove authenticity at request time: a valid HTTP
    Message Signature shows that the signer held the private key bound to
@@ -5469,7 +5653,7 @@ Initial request (with Prefer: wait=N)
    rather than increasing it.  Presenting an agent token discloses the
    agent provider's domain and an agent identifier that is the same at
    every resource the agent visits — and because each agent belongs to
-   exactly one person Section 15.14, that identifier is a globally
+   exactly one person Section 15.15, that identifier is a globally
    correlatable pseudonym for the person.  A person token replaces both
    with an identifier scoped to the one resource receiving it.
 
@@ -5560,7 +5744,7 @@ Initial request (with Prefer: wait=N)
        |                     |                   | Section 13.11.4 |
        +---------------------+-------------------+-----------------+
 
-                                  Table 14
+                                  Table 16
 
 17.4.  Media Type Registrations
 
@@ -5642,7 +5826,7 @@ Initial request (with Prefer: wait=N)
              | aa-resource+jwt | This document, Section 7    |
              +-----------------+-----------------------------+
 
-                                  Table 15
+                                  Table 17
 
    The following JWT typ values are registered by AAuth Events
    ([I-D.hardt-aauth-events]):
@@ -5655,7 +5839,7 @@ Initial request (with Prefer: wait=N)
               | aa-event+jwt     | [I-D.hardt-aauth-events] |
               +------------------+--------------------------+
 
-                                  Table 16
+                                  Table 18
 
 17.6.  JWT Claims Registrations
 
@@ -5691,7 +5875,7 @@ Initial request (with Prefer: wait=N)
     |              | an auth token          |            | document  |
     +--------------+------------------------+------------+-----------+
 
-                                 Table 17
+                                 Table 19
 
 17.7.  AAuth Requirement Value Registry
 
@@ -5718,7 +5902,7 @@ Initial request (with Prefer: wait=N)
                      | claims        | This document |
                      +---------------+---------------+
 
-                                  Table 18
+                                  Table 20
 
 17.8.  AAuth Capability Value Registry
 
@@ -5737,7 +5921,7 @@ Initial request (with Prefer: wait=N)
                      | payment       | This document |
                      +---------------+---------------+
 
-                                  Table 19
+                                  Table 21
 
 17.9.  AAuth Platform Value Registry
 
@@ -5768,7 +5952,7 @@ Initial request (with Prefer: wait=N)
        |             | controls                       |           |
        +-------------+--------------------------------+-----------+
 
-                                 Table 20
+                                 Table 22
 
 17.10.  Designated Expert Instructions
 
@@ -5920,13 +6104,47 @@ Initial request (with Prefer: wait=N)
       -  Stated the extensibility posture: recipients ignore what they
          do not recognize, and no document carries a version or schema a
          recipient must understand.
+      -  The mission endpoint is the owning agent's surface, with three
+         operations of one shape: POST {mission_endpoint} proposes a
+         mission, and POST {mission_endpoint}/{mission_s256} carries
+         action: update or action: completion.  The action discriminator
+         is the one the pending route already uses.
+      -  Added mission update.  An update records a change in the work,
+         is appended to the mission log, and is digested so the sequence
+         is verifiable.  It does not change the blob, mission_s256, or
+         any token carrying it; what it changes is the context the PS
+         evaluates against, so the mission's meaning becomes the
+         approved blob plus its accepted updates and an audit MUST read
+         both.
+      -  Moved completion off the interaction endpoint.  It is a
+         lifecycle transition, not transport: creation and completion
+         are the same shape — the agent proposes, the person decides,
+         clarification is available, the response is deferred — and were
+         split across two endpoints for no structural reason.  The
+         interaction endpoint keeps interaction, payment, and question,
+         which are the things the agent genuinely cannot do itself.
+      -  Defined the termination reasons completed, revoked, expired,
+         superseded, and administrative as an open set recorded outside
+         the immutable blob, and folded mission_expired back into
+         mission_terminated with an OPTIONAL termination_reason member.
+         One error rather than one per reason, because the reason set is
+         open.
+      -  mission_control_endpoint is the mission control plane: where
+         parties other than the owning agent read and manage missions.
+         Its authentication model and operations are left to a companion
+         specification, because AAuth defines no administrative
+         principal.
+      -  A request carrying a body to a PS or AS endpoint MUST
+         additionally sign content-digest and content-type.  Those
+         requests decide what is authorized and only their tokens were
+         self-protecting.  Resources keep declaring what they need
+         through additional_signature_components, since bodyless
+         requests and streamed uploads make a blanket requirement wrong
+         there.
       -  Stated that the mission blob's member lists are a floor: a PS
          MAY add members, readers ignore what they do not recognize, and
          a blob with an extra member has a different identifier because
          it is a different mission.
-      -  mission_control_endpoint marked work in progress — a human-
-         facing administrative surface with no protocol defined here,
-         distinct from the lifecycle operations at mission_endpoint.
       -  Named the opaque credential a resource issues in resource-
          managed access the *session token*. It was the only credential
          in the protocol without a name.  The access_mode value aauth-
@@ -6255,6 +6473,10 @@ Initial request (with Prefer: wait=N)
               for HTTP APIs", RFC 9457, DOI 10.17487/RFC9457, July 2023,
               <https://www.rfc-editor.org/info/rfc9457>.
 
+   [RFC9530]  Polli, R. and L. Pardue, "Digest Fields", RFC 9530,
+              DOI 10.17487/RFC9530, February 2024,
+              <https://www.rfc-editor.org/info/rfc9530>.
+
    [RFC9864]  Jones, M.B. and O. Steele, "Fully-Specified Algorithms for
               JSON Object Signing and Encryption (JOSE) and CBOR Object
               Signing and Encryption (COSE)", RFC 9864,
@@ -6340,10 +6562,6 @@ Initial request (with Prefer: wait=N)
               Jones, M., and D. Waite, "OAuth 2.0 Demonstrating Proof of
               Possession (DPoP)", RFC 9449, DOI 10.17487/RFC9449,
               September 2023, <https://www.rfc-editor.org/info/rfc9449>.
-
-   [RFC9530]  Polli, R. and L. Pardue, "Digest Fields", RFC 9530,
-              DOI 10.17487/RFC9530, February 2024,
-              <https://www.rfc-editor.org/info/rfc9530>.
 
    [RFC9635]  Richer, J., Ed. and F. Imbault, "Grant Negotiation and
               Authorization Protocol (GNAP)", RFC 9635,
