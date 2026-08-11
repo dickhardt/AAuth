@@ -1711,6 +1711,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <p id="section-6-2">The document MUST be served over HTTPS. The resource MUST require a valid HTTP Message Signature on requests to R3 document URIs, and MUST reject requests not signed by the AS or the PS entitled to that document <a href="#r3-document-access-restriction" class="auto internal xref">Section 10.1</a>. Agents cannot fetch R3 documents.<a href="#section-6-2" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="section-6-3">
 <pre>{
+  "version": "2",
   "vocabulary": "urn:aauth:vocabulary:mcp",
   "operations": [
     { "tool": "create_calendar_event" },
@@ -1732,23 +1733,24 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
         <h3 id="name-fields">
 <a href="#section-6.1" class="section-number selfRef">6.1. </a><a href="#name-fields" class="section-name selfRef">Fields</a>
         </h3>
-<p id="section-6.1-1"><strong><code>vocabulary</code></strong> (REQUIRED). The vocabulary URI identifying how operations are expressed. MUST match one of the vocabularies the resource advertises in <code>r3_vocabularies</code>.<a href="#section-6.1-1" class="pilcrow">¶</a></p>
-<p id="section-6.1-2"><strong><code>operations</code></strong> (REQUIRED). An array of operations covered by this R3 document, using the vocabulary-specific structure defined in <a href="#mcp-vocabulary" class="auto internal xref">Section 4.3.1</a> through <a href="#odata-vocabulary" class="auto internal xref">Section 4.3.7</a>. This is the same format used in the agent's <code>r3_operations</code> request and in the auth token's <code>r3_granted</code> and <code>r3_conditional</code> claims.<a href="#section-6.1-2" class="pilcrow">¶</a></p>
-<p id="section-6.1-3"><strong><code>account</code></strong> (OPTIONAL). Present when the authorization endpoint request carried an <code>account</code> parameter (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>), carrying that same value. It identifies which account at the resource this authorization covers.<a href="#section-6.1-3" class="pilcrow">¶</a></p>
-<p id="section-6.1-4">When <code>account</code> is present, the <code>display</code> section SHOULD name the account in terms the person recognises. The value itself is an identifier in the resource's namespace and may be opaque — a numeric company id, a workspace key — so a consent screen rendering it verbatim tells the person nothing about which of their accounts is being authorized. The resource holds the human-readable name and <code>display</code> is where it belongs; a PS renders <code>display</code> and is not expected to interpret <code>account</code>.<a href="#section-6.1-4" class="pilcrow">¶</a></p>
-<p id="section-6.1-5"><strong><code>display</code></strong> (RECOMMENDED). Human-readable descriptions of the consequences of granting this access. The resource describes what <em>it</em> does, not what the agent intends:<a href="#section-6.1-5" class="pilcrow">¶</a></p>
+<p id="section-6.1-1"><strong><code>version</code></strong> (RECOMMENDED). A string identifying the version of this R3 document. The combination of <code>r3_uri</code> + SHA-256 hash provides content-addressing independent of this field; <code>version</code> is for human readability.<a href="#section-6.1-1" class="pilcrow">¶</a></p>
+<p id="section-6.1-2"><strong><code>vocabulary</code></strong> (REQUIRED). The vocabulary URI identifying how operations are expressed. MUST match one of the vocabularies the resource advertises in <code>r3_vocabularies</code>.<a href="#section-6.1-2" class="pilcrow">¶</a></p>
+<p id="section-6.1-3"><strong><code>operations</code></strong> (REQUIRED). An array of operations covered by this R3 document, using the vocabulary-specific structure defined in <a href="#mcp-vocabulary" class="auto internal xref">Section 4.3.1</a> through <a href="#odata-vocabulary" class="auto internal xref">Section 4.3.7</a>. This is the same format used in the agent's <code>r3_operations</code> request and in the auth token's <code>r3_granted</code> and <code>r3_conditional</code> claims.<a href="#section-6.1-3" class="pilcrow">¶</a></p>
+<p id="section-6.1-4"><strong><code>account</code></strong> (OPTIONAL). Present when the authorization endpoint request carried an <code>account</code> parameter (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>), carrying that same value. It identifies which account at the resource this authorization covers.<a href="#section-6.1-4" class="pilcrow">¶</a></p>
+<p id="section-6.1-5">When <code>account</code> is present, the <code>display</code> section SHOULD name the account in terms the person recognises. The value itself is an identifier in the resource's namespace and may be opaque — a numeric company id, a workspace key — so a consent screen rendering it verbatim tells the person nothing about which of their accounts is being authorized. The resource holds the human-readable name and <code>display</code> is where it belongs; a PS renders <code>display</code> and is not expected to interpret <code>account</code>.<a href="#section-6.1-5" class="pilcrow">¶</a></p>
+<p id="section-6.1-6"><strong><code>display</code></strong> (RECOMMENDED). Human-readable descriptions of the consequences of granting this access. The resource describes what <em>it</em> does, not what the agent intends:<a href="#section-6.1-6" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-6.1-6.1">
-            <code>summary</code> (REQUIRED if <code>display</code> present). A short plain-language description suitable for a consent screen.<a href="#section-6.1-6.1" class="pilcrow">¶</a>
+<li class="compact" id="section-6.1-7.1">
+            <code>summary</code> (REQUIRED if <code>display</code> present). A short plain-language description suitable for a consent screen.<a href="#section-6.1-7.1" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-6.1-6.2">
-            <code>implications</code> (OPTIONAL). Side effects of granting this access: emails sent, records modified, costs incurred.<a href="#section-6.1-6.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-6.1-7.2">
+            <code>implications</code> (OPTIONAL). Side effects of granting this access: emails sent, records modified, costs incurred.<a href="#section-6.1-7.2" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-6.1-6.3">
-            <code>data_accessed</code> (OPTIONAL). What data becomes visible to the caller.<a href="#section-6.1-6.3" class="pilcrow">¶</a>
+          <li class="compact" id="section-6.1-7.3">
+            <code>data_accessed</code> (OPTIONAL). What data becomes visible to the caller.<a href="#section-6.1-7.3" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-6.1-6.4">
-            <code>irreversible</code> (OPTIONAL). Plain-language description of actions that cannot be undone.<a href="#section-6.1-6.4" class="pilcrow">¶</a>
+          <li class="compact" id="section-6.1-7.4">
+            <code>irreversible</code> (OPTIONAL). Plain-language description of actions that cannot be undone.<a href="#section-6.1-7.4" class="pilcrow">¶</a>
 </li>
         </ul>
 </section>
@@ -2253,33 +2255,26 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <p id="section-13-1"><em>Note: This section is to be removed before publishing as an RFC.</em><a href="#section-13-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-13-2.1">
-          <p id="section-13-2.1.1">draft-hardt-aauth-r3-02<a href="#section-13-2.1.1" class="pilcrow">¶</a></p>
+          <p id="section-13-2.1.1">draft-hardt-aauth-r3-01<a href="#section-13-2.1.1" class="pilcrow">¶</a></p>
 <ul class="compact normal">
-<li class="compact normal" id="section-13-2.1.2.1">Removed the <code>version</code> field. R3 documents are content-addressed, so a revision is a different document at a different hash; <code>version</code> named nothing the hash did not, and nothing prevented two different documents carrying the same value.<a href="#section-13-2.1.2.1" class="pilcrow">¶</a>
+<li class="compact normal" id="section-13-2.1.2.1">Added per-call proposals: an <code>r3_conditional</code> operation is challenged at call time, and the resource builds a content-addressed proposal carrying the concrete parameters, which the AS evaluates and the resource binds on retry. A parameter MAY be carried as a digest so large or sensitive values stay between the agent and the resource.<a href="#section-13-2.1.2.1" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-13-2.1.2.2">Added the OPTIONAL <code>account</code> field, carrying the <code>account</code> value the authorization endpoint request named. <code>display</code> SHOULD name the account in terms the person recognises, the value itself being an identifier in the resource's namespace that may be opaque.<a href="#section-13-2.1.2.2" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-13-2.1.2.3">Content addressing hashes the bytes as served; canonicalization removed.<a href="#section-13-2.1.2.3" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-13-2.1.2.4">A resource MUST compose a single R3 document when the requested operations span more than one of its internal definitions.<a href="#section-13-2.1.2.4" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-13-2.1.2.5">Added operation identifier scope rules, and what a resource aggregating multiple backend services behind one resource identifier MUST do.<a href="#section-13-2.1.2.5" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-13-2.1.2.6">Aligned with the AAuth Protocol: <code>issuer</code> in resource metadata, and <code>dwk</code> values <code>aauth-access.json</code> and <code>aauth-person.json</code> in auth tokens.<a href="#section-13-2.1.2.6" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
         <li class="normal" id="section-13-2.2">
-          <p id="section-13-2.2.1">draft-hardt-aauth-r3-01<a href="#section-13-2.2.1" class="pilcrow">¶</a></p>
+          <p id="section-13-2.2.1">draft-hardt-aauth-r3-00<a href="#section-13-2.2.1" class="pilcrow">¶</a></p>
 <ul class="compact normal">
-<li class="compact normal" id="section-13-2.2.2.1">Added per-call proposals: an <code>r3_conditional</code> operation is challenged at call time, and the resource builds a content-addressed proposal carrying the concrete parameters, which the AS evaluates and the resource binds on retry. A parameter MAY be carried as a digest so large or sensitive values stay between the agent and the resource.<a href="#section-13-2.2.2.1" class="pilcrow">¶</a>
-</li>
-            <li class="compact normal" id="section-13-2.2.2.2">Added the OPTIONAL <code>account</code> field, carrying the <code>account</code> value the authorization endpoint request named. <code>display</code> SHOULD name the account in terms the person recognises, the value itself being an identifier in the resource's namespace that may be opaque.<a href="#section-13-2.2.2.2" class="pilcrow">¶</a>
-</li>
-            <li class="compact normal" id="section-13-2.2.2.3">Content addressing hashes the bytes as served; canonicalization removed.<a href="#section-13-2.2.2.3" class="pilcrow">¶</a>
-</li>
-            <li class="compact normal" id="section-13-2.2.2.4">A resource MUST compose a single R3 document when the requested operations span more than one of its internal definitions.<a href="#section-13-2.2.2.4" class="pilcrow">¶</a>
-</li>
-            <li class="compact normal" id="section-13-2.2.2.5">Added operation identifier scope rules, and what a resource aggregating multiple backend services behind one resource identifier MUST do.<a href="#section-13-2.2.2.5" class="pilcrow">¶</a>
-</li>
-            <li class="compact normal" id="section-13-2.2.2.6">Aligned with the AAuth Protocol: <code>issuer</code> in resource metadata, and <code>dwk</code> values <code>aauth-access.json</code> and <code>aauth-person.json</code> in auth tokens.<a href="#section-13-2.2.2.6" class="pilcrow">¶</a>
-</li>
-          </ul>
-</li>
-        <li class="normal" id="section-13-2.3">
-          <p id="section-13-2.3.1">draft-hardt-aauth-r3-00<a href="#section-13-2.3.1" class="pilcrow">¶</a></p>
-<ul class="compact normal">
-<li class="compact normal" id="section-13-2.3.2.1">Initial submission<a href="#section-13-2.3.2.1" class="pilcrow">¶</a>
+<li class="compact normal" id="section-13-2.2.2.1">Initial submission<a href="#section-13-2.2.2.1" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>

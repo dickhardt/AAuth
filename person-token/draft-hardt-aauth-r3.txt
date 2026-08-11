@@ -504,6 +504,7 @@ Table of Contents
    document Section 10.1.  Agents cannot fetch R3 documents.
 
    {
+     "version": "2",
      "vocabulary": "urn:aauth:vocabulary:mcp",
      "operations": [
        { "tool": "create_calendar_event" },
@@ -519,6 +520,11 @@ Table of Contents
    }
 
 6.1.  Fields
+
+   *version* (RECOMMENDED).  A string identifying the version of this R3
+   document.  The combination of r3_uri + SHA-256 hash provides content-
+   addressing independent of this field; version is for human
+   readability.
 
    *vocabulary* (REQUIRED).  The vocabulary URI identifying how
    operations are expressed.  MUST match one of the vocabularies the
@@ -1013,13 +1019,6 @@ Table of Contents
 13.  Document History
 
    _Note: This section is to be removed before publishing as an RFC._
-
-   *  draft-hardt-aauth-r3-02
-
-      -  Removed the version field.  R3 documents are content-addressed,
-         so a revision is a different document at a different hash;
-         version named nothing the hash did not, and nothing prevented
-         two different documents carrying the same value.
 
    *  draft-hardt-aauth-r3-01
 
