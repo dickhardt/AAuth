@@ -449,7 +449,7 @@ Agent                                     PS                        User
   |<-------------------------------------->|<------------------------>|
   |                                        |                          |
   | 200 OK                                 |                          |
-  | AAuth-Mission-S256: "dBjft..."         |                          |
+  | AAuth-Mission: s256="dBjft..."         |                          |
   | {mission blob}                         |                          |
   |<---------------------------------------|                          |
 ~~~
@@ -1502,12 +1502,16 @@ The PS MAY return a `202 Accepted` deferred response (#deferred-responses) if hu
 
 ## Mission Approval {#mission-approval}
 
-When the PS approves the mission, the response body is a JSON object — the **mission blob** — containing the approved mission and session-specific information. The PS returns the mission's `s256` in the `AAuth-Mission-S256` response header:
+When the PS approves the mission, the response body is a JSON object — the **mission blob** — containing the approved mission and session-specific information. The PS returns the mission's `s256` in the `AAuth-Mission` response header, which is a Dictionary ([@!RFC8941], Section 3.2) with a single member:
+
+- `s256`: A String ([@!RFC8941], Section 3.3.3) carrying the unpadded base64url encoding of the 32-byte SHA-256 digest of the response body bytes.
+
+The value cannot be carried in the body, because the body is what it hashes.
 
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/json
-AAuth-Mission-S256: "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+AAuth-Mission: s256="dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
 
 {
   "approver": "https://ps.example",
@@ -3011,6 +3015,12 @@ This specification registers the following HTTP header fields in the "Hypertext 
 - Status: permanent
 - Reference: This document, (#aauth-access)
 
+- Header Field Name: `AAuth-Mission`
+- Status: permanent
+- Structured Type: Dictionary
+- Reference: This document, (#mission-approval)
+- Notes: Response header, returned by a PS when it approves a mission. Carries the SHA-256 hash of the response body, which cannot carry its own hash.
+
 - Header Field Name: `AAuth-Capabilities`
 - Status: permanent
 - Structured Type: List
@@ -3212,7 +3222,7 @@ The following implementations are known:
   - Resource tokens carry `ps` and `sub`, copied from the person token, and no agent identifier. The PS MUST reject a `sub` that disagrees with its own directed value.
   - Auth tokens carry `ps` and a REQUIRED `sub`, and no agent identifier. `act` and the delegation chain are removed.
   - Replaced the `mission` object with the `mission_s256` claim in person, resource, and auth tokens; `approver` is dropped everywhere but the mission blob.
-  - Removed the `AAuth-Mission` request header. A mission reaches a resource only inside a PS-issued token, so it is no longer agent-asserted. Mission creation and status remain at `mission_endpoint`.
+  - `AAuth-Mission` is now a response header only, returned by the PS on mission approval, carrying the hash of a body that cannot carry its own hash. Agents no longer send it: a mission reaches a resource only inside a PS-issued token, so it is no longer agent-asserted. Mission creation and status remain at `mission_endpoint`.
   - Chain routing uses the auth token's `ps` claim. Removed the branch routing a downstream request to the upstream AS, which required the two resources to share an access server and was never stated as such.
   - `sub` MUST be unique within the issuer; `(iss, sub)` is the identifier and `tenant` is organizational context, not part of it. `sub` values from different issuers MUST NOT be matched.
 
