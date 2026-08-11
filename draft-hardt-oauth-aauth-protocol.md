@@ -217,6 +217,7 @@ Tokens:
 - **Person Token**: Issued by a PS to identify the person an agent acts for, to one resource, before any authorization exists. Carries identity and no authorization (#person-tokens).
 - **Resource Token**: Issued by a resource to describe the access the agent needs (#resource-tokens).
 - **Auth Token**: Issued by a PS or AS to grant an agent access to a resource, containing identity claims and/or authorized scopes (#auth-tokens).
+- **Session Token**: Issued by a resource to an agent when the resource manages authorization itself. Opaque to the agent, carried in the `AAuth-Access` header and presented back via `Authorization: AAuth` (#aauth-access).
 
 Protocol concepts:
 
@@ -301,7 +302,7 @@ Figure: Identity-Based Access {#fig-identity-access}
 
 ### Resource-Managed Access (Two-Party) {#overview-resource-managed}
 
-The resource handles authorization itself — via interaction (#user-interaction), existing OAuth/OIDC infrastructure, or internal policy. After authorization, the resource MAY return an `AAuth-Access` header (#aauth-access) with an opaque access token for subsequent calls.
+The resource handles authorization itself — via interaction (#user-interaction), existing OAuth/OIDC infrastructure, or internal policy. After authorization, the resource MAY return an `AAuth-Access` header (#aauth-access) with a session token for subsequent calls.
 
 ~~~ ascii-art
 Agent                                        Resource
@@ -318,11 +319,11 @@ Agent                                        Resource
   |-------------------------------------------->|
   |                                             |
   | 200 OK                                      |
-  | AAuth-Access: opaque-token                  |
+  | AAuth-Access: session-token                 |
   |<--------------------------------------------|
   |                                             |
   | HTTPSig w/ agent_token                      |
-  | Authorization: AAuth opaque-token           |
+  | Authorization: AAuth session-token          |
   |-------------------------------------------->|
   |                                             |
   | 200 OK                                      |
@@ -839,11 +840,11 @@ Content-Type: application/json
 }
 ```
 
-The user completes interaction at the resource's own consent page. The agent polls the `Location` URL. When authorization is complete, the resource returns `200 OK` and MAY include an `AAuth-Access` header (#aauth-access) containing an opaque access token for subsequent calls.
+The user completes interaction at the resource's own consent page. The agent polls the `Location` URL. When authorization is complete, the resource returns `200 OK` and MAY include an `AAuth-Access` header (#aauth-access) containing a session token for subsequent calls.
 
 ```http
 HTTP/1.1 200 OK
-AAuth-Access: wrapped-opaque-token-value
+AAuth-Access: wrapped-session-token-value
 Content-Type: application/json
 
 {
@@ -911,21 +912,21 @@ The header carries no additional parameters. The agent obtains a person token fo
 
 ## AAuth-Access Response Header {#aauth-access}
 
-The `AAuth-Access` response header carries an opaque access token from a resource to an agent. The token is opaque to the agent — the resource wraps its internal authorization state (which MAY be an existing OAuth access token or other credential). The agent passes the token back to the resource via the `Authorization` header on subsequent requests:
+The `AAuth-Access` response header carries a **session token** from a resource to an agent. The token is opaque to the agent — the resource wraps its internal authorization state (which MAY be an existing OAuth access token or other credential). It is the one AAuth credential a resource issues for its own consumption, and it names the continuing relationship the resource has established with this agent for this person. The agent passes the token back to the resource via the `Authorization` header on subsequent requests:
 
 ```http
 GET /api/data HTTP/1.1
 Host: resource.example
-Authorization: AAuth wrapped-opaque-token-value
+Authorization: AAuth wrapped-session-token-value
 Signature-Input: sig=("@method" "@authority" "@path" \
     "authorization" "signature-key");created=1730217600
 Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 ```
 
-The agent MUST include `authorization` in the covered components of its HTTP signature, binding the access token to the signed request. This prevents the token from being stolen and replayed as a standalone bearer token — the token is useless without a valid AAuth signature from the agent.
+The agent MUST include `authorization` in the covered components of its HTTP signature, binding the session token to the signed request. This prevents the token from being stolen and replayed as a standalone bearer token — the token is useless without a valid AAuth signature from the agent.
 
-A resource MAY return a new `AAuth-Access` header on any response, replacing the agent's current access token. This enables rolling refresh without an explicit refresh flow. When the agent receives a new `AAuth-Access` value, it MUST use the new value on subsequent requests.
+A resource MAY return a new `AAuth-Access` header on any response, replacing the agent's current session token. This enables rolling refresh without an explicit refresh flow. When the agent receives a new `AAuth-Access` value, it MUST use the new value on subsequent requests.
 
 The `AAuth-Access` value, and the credential carried in `Authorization: AAuth`, is a `token68` ([@!RFC9110], Section 11.2). Recipients MUST reject empty values, values containing embedded whitespace or control characters, and responses carrying more than one credential.
 
@@ -947,7 +948,7 @@ Content-Type: application/json
 }
 ```
 
-The agent directs the user to the interaction URL (#user-interaction) and polls the `Location` URL per the deferred response pattern (#deferred-responses). When the interaction completes, the resource returns `200 OK` and MAY include an `AAuth-Access` header (#aauth-access) with an opaque access token for subsequent calls.
+The agent directs the user to the interaction URL (#user-interaction) and polls the `Location` URL per the deferred response pattern (#deferred-responses). When the interaction completes, the resource returns `200 OK` and MAY include an `AAuth-Access` header (#aauth-access) with a session token for subsequent calls.
 
 A resource MAY also authorize the agent based solely on its identity (from the agent token) without any interaction — for example, when the agent's key is already known or the agent's domain is trusted.
 
@@ -2553,7 +2554,7 @@ These four are mandated rather than advisory because each closes a request-subst
 
 Servers MAY require additional covered components (e.g., `content-digest` ([@RFC9530]) for request body integrity). The agent learns about additional requirements from server metadata or from an `invalid_input` error response that includes `required_input`.
 
-The following example shows a fully bound request combining an opaque `AAuth-Access` token and an HTTP Message Signature. Token and key values are illustrative placeholders, not parseable test vectors. `Authorization: AAuth` carries the opaque resource access token; `Signature-Key` carries the auth token (four-party) or agent token, whose `cnf.jwk` is the signing key. A valid signature over these components proves request-component integrity; authorization still depends on auth-token claims and resource enforcement.
+The following example shows a fully bound request combining a session token and an HTTP Message Signature. Token and key values are illustrative placeholders, not parseable test vectors. `Authorization: AAuth` carries the opaque resource access token; `Signature-Key` carries the auth token (four-party) or agent token, whose `cnf.jwk` is the signing key. A valid signature over these components proves request-component integrity; authorization still depends on auth-token claims and resource enforcement.
 
 ```http
 GET /api/documents HTTP/1.1
@@ -2841,7 +2842,7 @@ Fields:
 
 - `issuer` (REQUIRED): The resource's HTTPS URL. This is the value placed in the `iss` claim of resource tokens.
 - `jwks_uri` (REQUIRED when the resource issues resource tokens or makes signed calls): URL to the resource's JSON Web Key Set. A resource that only verifies agent signatures for identity-based access — issuing no resource tokens and making no signed requests of its own (e.g., as an agent in multi-hop, #multi-hop) — has no keys to publish and MAY omit `jwks_uri`.
-- `access_mode` (OPTIONAL): The credential flow the resource expects, letting an agent plan its first call without a speculative challenge. One of `agent-token` (identity-only — the agent signs with its agent token), `person-token` (the resource authorizes on the person's identity alone — the agent signs with a person token), `aauth-access-token` (resource-managed — the agent completes the resource's interaction/consent flow and receives an opaque token via `AAuth-Access`), or `auth-token` (the agent obtains an auth token from its PS using a resource token; the initial call MUST present a person token). Default: `agent-token`. The declaration is advisory: a resource MAY return any `AAuth-Requirement` at runtime regardless of the declared mode (#requirement-responses), and MAY apply different modes to different endpoints. An agent MAY use `access_mode` to skip resources its setup cannot satisfy — for example, a PS-less agent (no `ps` claim in its agent token) cannot complete the `auth-token` flow.
+- `access_mode` (OPTIONAL): The credential flow the resource expects, letting an agent plan its first call without a speculative challenge. One of `agent-token` (identity-only — the agent signs with its agent token), `person-token` (the resource authorizes on the person's identity alone — the agent signs with a person token), `session-token` (resource-managed — the agent completes the resource's interaction/consent flow and receives a session token via `AAuth-Access`), or `auth-token` (the agent obtains an auth token from its PS using a resource token; the initial call MUST present a person token). Default: `agent-token`. The declaration is advisory: a resource MAY return any `AAuth-Requirement` at runtime regardless of the declared mode (#requirement-responses), and MAY apply different modes to different endpoints. An agent MAY use `access_mode` to skip resources its setup cannot satisfy — for example, a PS-less agent (no `ps` claim in its agent token) cannot complete the `auth-token` flow.
 - `name` (OPTIONAL): Human-readable resource name
 - `description` (OPTIONAL): A Markdown string describing the resource, for display to users (for example, at a consent screen). Implementations MUST sanitize the Markdown before rendering to users.
 - `logo_uri` (OPTIONAL): URL to resource logo
@@ -2873,7 +2874,7 @@ Both modes are complete and useful on their own. Adding a PS (PS authorization, 
 
 A resource that wants agents to discover and use it with no prior integration publishes two things in its `aauth-resource.json` (#resource-metadata):
 
-- **`access_mode`** — the credential flow the agent should expect: `agent-token`, `person-token`, `aauth-access-token`, or `auth-token`.
+- **`access_mode`** — the credential flow the agent should expect: `agent-token`, `person-token`, `session-token`, or `auth-token`.
 - **An R3 vocabulary.** Resources SHOULD advertise an R3 vocabulary (`r3_vocabularies`, [@?I-D.hardt-aauth-r3]) describing their operations, so that an agent that knows only the resource's hostname can learn the API and begin using it. The R3 document itself is fetched only by the AS and PS, not the agent; the vocabulary (an OpenAPI, MCP, gRPC, or similar API description) is the agent-facing surface.
 
 An agent onboards as follows:
@@ -2883,7 +2884,7 @@ An agent onboards as follows:
 3. If `access_mode` is `auth-token` and the agent has no PS, it cannot complete that flow and SHOULD skip the resource.
 4. Make the call and satisfy whatever the resource requires, bringing the user in only where the mode calls for it:
    - **`agent-token`** — the agent signs with its agent token and calls. If the resource needs to bind the agent to a user account (the equivalent of associating an API key with an account), it returns a `202` with `requirement=interaction` (#requirement-responses) pointing at a login or account-link page; the agent brings the user there, directly or via the PS's interaction endpoint (#interaction-endpoint). Once bound, subsequent calls with the same agent token are recognized with no further interaction. No token is issued — the account-bound agent token is the durable credential.
-   - **`aauth-access-token`** — the agent's call, or a request to the `authorization_endpoint`, triggers a `202` with `requirement=interaction` pointing at the resource's existing consent or login flow. After the user completes it, the resource returns an opaque token via the `AAuth-Access` header (#aauth-access); the agent presents that token in `Authorization: AAuth ...`, bound to its signature, on subsequent calls.
+   - **`session-token`** — the agent's call, or a request to the `authorization_endpoint`, triggers a `202` with `requirement=interaction` pointing at the resource's existing consent or login flow. After the user completes it, the resource returns an opaque token via the `AAuth-Access` header (#aauth-access); the agent presents that token in `Authorization: AAuth ...`, bound to its signature, on subsequent calls.
    - **`auth-token`** — the resource issues a resource token via the `authorization_endpoint` or a `401` (#requirement-auth-token). The agent sends it to its PS, which runs consent — bringing the user in at the PS, not the resource — and returns an auth token the agent signs with. Whether the PS asserts identity directly (three-party) or federates with the resource's AS (four-party) is invisible to the agent.
 
 Throughout, the agent runs a single loop: make the request, read any `AAuth-Requirement`, satisfy it — bringing in the user where the requirement directs — and retry. The `access_mode` declaration lets the agent anticipate the flow; the runtime `AAuth-Requirement` remains authoritative, so a resource can mix modes across endpoints or escalate at any time.
@@ -3085,7 +3086,7 @@ This specification registers the following HTTP authentication scheme in the "Hy
 
 - Authentication Scheme Name: `AAuth`
 - Reference: This document, (#aauth-access)
-- Notes: Used with opaque access tokens returned via the `AAuth-Access` header. The token MUST be bound to an HTTP Message Signature — the `authorization` field MUST be included in the signature's covered components.
+- Notes: Used with session tokens returned via the `AAuth-Access` header. The token MUST be bound to an HTTP Message Signature — the `authorization` field MUST be included in the signature's covered components.
 
 ## Well-Known URI Registrations
 
@@ -3283,6 +3284,7 @@ The following implementations are known:
   - Chain routing uses the auth token's `ps` claim. Removed the branch routing a downstream request to the upstream AS, which required the two resources to share an access server and was never stated as such.
   - `sub` MUST be unique within the issuer; `(iss, sub)` is the identifier and `tenant` is organizational context, not part of it. `sub` values from different issuers MUST NOT be matched.
   - Stated the extensibility posture: recipients ignore what they do not recognize, and no document carries a version or schema a recipient must understand.
+  - Named the opaque credential a resource issues in resource-managed access the **session token**. It was the only credential in the protocol without a name. The `access_mode` value `aauth-access-token` becomes `session-token`.
 
 - draft-hardt-oauth-aauth-protocol-10
   - Adopted the fully-specified `Ed25519` of [@!RFC9864] in place of the `EdDSA` it deprecates. `alg` is REQUIRED and MUST be fully specified; `EdDSA`, `none`, and symmetric algorithms MUST NOT be used; a verifier MUST reject a key whose `kty` or `crv` disagrees with its `alg`. Addresses issue #57.
@@ -3594,7 +3596,7 @@ Agent governance (missions plus permission, audit, and interaction relay) works 
 
 In GNAP and OAuth, the resource server is a passive consumer of tokens — it verifies them but never produces signed artifacts. AAuth inverts this: the resource cryptographically asserts what is being requested by issuing a resource token that binds the resource's own identity, the agent's key thumbprint, the requested scope, and the mission context into a single signed JWT. This prevents confused deputy attacks — an attacker cannot substitute a different resource in the authorization flow because the resource token is signed by the resource. It also gives the resource a voice in every authorization and re-authorization, and provides a complete audit artifact linking the request to a specific resource, agent, scope, and mission.
 
-### Why Opaque AAuth-Access Tokens
+### Why Session Tokens Are Opaque
 
 In two-party mode, the resource returns an opaque wrapped token via the `AAuth-Access` header rather than a JWT auth token. This allows the resource to wrap its existing authorization infrastructure (OAuth access tokens, session tokens, etc.) without exposing internal structure. The token is bound to the AAuth signature — the agent includes it in the `Authorization` header as a covered component — so it cannot be stolen and replayed as a standalone bearer token.
 
