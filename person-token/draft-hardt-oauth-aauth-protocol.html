@@ -4065,6 +4065,7 @@ Content-Type: application/json
     "approver": "https://ps.example",
     "agent": "aauth:assistant@agent.example",
     "approved_at": "2026-04-07T14:30:00Z",
+    "expires_at": "2026-05-07T14:30:00Z",
     "description": "# Plan Japan Vacation\n\n
       Plan and book a trip to Japan next month
       for 2 adults. Budget around $5k.
@@ -4079,6 +4080,10 @@ Content-Type: application/json
         "description": "Read files and web pages"
       }
     ],
+    "approved_resources": [
+      "https://flights.example",
+      "https://hotels.example"
+    ],
     "capabilities": [
       "interaction",
       "payment"
@@ -4087,8 +4092,7 @@ Content-Type: application/json
   "person_tokens": {
     "https://flights.example": "eyJhbGc...",
     "https://hotels.example": "eyJhbGc..."
-  },
-  "expires_in": 86400
+  }
 }
 
 </pre><a href="#section-9.2-2" class="pilcrow">¶</a>
@@ -4102,10 +4106,7 @@ Content-Type: application/json
             <code>mission</code> (REQUIRED): The mission blob.<a href="#section-9.2-4.2" class="pilcrow">¶</a>
 </li>
           <li class="compact" id="section-9.2-4.3">
-            <code>person_tokens</code> (OPTIONAL): An object mapping resource identifiers to person tokens <a href="#person-tokens" class="auto internal xref">Section 6</a>, each carrying <code>mission_s256</code> set to <code>s256</code>. Present when the proposal named <code>resources</code>. A PS MAY omit a resource it declines to issue for; the agent MAY request one for it later and be refused individually.<a href="#section-9.2-4.3" class="pilcrow">¶</a>
-</li>
-          <li class="compact" id="section-9.2-4.4">
-            <code>expires_in</code> (OPTIONAL): Seconds until the person tokens expire.<a href="#section-9.2-4.4" class="pilcrow">¶</a>
+            <code>person_tokens</code> (OPTIONAL): An object mapping resource identifiers to person tokens <a href="#person-tokens" class="auto internal xref">Section 6</a>, each carrying <code>mission_s256</code> set to <code>s256</code>. Present when the proposal named <code>resources</code>. A PS MAY omit a resource it declines to issue for; the agent MAY request one for it later and be refused individually. Each token carries its own <code>exp</code>, so no separate expiry is returned.<a href="#section-9.2-4.3" class="pilcrow">¶</a>
 </li>
         </ul>
 <p id="section-9.2-5">The mission blob MUST include:<a href="#section-9.2-5" class="pilcrow">¶</a></p>
@@ -4126,10 +4127,16 @@ Content-Type: application/json
 <p id="section-9.2-7">The mission blob MAY include:<a href="#section-9.2-7" class="pilcrow">¶</a></p>
 <ul class="compact">
 <li class="compact" id="section-9.2-8.1">
-            <code>approved_tools</code>: Array of tool objects (each with <code>name</code> and <code>description</code>) that the agent may use without per-call permission at the PS's permission endpoint <a href="#permission-endpoint" class="auto internal xref">Section 8.4</a>.<a href="#section-9.2-8.1" class="pilcrow">¶</a>
+            <code>expires_at</code>: ISO 8601 timestamp after which the PS treats the mission as terminated. When absent, the mission runs until it is completed or revoked. A person token carrying this mission MUST NOT have an <code>exp</code> later than <code>expires_at</code>.<a href="#section-9.2-8.1" class="pilcrow">¶</a>
 </li>
           <li class="compact" id="section-9.2-8.2">
-            <code>capabilities</code>: Array of capability strings (e.g., <code>interaction</code>, <code>payment</code>) that the PS can provide on behalf of the user for this session. The PS determines these based on whether it can reach the specific user — for example, via push notification, email, or an active session. The agent unions these with its own capabilities when constructing the <code>AAuth-Capabilities</code> request header <a href="#aauth-capabilities" class="auto internal xref">Section 13.1</a>.<a href="#section-9.2-8.2" class="pilcrow">¶</a>
+            <code>approved_tools</code>: Array of tool objects (each with <code>name</code> and <code>description</code>) that the agent may use without per-call permission at the PS's permission endpoint <a href="#permission-endpoint" class="auto internal xref">Section 8.4</a>.<a href="#section-9.2-8.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-9.2-8.3">
+            <code>approved_resources</code>: Array of resource identifiers the person approved for this mission, drawn from the <code>resources</code> the proposal named. It records which resources were pre-approved, so an audit of the mission shows what the person agreed to before the agent began. It is not a limit: the agent MAY obtain person tokens for other resources during the mission, subject to the PS's policy, and those accesses appear in the mission log rather than in the blob.<a href="#section-9.2-8.3" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-9.2-8.4">
+            <code>capabilities</code>: Array of capability strings (e.g., <code>interaction</code>, <code>payment</code>) that the PS can provide on behalf of the user for this session. The PS determines these based on whether it can reach the specific user — for example, via push notification, email, or an active session. The agent unions these with its own capabilities when constructing the <code>AAuth-Capabilities</code> request header <a href="#aauth-capabilities" class="auto internal xref">Section 13.1</a>.<a href="#section-9.2-8.4" class="pilcrow">¶</a>
 </li>
         </ul>
 <div id="mission-identifier">
@@ -4215,6 +4222,15 @@ Content-Type: application/problem+json
                 <code>terminated</code>
 </td>
               <td class="text-left" rowspan="1" colspan="1">The mission is permanently ended. The agent MUST stop acting on this mission.</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>mission_expired</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>terminated</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">The mission passed its <code>expires_at</code>. The agent MUST stop acting on this mission and MAY propose a new one.</td>
             </tr>
           </tbody>
         </table>
@@ -7355,12 +7371,14 @@ Accept-Signature-Scheme: jwt
 </li>
             <li class="compact normal" id="section-19-2.1.2.9">Removed the <code>AAuth-Mission</code> header and its registration. A mission reaches a resource only inside a PS-issued token, so it is no longer agent-asserted, and the mission's <code>s256</code> is returned in the approval response body rather than a header. The hash covers the mission blob as the PS persists it, so the agent no longer has to store response bytes verbatim. Mission creation and status remain at <code>mission_endpoint</code>.<a href="#section-19-2.1.2.9" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.10">A mission proposal MAY name the <code>resources</code> it expects to use; the approval response returns a person token for each, mission-scoped, sparing a request per resource.<a href="#section-19-2.1.2.10" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.10">A mission proposal MAY name the <code>resources</code> it expects to use; the approval response returns a person token for each, mission-scoped, sparing a request per resource. The mission blob records the approved set as <code>approved_resources</code>, so an audit shows what the person pre-approved.<a href="#section-19-2.1.2.10" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.11">Chain routing uses the auth token's <code>ps</code> claim. Removed the branch routing a downstream request to the upstream AS, which required the two resources to share an access server and was never stated as such.<a href="#section-19-2.1.2.11" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.11">The mission blob MAY carry <code>expires_at</code>, after which the PS treats the mission as terminated; a person token for that mission MUST NOT outlive it. Added the <code>mission_expired</code> status so an agent can distinguish a mission that ran out from one that was revoked.<a href="#section-19-2.1.2.11" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.12">
-              <code>sub</code> MUST be unique within the issuer; <code>(iss, sub)</code> is the identifier and <code>tenant</code> is organizational context, not part of it. <code>sub</code> values from different issuers MUST NOT be matched.<a href="#section-19-2.1.2.12" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.12">Chain routing uses the auth token's <code>ps</code> claim. Removed the branch routing a downstream request to the upstream AS, which required the two resources to share an access server and was never stated as such.<a href="#section-19-2.1.2.12" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-19-2.1.2.13">
+              <code>sub</code> MUST be unique within the issuer; <code>(iss, sub)</code> is the identifier and <code>tenant</code> is organizational context, not part of it. <code>sub</code> values from different issuers MUST NOT be matched.<a href="#section-19-2.1.2.13" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
@@ -8043,7 +8061,7 @@ Accept-Signature-Scheme: jwt
           <h4 id="name-why-missions-have-only-two-">
 <a href="#appendix-B.3.6" class="section-number selfRef">B.3.6. </a><a href="#name-why-missions-have-only-two-" class="section-name selfRef">Why Missions Have Only Two States</a>
           </h4>
-<p id="appendix-B.3.6-1">Missions are either <strong>active</strong> or <strong>terminated</strong>. There is no suspended state. A suspended state would require the agent to learn that the mission has resumed, but AAuth has no push channel from the PS to the agent — the agent can only poll. For short pauses (minutes), the deferred response mechanism already provides natural waiting via <code>202</code> polling. For long pauses (hours or more), the agent would need to poll indefinitely with no indication of when to stop, making suspension operationally equivalent to termination. Terminating the mission and creating a new one is cleaner — the PS retains the old mission's log for audit, and the new mission can be scoped appropriately for the changed circumstances that prompted the pause. This keeps mission lifecycle simple: a mission is alive until it is done.<a href="#appendix-B.3.6-1" class="pilcrow">¶</a></p>
+<p id="appendix-B.3.6-1">Missions are either <strong>active</strong> or <strong>terminated</strong>. There is no suspended state. An <code>expires_at</code> in the mission blob does not add a state — it declares in advance when the PS will treat the mission as terminated, which the person can see at approval time. A suspended state would require the agent to learn that the mission has resumed, but AAuth has no push channel from the PS to the agent — the agent can only poll. For short pauses (minutes), the deferred response mechanism already provides natural waiting via <code>202</code> polling. For long pauses (hours or more), the agent would need to poll indefinitely with no indication of when to stop, making suspension operationally equivalent to termination. Terminating the mission and creating a new one is cleaner — the PS retains the old mission's log for audit, and the new mission can be scoped appropriately for the changed circumstances that prompted the pause. This keeps mission lifecycle simple: a mission is alive until it is done.<a href="#appendix-B.3.6-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="why-downstream-scope-is-not-constrained-by-upstream-scope">
