@@ -1397,6 +1397,11 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.2">
                 <p id="section-toc.1-1.9.2.2.1"><a href="#section-9.2" class="auto internal xref">9.2</a>.  <a href="#name-mission-approval" class="internal xref">Mission Approval</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.2.2.1">
+                    <p id="section-toc.1-1.9.2.2.2.1.1"><a href="#section-9.2.1" class="auto internal xref">9.2.1</a>.  <a href="#name-mission-identifier" class="internal xref">Mission Identifier</a></p>
+</li>
+                </ul>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.3">
                 <p id="section-toc.1-1.9.2.3.1"><a href="#section-9.3" class="auto internal xref">9.3</a>.  <a href="#name-mission-log" class="internal xref">Mission Log</a></p>
@@ -2457,8 +2462,7 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
   |&lt;--------------------------------------&gt;|&lt;------------------------&gt;|
   |                                        |                          |
   | 200 OK                                 |                          |
-  | AAuth-Mission: s256="dBjft..."         |                          |
-  | {mission blob}                         |                          |
+  | {s256, mission, person_tokens}         |                          |
   |&lt;---------------------------------------|                          |
 
 </pre>
@@ -4012,7 +4016,7 @@ Content-Type: application/json
 <a href="#section-9.1" class="section-number selfRef">9.1. </a><a href="#name-mission-creation-2" class="section-name selfRef">Mission Creation</a>
         </h3>
 <p id="section-9.1-1">The agent creates a mission by sending a proposal to the PS's <code>mission_endpoint</code>. The agent MUST make a signed POST with an HTTP Sig <a href="#http-message-signatures-profile" class="auto internal xref">Section 13.8</a>, presenting its agent token via the <code>Signature-Key</code> header using <code>scheme=jwt</code>.<a href="#section-9.1-1" class="pilcrow">¶</a></p>
-<p id="section-9.1-2">The proposal includes a Markdown description of what the agent intends to accomplish, and MAY include a list of tools the agent wants to use:<a href="#section-9.1-2" class="pilcrow">¶</a></p>
+<p id="section-9.1-2">The proposal includes a Markdown description of what the agent intends to accomplish, and MAY include a list of tools the agent wants to use and a list of resources it expects to access:<a href="#section-9.1-2" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="section-9.1-3">
 <pre>{
   "description": "# Plan Japan Vacation\n\n
@@ -4032,12 +4036,17 @@ Content-Type: application/json
       "name": "BookHotel",
       "description": "Book hotels"
     }
+  ],
+  "resources": [
+    "https://flights.example",
+    "https://hotels.example"
   ]
 }
 
 </pre><a href="#section-9.1-3" class="pilcrow">¶</a>
 </div>
-<p id="section-9.1-4">The PS MAY return a <code>202 Accepted</code> deferred response <a href="#deferred-responses" class="auto internal xref">Section 13.5</a> if human review, clarification, or approval is needed. During this phase, the PS and user may engage in clarification chat <a href="#clarification-chat" class="auto internal xref">Section 8.3</a> with the agent to refine the mission scope, ask questions about the agent's intent, or negotiate which tools are needed. The PS or user may also modify the description — the approved mission MAY differ from the original proposal.<a href="#section-9.1-4" class="pilcrow">¶</a></p>
+<p id="section-9.1-4"><strong><code>resources</code></strong> (OPTIONAL). An array of HTTPS URLs conforming to the Server Identifier requirements <a href="#server-identifiers" class="auto internal xref">Section 13.10.1</a>. The PS presents them to the person alongside the description, and issues a person token for each it approves in the approval response <a href="#mission-approval" class="auto internal xref">Section 9.2</a>, sparing the agent a separate request per resource. An agent MAY still obtain person tokens for other resources later <a href="#person-token-endpoint" class="auto internal xref">Section 6.1</a>, subject to the PS's policy; the list is not a limit on the mission.<a href="#section-9.1-4" class="pilcrow">¶</a></p>
+<p id="section-9.1-5">The PS MAY return a <code>202 Accepted</code> deferred response <a href="#deferred-responses" class="auto internal xref">Section 13.5</a> if human review, clarification, or approval is needed. During this phase, the PS and user may engage in clarification chat <a href="#clarification-chat" class="auto internal xref">Section 8.3</a> with the agent to refine the mission scope, ask questions about the agent's intent, or negotiate which tools are needed. The PS or user may also modify the description — the approved mission MAY differ from the original proposal.<a href="#section-9.1-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="mission-approval">
@@ -4045,44 +4054,60 @@ Content-Type: application/json
         <h3 id="name-mission-approval">
 <a href="#section-9.2" class="section-number selfRef">9.2. </a><a href="#name-mission-approval" class="section-name selfRef">Mission Approval</a>
         </h3>
-<p id="section-9.2-1">When the PS approves the mission, the response body is a JSON object — the <strong>mission blob</strong> — containing the approved mission and session-specific information. The PS returns the mission's <code>s256</code> in the <code>AAuth-Mission</code> response header, which is a Dictionary (<span>[<a href="#RFC8941" class="cite xref">RFC8941</a>]</span>, Section 3.2) with a single member:<a href="#section-9.2-1" class="pilcrow">¶</a></p>
-<ul class="compact">
-<li class="compact" id="section-9.2-2.1">
-            <code>s256</code>: A String (<span>[<a href="#RFC8941" class="cite xref">RFC8941</a>]</span>, Section 3.3.3) carrying the unpadded base64url encoding of the 32-byte SHA-256 digest of the response body bytes.<a href="#section-9.2-2.1" class="pilcrow">¶</a>
-</li>
-        </ul>
-<p id="section-9.2-3">The value cannot be carried in the body, because the body is what it hashes.<a href="#section-9.2-3" class="pilcrow">¶</a></p>
-<div class="lang-http sourcecode" id="section-9.2-4">
+<p id="section-9.2-1">When the PS approves the mission, it returns the approved mission — the <strong>mission blob</strong> — together with the mission's <code>s256</code> and a person token for each approved resource:<a href="#section-9.2-1" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-9.2-2">
 <pre>HTTP/1.1 200 OK
 Content-Type: application/json
-AAuth-Mission: s256="dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
 
 {
-  "approver": "https://ps.example",
-  "agent": "aauth:assistant@agent.example",
-  "approved_at": "2026-04-07T14:30:00Z",
-  "description": "# Plan Japan Vacation\n\n
-    Plan and book a trip to Japan next month
-    for 2 adults. Budget around $5k.
-    Propose an itinerary before booking.",
-  "approved_tools": [
-    {
-      "name": "WebSearch",
-      "description": "Search the web"
-    },
-    {
-      "name": "Read",
-      "description": "Read files and web pages"
-    }
-  ],
-  "capabilities": [
-    "interaction",
-    "payment"
-  ]
+  "s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+  "mission": {
+    "approver": "https://ps.example",
+    "agent": "aauth:assistant@agent.example",
+    "approved_at": "2026-04-07T14:30:00Z",
+    "description": "# Plan Japan Vacation\n\n
+      Plan and book a trip to Japan next month
+      for 2 adults. Budget around $5k.
+      Propose an itinerary before booking.",
+    "approved_tools": [
+      {
+        "name": "WebSearch",
+        "description": "Search the web"
+      },
+      {
+        "name": "Read",
+        "description": "Read files and web pages"
+      }
+    ],
+    "capabilities": [
+      "interaction",
+      "payment"
+    ]
+  },
+  "person_tokens": {
+    "https://flights.example": "eyJhbGc...",
+    "https://hotels.example": "eyJhbGc..."
+  },
+  "expires_in": 86400
 }
 
-</pre><a href="#section-9.2-4" class="pilcrow">¶</a>
+</pre><a href="#section-9.2-2" class="pilcrow">¶</a>
 </div>
+<p id="section-9.2-3">Response members:<a href="#section-9.2-3" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-9.2-4.1">
+            <code>s256</code> (REQUIRED): The mission identifier — the unpadded base64url encoding of the SHA-256 digest of the mission blob.<a href="#section-9.2-4.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-9.2-4.2">
+            <code>mission</code> (REQUIRED): The mission blob.<a href="#section-9.2-4.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-9.2-4.3">
+            <code>person_tokens</code> (OPTIONAL): An object mapping resource identifiers to person tokens <a href="#person-tokens" class="auto internal xref">Section 6</a>, each carrying <code>mission_s256</code> set to <code>s256</code>. Present when the proposal named <code>resources</code>. A PS MAY omit a resource it declines to issue for; the agent MAY request one for it later and be refused individually.<a href="#section-9.2-4.3" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-9.2-4.4">
+            <code>expires_in</code> (OPTIONAL): Seconds until the person tokens expire.<a href="#section-9.2-4.4" class="pilcrow">¶</a>
+</li>
+        </ul>
 <p id="section-9.2-5">The mission blob MUST include:<a href="#section-9.2-5" class="pilcrow">¶</a></p>
 <ul class="compact">
 <li class="compact" id="section-9.2-6.1">
@@ -4107,8 +4132,17 @@ AAuth-Mission: s256="dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
             <code>capabilities</code>: Array of capability strings (e.g., <code>interaction</code>, <code>payment</code>) that the PS can provide on behalf of the user for this session. The PS determines these based on whether it can reach the specific user — for example, via push notification, email, or an active session. The agent unions these with its own capabilities when constructing the <code>AAuth-Capabilities</code> request header <a href="#aauth-capabilities" class="auto internal xref">Section 13.1</a>.<a href="#section-9.2-8.2" class="pilcrow">¶</a>
 </li>
         </ul>
-<p id="section-9.2-9">The response body — the mission blob — is the mission JSON that <code>mission_s256</code> hashes everywhere it appears. The value is the base64url-encoded SHA-256 hash of the response body bytes, without padding. The agent verifies the hash by computing SHA-256 over the exact response body bytes, and MUST store those bytes exactly as received — no re-serialization.<a href="#section-9.2-9" class="pilcrow">¶</a></p>
-<p id="section-9.2-10">The approved description MAY differ from the proposal — the PS or user may refine, constrain, or expand the mission during review. The approved tools MAY be a subset of the proposed tools. The agent MUST use this value as <code>mission_s256</code> when requesting person tokens <a href="#person-token-endpoint" class="auto internal xref">Section 6.1</a>.<a href="#section-9.2-10" class="pilcrow">¶</a></p>
+<div id="mission-identifier">
+<section id="section-9.2.1">
+          <h4 id="name-mission-identifier">
+<a href="#section-9.2.1" class="section-number selfRef">9.2.1. </a><a href="#name-mission-identifier" class="section-name selfRef">Mission Identifier</a>
+          </h4>
+<p id="section-9.2.1-1"><code>s256</code> identifies the mission everywhere it appears — as the <code>mission_s256</code> claim of person, resource, and auth tokens, and as the <code>mission_s256</code> parameter of PS requests.<a href="#section-9.2.1-1" class="pilcrow">¶</a></p>
+<p id="section-9.2.1-2">It is a hash rather than an opaque identifier so that it is provable. An opaque identifier would name the mission but leave the PS free to attach it to any text afterwards. A digest binds every token carrying <code>mission_s256</code> to one specific mission, so the mission in the PS's log and the mission those tokens authorized are demonstrably the same.<a href="#section-9.2.1-2" class="pilcrow">¶</a></p>
+<p id="section-9.2.1-3">The PS MUST compute <code>s256</code> over the exact bytes it persists as the mission blob, and MUST serve those same bytes wherever it later exposes the mission for audit. The agent is not required to verify the digest; it holds the value as an identifier and names it when requesting person tokens.<a href="#section-9.2.1-3" class="pilcrow">¶</a></p>
+<p id="section-9.2.1-4">The approved description MAY differ from the proposal — the PS or user may refine, constrain, or expand the mission during review. The approved tools MAY be a subset of the proposed tools. The agent uses <code>s256</code> as <code>mission_s256</code> when requesting further person tokens <a href="#person-token-endpoint" class="auto internal xref">Section 6.1</a>.<a href="#section-9.2.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
 </section>
 </div>
 <div id="mission-log">
@@ -6711,31 +6745,16 @@ Accept-Signature-Scheme: jwt
             <p id="section-17.1-2.7.1">Reference: This document, <a href="#aauth-access" class="auto internal xref">Section 7.5</a><a href="#section-17.1-2.7.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-17.1-2.8">
-            <p id="section-17.1-2.8.1">Header Field Name: <code>AAuth-Mission</code><a href="#section-17.1-2.8.1" class="pilcrow">¶</a></p>
+            <p id="section-17.1-2.8.1">Header Field Name: <code>AAuth-Capabilities</code><a href="#section-17.1-2.8.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-17.1-2.9">
             <p id="section-17.1-2.9.1">Status: permanent<a href="#section-17.1-2.9.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-17.1-2.10">
-            <p id="section-17.1-2.10.1">Structured Type: Dictionary<a href="#section-17.1-2.10.1" class="pilcrow">¶</a></p>
+            <p id="section-17.1-2.10.1">Structured Type: List<a href="#section-17.1-2.10.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-17.1-2.11">
-            <p id="section-17.1-2.11.1">Reference: This document, <a href="#mission-approval" class="auto internal xref">Section 9.2</a><a href="#section-17.1-2.11.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="section-17.1-2.12">
-            <p id="section-17.1-2.12.1">Notes: Response header, returned by a PS when it approves a mission. Carries the SHA-256 hash of the response body, which cannot carry its own hash.<a href="#section-17.1-2.12.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="section-17.1-2.13">
-            <p id="section-17.1-2.13.1">Header Field Name: <code>AAuth-Capabilities</code><a href="#section-17.1-2.13.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="section-17.1-2.14">
-            <p id="section-17.1-2.14.1">Status: permanent<a href="#section-17.1-2.14.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="section-17.1-2.15">
-            <p id="section-17.1-2.15.1">Structured Type: List<a href="#section-17.1-2.15.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="section-17.1-2.16">
-            <p id="section-17.1-2.16.1">Reference: This document, <a href="#aauth-capabilities" class="auto internal xref">Section 13.1</a><a href="#section-17.1-2.16.1" class="pilcrow">¶</a></p>
+            <p id="section-17.1-2.11.1">Reference: This document, <a href="#aauth-capabilities" class="auto internal xref">Section 13.1</a><a href="#section-17.1-2.11.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
 </section>
@@ -7334,13 +7353,14 @@ Accept-Signature-Scheme: jwt
 </li>
             <li class="compact normal" id="section-19-2.1.2.8">Replaced the <code>mission</code> object with the <code>mission_s256</code> claim in person, resource, and auth tokens; <code>approver</code> is dropped everywhere but the mission blob.<a href="#section-19-2.1.2.8" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.9">
-              <code>AAuth-Mission</code> is now a response header only, returned by the PS on mission approval, carrying the hash of a body that cannot carry its own hash. Agents no longer send it: a mission reaches a resource only inside a PS-issued token, so it is no longer agent-asserted. Mission creation and status remain at <code>mission_endpoint</code>.<a href="#section-19-2.1.2.9" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.9">Removed the <code>AAuth-Mission</code> header and its registration. A mission reaches a resource only inside a PS-issued token, so it is no longer agent-asserted, and the mission's <code>s256</code> is returned in the approval response body rather than a header. The hash covers the mission blob as the PS persists it, so the agent no longer has to store response bytes verbatim. Mission creation and status remain at <code>mission_endpoint</code>.<a href="#section-19-2.1.2.9" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.10">Chain routing uses the auth token's <code>ps</code> claim. Removed the branch routing a downstream request to the upstream AS, which required the two resources to share an access server and was never stated as such.<a href="#section-19-2.1.2.10" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.10">A mission proposal MAY name the <code>resources</code> it expects to use; the approval response returns a person token for each, mission-scoped, sparing a request per resource.<a href="#section-19-2.1.2.10" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.11">
-              <code>sub</code> MUST be unique within the issuer; <code>(iss, sub)</code> is the identifier and <code>tenant</code> is organizational context, not part of it. <code>sub</code> values from different issuers MUST NOT be matched.<a href="#section-19-2.1.2.11" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.11">Chain routing uses the auth token's <code>ps</code> claim. Removed the branch routing a downstream request to the upstream AS, which required the two resources to share an access server and was never stated as such.<a href="#section-19-2.1.2.11" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-19-2.1.2.12">
+              <code>sub</code> MUST be unique within the issuer; <code>(iss, sub)</code> is the identifier and <code>tenant</code> is organizational context, not part of it. <code>sub</code> values from different issuers MUST NOT be matched.<a href="#section-19-2.1.2.12" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
