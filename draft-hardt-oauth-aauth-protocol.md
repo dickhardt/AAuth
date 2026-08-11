@@ -1519,6 +1519,7 @@ Content-Type: application/json
     "approver": "https://ps.example",
     "agent": "aauth:assistant@agent.example",
     "approved_at": "2026-04-07T14:30:00Z",
+    "expires_at": "2026-05-07T14:30:00Z",
     "description": "# Plan Japan Vacation\n\n
       Plan and book a trip to Japan next month
       for 2 adults. Budget around $5k.
@@ -1533,6 +1534,10 @@ Content-Type: application/json
         "description": "Read files and web pages"
       }
     ],
+    "approved_resources": [
+      "https://flights.example",
+      "https://hotels.example"
+    ],
     "capabilities": [
       "interaction",
       "payment"
@@ -1541,8 +1546,7 @@ Content-Type: application/json
   "person_tokens": {
     "https://flights.example": "eyJhbGc...",
     "https://hotels.example": "eyJhbGc..."
-  },
-  "expires_in": 86400
+  }
 }
 ```
 
@@ -1550,8 +1554,7 @@ Response members:
 
 - `s256` (REQUIRED): The mission identifier — the unpadded base64url encoding of the SHA-256 digest of the mission blob.
 - `mission` (REQUIRED): The mission blob.
-- `person_tokens` (OPTIONAL): An object mapping resource identifiers to person tokens (#person-tokens), each carrying `mission_s256` set to `s256`. Present when the proposal named `resources`. A PS MAY omit a resource it declines to issue for; the agent MAY request one for it later and be refused individually.
-- `expires_in` (OPTIONAL): Seconds until the person tokens expire.
+- `person_tokens` (OPTIONAL): An object mapping resource identifiers to person tokens (#person-tokens), each carrying `mission_s256` set to `s256`. Present when the proposal named `resources`. A PS MAY omit a resource it declines to issue for; the agent MAY request one for it later and be refused individually. Each token carries its own `exp`, so no separate expiry is returned.
 
 The mission blob MUST include:
 
@@ -1562,7 +1565,9 @@ The mission blob MUST include:
 
 The mission blob MAY include:
 
+- `expires_at`: ISO 8601 timestamp after which the PS treats the mission as terminated. When absent, the mission runs until it is completed or revoked. A person token carrying this mission MUST NOT have an `exp` later than `expires_at`.
 - `approved_tools`: Array of tool objects (each with `name` and `description`) that the agent may use without per-call permission at the PS's permission endpoint (#permission-endpoint).
+- `approved_resources`: Array of resource identifiers the person approved for this mission, drawn from the `resources` the proposal named. It records which resources were pre-approved, so an audit of the mission shows what the person agreed to before the agent began. It is not a limit: the agent MAY obtain person tokens for other resources during the mission, subject to the PS's policy, and those accesses appear in the mission log rather than in the blob.
 - `capabilities`: Array of capability strings (e.g., `interaction`, `payment`) that the PS can provide on behalf of the user for this session. The PS determines these based on whether it can reach the specific user — for example, via push notification, email, or an active session. The agent unions these with its own capabilities when constructing the `AAuth-Capabilities` request header (#aauth-capabilities).
 
 ### Mission Identifier {#mission-identifier}
@@ -1613,6 +1618,7 @@ Content-Type: application/problem+json
 | Error | Mission Status | Meaning |
 |-------|---------------|---------|
 | `mission_terminated` | `terminated` | The mission is permanently ended. The agent MUST stop acting on this mission. |
+| `mission_expired` | `terminated` | The mission passed its `expires_at`. The agent MUST stop acting on this mission and MAY propose a new one. |
 
 # Access Server Federation {#access-server-federation}
 
@@ -3238,7 +3244,8 @@ The following implementations are known:
   - Auth tokens carry `ps` and a REQUIRED `sub`, and no agent identifier. `act` and the delegation chain are removed.
   - Replaced the `mission` object with the `mission_s256` claim in person, resource, and auth tokens; `approver` is dropped everywhere but the mission blob.
   - Removed the `AAuth-Mission` header and its registration. A mission reaches a resource only inside a PS-issued token, so it is no longer agent-asserted, and the mission's `s256` is returned in the approval response body rather than a header. The hash covers the mission blob as the PS persists it, so the agent no longer has to store response bytes verbatim. Mission creation and status remain at `mission_endpoint`.
-  - A mission proposal MAY name the `resources` it expects to use; the approval response returns a person token for each, mission-scoped, sparing a request per resource.
+  - A mission proposal MAY name the `resources` it expects to use; the approval response returns a person token for each, mission-scoped, sparing a request per resource. The mission blob records the approved set as `approved_resources`, so an audit shows what the person pre-approved.
+  - The mission blob MAY carry `expires_at`, after which the PS treats the mission as terminated; a person token for that mission MUST NOT outlive it. Added the `mission_expired` status so an agent can distinguish a mission that ran out from one that was revoked.
   - Chain routing uses the auth token's `ps` claim. Removed the branch routing a downstream request to the upstream AS, which required the two resources to share an access server and was never stated as such.
   - `sub` MUST be unique within the issuer; `(iss, sub)` is the identifier and `tenant` is organizational context, not part of it. `sub` values from different issuers MUST NOT be matched.
 
@@ -3538,7 +3545,7 @@ The mission's `description` is Markdown because it represents human intent, not 
 
 ### Why Missions Have Only Two States
 
-Missions are either **active** or **terminated**. There is no suspended state. A suspended state would require the agent to learn that the mission has resumed, but AAuth has no push channel from the PS to the agent — the agent can only poll. For short pauses (minutes), the deferred response mechanism already provides natural waiting via `202` polling. For long pauses (hours or more), the agent would need to poll indefinitely with no indication of when to stop, making suspension operationally equivalent to termination. Terminating the mission and creating a new one is cleaner — the PS retains the old mission's log for audit, and the new mission can be scoped appropriately for the changed circumstances that prompted the pause. This keeps mission lifecycle simple: a mission is alive until it is done.
+Missions are either **active** or **terminated**. There is no suspended state. An `expires_at` in the mission blob does not add a state — it declares in advance when the PS will treat the mission as terminated, which the person can see at approval time. A suspended state would require the agent to learn that the mission has resumed, but AAuth has no push channel from the PS to the agent — the agent can only poll. For short pauses (minutes), the deferred response mechanism already provides natural waiting via `202` polling. For long pauses (hours or more), the agent would need to poll indefinitely with no indication of when to stop, making suspension operationally equivalent to termination. Terminating the mission and creating a new one is cleaner — the PS retains the old mission's log for audit, and the new mission can be scoped appropriately for the changed circumstances that prompted the pause. This keeps mission lifecycle simple: a mission is alive until it is done.
 
 ### Why Downstream Scope Is Not Constrained by Upstream Scope
 
