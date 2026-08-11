@@ -1490,7 +1490,7 @@ The agent has three operations, all of the same shape: it proposes, the person d
 | `POST {mission_endpoint}/{mission_s256}` with `action: update` | Record a change in the work (#mission-update) |
 | `POST {mission_endpoint}/{mission_s256}` with `action: completion` | Propose that the mission is finished (#mission-completion) |
 
-The `action` member is REQUIRED on requests to a mission's own URL, and a PS MUST reject a request with a missing or unrecognized `action` with `400 Bad Request`. This is the same discriminator the pending route uses (#agent-response-to-clarification), for the same reason: it makes each POST self-describing and leaves the route extensible.
+The `action` member is REQUIRED on requests to a mission's own URL, and a PS MUST reject a request with a missing or unrecognized `action` with `400 Bad Request`. This is the same discriminator the pending route uses (#agent-response-to-clarification), for the same reason: it makes each POST self-describing and leaves the route extensible. Errors at these requests are defined in (#mission-endpoint-errors).
 
 ## Mission Creation {#mission-creation}
 
@@ -1712,6 +1712,22 @@ The PS records why a mission terminated, alongside the mission rather than insid
 A termination reason MUST NOT be exposed as a mission state or used to permit a later transition.
 
 Reading a mission's status, terminating one, and querying delegation are operations for parties other than the owning agent, and belong at the `mission_control_endpoint` (#ps-metadata). They will be defined in a companion specification, along with the administrative principals that invoke them.
+
+## Mission Endpoint Errors {#mission-endpoint-errors}
+
+| Error | Status | Meaning |
+|-------|--------|---------|
+| `invalid_request` | 400 | The `{mission_s256}` path segment is malformed, or `action` is missing or unrecognized |
+| `mission_not_found` | 404 | No such mission, or it is not this agent's |
+| `mission_terminated` | 403 | This agent's mission, permanently ended (#mission-status-errors) |
+
+A PS MUST return the same status, error, body, header set, and observably equivalent timing whether the mission does not exist or the authenticated agent does not own it, and MUST NOT disclose anything about a mission before authorization succeeds. Note that the natural arrangement — checking ownership only after a successful lookup — leaks the difference in timing.
+
+The distinction matters because `mission_s256` travels in auth tokens to resources. Without this rule, a resource operator running an agent could POST a mission reference it had observed and learn from the response whether that mission was still live, reading mission status through a side channel instead of through the control plane, where the read would be authorized.
+
+A terminated mission is deliberately distinguishable: the agent that owns it already knows it exists, and needs `termination_reason` to decide whether to propose a new mission.
+
+A PS SHOULD rate-limit and security-log repeated failures, and SHOULD NOT retain raw mission references from failed requests longer than abuse correlation requires.
 
 ## Mission Status Errors {#mission-status-errors}
 
@@ -3383,6 +3399,7 @@ The following implementations are known:
   - Chain routing uses the auth token's `ps` claim. Removed the branch routing a downstream request to the upstream AS, which required the two resources to share an access server and was never stated as such.
   - `sub` MUST be unique within the issuer; `(iss, sub)` is the identifier and `tenant` is organizational context, not part of it. `sub` values from different issuers MUST NOT be matched.
   - Stated the extensibility posture: recipients ignore what they do not recognize, and no document carries a version or schema a recipient must understand.
+  - Defined the mission endpoint's error responses, including that a PS MUST answer identically — status, body, headers, and timing — whether a mission does not exist or the agent does not own it. Without that the agent surface is an existence oracle for any party that has seen a `mission_s256` in an auth token. Adopted from `draft-mcguinness-mission-aauth-management`.
   - The mission endpoint is the owning agent's surface, with three operations of one shape: `POST {mission_endpoint}` proposes a mission, and `POST {mission_endpoint}/{mission_s256}` carries `action: update` or `action: completion`. The `action` discriminator is the one the pending route already uses.
   - Added mission update. An update records a change in the work, is appended to the mission log, and is digested so the sequence is verifiable. It does not change the blob, `mission_s256`, or any token carrying it; what it changes is the context the PS evaluates against, so the mission's meaning becomes the approved blob plus its accepted updates and an audit MUST read both.
   - Moved completion off the interaction endpoint. It is a lifecycle transition, not transport: creation and completion are the same shape — the agent proposes, the person decides, clarification is available, the response is deferred — and were split across two endpoints for no structural reason. The interaction endpoint keeps `interaction`, `payment`, and `question`, which are the things the agent genuinely cannot do itself.
