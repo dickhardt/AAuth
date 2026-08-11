@@ -108,7 +108,9 @@ A standalone HTTP specification that AAuth builds on. Defines well-known key dis
 
 **[draft-hardt-aauth-r3](draft-hardt-aauth-r3.md)**
 
-Rich Resource Requests. Vocabulary-based authorization using formats agents already understand (MCP, OpenAPI, gRPC, GraphQL). Content-addressed R3 documents provide human-readable consent display and permanent audit provenance.
+Rich Resource Requests. Vocabulary-based authorization using formats agents already understand (MCP, OpenAPI, gRPC, GraphQL). Content-addressed R3 documents provide human-readable consent display and permanent audit provenance. Operation access annotations let a resource state, on the operation in its own vocabulary, which credential that operation requires and whether it consumes budget.
+
+* [Editor's Copy](https://dickhardt.github.io/AAuth/draft-hardt-aauth-r3.html)
 
 ### AAuth Events (Exploratory)
 
