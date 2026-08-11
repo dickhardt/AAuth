@@ -321,6 +321,7 @@ The document MUST be served over HTTPS. The resource MUST require a valid HTTP M
 
 ```json
 {
+  "version": "2",
   "vocabulary": "urn:aauth:vocabulary:mcp",
   "operations": [
     { "tool": "create_calendar_event" },
@@ -337,6 +338,8 @@ The document MUST be served over HTTPS. The resource MUST require a valid HTTP M
 ```
 
 ## Fields
+
+**`version`** (RECOMMENDED). A string identifying the version of this R3 document. The combination of `r3_uri` + SHA-256 hash provides content-addressing independent of this field; `version` is for human readability.
 
 **`vocabulary`** (REQUIRED). The vocabulary URI identifying how operations are expressed. MUST match one of the vocabularies the resource advertises in `r3_vocabularies`.
 
@@ -640,9 +643,6 @@ There are currently no known implementations.
 # Document History
 
 *Note: This section is to be removed before publishing as an RFC.*
-
-- draft-hardt-aauth-r3-02
-  - Removed the `version` field. R3 documents are content-addressed, so a revision is a different document at a different hash; `version` named nothing the hash did not, and nothing prevented two different documents carrying the same value.
 
 - draft-hardt-aauth-r3-01
   - Added per-call proposals: an `r3_conditional` operation is challenged at call time, and the resource builds a content-addressed proposal carrying the concrete parameters, which the AS evaluates and the resource binds on retry. A parameter MAY be carried as a digest so large or sensitive values stay between the agent and the resource.
