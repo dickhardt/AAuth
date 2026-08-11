@@ -449,8 +449,7 @@ Agent                                     PS                        User
   |<-------------------------------------->|<------------------------>|
   |                                        |                          |
   | 200 OK                                 |                          |
-  | AAuth-Mission: s256="dBjft..."         |                          |
-  | {mission blob}                         |                          |
+  | {s256, mission, person_tokens}         |                          |
   |<---------------------------------------|                          |
 ~~~
 Figure: Mission Creation and Approval {#fig-mission}
@@ -1473,7 +1472,7 @@ Missions are OPTIONAL. The protocol operates in all modes without missions. When
 
 The agent creates a mission by sending a proposal to the PS's `mission_endpoint`. The agent MUST make a signed POST with an HTTP Sig (#http-message-signatures-profile), presenting its agent token via the `Signature-Key` header using `scheme=jwt`.
 
-The proposal includes a Markdown description of what the agent intends to accomplish, and MAY include a list of tools the agent wants to use:
+The proposal includes a Markdown description of what the agent intends to accomplish, and MAY include a list of tools the agent wants to use and a list of resources it expects to access:
 
 ```json
 {
@@ -1494,49 +1493,65 @@ The proposal includes a Markdown description of what the agent intends to accomp
       "name": "BookHotel",
       "description": "Book hotels"
     }
+  ],
+  "resources": [
+    "https://flights.example",
+    "https://hotels.example"
   ]
 }
 ```
+
+**`resources`** (OPTIONAL). An array of HTTPS URLs conforming to the Server Identifier requirements (#server-identifiers). The PS presents them to the person alongside the description, and issues a person token for each it approves in the approval response (#mission-approval), sparing the agent a separate request per resource. An agent MAY still obtain person tokens for other resources later (#person-token-endpoint), subject to the PS's policy; the list is not a limit on the mission.
 
 The PS MAY return a `202 Accepted` deferred response (#deferred-responses) if human review, clarification, or approval is needed. During this phase, the PS and user may engage in clarification chat (#clarification-chat) with the agent to refine the mission scope, ask questions about the agent's intent, or negotiate which tools are needed. The PS or user may also modify the description — the approved mission MAY differ from the original proposal.
 
 ## Mission Approval {#mission-approval}
 
-When the PS approves the mission, the response body is a JSON object — the **mission blob** — containing the approved mission and session-specific information. The PS returns the mission's `s256` in the `AAuth-Mission` response header, which is a Dictionary ([@!RFC8941], Section 3.2) with a single member:
-
-- `s256`: A String ([@!RFC8941], Section 3.3.3) carrying the unpadded base64url encoding of the 32-byte SHA-256 digest of the response body bytes.
-
-The value cannot be carried in the body, because the body is what it hashes.
+When the PS approves the mission, it returns the approved mission — the **mission blob** — together with the mission's `s256` and a person token for each approved resource:
 
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/json
-AAuth-Mission: s256="dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
 
 {
-  "approver": "https://ps.example",
-  "agent": "aauth:assistant@agent.example",
-  "approved_at": "2026-04-07T14:30:00Z",
-  "description": "# Plan Japan Vacation\n\n
-    Plan and book a trip to Japan next month
-    for 2 adults. Budget around $5k.
-    Propose an itinerary before booking.",
-  "approved_tools": [
-    {
-      "name": "WebSearch",
-      "description": "Search the web"
-    },
-    {
-      "name": "Read",
-      "description": "Read files and web pages"
-    }
-  ],
-  "capabilities": [
-    "interaction",
-    "payment"
-  ]
+  "s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+  "mission": {
+    "approver": "https://ps.example",
+    "agent": "aauth:assistant@agent.example",
+    "approved_at": "2026-04-07T14:30:00Z",
+    "description": "# Plan Japan Vacation\n\n
+      Plan and book a trip to Japan next month
+      for 2 adults. Budget around $5k.
+      Propose an itinerary before booking.",
+    "approved_tools": [
+      {
+        "name": "WebSearch",
+        "description": "Search the web"
+      },
+      {
+        "name": "Read",
+        "description": "Read files and web pages"
+      }
+    ],
+    "capabilities": [
+      "interaction",
+      "payment"
+    ]
+  },
+  "person_tokens": {
+    "https://flights.example": "eyJhbGc...",
+    "https://hotels.example": "eyJhbGc..."
+  },
+  "expires_in": 86400
 }
 ```
+
+Response members:
+
+- `s256` (REQUIRED): The mission identifier — the unpadded base64url encoding of the SHA-256 digest of the mission blob.
+- `mission` (REQUIRED): The mission blob.
+- `person_tokens` (OPTIONAL): An object mapping resource identifiers to person tokens (#person-tokens), each carrying `mission_s256` set to `s256`. Present when the proposal named `resources`. A PS MAY omit a resource it declines to issue for; the agent MAY request one for it later and be refused individually.
+- `expires_in` (OPTIONAL): Seconds until the person tokens expire.
 
 The mission blob MUST include:
 
@@ -1550,9 +1565,15 @@ The mission blob MAY include:
 - `approved_tools`: Array of tool objects (each with `name` and `description`) that the agent may use without per-call permission at the PS's permission endpoint (#permission-endpoint).
 - `capabilities`: Array of capability strings (e.g., `interaction`, `payment`) that the PS can provide on behalf of the user for this session. The PS determines these based on whether it can reach the specific user — for example, via push notification, email, or an active session. The agent unions these with its own capabilities when constructing the `AAuth-Capabilities` request header (#aauth-capabilities).
 
-The response body — the mission blob — is the mission JSON that `mission_s256` hashes everywhere it appears. The value is the base64url-encoded SHA-256 hash of the response body bytes, without padding. The agent verifies the hash by computing SHA-256 over the exact response body bytes, and MUST store those bytes exactly as received — no re-serialization.
+### Mission Identifier {#mission-identifier}
 
-The approved description MAY differ from the proposal — the PS or user may refine, constrain, or expand the mission during review. The approved tools MAY be a subset of the proposed tools. The agent MUST use this value as `mission_s256` when requesting person tokens (#person-token-endpoint).
+`s256` identifies the mission everywhere it appears — as the `mission_s256` claim of person, resource, and auth tokens, and as the `mission_s256` parameter of PS requests.
+
+It is a hash rather than an opaque identifier so that it is provable. An opaque identifier would name the mission but leave the PS free to attach it to any text afterwards. A digest binds every token carrying `mission_s256` to one specific mission, so the mission in the PS's log and the mission those tokens authorized are demonstrably the same.
+
+The PS MUST compute `s256` over the exact bytes it persists as the mission blob, and MUST serve those same bytes wherever it later exposes the mission for audit. The agent is not required to verify the digest; it holds the value as an identifier and names it when requesting person tokens.
+
+The approved description MAY differ from the proposal — the PS or user may refine, constrain, or expand the mission during review. The approved tools MAY be a subset of the proposed tools. The agent uses `s256` as `mission_s256` when requesting further person tokens (#person-token-endpoint).
 
 ## Mission Log {#mission-log}
 
@@ -3015,12 +3036,6 @@ This specification registers the following HTTP header fields in the "Hypertext 
 - Status: permanent
 - Reference: This document, (#aauth-access)
 
-- Header Field Name: `AAuth-Mission`
-- Status: permanent
-- Structured Type: Dictionary
-- Reference: This document, (#mission-approval)
-- Notes: Response header, returned by a PS when it approves a mission. Carries the SHA-256 hash of the response body, which cannot carry its own hash.
-
 - Header Field Name: `AAuth-Capabilities`
 - Status: permanent
 - Structured Type: List
@@ -3222,7 +3237,8 @@ The following implementations are known:
   - Resource tokens carry `ps` and `sub`, copied from the person token, and no agent identifier. The PS MUST reject a `sub` that disagrees with its own directed value.
   - Auth tokens carry `ps` and a REQUIRED `sub`, and no agent identifier. `act` and the delegation chain are removed.
   - Replaced the `mission` object with the `mission_s256` claim in person, resource, and auth tokens; `approver` is dropped everywhere but the mission blob.
-  - `AAuth-Mission` is now a response header only, returned by the PS on mission approval, carrying the hash of a body that cannot carry its own hash. Agents no longer send it: a mission reaches a resource only inside a PS-issued token, so it is no longer agent-asserted. Mission creation and status remain at `mission_endpoint`.
+  - Removed the `AAuth-Mission` header and its registration. A mission reaches a resource only inside a PS-issued token, so it is no longer agent-asserted, and the mission's `s256` is returned in the approval response body rather than a header. The hash covers the mission blob as the PS persists it, so the agent no longer has to store response bytes verbatim. Mission creation and status remain at `mission_endpoint`.
+  - A mission proposal MAY name the `resources` it expects to use; the approval response returns a person token for each, mission-scoped, sparing a request per resource.
   - Chain routing uses the auth token's `ps` claim. Removed the branch routing a downstream request to the upstream AS, which required the two resources to share an access server and was never stated as such.
   - `sub` MUST be unique within the issuer; `(iss, sub)` is the identifier and `tenant` is organizational context, not part of it. `sub` values from different issuers MUST NOT be matched.
 
