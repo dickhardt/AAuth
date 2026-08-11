@@ -147,6 +147,51 @@ organization = "Hellō"
   </front>
 </reference>
 
+<!-- The following three reference blocks are inlined from bib.ietf.org
+     because CI fetches of these (uncached) entries fail; remove them if
+     bib.ietf.org becomes reachable from the build again. -->
+
+<reference anchor="RFC9111" target="https://www.rfc-editor.org/info/rfc9111">
+  <front>
+    <title>HTTP Caching</title>
+    <author fullname="R. Fielding" initials="R." role="editor" surname="Fielding"/>
+    <author fullname="M. Nottingham" initials="M." role="editor" surname="Nottingham"/>
+    <author fullname="J. Reschke" initials="J." role="editor" surname="Reschke"/>
+    <date month="June" year="2022"/>
+  </front>
+  <seriesInfo name="STD" value="98"/>
+  <seriesInfo name="RFC" value="9111"/>
+  <seriesInfo name="DOI" value="10.17487/RFC9111"/>
+</reference>
+
+<reference anchor="RFC9651" target="https://www.rfc-editor.org/info/rfc9651">
+  <front>
+    <title>Structured Field Values for HTTP</title>
+    <author fullname="M. Nottingham" initials="M." surname="Nottingham"/>
+    <author fullname="P-H. Kamp" surname="P-H. Kamp"/>
+    <date month="September" year="2024"/>
+  </front>
+  <seriesInfo name="RFC" value="9651"/>
+  <seriesInfo name="DOI" value="10.17487/RFC9651"/>
+</reference>
+
+<reference anchor="I-D.ietf-httpapi-ratelimit-headers" target="https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-ratelimit-headers-11">
+  <front>
+    <title>RateLimit header fields for HTTP</title>
+    <author fullname="Roberto Polli" initials="R." surname="Polli">
+      <organization>Team Digitale, Italian Government</organization>
+    </author>
+    <author fullname="Alex Martínez Ruiz" initials="A. M." surname="Ruiz">
+      <organization>Red Hat</organization>
+    </author>
+    <author fullname="Darrel Miller" initials="D." surname="Miller">
+      <organization>Microsoft</organization>
+    </author>
+    <date day="23" month="May" year="2026"/>
+  </front>
+  <seriesInfo name="Internet-Draft" value="draft-ietf-httpapi-ratelimit-headers-11"/>
+</reference>
+
 .# Abstract
 
 This document defines AAuth Budgets, an extension to the AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]) that carries a spending ceiling from a person server to a resource. A budget is a ceiling on what an agent may consume at one resource, denominated in a unit the resource declares, carried as a claim in the auth token, and enforced by the resource. Budgets are structurally parallel to scope: the agent asks, the resource offers, the person server and access server may narrow, and the auth token carries what was granted. The extension adds a `budget` claim to resource tokens and auth tokens, a `budget_consumed` claim reporting recent consumption, a `budget_units` field, a `usage_endpoint`, and a `balance_endpoint` to resource metadata, and an `AAuth-Budget` response header reporting the remaining balance.
