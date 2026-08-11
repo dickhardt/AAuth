@@ -15,12 +15,12 @@ Abstract
 
    This document defines the AAuth authorization protocol for agent-to-
    resource authorization and identity claim retrieval.  The protocol
-   supports four resource access modes — identity-based, resource-
-   managed (two-party), PS-asserted (three-party), and federated (four-
-   party) — with agent governance as an orthogonal layer.  It builds on
-   the HTTP Signature Keys specification
-   ([I-D.hardt-httpbis-signature-key]) for HTTP Message Signatures and
-   key discovery.
+   supports five resource access modes — agent identity, resource-
+   managed (two-party), person identity, PS authorization (three-party),
+   and federated authorization (four-party) — with agent governance as
+   an orthogonal layer.  It builds on the HTTP Signature Keys
+   specification ([I-D.hardt-httpbis-signature-key]) for HTTP Message
+   Signatures and key discovery.
 
 Discussion Venues
 
@@ -78,10 +78,11 @@ Table of Contents
    3.  Terminology
    4.  Protocol Overview
      4.1.  Resource Access Modes
-       4.1.1.  Identity-Based Access
+       4.1.1.  Agent Identity Access
        4.1.2.  Resource-Managed Access (Two-Party)
-       4.1.3.  PS-Asserted Access (Three-Party)
-       4.1.4.  Federated Access (Four-Party)
+       4.1.3.  Person Identity Access
+       4.1.4.  PS Authorization Access (Three-Party)
+       4.1.5.  Federated Authorization Access (Four-Party)
      4.2.  Roles
      4.3.  Policy Evaluation Points
      4.4.  Agent Governance
@@ -274,9 +275,15 @@ Table of Contents
        B.1.3.  Why Agents Are Under an Agent Provider
        B.1.4.  Why Every Agent Has a Person
        B.1.5.  Why Person Tokens
-       B.1.6.  Why No Agent Identifier Reaches a Resource
-       B.1.7.  Why There Is No Delegation Chain Claim
-       B.1.8.  Why the ps Claim in Agent Tokens
+       B.1.6.  Why a Mission Belongs to an Agent
+       B.1.7.  Why No Agent Identifier Reaches a Resource
+       B.1.8.  Why Identity Alone Can Authorize
+       B.1.9.  Why the Mission Is Encoded Rather Than Nested
+       B.1.10. Why the Mission Identifier Is a Hash
+       B.1.11. Why a Resource Token Names the Person Token
+       B.1.12. Why Tool Pre-Approval Is Not Enforced
+       B.1.13. Why There Is No Delegation Chain Claim
+       B.1.14. Why the ps Claim in Agent Tokens
      B.2.  Protocol Mechanics
        B.2.1.  Why .json in Well-Known URIs
        B.2.2.  Why Standard HTTP Async Pattern
@@ -287,7 +294,7 @@ Table of Contents
        B.2.7.  Why Reuse OpenID Connect Vocabulary
      B.3.  Architecture
        B.3.1.  Why a Separate Person Server
-       B.3.2.  Why Four Resource Access Modes
+       B.3.2.  Why Five Resource Access Modes
        B.3.3.  Why Resource Tokens
        B.3.4.  Why Opaque AAuth-Access Tokens
        B.3.5.  Why Missions Are Not a Policy Language
@@ -422,14 +429,14 @@ Table of Contents
    present cryptographic identity using HTTP Message Signatures
    ([RFC9421]).  This specification defines the AAuth-Requirement,
    AAuth-Access, and AAuth-Capabilities headers, and the authorization
-   protocol across four resource access modes.
+   protocol across five resource access modes.
 
    Because agent identity is independent and self-contained, AAuth is
    designed for incremental adoption: each party can add support
    independently, and rollout does not need to be coordinated.  A
    resource that verifies an agent's signature can manage access by
    identity alone, with no other infrastructure; adding a person server
-   and an access server is additive.  The four resource access modes and
+   and an access server is additive.  The five resource access modes and
    the orthogonal agent-governance layer are introduced in Section 4 and
    detailed in Section 14.
 
@@ -535,38 +542,44 @@ Table of Contents
 
 4.1.  Resource Access Modes
 
-   AAuth supports four resource access modes, each adding parties and
-   capabilities.  The protocol works in every mode — adoption does not
-   require coordination between parties.  Identity-based and resource-
-   managed access both involve only the agent and the resource; the
-   "(two-party)" label is shorthand for resource-managed access, where
-   the resource runs an authorization flow rather than deciding on
-   identity alone.
+   AAuth supports five resource access modes.  They differ in what the
+   resource ends up knowing and which party established it — not in how
+   much of the protocol they use.  The protocol works in every mode, and
+   adoption does not require coordination between parties.  A resource
+   MAY apply different modes to different endpoints.
 
-     +==================+==========+=================================+
-     | Mode             | Parties  | Description                     |
-     +==================+==========+=================================+
-     | Identity-based   | Agent    | Resource verifies agent's       |
-     | access           | Resource | signed identity and applies its |
-     |                  |          | own access control              |
-     +------------------+----------+---------------------------------+
-     | Resource-managed | Agent    | Resource manages authorization  |
-     | access           | Resource | with interaction, consent, or   |
-     | (two-party)      |          | existing auth infrastructure    |
-     +------------------+----------+---------------------------------+
-     | PS-asserted      | Agent    | Resource issues resource token  |
-     | access           | Resource | to PS;                          |
-     | (three-party)    | PS       | PS asserts identity and consent |
-     |                  |          | for the requested scope;        |
-     |                  |          | resource applies its own policy |
-     +------------------+----------+---------------------------------+
-     | Federated access | Agent    | Resource has its own access     |
-     | (four-party)     | Resource | server;                         |
-     |                  | PS       | PS federates with AS            |
-     |                  | AS       |                                 |
-     +------------------+----------+---------------------------------+
+        +==================+============+=============+==========+
+        | Mode             | Resource   | Established | Parties  |
+        |                  | knows      | by          |          |
+        +==================+============+=============+==========+
+        | Agent identity   | which      | the agent   | Agent    |
+        |                  | agent      | provider    | Resource |
+        +------------------+------------+-------------+----------+
+        | Resource-managed | which      | the         | Agent    |
+        | (two-party)      | person     | resource's  | Resource |
+        |                  |            | own flow    |          |
+        +------------------+------------+-------------+----------+
+        | Person identity  | which      | the person  | Agent    |
+        |                  | person     | server      | Resource |
+        |                  |            |             | PS       |
+        +------------------+------------+-------------+----------+
+        | PS authorization | person and | the person  | Agent    |
+        | (three-party)    | consented  | server      | Resource |
+        |                  | scope      |             | PS       |
+        +------------------+------------+-------------+----------+
+        | Federated        | person and | the access  | Agent    |
+        | authorization    | policy     | server      | Resource |
+        | (four-party)     | verdict    |             | PS       |
+        |                  |            |             | AS       |
+        +------------------+------------+-------------+----------+
 
-                                  Table 1
+                                 Table 1
+
+   Resource-managed and person-identity access reach the same
+   destination by different routes: in the first the resource runs its
+   own login, in the second it accepts one the person server ran.  The
+   rest of the ladder adds what the resource is told beyond who the
+   person is.
 
    The following diagram shows all parties and their relationships.  Not
    all parties or relationships are present in every mode.
@@ -598,8 +611,8 @@ Table of Contents
    *  *Agent Provider → Agent*: Issues an agent token binding the
       agent's signing key to its identity.
    *  *Agent ↔ Resource*: Agent sends signed requests; resource returns
-      responses.  In PS-asserted and federated modes, the resource also
-      returns resource tokens at its authorization endpoint.
+      responses.  In the authorization modes, the resource also returns
+      resource tokens at its authorization endpoint.
    *  *Agent ↔ PS*: Agent sends resource tokens to obtain auth tokens.
       With governance, agent also creates missions and requests
       permissions.
@@ -610,7 +623,7 @@ Table of Contents
    Detailed end-to-end flows are in Appendix A.  The following
    subsections describe each mode.
 
-4.1.1.  Identity-Based Access
+4.1.1.  Agent Identity Access
 
    The agent signs requests with its agent token Section 5.2.  The
    resource verifies the agent's identity via HTTP signatures and
@@ -661,7 +674,37 @@ Table of Contents
 
                Figure 3: Resource-Managed Access (Two-Party)
 
-4.1.3.  PS-Asserted Access (Three-Party)
+4.1.3.  Person Identity Access
+
+   The agent obtains a person token from its PS for this resource
+   Section 6.1 and signs requests with it in place of its agent token.
+   The resource verifies the token, learns which person the agent acts
+   for — and, when the token carries one, which mission — and applies
+   its own access control on that identity.  No resource token, no auth
+   token, and the PS is not in the path of any call.
+
+   This is federated login for agents.  The resource decides what
+   identity alone entitles the person to, exactly as it would after a
+   login it ran itself; the difference is that it did not have to run
+   one.
+
+   Agent                                        Resource
+     |                                             |
+     | HTTPSig w/ person_token                     |
+     |-------------------------------------------->|
+     |                                             |
+     | 200 OK                                      |
+     |<--------------------------------------------|
+
+                      Figure 4: Person Identity Access
+
+   A resource that needs more than identity for a particular operation
+   challenges for it there, with requirement=auth-token Section 7.7,
+   while continuing to serve the rest on the person token.  Most calls
+   needing only identity and a few sensitive operations needing an
+   authorization decision is the expected shape.
+
+4.1.4.  PS Authorization Access (Three-Party)
 
    The resource has no separate access server — it accepts identity
    claims from whichever PS the agent declares, and applies its own
@@ -707,9 +750,9 @@ Table of Contents
      | 200 OK                               |            |
      |<-------------------------------------|            |
 
-                 Figure 4: PS-Asserted Access (Three-Party)
+              Figure 5: PS Authorization Access (Three-Party)
 
-4.1.4.  Federated Access (Four-Party)
+4.1.5.  Federated Authorization Access (Four-Party)
 
    The resource has its own access server.  The resource issues a
    resource token Section 7 with aud = AS URL — either via its
@@ -750,7 +793,7 @@ Table of Contents
      | 200 OK                              |       |                      |
      |<------------------------------------|       |                      |
 
-                  Figure 5: Federated Access (Four-Party)
+                  Figure 6: Federated Access (Four-Party)
 
 4.2.  Roles
 
@@ -873,7 +916,7 @@ Table of Contents
      | {s256, mission, person_tokens}         |                          |
      |<---------------------------------------|                          |
 
-                  Figure 6: Mission Creation and Approval
+                  Figure 7: Mission Creation and Approval
 
 4.4.1.2.  Mission Context at Resources
 
@@ -891,7 +934,7 @@ Table of Contents
      | (mission_s256 included)                     |
      |<--------------------------------------------|
 
-                   Figure 7: Mission Context at Resource
+                   Figure 8: Mission Context at Resource
 
 4.4.1.3.  Mission Completion
 
@@ -917,7 +960,7 @@ Table of Contents
      | or clarification (continues)           |                          |
      |<---------------------------------------|                          |
 
-                        Figure 8: Mission Completion
+                        Figure 9: Mission Completion
 
 4.4.2.  PS Governance Endpoints
 
@@ -965,7 +1008,7 @@ Table of Contents
    *  Agent providers publish metadata at /.well-known/aauth-agent.json
       Section 13.11.1.
 
-   *Identity-based access and above:*
+   *Agent identity access and above:*
 
    *  Resources MAY publish metadata at /.well-known/aauth-resource.json
       Section 13.11.4 to be discoverable.  The metadata SHOULD declare
@@ -977,7 +1020,7 @@ Table of Contents
       verify identity-based access, and issue resource tokens and
       interaction requirements via 401 responses.
 
-   *PS-asserted access (three-party) and above:*
+   *PS authorization access (three-party) and above:*
 
    *  The agent's agent token MUST include the ps claim identifying its
       person server.  This is configured during agent setup (e.g., set
@@ -996,7 +1039,7 @@ Table of Contents
    *  The resource discovers the agent's PS from the ps claim in the
       agent token and issues resource tokens with aud = PS URL.
 
-   *Federated access (four-party):*
+   *Federated authorization access (four-party):*
 
    *  Access servers publish metadata at /.well-known/aauth-access.json
       Section 13.11.3.
@@ -1142,9 +1185,13 @@ Table of Contents
 6.  Person Token
 
    A person token is a PS-issued JWT that identifies the person an agent
-   acts for to a single resource.  It asserts identity only: it conveys
-   no scope, no account, and no permission, and a resource MUST NOT
-   treat it as authorizing any access.
+   acts for to a single resource.  It carries no authorization from the
+   PS: no scope, no account, no permission.  Whether identity alone is
+   sufficient to serve a request is the resource's decision, and a
+   resource that decides it is Section 4.1.3 serves whatever it serves
+   on identity — so holding a person token is, at such a resource,
+   effectively access.  What a person token MUST NOT do is stand in for
+   an auth token where one is required Section 15.12.
 
    The agent presents it via the Signature-Key header in place of its
    agent token Section 13.8.2.  A resource MUST have verified a person
@@ -1208,11 +1255,18 @@ Table of Contents
 
    {
      "person_token": "eyJhbGc...",
-     "expires_in": 86400
+     "expires_in": 3600
    }
 
    The PS MAY require user interaction before issuing and return a 202
    Accepted deferred response with requirement=interaction Section 13.4.
+   Because a resource MAY serve requests on identity alone, the question
+   put to the person is whether this agent may act at the resource as
+   them, not merely whether it may name them.  A PS SHOULD fetch the
+   resource's metadata Section 13.11.4 before issuing for a resource the
+   person has not used, and present its name, description, and
+   access_mode so that the person is answering the question the resource
+   will actually apply.
 
    Errors use the token endpoint error codes Section 13.6.3;
    invalid_request covers a missing or malformed resource or
@@ -1253,9 +1307,10 @@ Table of Contents
       member Section 13.8.1.
    *  jti: Unique token identifier for audit and revocation
    *  iat: Issued at timestamp
-   *  exp: Expiration timestamp.  A person token MUST NOT outlive the
-      agent token presented when it was requested, and SHOULD NOT have a
-      lifetime exceeding 24 hours.
+   *  exp: Expiration timestamp.  Person tokens MUST NOT have a lifetime
+      exceeding 1 hour, and MUST NOT outlive the agent token presented
+      when the token was requested or, when mission_s256 is present, the
+      mission's expires_at Section 9.2.
 
    Optional payload claims:
 
@@ -1284,7 +1339,7 @@ Table of Contents
      "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
      "jti": "pt-3ab910",
      "iat": 1730217600,
-     "exp": 1730304000
+     "exp": 1730221200
    }
 
    A person token MUST NOT contain scope or account.
@@ -1501,7 +1556,7 @@ Table of Contents
 
 7.3.  Agent Token Required
 
-   A resource that requires only the agent's identity — identity-based
+   A resource that requires only the agent's identity — agent identity
    access, with no user auth token — uses requirement=agent-token with a
    401 Unauthorized response when the request did not present an AAuth
    agent token.  This signals that the resource specifically requires an
@@ -1645,12 +1700,13 @@ Table of Contents
    Unique token identifier for replay detection, audit, and revocation -
    ps: The iss of the person token the resource verified — the person
    server whose namespace sub belongs to - sub: The sub of that person
-   token, identifying the person this authorization is for - agent_jkt:
-   JWK Thumbprint ([RFC7638]) of the agent's current signing key - iat:
-   Issued at timestamp - exp: Expiration timestamp - scope: Requested
-   scopes, as a space-separated string of scope values.  Companion
-   specifications MAY define alternative authorization claims that
-   replace scope.
+   token, identifying the person this authorization is for -
+   person_token_jti: The jti of that person token, binding this resource
+   token to it - agent_jkt: JWK Thumbprint ([RFC7638]) of the agent's
+   current signing key - iat: Issued at timestamp - exp: Expiration
+   timestamp - scope: Requested scopes, as a space-separated string of
+   scope values.  Companion specifications MAY define alternative
+   authorization claims that replace scope.
 
    A resource token carries no agent identifier. agent_jkt binds it to
    the agent's key, and the recipient learns the agent's identity from
@@ -1658,23 +1714,26 @@ Table of Contents
 
    Optional payload claims: - account: The account the authorization is
    for, echoing the account parameter of the request that produced this
-   token Section 13.3. - mission_s256: Copied from the person token when
-   it carried one Section 6.2. - tenant: Copied from the person token
-   when it carried one. - interaction: Present when the resource
-   requires its own user-facing flow — for example, obtaining OAuth
-   authorization from a third-party service — before the PS can issue an
-   auth token.  Contains: - url: HTTPS URL of the resource's interaction
-   endpoint - code: Interaction code to present at that URL
+   token Section 13.3. - mission_s256: REQUIRED when the person token
+   carried one, copied unchanged Section 6.2.  A resource MUST NOT omit
+   it. - tenant: Copied from the person token when it carried one. -
+   interaction: Present when the resource requires its own user-facing
+   flow — for example, obtaining OAuth authorization from a third-party
+   service — before the PS can issue an auth token.  Contains: - url:
+   HTTPS URL of the resource's interaction endpoint - code: Interaction
+   code to present at that URL
 
-   Resource tokens SHOULD NOT have a lifetime exceeding 5 minutes.  The
-   jti claim provides an audit trail for token requests; ASes are not
-   required to enforce replay detection on resource tokens.  If a
-   resource token expires before the PS presents it to the AS (e.g.,
-   because user interaction was required), the agent MUST obtain a fresh
-   resource token from the resource and submit a new token request to
-   the PS.  The PS SHOULD remember prior consent decisions within a
-   mission so the user is not re-prompted when the agent resubmits a
-   request for the same resource and scope.
+   Resource tokens SHOULD NOT have a lifetime exceeding 5 minutes, and
+   when mission_s256 is present MUST NOT expire later than that
+   mission's expires_at Section 9.2.  The jti claim provides an audit
+   trail for token requests; ASes are not required to enforce replay
+   detection on resource tokens.  If a resource token expires before the
+   PS presents it to the AS (e.g., because user interaction was
+   required), the agent MUST obtain a fresh resource token from the
+   resource and submit a new token request to the PS.  The PS SHOULD
+   remember prior consent decisions within a mission so the user is not
+   re-prompted when the agent resubmits a request for the same resource
+   and scope.
 
 7.8.2.  Resource Token Verification
 
@@ -1690,21 +1749,27 @@ Table of Contents
        three-party, or the AS in four-party).
    5.  Verify agent_jkt matches the JWK Thumbprint of the key used to
        sign the HTTP request.
-   6.  A PS MUST verify that ps is its own identifier and that sub is
-       the directed identifier it issues for this person at iss.  An AS
-       MUST verify that ps names the PS that sent the token request.
-   7.  If mission_s256 is present, a PS MUST verify the mission exists,
-       is active, and belongs to this agent.
+   6.  A PS MUST look up the person token identified by person_token_jti
+       among those it issued, and MUST verify that ps, sub,
+       mission_s256, and tenant match that token exactly, rejecting the
+       resource token on any mismatch or omission.  An AS MUST verify
+       that ps names the PS that sent the token request.
+   7.  If mission_s256 is present, a PS MUST verify the mission is
+       active and that the current time precedes its expires_at where
+       one is set.
 
    For a parent-mediated sub-agent authorization (a subagent_token is
    present, see Section 11.2), step 5 instead verifies agent_jkt against
    the subagent_token's cnf.jwk — the sub-agent's key — because the
    parent, not the sub-agent, signs the HTTP request.
 
-   A sub that disagrees with the PS's own directed value means the
-   resource verified a person token the PS did not issue for this person
-   and resource, or one that has since been superseded.  The PS MUST
-   reject the resource token.
+   Binding the resource token to one person token by jti is what makes
+   mission stripping detectable.  A resource cannot drop mission_s256
+   and present the result as an unscoped request, because the PS
+   resolves the person token it actually issued and compares.  Comparing
+   the claims alone would not suffice: an agent running concurrent
+   missions holds several person tokens for the same resource, so "the
+   person token for this agent and resource" does not identify one.
 
 7.8.3.  Resource Challenge Verification
 
@@ -1740,23 +1805,23 @@ Table of Contents
 
 8.1.1.  Token Endpoint Modes
 
-    +==============+================+================================+
-    | Mode         | Key Parameters | Use Case                       |
-    +==============+================+================================+
-    | PS-asserted  | resource_token | PS asserts identity and        |
-    |              | (aud = PS)     | consent; resource applies its  |
-    |              |                | own policy (three-party)       |
-    +--------------+----------------+--------------------------------+
-    | AS-federated | resource_token | PS federates with the          |
-    |              | (aud = AS)     | resource's AS, which evaluates |
-    |              |                | resource policy (four-party)   |
-    +--------------+----------------+--------------------------------+
-    | Call         | resource_token | Resource acting as agent       |
-    | chaining     | +              |                                |
-    |              | upstream_token |                                |
-    +--------------+----------------+--------------------------------+
+    +===============+================+================================+
+    | Mode          | Key Parameters | Use Case                       |
+    +===============+================+================================+
+    | PS            | resource_token | PS asserts identity and        |
+    | authorization | (aud = PS)     | consent; resource applies its  |
+    |               |                | own policy (three-party)       |
+    +---------------+----------------+--------------------------------+
+    | AS-federated  | resource_token | PS federates with the          |
+    |               | (aud = AS)     | resource's AS, which evaluates |
+    |               |                | resource policy (four-party)   |
+    +---------------+----------------+--------------------------------+
+    | Call chaining | resource_token | Resource acting as agent       |
+    |               | +              |                                |
+    |               | upstream_token |                                |
+    +---------------+----------------+--------------------------------+
 
-                                 Table 3
+                                  Table 3
 
 8.1.2.  Concurrent Token Requests
 
@@ -2510,45 +2575,61 @@ Table of Contents
 
    {
      "s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
-     "mission": {
-       "approver": "https://ps.example",
-       "agent": "aauth:assistant@agent.example",
-       "approved_at": "2026-04-07T14:30:00Z",
-       "expires_at": "2026-05-07T14:30:00Z",
-       "description": "# Plan Japan Vacation\n\n
-         Plan and book a trip to Japan next month
-         for 2 adults. Budget around $5k.
-         Propose an itinerary before booking.",
-       "approved_tools": [
-         {
-           "name": "WebSearch",
-           "description": "Search the web"
-         },
-         {
-           "name": "Read",
-           "description": "Read files and web pages"
-         }
-       ],
-       "approved_resources": [
-         "https://flights.example",
-         "https://hotels.example"
-       ],
-       "capabilities": [
-         "interaction",
-         "payment"
-       ]
-     },
+     "mission": "eyJhcHByb3ZlciI6Imh0dHBzOi8vcHMuZXhhbXBsZSIsImFnZW50Ijoi...",
+     "capabilities": [
+       "interaction",
+       "payment"
+     ],
      "person_tokens": {
        "https://flights.example": "eyJhbGc...",
        "https://hotels.example": "eyJhbGc..."
      }
    }
 
+   The mission member decodes to the mission blob:
+
+   {
+     "approver": "https://ps.example",
+     "agent": "aauth:assistant@agent.example",
+     "approved_at": "2026-04-07T14:30:00Z",
+     "expires_at": "2026-05-07T14:30:00Z",
+     "description": "# Plan Japan Vacation\n\n
+       Plan and book a trip to Japan next month
+       for 2 adults. Budget around $5k.
+       Propose an itinerary before booking.",
+     "approved_tools": [
+       {
+         "name": "WebSearch",
+         "description": "Search the web"
+       },
+       {
+         "name": "Read",
+         "description": "Read files and web pages"
+       }
+     ],
+     "approved_resources": [
+       "https://flights.example",
+       "https://hotels.example"
+     ]
+   }
+
    Response members:
 
    *  s256 (REQUIRED): The mission identifier — the unpadded base64url
-      encoding of the SHA-256 digest of the mission blob.
-   *  mission (REQUIRED): The mission blob.
+      encoding of the SHA-256 digest of the bytes mission decodes to.
+   *  mission (REQUIRED): The mission blob, base64url-encoded without
+      padding.  An agent SHOULD verify s256 against the decoded bytes
+      before first use of the mission, and MAY skip verification where
+      it trusts the PS unconditionally.
+   *  capabilities (OPTIONAL): Array of capability strings (e.g.,
+      interaction, payment) that the PS can provide on behalf of the
+      person for this session.  The PS determines these based on whether
+      it can currently reach the person — for example, via push
+      notification, email, or an active session.  The agent unions them
+      with its own when constructing the AAuth-Capabilities request
+      header Section 13.1.  They describe this moment rather than a term
+      of the mission, and are neither part of the blob nor covered by
+      the digest.
    *  person_tokens (OPTIONAL): An object mapping resource identifiers
       to person tokens Section 6, each carrying mission_s256 set to
       s256.  Present when the proposal named resources.  A PS MAY omit a
@@ -2570,11 +2651,16 @@ Table of Contents
 
    *  expires_at: ISO 8601 timestamp after which the PS treats the
       mission as terminated.  When absent, the mission runs until it is
-      completed or revoked.  A person token carrying this mission MUST
-      NOT have an exp later than expires_at.
+      completed or revoked.  Every PS decision path that acts on a
+      mission MUST compare the current time to expires_at and MUST treat
+      a mission past it as terminated Section 9.6.  No token carrying
+      mission_s256 — person, resource, or auth — may have an exp later
+      than expires_at; an issuer MUST shorten the token's lifetime to
+      fit.
    *  approved_tools: Array of tool objects (each with name and
       description) that the agent may use without per-call permission at
-      the PS's permission endpoint Section 8.4.
+      the PS's permission endpoint Section 8.4.  Nothing in the protocol
+      enforces this list; see Appendix B.1.12.
    *  approved_resources: Array of resource identifiers the person
       approved for this mission, drawn from the resources the proposal
       named.  It records which resources were pre-approved, so an audit
@@ -2583,13 +2669,6 @@ Table of Contents
       other resources during the mission, subject to the PS's policy,
       and those accesses appear in the mission log rather than in the
       blob.
-   *  capabilities: Array of capability strings (e.g., interaction,
-      payment) that the PS can provide on behalf of the user for this
-      session.  The PS determines these based on whether it can reach
-      the specific user — for example, via push notification, email, or
-      an active session.  The agent unions these with its own
-      capabilities when constructing the AAuth-Capabilities request
-      header Section 13.1.
 
 9.2.1.  Mission Identifier
 
@@ -2605,10 +2684,8 @@ Table of Contents
    same.
 
    The PS MUST compute s256 over the exact bytes it persists as the
-   mission blob, and MUST serve those same bytes wherever it later
-   exposes the mission for audit.  The agent is not required to verify
-   the digest; it holds the value as an identifier and names it when
-   requesting person tokens.
+   mission blob, MUST return those same bytes as mission, and MUST serve
+   them wherever it later exposes the mission for audit.
 
    The approved description MAY differ from the proposal — the PS or
    user may refine, constrain, or expand the mission during review.  The
@@ -2985,8 +3062,8 @@ Table of Contents
    similar to three-party access — no cross-server hop — but
    structurally different:
 
-   *  *Three-party (PS-asserted)*: the resource has no AS; the resource
-      token's aud is the PS, and the auth token has dwk: aauth-
+   *  *Three-party (PS authorization)*: the resource has no AS; the
+      resource token's aud is the PS, and the auth token has dwk: aauth-
       person.json.  The resource trusts identity claims and applies its
       own policy.
    *  *PS-AS collapse*: the resource has chosen an AS that also operates
@@ -3026,7 +3103,8 @@ Table of Contents
    cnf: Confirmation claim with jwk containing the agent's public key.
    The JWK MUST carry a fully-specified alg member Section 13.8.1. -
    iat: Issued at timestamp - exp: Expiration timestamp.  Auth tokens
-   MUST NOT have a lifetime exceeding 1 hour.
+   MUST NOT have a lifetime exceeding 1 hour, and when mission_s256 is
+   present MUST NOT be later than that mission's expires_at Section 9.2.
 
    An auth token carries no agent identifier and no delegation chain.
    cnf binds it to one key, and the resource enforces against sub and
@@ -3444,7 +3522,7 @@ Table of Contents
      |  redirect to start_path       |                           |
      |<------------------------------|                           |
 
-                      Figure 9: Third-Party Login Flow
+                     Figure 10: Third-Party Login Flow
 
    The third party does not need to be the PS.  Any party that knows the
    agent's or resource's login_endpoint (from metadata) can initiate the
@@ -3527,6 +3605,14 @@ Table of Contents
    future capability value MAY define parameters; recipients MUST ignore
    parameters they do not recognize on a capability item rather than
    rejecting the header.
+
+   This is AAuth's general posture: recipients ignore what they do not
+   recognize, and no document carries a version or schema identifier
+   that a recipient must understand before processing it.  Where a
+   future extension defines a member that changes the meaning of what
+   surrounds it, that extension states the must-understand requirement
+   and the behaviour on failure, rather than relying on a general
+   mechanism.
 
 13.2.  Scopes
 
@@ -4250,7 +4336,7 @@ Initial request (with Prefer: wait=N)
     | Token        | Presented to                       | Asserts    |
     +==============+====================================+============+
     | Agent token  | the PS and the AP always; a        | which      |
-    | Section 5.2  | resource for identity-based access | agent      |
+    | Section 5.2  | resource for agent identity access | agent      |
     +--------------+------------------------------------+------------+
     | Person token | a resource, at its authorization   | which      |
     | Section 6    | endpoint                           | person     |
@@ -4881,7 +4967,7 @@ Initial request (with Prefer: wait=N)
    access server.  They map directly onto what resources already do
    today:
 
-   *  *Identity-based access drops in where you use API keys.* A
+   *  *Agent identity access drops in where you use API keys.* A
       resource that verifies the agent's HTTP Message Signature gets a
       cryptographic, per-agent identity in place of a shared secret —
       nothing to copy and leak, no pre-registration, no authorization
@@ -4897,11 +4983,11 @@ Initial request (with Prefer: wait=N)
       agent.  This is resource-managed (two-party) access Section 4.1.2;
       it too involves no PS and no AS.
 
-   Both modes are complete and useful on their own.  Adding a PS (PS-
-   asserted, three-party) and an AS (federated, four-party) is additive
-   — it brings cross-domain identity assertion and policy federation —
-   but neither is a prerequisite for the value a resource gets from the
-   first two steps.
+   Both modes are complete and useful on their own.  Adding a PS (PS
+   authorization, three-party) and an AS (federated authorization, four-
+   party) is additive — it brings cross-domain identity assertion and
+   policy federation — but neither is a prerequisite for the value a
+   resource gets from the first two steps.
 
 14.1.1.  Consuming a Resource End to End
 
@@ -5013,36 +5099,40 @@ Initial request (with Prefer: wait=N)
 
 14.4.  Adoption Matrix
 
-    +=========+===============+==================+===================+
-    | Agent   | Resource      | Mode             | What Works        |
-    +=========+===============+==================+===================+
-    | Agent   | Recognizes    | Identity-based   | Identity          |
-    | token   | signatures    |                  | verification,     |
-    |         |               |                  | access control by |
-    |         |               |                  | agent identity    |
-    +---------+---------------+------------------+-------------------+
-    | Agent   | Manages       | Resource-managed | Resource-handled  |
-    | token   | authorization |                  | auth,             |
-    |         |               |                  | interaction,      |
-    |         |               |                  | AAuth-Access      |
-    +---------+---------------+------------------+-------------------+
-    | Agent   | Issues        | PS-asserted      | PS asserts user   |
-    | token + | resource      |                  | identity, tenant, |
-    | ps      | tokens        |                  | groups, roles;    |
-    |         |               |                  | resource applies  |
-    |         |               |                  | its own policy    |
-    +---------+---------------+------------------+-------------------+
-    | Agent   | AS deployed   | Federated        | Full federation,  |
-    | token + |               |                  | AS policy         |
-    | ps      |               |                  | enforcement       |
-    +---------+---------------+------------------+-------------------+
-    | Agent   | Any or none   | + governance     | Tool-call         |
-    | token + |               |                  | permissions,      |
-    | ps +    |               |                  | audit, PS-relayed |
-    | mission |               |                  | interaction,      |
-    |         |               |                  | consent-managed   |
-    |         |               |                  | access            |
-    +---------+---------------+------------------+-------------------+
+   +=========+===============+==================+=====================+
+   | Agent   | Resource      | Mode             | What Works          |
+   +=========+===============+==================+=====================+
+   | Agent   | Recognizes    | Agent identity   | Identity            |
+   | token   | signatures    |                  | verification,       |
+   |         |               |                  | access control by   |
+   |         |               |                  | agent identity      |
+   +---------+---------------+------------------+---------------------+
+   | Agent   | Manages       | Resource-managed | Resource-handled    |
+   | token   | authorization |                  | auth, interaction,  |
+   |         |               |                  | AAuth-Access        |
+   +---------+---------------+------------------+---------------------+
+   | Person  | Accepts       | Person identity  | Resource knows the  |
+   | token   | person tokens |                  | person and any      |
+   |         |               |                  | mission; applies    |
+   |         |               |                  | its own access      |
+   |         |               |                  | control             |
+   +---------+---------------+------------------+---------------------+
+   | Person  | Issues        | PS authorization | PS asserts identity |
+   | token   | resource      |                  | and consent for a   |
+   |         | tokens        |                  | scope; resource     |
+   |         |               |                  | applies its own     |
+   |         |               |                  | policy              |
+   +---------+---------------+------------------+---------------------+
+   | Person  | AS deployed   | Federated        | Full federation, AS |
+   | token   |               | authorization    | policy enforcement  |
+   +---------+---------------+------------------+---------------------+
+   | Agent   | Any or none   | + governance     | Tool-call           |
+   | token + |               |                  | permissions, audit, |
+   | ps +    |               |                  | PS-relayed          |
+   | mission |               |                  | interaction,        |
+   |         |               |                  | consent-managed     |
+   |         |               |                  | access              |
+   +---------+---------------+------------------+---------------------+
 
                                  Table 13
 
@@ -5730,8 +5820,8 @@ Initial request (with Prefer: wait=N)
       exploratory.
    *  *.NET* — github.com/aauth-dev/dotnet-samples (https://github.com/
       aauth-dev/dotnet-samples) (NuGet: AAuth).  Contact: Dasith
-      Wijesiriwardena.  Coverage: SDK spanning all four access modes,
-      the three-party challenge/exchange flow (autonomous and deferred
+      Wijesiriwardena.  Coverage: SDK spanning the access modes, the
+      three-party challenge/exchange flow (autonomous and deferred
       consent), signature verification middleware, resource and auth
       token builders, and JWKS/metadata discovery, plus Blazor sample
       apps.  Level of maturity: exploratory.
@@ -5754,18 +5844,29 @@ Initial request (with Prefer: wait=N)
       -  Added the person token (aa-person+jwt), issued by a PS to
          identify the person to one resource.  Presented via Signature-
          Key in place of the agent token.  A resource MUST verify one
-         before issuing a resource token.
+         before issuing a resource token.  Lifetime capped at 1 hour, as
+         for auth tokens.
       -  Added person_token_endpoint, REQUIRED in PS metadata, taking
          resource, mission_s256, subagent_token, and upstream_token.
+      -  Five resource access modes instead of four, sorted by what the
+         resource ends up knowing and which party established it: agent
+         identity, resource-managed, person identity, PS authorization,
+         federated authorization.  A resource MAY apply different modes
+         to different endpoints.
+      -  A person token carries no authorization from the PS, but a
+         resource MAY serve requests on identity alone, so holding one
+         is effectively access at such a resource.  The consent question
+         at first issuance is whether the agent may act at the resource
+         as the person.
       -  Renamed the PS and AS metadata field token_endpoint to
-         auth_token_endpoint.
-      -  Added person-token to access_mode; auth-token now means the
-         initial call presents a person token.
+         auth_token_endpoint; added person-token to access_mode.
       -  Added requirement=person-token, and the invalid_person_token
          and invalid_account authorization endpoint errors.
-      -  Resource tokens carry ps and sub, copied from the person token,
-         and no agent identifier.  The PS MUST reject a sub that
-         disagrees with its own directed value.
+      -  Resource tokens carry ps, sub, and person_token_jti, and no
+         agent identifier.  The PS resolves the named person token and
+         rejects any mismatch, which makes mission stripping detectable
+         — comparing claims alone cannot, because concurrent missions
+         mean several person tokens per agent and resource.
       -  Auth tokens carry ps and a REQUIRED sub, and no agent
          identifier. act and the delegation chain are removed.
       -  Replaced the mission object with the mission_s256 claim in
@@ -5773,21 +5874,20 @@ Initial request (with Prefer: wait=N)
          everywhere but the mission blob.
       -  Removed the AAuth-Mission header and its registration.  A
          mission reaches a resource only inside a PS-issued token, so it
-         is no longer agent-asserted, and the mission's s256 is returned
-         in the approval response body rather than a header.  The hash
-         covers the mission blob as the PS persists it, so the agent no
-         longer has to store response bytes verbatim.  Mission creation
-         and status remain at mission_endpoint.
+         is no longer agent-asserted.  The approval response carries the
+         mission blob base64url-encoded, with s256 alongside it, so the
+         digest covers an unambiguous byte sequence and the agent can
+         verify it as it would a JWT payload.
+      -  Mission blob gained approved_resources and MAY carry
+         expires_at; no token carrying mission_s256 may outlive it, and
+         every PS decision path compares the current time to it.  Added
+         the mission_expired status.
+      -  Moved capabilities out of the mission blob to the approval
+         response — it describes whether the PS can currently reach the
+         person, which is not a term of the mission and should not
+         perturb its digest.
       -  A mission proposal MAY name the resources it expects to use;
-         the approval response returns a person token for each, mission-
-         scoped, sparing a request per resource.  The mission blob
-         records the approved set as approved_resources, so an audit
-         shows what the person pre-approved.
-      -  The mission blob MAY carry expires_at, after which the PS
-         treats the mission as terminated; a person token for that
-         mission MUST NOT outlive it.  Added the mission_expired status
-         so an agent can distinguish a mission that ran out from one
-         that was revoked.
+         the approval response returns a person token for each.
       -  Chain routing uses the auth token's ps claim.  Removed the
          branch routing a downstream request to the upstream AS, which
          required the two resources to share an access server and was
@@ -5795,6 +5895,9 @@ Initial request (with Prefer: wait=N)
       -  sub MUST be unique within the issuer; (iss, sub) is the
          identifier and tenant is organizational context, not part of
          it. sub values from different issuers MUST NOT be matched.
+      -  Stated the extensibility posture: recipients ignore what they
+         do not recognize, and no document carries a version or schema a
+         recipient must understand.
 
    *  draft-hardt-oauth-aauth-protocol-10
 
@@ -6401,7 +6504,23 @@ B.1.5.  Why Person Tokens
    any per-person limit are all evaluable when the request arrives,
    instead of after a resource token has been issued and taken to a PS.
 
-B.1.6.  Why No Agent Identifier Reaches a Resource
+B.1.6.  Why a Mission Belongs to an Agent
+
+   A person's relationship with a resource survives their changing
+   agents, but a mission does not: it names one agent, and moving to
+   another means proposing a new mission.  The two are different things
+   with different lifetimes. sub identifies the person, durably, because
+   the resource's account and history are theirs.  A mission is a grant
+   of latitude to one agent to pursue one piece of work, and the person
+   server evaluates every request against the record of what that agent
+   has already done under it.  Carrying that record across a change of
+   agent would attribute one agent's history to another.
+
+   The practical effect is that anything done under a mission identifier
+   was done by the agent the mission names, which is what makes the
+   mission log worth reading.
+
+B.1.7.  Why No Agent Identifier Reaches a Resource
 
    Naming the agent, or its provider, in a token the resource reads
    would restore exactly the coupling the person token exists to remove:
@@ -6418,7 +6537,77 @@ B.1.6.  Why No Agent Identifier Reaches a Resource
    complete in three-party and partial in four-party, where the resource
    has explicitly delegated policy to an AS.
 
-B.1.7.  Why There Is No Delegation Chain Claim
+B.1.8.  Why Identity Alone Can Authorize
+
+   A person token carries no authorization, yet a resource in person-
+   identity mode Section 4.1.3 serves requests on it.  That is not a
+   contradiction: the person server has authorized nothing, and the
+   resource has decided that knowing the person is enough — the same
+   decision it makes after a login it ran itself.  Signing in to a site
+   with an identity provider gets whatever that site gives signed-in
+   people, and no one describes the identity assertion as an
+   authorization.
+
+   What follows is that issuing a person token is consequential even
+   though it grants nothing.  The person server is deciding that this
+   agent may act at this resource as this person, bounded by whatever
+   that resource does on identity.  That is why the question put to the
+   person at first issuance is about acting, not naming, and why a
+   person server should know what the resource does with identity before
+   it asks.
+
+B.1.9.  Why the Mission Is Encoded Rather Than Nested
+
+   The approval response carries the mission blob base64url-encoded
+   rather than as a JSON object so that s256 has an unambiguous byte
+   sequence to cover.  A nested object has no defined serialization once
+   it is inside an envelope — the receiver would have to re-serialize it
+   to hash it, and any difference in key order, whitespace, or escaping
+   produces a different digest.  Encoding makes the string itself the
+   bytes, so the agent decodes, hashes, and compares, which is the
+   operation it already performs on a JWT payload.
+
+   An earlier revision avoided the problem by making the response body
+   the mission and putting s256 in a header, which worked but left no
+   room in the response for anything else.  The encoded member restores
+   that room without giving up verifiability.
+
+B.1.10.  Why the Mission Identifier Is a Hash
+
+   An opaque identifier would name the mission but leave the person
+   server free to attach it to different text afterwards.  A digest
+   binds every token carrying mission_s256 to one specific mission, so
+   the mission in the log and the mission those tokens authorized are
+   demonstrably the same.  Verification is available to the agent at
+   approval and to anyone holding the blob later.
+
+B.1.11.  Why a Resource Token Names the Person Token
+
+   Binding by person_token_jti rather than by comparing claims is what
+   makes mission stripping detectable.  Comparing claims alone cannot
+   work: an agent running concurrent missions holds several person
+   tokens for the same resource, so "the person token issued for this
+   agent and resource" does not identify one, and a resource that
+   omitted mission_s256 could not be caught.  Naming the token resolves
+   it exactly, and the person server compares everything it issued in
+   one lookup.
+
+B.1.12.  Why Tool Pre-Approval Is Not Enforced
+
+   Tool use is local to the agent.  No party the protocol can hold to
+   account observes it, so approved_tools is a record of what the person
+   agreed to rather than a control that stops anything.  Its value is
+   that a departure from it is visible afterwards, in the mission log
+   and in what the agent reports to the audit endpoint.
+
+   The enforcement that does exist sits outside the protocol and is
+   worth naming: the runtime that decides whether to call a tool is
+   built by the agent provider, and the agent provider attests the
+   agent.  A person's leverage over local actions is therefore their
+   choice of agent provider, not the tool list.  The auth token is the
+   only hard control AAuth offers, and it covers remote resources.
+
+B.1.13.  Why There Is No Delegation Chain Claim
 
    Earlier revisions recorded the upstream chain in an act claim.  It
    served no reader.  The immediate caller in a chain signs the request
@@ -6433,7 +6622,7 @@ B.1.7.  Why There Is No Delegation Chain Claim
    stop attributing missions makes it stop recording delegation: the
    resource enforces, the person server attributes.
 
-B.1.8.  Why the ps Claim in Agent Tokens
+B.1.14.  Why the ps Claim in Agent Tokens
 
    A resource learns the agent's PS from the person token it verifies,
    but it needs to know the agent has one before that — to decide
@@ -6510,18 +6699,31 @@ B.3.1.  Why a Separate Person Server
    is the same conflation that makes OAuth insufficient for cross-domain
    agent ecosystems.
 
-B.3.2.  Why Four Resource Access Modes
+B.3.2.  Why Five Resource Access Modes
 
-   The protocol supports identity-based, resource-managed (two-party),
-   PS-asserted (three-party), and federated (four-party) resource access
-   modes, with agent governance as an orthogonal layer.  A resource that
-   only verifies agent signatures can start using AAuth today without
-   deploying a PS or AS.  As the ecosystem matures, the same resource
-   can accept identity claims from any agent's PS (three-party) and
-   eventually deploy its own AS (four-party).  Each mode is self-
-   contained and useful — not a stepping stone to the "real" protocol.
+   The modes are not levels of protocol adoption but answers to one
+   question: what does the resource need to know before it serves a
+   request?  A resource that only verifies agent signatures can start
+   using AAuth today without deploying a PS or AS.  One that needs the
+   person can take a person token and decide for itself.  One that wants
+   a scope agreed with the person takes an auth token, and one that
+   wants policy evaluated takes it from its own access server.  Each
+   mode is self-contained and useful — not a stepping stone to the
+   "real" protocol — and a resource may use different modes on different
+   endpoints, which is the common case: most calls need only identity,
+   and a few sensitive operations warrant an authorization decision.
+
+   Resource-managed and person-identity access are kept separate because
+   the difference is who established the person's identity, and that
+   determines what the resource can rely on.  In resource-managed access
+   the resource ran its own flow, so it knows the person on its own
+   terms and needs nothing from a person server.  In person-identity
+   access it accepts an identity a person server asserted, which is
+   federated login — cheaper for the resource, and dependent on trusting
+   that person server.
+
    Agent governance (missions plus permission, audit, and interaction
-   relay) works independently of resource access modes.
+   relay) works independently of all five.
 
 B.3.3.  Why Resource Tokens
 
