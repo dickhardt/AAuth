@@ -1048,7 +1048,7 @@ svg {
 </tr></thead>
 <tfoot><tr>
 <td class="left">Hardt</td>
-<td class="center">Expires 12 February 2027</td>
+<td class="center">Expires 14 February 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1061,12 +1061,12 @@ svg {
 <dd class="internet-draft">draft-hardt-aauth-r3-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-08-11" class="published">11 August 2026</time>
+<time datetime="2026-08-13" class="published">13 August 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Standards Track</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-02-12">12 February 2027</time></dd>
+<dd class="expires"><time datetime="2027-02-14">14 February 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1107,7 +1107,7 @@ svg {
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 12 February 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 14 February 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -2006,30 +2006,35 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 - <code>dwk</code>: <code>aauth-resource.json</code>
 - <code>aud</code>: Auth server URL
 - <code>jti</code>: Unique token identifier
-- <code>agent</code>: Agent identifier
+- <code>ps</code>: The <code>iss</code> of the person token the resource verified
+- <code>sub</code>: The <code>sub</code> of that person token, identifying the person this authorization is for
+- <code>person_token_jti</code>: The <code>jti</code> of that person token, binding this resource token to it
 - <code>agent_jkt</code>: JWK Thumbprint of the agent's signing key
 - <code>iat</code>: Issued at timestamp
 - <code>exp</code>: Expiration timestamp
 - <code>scope</code>: Requested scopes (optional)<a href="#section-7.3-2" class="pilcrow">¶</a></p>
-<p id="section-7.3-3">R3 extension claims:
+<p id="section-7.3-3">A resource token carries no agent identifier; the recipient learns the agent's identity from the agent token that signs the token request.<a href="#section-7.3-3" class="pilcrow">¶</a></p>
+<p id="section-7.3-4">R3 extension claims:
 - <strong><code>r3_uri</code></strong> (REQUIRED for R3): The URI where the AS can fetch the R3 document. The AS authenticates itself using an HTTP Message Signature.
-- <strong><code>r3_s256</code></strong> (REQUIRED for R3): The SHA-256 hash of the R3 document at <code>r3_uri</code>, base64url-encoded without padding.<a href="#section-7.3-3" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="section-7.3-4">
+- <strong><code>r3_s256</code></strong> (REQUIRED for R3): The SHA-256 hash of the R3 document at <code>r3_uri</code>, base64url-encoded without padding.<a href="#section-7.3-4" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-7.3-5">
 <pre>{
   "typ": "aa-resource+jwt",
   "alg": "Ed25519",
   "kid": "resource-key-1"
 }
 
-</pre><a href="#section-7.3-4" class="pilcrow">¶</a>
+</pre><a href="#section-7.3-5" class="pilcrow">¶</a>
 </div>
-<div class="lang-json sourcecode" id="section-7.3-5">
+<div class="lang-json sourcecode" id="section-7.3-6">
 <pre>{
   "iss": "https://calendar.example.com",
   "dwk": "aauth-resource.json",
   "aud": "https://as.example.com",
   "jti": "rt-8f3a2b",
-  "agent": "assistant@agent.example",
+  "ps": "https://ps.example",
+  "sub": "8f14e45fceea167a5a36dedd4bea2543",
+  "person_token_jti": "pt-3ab910",
   "agent_jkt": "NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs",
   "r3_uri": "https://calendar.example.com/r3/a1b2c3d4",
   "r3_s256": "aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789abcd",
@@ -2037,9 +2042,9 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
   "exp": 1741824300
 }
 
-</pre><a href="#section-7.3-5" class="pilcrow">¶</a>
+</pre><a href="#section-7.3-6" class="pilcrow">¶</a>
 </div>
-<p id="section-7.3-6">Resource tokens MAY include both <code>scope</code> (as defined in AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>)) and R3 claims. When both are present, the AS MUST enforce both independently.<a href="#section-7.3-6" class="pilcrow">¶</a></p>
+<p id="section-7.3-7">Resource tokens MAY include both <code>scope</code> (as defined in AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>)) and R3 claims. When both are present, the AS MUST enforce both independently.<a href="#section-7.3-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2072,13 +2077,15 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 </li>
           <li id="section-8.1-2.3">Compute the SHA-256 hash of the bytes received and compare it to <code>r3_s256</code>. If the hashes do not match, the AS MUST reject the resource token.<a href="#section-8.1-2.3" class="pilcrow">¶</a>
 </li>
-          <li id="section-8.1-2.4">Record <code>r3_uri</code> and <code>r3_s256</code> in its audit log alongside the token issuance event, the agent identifier, and the timestamp.<a href="#section-8.1-2.4" class="pilcrow">¶</a>
+          <li id="section-8.1-2.4">Record <code>r3_uri</code> and <code>r3_s256</code> in its audit log alongside the token issuance event, the timestamp, <code>ps</code> and <code>sub</code> from the resource token, <code>agent_jkt</code> from the resource token, and the agent identifier.<a href="#section-8.1-2.4" class="pilcrow">¶</a>
 </li>
           <li id="section-8.1-2.5">Use the <code>operations</code> section for policy evaluation.<a href="#section-8.1-2.5" class="pilcrow">¶</a>
 </li>
           <li id="section-8.1-2.6">Include <code>r3_uri</code>, <code>r3_s256</code>, <code>r3_granted</code>, and (if applicable) <code>r3_per_call</code> in the issued auth token.<a href="#section-8.1-2.6" class="pilcrow">¶</a>
 </li>
         </ol>
+<p id="section-8.1-3">The agent identifier in step 4 does not come from the resource token. No token a resource issues carries one (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>): the resource token binds to the agent's key through <code>agent_jkt</code> and names the person through <code>ps</code> and <code>sub</code>. The AS takes the agent identifier from the <code>sub</code> of the <code>agent_token</code>, which the PS is REQUIRED to send alongside the resource token on the PS-to-AS token request. Where the PS also sends a <code>subagent_token</code>, that token's <code>sub</code> is the agent the auth token is bound to and is the identifier the AS records; the <code>agent_token</code>'s <code>sub</code> is its parent, and an AS that distinguishes them SHOULD record both.<a href="#section-8.1-3" class="pilcrow">¶</a></p>
+<p id="section-8.1-4">An AS reached any other way than a PS-to-AS token request has no agent token and therefore no agent identifier. It can still record <code>agent_jkt</code>, which is what a later presentation of the auth token is checked against, but it MUST NOT infer an agent identity it was not given.<a href="#section-8.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="caching">
@@ -2102,34 +2109,36 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 - <code>dwk</code>: <code>aauth-access.json</code> (issued by an AS) or <code>aauth-person.json</code> (issued by a PS)
 - <code>aud</code>: Resource URL
 - <code>jti</code>: Unique token identifier
-- <code>agent</code>: Agent identifier
+- <code>ps</code>: The person server the person is represented by. Equal to <code>iss</code> when a PS issued the token
+- <code>sub</code>: Directed user identifier (REQUIRED), copied from the resource token. An opaque string, unique within <code>iss</code>, that the PS SHOULD derive pairwise per resource
 - <code>cnf</code>: Confirmation claim with <code>jwk</code> containing the agent's public key
 - <code>iat</code>: Issued at timestamp
 - <code>exp</code>: Expiration timestamp
-- <code>sub</code>: User identifier (conditional)
-- <code>scope</code>: Authorized scopes (conditional)<a href="#section-9-2" class="pilcrow">¶</a></p>
-<p id="section-9-3">R3 extension claims:
+- <code>scope</code>: Authorized scopes (optional)
+- <code>mission_s256</code>: SHA-256 hash of the approved mission JSON (optional), present when the auth token was issued in the context of a mission<a href="#section-9-2" class="pilcrow">¶</a></p>
+<p id="section-9-3">An auth token carries no agent identifier; <code>cnf</code> binds it to one key, and the resource enforces against <code>sub</code> and the R3 claims below.<a href="#section-9-3" class="pilcrow">¶</a></p>
+<p id="section-9-4">R3 extension claims:
 - <strong><code>r3_uri</code></strong> (REQUIRED for R3): The URI of the R3 document that was in effect at approval time.
 - <strong><code>r3_s256</code></strong> (REQUIRED for R3): The SHA-256 hash of that R3 document.
 - <strong><code>r3_granted</code></strong> (REQUIRED for R3): Operations the AS fully authorized. The resource serves these immediately.
-- <strong><code>r3_per_call</code></strong> (OPTIONAL): Operations authorized in principle but requiring per-call approval based on the specific parameters the agent provides.<a href="#section-9-3" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="section-9-4">
+- <strong><code>r3_per_call</code></strong> (OPTIONAL): Operations authorized in principle but requiring per-call approval based on the specific parameters the agent provides.<a href="#section-9-4" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-9-5">
 <pre>{
   "typ": "aa-auth+jwt",
   "alg": "Ed25519",
   "kid": "as-key-1"
 }
 
-</pre><a href="#section-9-4" class="pilcrow">¶</a>
+</pre><a href="#section-9-5" class="pilcrow">¶</a>
 </div>
-<div class="lang-json sourcecode" id="section-9-5">
+<div class="lang-json sourcecode" id="section-9-6">
 <pre>{
   "iss": "https://as.example.com",
   "dwk": "aauth-access.json",
   "aud": "https://calendar.example.com",
   "jti": "at-9d4c1e",
-  "agent": "assistant@agent.example",
-  "sub": "user:alice@example.com",
+  "ps": "https://ps.example",
+  "sub": "8f14e45fceea167a5a36dedd4bea2543",
   "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519",
                     "x": "NzbLsXh8uDCcd...", "alg": "Ed25519" } },
   "r3_uri": "https://calendar.example.com/r3/a1b2c3d4",
@@ -2151,19 +2160,19 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
   "exp": 1741824900
 }
 
-</pre><a href="#section-9-5" class="pilcrow">¶</a>
+</pre><a href="#section-9-6" class="pilcrow">¶</a>
 </div>
-<p id="section-9-6"><strong><code>r3_uri</code></strong> and <strong><code>r3_s256</code></strong> provide audit provenance: a permanent, verifiable record of which R3 document was in effect at approval time. The AS can verify the R3 document by fetching <code>r3_uri</code> and checking <code>r3_s256</code>.<a href="#section-9-6" class="pilcrow">¶</a></p>
-<p id="section-9-7"><strong><code>r3_granted</code></strong> and <strong><code>r3_per_call</code></strong> use the same vocabulary-specific operation format as the R3 document's <code>operations</code> field and the agent's <code>r3_operations</code> request:<a href="#section-9-7" class="pilcrow">¶</a></p>
+<p id="section-9-7"><strong><code>r3_uri</code></strong> and <strong><code>r3_s256</code></strong> provide audit provenance: a permanent, verifiable record of which R3 document was in effect at approval time. The AS can verify the R3 document by fetching <code>r3_uri</code> and checking <code>r3_s256</code>.<a href="#section-9-7" class="pilcrow">¶</a></p>
+<p id="section-9-8"><strong><code>r3_granted</code></strong> and <strong><code>r3_per_call</code></strong> use the same vocabulary-specific operation format as the R3 document's <code>operations</code> field and the agent's <code>r3_operations</code> request:<a href="#section-9-8" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-9-8.1">
-          <strong><code>vocabulary</code></strong> (REQUIRED). The vocabulary URI.<a href="#section-9-8.1" class="pilcrow">¶</a>
+<li class="compact" id="section-9-9.1">
+          <strong><code>vocabulary</code></strong> (REQUIRED). The vocabulary URI.<a href="#section-9-9.1" class="pilcrow">¶</a>
 </li>
-        <li class="compact" id="section-9-8.2">
-          <strong><code>operations</code></strong> (REQUIRED). An array of operations using the vocabulary-specific structure. The AS MAY narrow the grant to fewer operations than defined in the R3 document.<a href="#section-9-8.2" class="pilcrow">¶</a>
+        <li class="compact" id="section-9-9.2">
+          <strong><code>operations</code></strong> (REQUIRED). An array of operations using the vocabulary-specific structure. The AS MAY narrow the grant to fewer operations than defined in the R3 document.<a href="#section-9-9.2" class="pilcrow">¶</a>
 </li>
       </ul>
-<p id="section-9-9">The distinction: <code>r3_granted</code> operations are fully authorized and the resource serves them. <code>r3_per_call</code> operations require the resource to challenge when the agent actually calls. On the challenge the resource builds a <strong>per-call proposal</strong> <a href="#per-call-proposals" class="auto internal xref">Section 10</a> — a content-addressed document carrying the specific parameters of the call — and the AS evaluates those concrete parameters before issuing a per-call auth token.<a href="#section-9-9" class="pilcrow">¶</a></p>
+<p id="section-9-10">The distinction: <code>r3_granted</code> operations are fully authorized and the resource serves them. <code>r3_per_call</code> operations require the resource to challenge when the agent actually calls. On the challenge the resource builds a <strong>per-call proposal</strong> <a href="#per-call-proposals" class="auto internal xref">Section 10</a> — a content-addressed document carrying the specific parameters of the call — and the AS evaluates those concrete parameters before issuing a per-call auth token.<a href="#section-9-10" class="pilcrow">¶</a></p>
 <div id="resource-enforcement">
 <section id="section-9.1">
         <h3 id="name-resource-enforcement">
@@ -2276,7 +2285,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <ul class="compact">
 <li class="compact" id="section-11.1-2.1">the AS named in the <code>aud</code> of a resource token carrying that <code>r3_uri</code>; and<a href="#section-11.1-2.1" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-11.1-2.2">the PS of the agent that resource token was issued to, which the resource knows from the <code>ps</code> claim of the agent token the agent presented.<a href="#section-11.1-2.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-11.1-2.2">the PS that issued the person token the resource verified before issuing that resource token, which is the <code>ps</code> claim of the resource token itself (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>).<a href="#section-11.1-2.2" class="pilcrow">¶</a>
 </li>
         </ul>
 <p id="section-11.1-3">In three-party access these are the same party — <code>aud</code> is the PS. In four-party access both fetch, and for different reasons: the AS reads <code>operations</code> to evaluate policy, the PS reads <code>display</code> to render consent <a href="#r3-processing" class="auto internal xref">Section 8</a>. Any other signer MUST be rejected.<a href="#section-11.1-3" class="pilcrow">¶</a></p>
@@ -2515,13 +2524,19 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <li class="normal" id="section-14-2.1">
           <p id="section-14-2.1.1">draft-hardt-aauth-r3-02<a href="#section-14-2.1.1" class="pilcrow">¶</a></p>
 <ul class="compact normal">
-<li class="compact normal" id="section-14-2.1.2.1">Added operation access annotations: a resource states, on the operation in its own vocabulary, which credential the operation requires and whether it consumes budget. The vocabulary is where they go because it is the only description of the resource's operations an agent can read — R3 documents are PS- and AS-only. Annotations are sparse against the resource-wide <code>access_mode</code>, replace it rather than intersect with it, and stay advisory: the runtime <code>AAuth-Requirement</code> remains authoritative. Encodings defined for MCP, OpenAPI, AsyncAPI, and OData; none for gRPC, GraphQL, or WSDL, whose discovery mechanisms do not carry annotations to a generic caller.<a href="#section-14-2.1.2.1" class="pilcrow">¶</a>
+<li class="compact normal" id="section-14-2.1.2.1">Brought the base-claim recitals in Resource Token Extensions and Auth Token Extensions up to AAuth Protocol -11. The <code>agent</code> claim is gone from both tokens: a resource token now carries <code>ps</code>, <code>sub</code>, and <code>person_token_jti</code>, and an auth token carries <code>ps</code> and a REQUIRED directed <code>sub</code>, with <code>mission_s256</code> OPTIONAL. The examples were updated to match, including the auth token's <code>sub</code>, which showed an email address where the value is an opaque directed identifier.<a href="#section-14-2.1.2.1" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-14-2.1.2.2">Added the <code>access_mode</code> value <code>per-call</code>, for a resource or an operation that authorizes each invocation individually against its parameters, and registered it in the AAuth Access Mode Value Registry.<a href="#section-14-2.1.2.2" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-14-2.1.2.2">AS Processing required the AS to log "the agent identifier" against a resource token that no longer carries one. The step now names identifiers the AS actually holds — <code>ps</code>, <code>sub</code>, and <code>agent_jkt</code> from the resource token — and says where the agent identifier does come from: the <code>sub</code> of the <code>agent_token</code> the PS is REQUIRED to send on the PS-to-AS token request, or of the <code>subagent_token</code> where one is present. An AS reached any other way has no agent token and MUST NOT infer an agent identity.<a href="#section-14-2.1.2.2" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-14-2.1.2.3">Renamed the auth token claim <code>r3_conditional</code> to <code>r3_per_call</code>, matching the <code>per-call</code> access mode. "Conditional" did not say what the condition was.<a href="#section-14-2.1.2.3" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-14-2.1.2.3">R3 Document Access Restriction identified the entitled PS by the <code>ps</code> claim of the agent token. Under -11 an agent presents a person token in place of its agent token at the authorization endpoint, so the resource may never see an agent token, and that claim is OPTIONAL in any case. The entitled PS is now the issuer of the person token the resource verified, which is the REQUIRED <code>ps</code> claim of the resource token the resource itself issued.<a href="#section-14-2.1.2.3" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-14-2.1.2.4">Removed the <code>version</code> field. R3 documents are content-addressed, so a revision is a different document at a different hash; <code>version</code> named nothing the hash did not, and nothing prevented two different documents carrying the same value.<a href="#section-14-2.1.2.4" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-14-2.1.2.4">Added operation access annotations: a resource states, on the operation in its own vocabulary, which credential the operation requires and whether it consumes budget. The vocabulary is where they go because it is the only description of the resource's operations an agent can read — R3 documents are PS- and AS-only. Annotations are sparse against the resource-wide <code>access_mode</code>, replace it rather than intersect with it, and stay advisory: the runtime <code>AAuth-Requirement</code> remains authoritative. Encodings defined for MCP, OpenAPI, AsyncAPI, and OData; none for gRPC, GraphQL, or WSDL, whose discovery mechanisms do not carry annotations to a generic caller.<a href="#section-14-2.1.2.4" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-14-2.1.2.5">Added the <code>access_mode</code> value <code>per-call</code>, for a resource or an operation that authorizes each invocation individually against its parameters, and registered it in the AAuth Access Mode Value Registry.<a href="#section-14-2.1.2.5" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-14-2.1.2.6">Renamed the auth token claim <code>r3_conditional</code> to <code>r3_per_call</code>, matching the <code>per-call</code> access mode. "Conditional" did not say what the condition was.<a href="#section-14-2.1.2.6" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-14-2.1.2.7">Removed the <code>version</code> field. R3 documents are content-addressed, so a revision is a different document at a different hash; <code>version</code> named nothing the hash did not, and nothing prevented two different documents carrying the same value.<a href="#section-14-2.1.2.7" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
