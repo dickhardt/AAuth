@@ -352,7 +352,7 @@ A resource that needs more than identity for a particular operation challenges f
 
 ### PS Authorization Access (Three-Party)
 
-The resource has no separate access server — it accepts identity claims from whichever PS the agent declares, and applies its own policy on the resulting claims. The resource discovers the agent's PS from the `ps` claim in the agent token and issues a resource token (#resource-tokens) with `aud` = PS URL. The agent obtains the resource token either by calling the resource's `authorization_endpoint` (if published in resource metadata) or by receiving a `401` challenge with `requirement=auth-token` when calling the resource directly (#requirement-auth-token). The agent sends the resource token to the PS's token endpoint (#ps-token-endpoint), and the PS returns an auth token (#auth-tokens) asserting identity claims about the user (`sub`, optionally `email`, `tenant`, `groups`, `roles`) and confirming user consent for the scope the resource requested. The resource applies its own access policy on the resulting claims. Any agent's PS can assert identity claims to any resource without bilateral setup; the resource namespaces those claims by the asserting PS — the same `sub` value from a different PS is a different subject. As in many OIDC deployments, registration and login share a single flow (see (#trust-posture-in-ps-asserted-access) for how the resource matches or creates a user record from `(iss, sub)`).
+The resource has no separate access server — it accepts identity claims from whichever PS the agent declares, and applies its own policy on the resulting claims. The `ps` claim in the agent token tells the resource that the agent has a person server and which one, which is how the resource knows to challenge for a person token at all. The PS the resource then acts on is the `iss` of the person token it verifies (#person-tokens); the resource copies that value into the `ps` claim of the resource token (#resource-tokens) it issues with `aud` = PS URL. The agent obtains the resource token either by calling the resource's `authorization_endpoint` (if published in resource metadata) or by receiving a `401` challenge with `requirement=auth-token` when calling the resource directly (#requirement-auth-token). The agent sends the resource token to the PS's token endpoint (#ps-token-endpoint), and the PS returns an auth token (#auth-tokens) asserting identity claims about the user (`sub`, optionally `email`, `tenant`, `groups`, `roles`) and confirming user consent for the scope the resource requested. The resource applies its own access policy on the resulting claims. Any agent's PS can assert identity claims to any resource without bilateral setup; the resource namespaces those claims by the asserting PS — the same `sub` value from a different PS is a different subject. As in many OIDC deployments, registration and login share a single flow (see (#trust-posture-in-ps-asserted-access) for how the resource matches or creates a user record from `(iss, sub)`).
 
 ~~~ ascii-art
 Agent                                 Resource       PS
@@ -551,7 +551,7 @@ Acquiring the agent token — the AP-side enrollment ceremony, including per-pla
 - The PS maintains the association between an agent and its person. This association is typically established when the person first authorizes the agent at the PS via the interaction flow. An organization administrator may also pre-authorize agents for the organization.
 - The PS MAY establish a direct communication channel with the user (e.g., email, push notification, or messaging) to support out-of-band authorization, approval notifications, and revocation alerts.
 - Person servers publish metadata at `/.well-known/aauth-person.json` (#ps-metadata).
-- The resource discovers the agent's PS from the `ps` claim in the agent token and issues resource tokens with `aud` = PS URL.
+- The `ps` claim in the agent token tells the resource the agent has a person server, before the resource has anything else to go on. The PS a resource acts on is the `iss` of the person token it verifies (#person-tokens); the resource copies that value into the resource token's `ps` claim and issues with `aud` = PS URL.
 
 **Federated authorization access (four-party):**
 
@@ -614,7 +614,7 @@ Required payload claims:
 - `exp`: Expiration timestamp. Agent tokens SHOULD NOT have a lifetime exceeding 24 hours.
 
 Optional payload claims:
-- `ps`: The HTTPS URL of the agent's person server. Configured per agent instance. When present, resources can discover the agent's PS from the agent token. This claim is distinct from `iss` (which identifies the agent provider that issued the token).
+- `ps`: The HTTPS URL of the agent's person server. Configured per agent instance. When present, it tells a resource that the agent has a person server and which one, before the resource has verified a person token — enough to decide whether to challenge for one. The PS of an issued authorization is the `iss` of the person token the resource verified (#person-token-structure), not this claim. This claim is distinct from `iss` (which identifies the agent provider that issued the token).
 - `parent_agent`: Sub-agent marker (#sub-agents). When present, the agent is a sub-agent and the value is the identifier of its parent agent. A sub-agent MUST NOT request authorization directly; its parent obtains auth tokens on its behalf (#sub-agents).
 
 Agent providers MAY include additional claims in the agent token. Companion specifications may define additional claims for use by PSes or ASes in policy evaluation — for example, software attestation, platform integrity, secure enclave status, workload identity assertions, or software publisher identity. PSes and ASes MUST ignore unrecognized claims.
@@ -3295,12 +3295,13 @@ This specification registers the following claims in the IANA "JSON Web Token Cl
 | Claim Name | Claim Description | Change Controller | Reference |
 |---|---|---|---|
 | `dwk` | Discovery Well-Known document name | IETF | This document |
-| `ps` | Person Server URL | IETF | This document |
-| `agent` | Agent identifier | IETF | This document |
-| `agent_jkt` | JWK Thumbprint of the agent's signing key | IETF | This document |
+| `ps` | Person server URL — the agent's person server in an agent token, and the person server whose namespace `sub` belongs to in a resource or auth token | IETF | This document |
+| `agent_jkt` | JWK Thumbprint of the agent's signing key, in a resource token | IETF | This document |
 | `parent_agent` | Parent agent identifier in a sub-agent's agent token | IETF | This document |
+| `person_token_jti` | The `jti` of the person token a resource token is bound to | IETF | This document |
 | `mission_s256` | SHA-256 hash of the approved mission JSON, in person, resource, and auth tokens | IETF | This document |
-| `ps` | Person server URL in an auth token | IETF | This document |
+| `account` | Account the authorization is for, in resource and auth tokens | IETF | This document |
+| `interaction` | Resource interaction step required before authorization, an object with `url` and `code`, in a resource token | IETF | This document |
 
 ## AAuth Requirement Value Registry
 
@@ -3395,6 +3396,8 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-11
+  - Three places still said a resource discovers the agent's PS from the `ps` claim in the agent token — the three-party access mode, the bootstrapping requirements, and the claim's own definition — which the Design Rationale already contradicted. The agent token's `ps` is the advance signal that the agent has a person server, which is what lets a resource decide to challenge for a person token. The PS of an issued authorization is the `iss` of the person token the resource verified, which the resource copies into the resource token's `ps`.
+  - Corrected the JWT Claims Registrations table. `ps` was registered twice; the two rows are collapsed into one covering agent, resource, and auth tokens. `agent` is no longer a claim in any token and its row is removed — it survives only as a member of the mission blob, which is not a JWT. Added `person_token_jti`, `account`, and `interaction`, none of which were registered.
   - Established the AAuth Access Mode Value Registry, seeded with `agent-token`, `person-token`, `session-token`, and `auth-token`. The `access_mode` field was described as a closed list of four, which left no room for the `per-call` value R3 defines; the registry is how the other extensible AAuth value spaces are already handled.
   - Pointed `access_mode` at R3 operation access annotations. Two places said a resource MAY apply different modes to different endpoints without naming a mechanism for saying which.
   - Added the person token (`aa-person+jwt`), issued by a PS to identify the person to one resource. Presented via `Signature-Key` in place of the agent token. A resource MUST verify one before issuing a resource token. Lifetime capped at 1 hour, as for auth tokens.
