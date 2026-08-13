@@ -481,11 +481,15 @@ Base claims (from AAuth Protocol):
 - `dwk`: `aauth-resource.json`
 - `aud`: Auth server URL
 - `jti`: Unique token identifier
-- `agent`: Agent identifier
+- `ps`: The `iss` of the person token the resource verified
+- `sub`: The `sub` of that person token, identifying the person this authorization is for
+- `person_token_jti`: The `jti` of that person token, binding this resource token to it
 - `agent_jkt`: JWK Thumbprint of the agent's signing key
 - `iat`: Issued at timestamp
 - `exp`: Expiration timestamp
 - `scope`: Requested scopes (optional)
+
+A resource token carries no agent identifier; the recipient learns the agent's identity from the agent token that signs the token request.
 
 R3 extension claims:
 - **`r3_uri`** (REQUIRED for R3): The URI where the AS can fetch the R3 document. The AS authenticates itself using an HTTP Message Signature.
@@ -505,7 +509,9 @@ R3 extension claims:
   "dwk": "aauth-resource.json",
   "aud": "https://as.example.com",
   "jti": "rt-8f3a2b",
-  "agent": "assistant@agent.example",
+  "ps": "https://ps.example",
+  "sub": "8f14e45fceea167a5a36dedd4bea2543",
+  "person_token_jti": "pt-3ab910",
   "agent_jkt": "NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs",
   "r3_uri": "https://calendar.example.com/r3/a1b2c3d4",
   "r3_s256": "aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789abcd",
@@ -532,9 +538,13 @@ When the AS receives a resource token containing `r3_uri` and `r3_s256`, it MUST
 1. Validate the resource token signature per AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]).
 2. Fetch the R3 document at `r3_uri`. The AS MAY use a cached copy if the cache entry was stored with the same `r3_s256` value.
 3. Compute the SHA-256 hash of the bytes received and compare it to `r3_s256`. If the hashes do not match, the AS MUST reject the resource token.
-4. Record `r3_uri` and `r3_s256` in its audit log alongside the token issuance event, the agent identifier, and the timestamp.
+4. Record `r3_uri` and `r3_s256` in its audit log alongside the token issuance event, the timestamp, `ps` and `sub` from the resource token, `agent_jkt` from the resource token, and the agent identifier.
 5. Use the `operations` section for policy evaluation.
 6. Include `r3_uri`, `r3_s256`, `r3_granted`, and (if applicable) `r3_per_call` in the issued auth token.
+
+The agent identifier in step 4 does not come from the resource token. No token a resource issues carries one ([@!I-D.hardt-oauth-aauth-protocol]): the resource token binds to the agent's key through `agent_jkt` and names the person through `ps` and `sub`. The AS takes the agent identifier from the `sub` of the `agent_token`, which the PS is REQUIRED to send alongside the resource token on the PS-to-AS token request. Where the PS also sends a `subagent_token`, that token's `sub` is the agent the auth token is bound to and is the identifier the AS records; the `agent_token`'s `sub` is its parent, and an AS that distinguishes them SHOULD record both.
+
+An AS reached any other way than a PS-to-AS token request has no agent token and therefore no agent identifier. It can still record `agent_jkt`, which is what a later presentation of the auth token is checked against, but it MUST NOT infer an agent identity it was not given.
 
 ## Caching
 
@@ -549,12 +559,15 @@ Base claims (from AAuth Protocol):
 - `dwk`: `aauth-access.json` (issued by an AS) or `aauth-person.json` (issued by a PS)
 - `aud`: Resource URL
 - `jti`: Unique token identifier
-- `agent`: Agent identifier
+- `ps`: The person server the person is represented by. Equal to `iss` when a PS issued the token
+- `sub`: Directed user identifier (REQUIRED), copied from the resource token. An opaque string, unique within `iss`, that the PS SHOULD derive pairwise per resource
 - `cnf`: Confirmation claim with `jwk` containing the agent's public key
 - `iat`: Issued at timestamp
 - `exp`: Expiration timestamp
-- `sub`: User identifier (conditional)
-- `scope`: Authorized scopes (conditional)
+- `scope`: Authorized scopes (optional)
+- `mission_s256`: SHA-256 hash of the approved mission JSON (optional), present when the auth token was issued in the context of a mission
+
+An auth token carries no agent identifier; `cnf` binds it to one key, and the resource enforces against `sub` and the R3 claims below.
 
 R3 extension claims:
 - **`r3_uri`** (REQUIRED for R3): The URI of the R3 document that was in effect at approval time.
@@ -576,8 +589,8 @@ R3 extension claims:
   "dwk": "aauth-access.json",
   "aud": "https://calendar.example.com",
   "jti": "at-9d4c1e",
-  "agent": "assistant@agent.example",
-  "sub": "user:alice@example.com",
+  "ps": "https://ps.example",
+  "sub": "8f14e45fceea167a5a36dedd4bea2543",
   "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519",
                     "x": "NzbLsXh8uDCcd...", "alg": "Ed25519" } },
   "r3_uri": "https://calendar.example.com/r3/a1b2c3d4",
@@ -676,7 +689,7 @@ Whether the AS or PS additionally *machine-evaluates* `parameters` (for example,
 A party fetching `r3_uri` MUST authenticate itself with an HTTP Message Signature as defined in the AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]). The resource MUST reject any request that is not signed by a party entitled to that document. Two parties are:
 
 - the AS named in the `aud` of a resource token carrying that `r3_uri`; and
-- the PS of the agent that resource token was issued to, which the resource knows from the `ps` claim of the agent token the agent presented.
+- the PS that issued the person token the resource verified before issuing that resource token, which is the `ps` claim of the resource token itself ([@!I-D.hardt-oauth-aauth-protocol]).
 
 In three-party access these are the same party — `aud` is the PS. In four-party access both fetch, and for different reasons: the AS reads `operations` to evaluate policy, the PS reads `display` to render consent (#r3-processing). Any other signer MUST be rejected.
 
@@ -764,6 +777,9 @@ There are currently no known implementations.
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-aauth-r3-02
+  - Brought the base-claim recitals in Resource Token Extensions and Auth Token Extensions up to AAuth Protocol -11. The `agent` claim is gone from both tokens: a resource token now carries `ps`, `sub`, and `person_token_jti`, and an auth token carries `ps` and a REQUIRED directed `sub`, with `mission_s256` OPTIONAL. The examples were updated to match, including the auth token's `sub`, which showed an email address where the value is an opaque directed identifier.
+  - AS Processing required the AS to log "the agent identifier" against a resource token that no longer carries one. The step now names identifiers the AS actually holds — `ps`, `sub`, and `agent_jkt` from the resource token — and says where the agent identifier does come from: the `sub` of the `agent_token` the PS is REQUIRED to send on the PS-to-AS token request, or of the `subagent_token` where one is present. An AS reached any other way has no agent token and MUST NOT infer an agent identity.
+  - R3 Document Access Restriction identified the entitled PS by the `ps` claim of the agent token. Under -11 an agent presents a person token in place of its agent token at the authorization endpoint, so the resource may never see an agent token, and that claim is OPTIONAL in any case. The entitled PS is now the issuer of the person token the resource verified, which is the REQUIRED `ps` claim of the resource token the resource itself issued.
   - Added operation access annotations: a resource states, on the operation in its own vocabulary, which credential the operation requires and whether it consumes budget. The vocabulary is where they go because it is the only description of the resource's operations an agent can read — R3 documents are PS- and AS-only. Annotations are sparse against the resource-wide `access_mode`, replace it rather than intersect with it, and stay advisory: the runtime `AAuth-Requirement` remains authoritative. Encodings defined for MCP, OpenAPI, AsyncAPI, and OData; none for gRPC, GraphQL, or WSDL, whose discovery mechanisms do not carry annotations to a generic caller.
   - Added the `access_mode` value `per-call`, for a resource or an operation that authorizes each invocation individually against its parameters, and registered it in the AAuth Access Mode Value Registry.
   - Renamed the auth token claim `r3_conditional` to `r3_per_call`, matching the `per-call` access mode. "Conditional" did not say what the condition was.
