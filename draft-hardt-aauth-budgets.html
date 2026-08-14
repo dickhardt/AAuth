@@ -7,7 +7,7 @@
 <title>AAuth Budgets</title>
 <meta content="Dick Hardt" name="author">
 <meta content="
-       This document defines AAuth Budgets, an extension to the AAuth Protocol ( ) that carries a spending ceiling from a person server to a resource. A budget is a ceiling on what an agent may consume at one resource, denominated in a unit the resource declares, carried as a claim in the auth token, and enforced by the resource. Budgets are structurally parallel to scope: the agent asks, the resource offers, the person server and access server may narrow, and the auth token carries what was granted. The extension adds a  budget  claim to resource tokens and auth tokens, a  budget_consumed  claim reporting recent consumption, a  budget_units  field, a  usage_endpoint , and a  balance_endpoint  to resource metadata, and an  AAuth-Budget  response header reporting the remaining balance. 
+       This document defines AAuth Budgets, an extension to the AAuth Protocol ( ) that carries a spending ceiling from a person server to a resource. A budget is a ceiling on what an agent may consume at one resource, denominated in a unit the resource declares, carried as a claim in the auth token, and enforced by the resource. Budgets are structurally parallel to scope: the agent asks, the resource offers, the person server and access server may narrow, and the auth token carries what was granted. The extension adds a  budget  claim to resource tokens and auth tokens, a  budget_consumed  claim reporting recent consumption, a  budget_units  field and a  usage_endpoint  to resource metadata, and an  AAuth-Budget  response header reporting what a request cost and what remains. 
     " name="description">
 <meta content="xml2rfc 3.34.0" name="generator">
 <meta content="agent" name="keyword">
@@ -1050,7 +1050,7 @@ svg {
 </tr></thead>
 <tfoot><tr>
 <td class="left">Hardt</td>
-<td class="center">Expires 14 February 2027</td>
+<td class="center">Expires 15 February 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1063,12 +1063,12 @@ svg {
 <dd class="internet-draft">draft-hardt-aauth-budgets-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-08-13" class="published">13 August 2026</time>
+<time datetime="2026-08-14" class="published">14 August 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Standards Track</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-02-14">14 February 2027</time></dd>
+<dd class="expires"><time datetime="2027-02-15">15 February 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1081,7 +1081,7 @@ svg {
 <h1 id="title">AAuth Budgets</h1>
 <section id="section-abstract">
       <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
-<p id="section-abstract-1">This document defines AAuth Budgets, an extension to the AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>) that carries a spending ceiling from a person server to a resource. A budget is a ceiling on what an agent may consume at one resource, denominated in a unit the resource declares, carried as a claim in the auth token, and enforced by the resource. Budgets are structurally parallel to scope: the agent asks, the resource offers, the person server and access server may narrow, and the auth token carries what was granted. The extension adds a <code>budget</code> claim to resource tokens and auth tokens, a <code>budget_consumed</code> claim reporting recent consumption, a <code>budget_units</code> field, a <code>usage_endpoint</code>, and a <code>balance_endpoint</code> to resource metadata, and an <code>AAuth-Budget</code> response header reporting the remaining balance.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+<p id="section-abstract-1">This document defines AAuth Budgets, an extension to the AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>) that carries a spending ceiling from a person server to a resource. A budget is a ceiling on what an agent may consume at one resource, denominated in a unit the resource declares, carried as a claim in the auth token, and enforced by the resource. Budgets are structurally parallel to scope: the agent asks, the resource offers, the person server and access server may narrow, and the auth token carries what was granted. The extension adds a <code>budget</code> claim to resource tokens and auth tokens, a <code>budget_consumed</code> claim reporting recent consumption, a <code>budget_units</code> field and a <code>usage_endpoint</code> to resource metadata, and an <code>AAuth-Budget</code> response header reporting what a request cost and what remains.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
 </section>
 <section class="note" id="section-note.1">
       <h2 id="name-discussion-venues">
@@ -1109,7 +1109,7 @@ svg {
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 14 February 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 15 February 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -1208,198 +1208,209 @@ svg {
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12">
             <p id="section-toc.1-1.12.1"><a href="#section-12" class="auto internal xref">12</a>. <a href="#name-streaming" class="internal xref">Streaming</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.1">
+                <p id="section-toc.1-1.12.2.1.1"><a href="#section-12.1" class="auto internal xref">12.1</a>.  <a href="#name-trailer-rules" class="internal xref">Trailer Rules</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.2">
+                <p id="section-toc.1-1.12.2.2.1"><a href="#section-12.2" class="auto internal xref">12.2</a>.  <a href="#name-ambiguous-failures" class="internal xref">Ambiguous Failures</a></p>
+</li>
+            </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13">
-            <p id="section-toc.1-1.13.1"><a href="#section-13" class="auto internal xref">13</a>. <a href="#name-balance-endpoint" class="internal xref">Balance Endpoint</a></p>
+            <p id="section-toc.1-1.13.1"><a href="#section-13" class="auto internal xref">13</a>. <a href="#name-budget-exhaustion" class="internal xref">Budget Exhaustion</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.1">
+                <p id="section-toc.1-1.13.2.1.1"><a href="#section-13.1" class="auto internal xref">13.1</a>.  <a href="#name-the-reason-parameter" class="internal xref">The <code>reason</code> Parameter</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.2">
+                <p id="section-toc.1-1.13.2.2.1"><a href="#section-13.2" class="auto internal xref">13.2</a>.  <a href="#name-boundaries" class="internal xref">Boundaries</a></p>
+</li>
+            </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14">
-            <p id="section-toc.1-1.14.1"><a href="#section-14" class="auto internal xref">14</a>. <a href="#name-budget-exhaustion" class="internal xref">Budget Exhaustion</a></p>
+            <p id="section-toc.1-1.14.1"><a href="#section-14" class="auto internal xref">14</a>. <a href="#name-enforcement" class="internal xref">Enforcement</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14.2.1">
-                <p id="section-toc.1-1.14.2.1.1"><a href="#section-14.1" class="auto internal xref">14.1</a>.  <a href="#name-the-reason-parameter" class="internal xref">The <code>reason</code> Parameter</a></p>
+                <p id="section-toc.1-1.14.2.1.1"><a href="#section-14.1" class="auto internal xref">14.1</a>.  <a href="#name-the-resource-enforces" class="internal xref">The Resource Enforces</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14.2.2">
-                <p id="section-toc.1-1.14.2.2.1"><a href="#section-14.2" class="auto internal xref">14.2</a>.  <a href="#name-boundaries" class="internal xref">Boundaries</a></p>
+                <p id="section-toc.1-1.14.2.2.1"><a href="#section-14.2" class="auto internal xref">14.2</a>.  <a href="#name-budgets-require-auth-token-" class="internal xref">Budgets Require Auth-Token Mode</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14.2.3">
+                <p id="section-toc.1-1.14.2.3.1"><a href="#section-14.3" class="auto internal xref">14.3</a>.  <a href="#name-token-scope" class="internal xref">Token Scope</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14.2.4">
+                <p id="section-toc.1-1.14.2.4.1"><a href="#section-14.4" class="auto internal xref">14.4</a>.  <a href="#name-aggregation" class="internal xref">Aggregation</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14.2.5">
+                <p id="section-toc.1-1.14.2.5.1"><a href="#section-14.5" class="auto internal xref">14.5</a>.  <a href="#name-concurrency" class="internal xref">Concurrency</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14.2.6">
+                <p id="section-toc.1-1.14.2.6.1"><a href="#section-14.6" class="auto internal xref">14.6</a>.  <a href="#name-the-budget-is-a-hard-cap" class="internal xref">The Budget Is a Hard Cap</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14.2.7">
+                <p id="section-toc.1-1.14.2.7.1"><a href="#section-14.7" class="auto internal xref">14.7</a>.  <a href="#name-failed-calls" class="internal xref">Failed Calls</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14.2.8">
+                <p id="section-toc.1-1.14.2.8.1"><a href="#section-14.8" class="auto internal xref">14.8</a>.  <a href="#name-delegation" class="internal xref">Delegation</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14.2.9">
+                <p id="section-toc.1-1.14.2.9.1"><a href="#section-14.9" class="auto internal xref">14.9</a>.  <a href="#name-mission-attribution" class="internal xref">Mission Attribution</a></p>
 </li>
             </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15">
-            <p id="section-toc.1-1.15.1"><a href="#section-15" class="auto internal xref">15</a>. <a href="#name-enforcement" class="internal xref">Enforcement</a></p>
+            <p id="section-toc.1-1.15.1"><a href="#section-15" class="auto internal xref">15</a>. <a href="#name-usage-counters" class="internal xref">Usage Counters</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15.2.1">
-                <p id="section-toc.1-1.15.2.1.1"><a href="#section-15.1" class="auto internal xref">15.1</a>.  <a href="#name-the-resource-enforces" class="internal xref">The Resource Enforces</a></p>
+                <p id="section-toc.1-1.15.2.1.1"><a href="#section-15.1" class="auto internal xref">15.1</a>.  <a href="#name-usage-request" class="internal xref">Usage Request</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15.2.2">
-                <p id="section-toc.1-1.15.2.2.1"><a href="#section-15.2" class="auto internal xref">15.2</a>.  <a href="#name-budgets-require-auth-token-" class="internal xref">Budgets Require Auth-Token Mode</a></p>
+                <p id="section-toc.1-1.15.2.2.1"><a href="#section-15.2" class="auto internal xref">15.2</a>.  <a href="#name-usage-response" class="internal xref">Usage Response</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15.2.3">
-                <p id="section-toc.1-1.15.2.3.1"><a href="#section-15.3" class="auto internal xref">15.3</a>.  <a href="#name-token-scope" class="internal xref">Token Scope</a></p>
+                <p id="section-toc.1-1.15.2.3.1"><a href="#section-15.3" class="auto internal xref">15.3</a>.  <a href="#name-authorization-and-errors" class="internal xref">Authorization and Errors</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15.2.4">
-                <p id="section-toc.1-1.15.2.4.1"><a href="#section-15.4" class="auto internal xref">15.4</a>.  <a href="#name-aggregation" class="internal xref">Aggregation</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15.2.5">
-                <p id="section-toc.1-1.15.2.5.1"><a href="#section-15.5" class="auto internal xref">15.5</a>.  <a href="#name-concurrency" class="internal xref">Concurrency</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15.2.6">
-                <p id="section-toc.1-1.15.2.6.1"><a href="#section-15.6" class="auto internal xref">15.6</a>.  <a href="#name-the-budget-is-a-hard-cap" class="internal xref">The Budget Is a Hard Cap</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15.2.7">
-                <p id="section-toc.1-1.15.2.7.1"><a href="#section-15.7" class="auto internal xref">15.7</a>.  <a href="#name-failed-calls" class="internal xref">Failed Calls</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15.2.8">
-                <p id="section-toc.1-1.15.2.8.1"><a href="#section-15.8" class="auto internal xref">15.8</a>.  <a href="#name-delegation" class="internal xref">Delegation</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15.2.9">
-                <p id="section-toc.1-1.15.2.9.1"><a href="#section-15.9" class="auto internal xref">15.9</a>.  <a href="#name-mission-attribution" class="internal xref">Mission Attribution</a></p>
+                <p id="section-toc.1-1.15.2.4.1"><a href="#section-15.4" class="auto internal xref">15.4</a>.  <a href="#name-division-of-labor" class="internal xref">Division of Labor</a></p>
 </li>
             </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16">
-            <p id="section-toc.1-1.16.1"><a href="#section-16" class="auto internal xref">16</a>. <a href="#name-usage-counters" class="internal xref">Usage Counters</a></p>
-<ul class="compact toc ulBare ulEmpty">
-<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.1">
-                <p id="section-toc.1-1.16.2.1.1"><a href="#section-16.1" class="auto internal xref">16.1</a>.  <a href="#name-usage-request" class="internal xref">Usage Request</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.2">
-                <p id="section-toc.1-1.16.2.2.1"><a href="#section-16.2" class="auto internal xref">16.2</a>.  <a href="#name-usage-response" class="internal xref">Usage Response</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.3">
-                <p id="section-toc.1-1.16.2.3.1"><a href="#section-16.3" class="auto internal xref">16.3</a>.  <a href="#name-authorization-and-errors" class="internal xref">Authorization and Errors</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.4">
-                <p id="section-toc.1-1.16.2.4.1"><a href="#section-16.4" class="auto internal xref">16.4</a>.  <a href="#name-division-of-labor" class="internal xref">Division of Labor</a></p>
-</li>
-            </ul>
+            <p id="section-toc.1-1.16.1"><a href="#section-16" class="auto internal xref">16</a>. <a href="#name-capability-negotiation" class="internal xref">Capability Negotiation</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17">
-            <p id="section-toc.1-1.17.1"><a href="#section-17" class="auto internal xref">17</a>. <a href="#name-capability-negotiation" class="internal xref">Capability Negotiation</a></p>
+            <p id="section-toc.1-1.17.1"><a href="#section-17" class="auto internal xref">17</a>. <a href="#name-errors" class="internal xref">Errors</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17.2.1">
+                <p id="section-toc.1-1.17.2.1.1"><a href="#section-17.1" class="auto internal xref">17.1</a>.  <a href="#name-declining-with-guidance" class="internal xref">Declining with Guidance</a></p>
+</li>
+            </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.18">
-            <p id="section-toc.1-1.18.1"><a href="#section-18" class="auto internal xref">18</a>. <a href="#name-errors" class="internal xref">Errors</a></p>
-<ul class="compact toc ulBare ulEmpty">
-<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.18.2.1">
-                <p id="section-toc.1-1.18.2.1.1"><a href="#section-18.1" class="auto internal xref">18.1</a>.  <a href="#name-declining-with-guidance" class="internal xref">Declining with Guidance</a></p>
-</li>
-            </ul>
+            <p id="section-toc.1-1.18.1"><a href="#section-18" class="auto internal xref">18</a>. <a href="#name-standing-authorization-for-" class="internal xref">Standing Authorization for Metered Inference</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19">
-            <p id="section-toc.1-1.19.1"><a href="#section-19" class="auto internal xref">19</a>. <a href="#name-standing-authorization-for-" class="internal xref">Standing Authorization for Metered Inference</a></p>
+            <p id="section-toc.1-1.19.1"><a href="#section-19" class="auto internal xref">19</a>. <a href="#name-security-considerations" class="internal xref">Security Considerations</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19.2.1">
+                <p id="section-toc.1-1.19.2.1.1"><a href="#section-19.1" class="auto internal xref">19.1</a>.  <a href="#name-the-header-is-unsigned" class="internal xref">The Header Is Unsigned</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19.2.2">
+                <p id="section-toc.1-1.19.2.2.1"><a href="#section-19.2" class="auto internal xref">19.2</a>.  <a href="#name-budget-is-not-a-substitute-" class="internal xref">Budget Is Not a Substitute for Scope</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19.2.3">
+                <p id="section-toc.1-1.19.2.3.1"><a href="#section-19.3" class="auto internal xref">19.3</a>.  <a href="#name-over-issuance-through-concu" class="internal xref">Over-Issuance Through Concurrency</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19.2.4">
+                <p id="section-toc.1-1.19.2.4.1"><a href="#section-19.4" class="auto internal xref">19.4</a>.  <a href="#name-consumption-reports-as-atta" class="internal xref">Consumption Reports as Attack Surface</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19.2.5">
+                <p id="section-toc.1-1.19.2.5.1"><a href="#section-19.5" class="auto internal xref">19.5</a>.  <a href="#name-unit-substitution" class="internal xref">Unit Substitution</a></p>
+</li>
+            </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.20">
-            <p id="section-toc.1-1.20.1"><a href="#section-20" class="auto internal xref">20</a>. <a href="#name-security-considerations" class="internal xref">Security Considerations</a></p>
-<ul class="compact toc ulBare ulEmpty">
-<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.20.2.1">
-                <p id="section-toc.1-1.20.2.1.1"><a href="#section-20.1" class="auto internal xref">20.1</a>.  <a href="#name-the-header-is-unsigned" class="internal xref">The Header Is Unsigned</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.20.2.2">
-                <p id="section-toc.1-1.20.2.2.1"><a href="#section-20.2" class="auto internal xref">20.2</a>.  <a href="#name-budget-is-not-a-substitute-" class="internal xref">Budget Is Not a Substitute for Scope</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.20.2.3">
-                <p id="section-toc.1-1.20.2.3.1"><a href="#section-20.3" class="auto internal xref">20.3</a>.  <a href="#name-over-issuance-through-concu" class="internal xref">Over-Issuance Through Concurrency</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.20.2.4">
-                <p id="section-toc.1-1.20.2.4.1"><a href="#section-20.4" class="auto internal xref">20.4</a>.  <a href="#name-consumption-reports-as-atta" class="internal xref">Consumption Reports as Attack Surface</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.20.2.5">
-                <p id="section-toc.1-1.20.2.5.1"><a href="#section-20.5" class="auto internal xref">20.5</a>.  <a href="#name-unit-substitution" class="internal xref">Unit Substitution</a></p>
-</li>
-            </ul>
+            <p id="section-toc.1-1.20.1"><a href="#section-20" class="auto internal xref">20</a>. <a href="#name-privacy-considerations" class="internal xref">Privacy Considerations</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.21">
-            <p id="section-toc.1-1.21.1"><a href="#section-21" class="auto internal xref">21</a>. <a href="#name-privacy-considerations" class="internal xref">Privacy Considerations</a></p>
-</li>
-          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.22">
-            <p id="section-toc.1-1.22.1"><a href="#section-22" class="auto internal xref">22</a>. <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
+            <p id="section-toc.1-1.21.1"><a href="#section-21" class="auto internal xref">21</a>. <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
 <ul class="compact toc ulBare ulEmpty">
-<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.22.2.1">
-                <p id="section-toc.1-1.22.2.1.1"><a href="#section-22.1" class="auto internal xref">22.1</a>.  <a href="#name-http-header-field-registrat" class="internal xref">HTTP Header Field Registration</a></p>
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.21.2.1">
+                <p id="section-toc.1-1.21.2.1.1"><a href="#section-21.1" class="auto internal xref">21.1</a>.  <a href="#name-http-header-field-registrat" class="internal xref">HTTP Header Field Registration</a></p>
 </li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.22.2.2">
-                <p id="section-toc.1-1.22.2.2.1"><a href="#section-22.2" class="auto internal xref">22.2</a>.  <a href="#name-jwt-claims-registration" class="internal xref">JWT Claims Registration</a></p>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.21.2.2">
+                <p id="section-toc.1-1.21.2.2.1"><a href="#section-21.2" class="auto internal xref">21.2</a>.  <a href="#name-jwt-claims-registration" class="internal xref">JWT Claims Registration</a></p>
 </li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.22.2.3">
-                <p id="section-toc.1-1.22.2.3.1"><a href="#section-22.3" class="auto internal xref">22.3</a>.  <a href="#name-aauth-capability-value-regi" class="internal xref">AAuth Capability Value Registry</a></p>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.21.2.3">
+                <p id="section-toc.1-1.21.2.3.1"><a href="#section-21.3" class="auto internal xref">21.3</a>.  <a href="#name-aauth-capability-value-regi" class="internal xref">AAuth Capability Value Registry</a></p>
 </li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.22.2.4">
-                <p id="section-toc.1-1.22.2.4.1"><a href="#section-22.4" class="auto internal xref">22.4</a>.  <a href="#name-no-budget-unit-registry" class="internal xref">No Budget Unit Registry</a></p>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.21.2.4">
+                <p id="section-toc.1-1.21.2.4.1"><a href="#section-21.4" class="auto internal xref">21.4</a>.  <a href="#name-no-budget-unit-registry" class="internal xref">No Budget Unit Registry</a></p>
 </li>
             </ul>
 </li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.22">
+            <p id="section-toc.1-1.22.1"><a href="#section-22" class="auto internal xref">22</a>. <a href="#name-implementation-status" class="internal xref">Implementation Status</a></p>
+</li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23">
-            <p id="section-toc.1-1.23.1"><a href="#section-23" class="auto internal xref">23</a>. <a href="#name-implementation-status" class="internal xref">Implementation Status</a></p>
+            <p id="section-toc.1-1.23.1"><a href="#section-23" class="auto internal xref">23</a>. <a href="#name-document-history" class="internal xref">Document History</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.24">
-            <p id="section-toc.1-1.24.1"><a href="#section-24" class="auto internal xref">24</a>. <a href="#name-document-history" class="internal xref">Document History</a></p>
+            <p id="section-toc.1-1.24.1"><a href="#section-24" class="auto internal xref">24</a>. <a href="#name-acknowledgments" class="internal xref">Acknowledgments</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.25">
-            <p id="section-toc.1-1.25.1"><a href="#section-25" class="auto internal xref">25</a>. <a href="#name-acknowledgments" class="internal xref">Acknowledgments</a></p>
+            <p id="section-toc.1-1.25.1"><a href="#section-25" class="auto internal xref">25</a>. <a href="#name-references" class="internal xref">References</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.25.2.1">
+                <p id="section-toc.1-1.25.2.1.1"><a href="#section-25.1" class="auto internal xref">25.1</a>.  <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.25.2.2">
+                <p id="section-toc.1-1.25.2.2.1"><a href="#section-25.2" class="auto internal xref">25.2</a>.  <a href="#name-informative-references" class="internal xref">Informative References</a></p>
+</li>
+            </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.26">
-            <p id="section-toc.1-1.26.1"><a href="#section-26" class="auto internal xref">26</a>. <a href="#name-references" class="internal xref">References</a></p>
+            <p id="section-toc.1-1.26.1"><a href="#appendix-A" class="auto internal xref">Appendix A</a>.  <a href="#name-design-rationale" class="internal xref">Design Rationale</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.26.2.1">
-                <p id="section-toc.1-1.26.2.1.1"><a href="#section-26.1" class="auto internal xref">26.1</a>.  <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+                <p id="section-toc.1-1.26.2.1.1"><a href="#appendix-A.1" class="auto internal xref">A.1</a>.  <a href="#name-why-an-integer-in-a-declare" class="internal xref">Why an Integer in a Declared Scale</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.26.2.2">
-                <p id="section-toc.1-1.26.2.2.1"><a href="#section-26.2" class="auto internal xref">26.2</a>.  <a href="#name-informative-references" class="internal xref">Informative References</a></p>
+                <p id="section-toc.1-1.26.2.2.1"><a href="#appendix-A.2" class="auto internal xref">A.2</a>.  <a href="#name-why-the-scale-is-explicit" class="internal xref">Why the Scale Is Explicit</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.26.2.3">
+                <p id="section-toc.1-1.26.2.3.1"><a href="#appendix-A.3" class="auto internal xref">A.3</a>.  <a href="#name-why-decimals-is-in-the-sign" class="internal xref">Why <code>decimals</code> Is in the Signed Claim</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.26.2.4">
+                <p id="section-toc.1-1.26.2.4.1"><a href="#appendix-A.4" class="auto internal xref">A.4</a>.  <a href="#name-why-the-agent-is-not-told-i" class="internal xref">Why the Agent Is Not Told Its Cumulative Consumption</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.26.2.5">
+                <p id="section-toc.1-1.26.2.5.1"><a href="#appendix-A.5" class="auto internal xref">A.5</a>.  <a href="#name-why-a-trailer-only-adds-a-m" class="internal xref">Why a Trailer Only Adds a Member</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.26.2.6">
+                <p id="section-toc.1-1.26.2.6.1"><a href="#appendix-A.6" class="auto internal xref">A.6</a>.  <a href="#name-why-not-ratelimit" class="internal xref">Why Not <code>RateLimit</code></a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.26.2.7">
+                <p id="section-toc.1-1.26.2.7.1"><a href="#appendix-A.7" class="auto internal xref">A.7</a>.  <a href="#name-why-budget-is-not-a-mission" class="internal xref">Why Budget Is Not a Mission Aggregate</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.26.2.8">
+                <p id="section-toc.1-1.26.2.8.1"><a href="#appendix-A.8" class="auto internal xref">A.8</a>.  <a href="#name-why-units-are-not-registere" class="internal xref">Why Units Are Not Registered</a></p>
 </li>
             </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.27">
-            <p id="section-toc.1-1.27.1"><a href="#appendix-A" class="auto internal xref">Appendix A</a>.  <a href="#name-design-rationale" class="internal xref">Design Rationale</a></p>
+            <p id="section-toc.1-1.27.1"><a href="#appendix-B" class="auto internal xref">Appendix B</a>.  <a href="#name-prior-art" class="internal xref">Prior Art</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.27.2.1">
-                <p id="section-toc.1-1.27.2.1.1"><a href="#appendix-A.1" class="auto internal xref">A.1</a>.  <a href="#name-why-an-integer-in-a-declare" class="internal xref">Why an Integer in a Declared Scale</a></p>
+                <p id="section-toc.1-1.27.2.1.1"><a href="#appendix-B.1" class="auto internal xref">B.1</a>.  <a href="#name-rfc-9396-rich-authorization" class="internal xref">RFC 9396, Rich Authorization Requests</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.27.2.2">
-                <p id="section-toc.1-1.27.2.2.1"><a href="#appendix-A.2" class="auto internal xref">A.2</a>.  <a href="#name-why-the-scale-is-explicit" class="internal xref">Why the Scale Is Explicit</a></p>
+                <p id="section-toc.1-1.27.2.2.1"><a href="#appendix-B.2" class="auto internal xref">B.2</a>.  <a href="#name-tpx" class="internal xref">TPX</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.27.2.3">
-                <p id="section-toc.1-1.27.2.3.1"><a href="#appendix-A.3" class="auto internal xref">A.3</a>.  <a href="#name-why-decimals-is-in-the-sign" class="internal xref">Why <code>decimals</code> Is in the Signed Claim</a></p>
+                <p id="section-toc.1-1.27.2.3.1"><a href="#appendix-B.3" class="auto internal xref">B.3</a>.  <a href="#name-uk-open-banking-variable-re" class="internal xref">UK Open Banking Variable Recurring Payments</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.27.2.4">
-                <p id="section-toc.1-1.27.2.4.1"><a href="#appendix-A.4" class="auto internal xref">A.4</a>.  <a href="#name-why-not-ratelimit" class="internal xref">Why Not <code>RateLimit</code></a></p>
+                <p id="section-toc.1-1.27.2.4.1"><a href="#appendix-B.4" class="auto internal xref">B.4</a>.  <a href="#name-stripe-issuing-spending-con" class="internal xref">Stripe Issuing Spending Controls</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.27.2.5">
-                <p id="section-toc.1-1.27.2.5.1"><a href="#appendix-A.5" class="auto internal xref">A.5</a>.  <a href="#name-why-budget-is-not-a-mission" class="internal xref">Why Budget Is Not a Mission Aggregate</a></p>
+                <p id="section-toc.1-1.27.2.5.1"><a href="#appendix-B.5" class="auto internal xref">B.5</a>.  <a href="#name-w3c-payment-request-api" class="internal xref">W3C Payment Request API</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.27.2.6">
-                <p id="section-toc.1-1.27.2.6.1"><a href="#appendix-A.6" class="auto internal xref">A.6</a>.  <a href="#name-why-units-are-not-registere" class="internal xref">Why Units Are Not Registered</a></p>
+                <p id="section-toc.1-1.27.2.6.1"><a href="#appendix-B.6" class="auto internal xref">B.6</a>.  <a href="#name-x402" class="internal xref">x402</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.27.2.7">
+                <p id="section-toc.1-1.27.2.7.1"><a href="#appendix-B.7" class="auto internal xref">B.7</a>.  <a href="#name-odrl" class="internal xref">ODRL</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.27.2.8">
+                <p id="section-toc.1-1.27.2.8.1"><a href="#appendix-B.8" class="auto internal xref">B.8</a>.  <a href="#name-ratelimit-header-fields" class="internal xref">RateLimit Header Fields</a></p>
 </li>
             </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.28">
-            <p id="section-toc.1-1.28.1"><a href="#appendix-B" class="auto internal xref">Appendix B</a>.  <a href="#name-prior-art" class="internal xref">Prior Art</a></p>
-<ul class="compact toc ulBare ulEmpty">
-<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.28.2.1">
-                <p id="section-toc.1-1.28.2.1.1"><a href="#appendix-B.1" class="auto internal xref">B.1</a>.  <a href="#name-rfc-9396-rich-authorization" class="internal xref">RFC 9396, Rich Authorization Requests</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.28.2.2">
-                <p id="section-toc.1-1.28.2.2.1"><a href="#appendix-B.2" class="auto internal xref">B.2</a>.  <a href="#name-tpx" class="internal xref">TPX</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.28.2.3">
-                <p id="section-toc.1-1.28.2.3.1"><a href="#appendix-B.3" class="auto internal xref">B.3</a>.  <a href="#name-uk-open-banking-variable-re" class="internal xref">UK Open Banking Variable Recurring Payments</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.28.2.4">
-                <p id="section-toc.1-1.28.2.4.1"><a href="#appendix-B.4" class="auto internal xref">B.4</a>.  <a href="#name-stripe-issuing-spending-con" class="internal xref">Stripe Issuing Spending Controls</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.28.2.5">
-                <p id="section-toc.1-1.28.2.5.1"><a href="#appendix-B.5" class="auto internal xref">B.5</a>.  <a href="#name-w3c-payment-request-api" class="internal xref">W3C Payment Request API</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.28.2.6">
-                <p id="section-toc.1-1.28.2.6.1"><a href="#appendix-B.6" class="auto internal xref">B.6</a>.  <a href="#name-x402" class="internal xref">x402</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.28.2.7">
-                <p id="section-toc.1-1.28.2.7.1"><a href="#appendix-B.7" class="auto internal xref">B.7</a>.  <a href="#name-odrl" class="internal xref">ODRL</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.28.2.8">
-                <p id="section-toc.1-1.28.2.8.1"><a href="#appendix-B.8" class="auto internal xref">B.8</a>.  <a href="#name-ratelimit-header-fields" class="internal xref">RateLimit Header Fields</a></p>
-</li>
-            </ul>
-</li>
-          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.29">
-            <p id="section-toc.1-1.29.1"><a href="#appendix-C" class="auto internal xref"></a><a href="#name-authors-address" class="internal xref">Author's Address</a></p>
+            <p id="section-toc.1-1.28.1"><a href="#appendix-C" class="auto internal xref"></a><a href="#name-authors-address" class="internal xref">Author's Address</a></p>
 </li>
         </ul>
 </nav>
@@ -1414,9 +1425,9 @@ svg {
 <p id="section-1-2">The AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>) lets a person server (PS) decide whether an agent may access a resource, and lets the resource express what access it offers. Neither party has a way to say <em>how much</em>.<a href="#section-1-2" class="pilcrow">¶</a></p>
 <p id="section-1-3">For a resource that meters and charges per call, that omission is the whole authorization decision. An agent harness calling a model inference endpoint on a person's account can spend without bound: the scope <code>inference.completions</code> is either granted or not, and once granted it says nothing about whether the agent may consume ten cents or ten thousand dollars of the person's money. The person's only controls are outside the protocol — a provider dashboard, a card limit, a bill that arrives after the fact.<a href="#section-1-3" class="pilcrow">¶</a></p>
 <p id="section-1-4">This document defines a <strong>budget</strong>: a ceiling on what an agent may consume at one resource, denominated in a unit the resource declares, carried as a claim in the auth token, and enforced by the resource.<a href="#section-1-4" class="pilcrow">¶</a></p>
-<p id="section-1-5">A budget is an authorization, not a hint. The PS has authorized the agent to spend up to a stated amount, and the resource is the party that counts. That distinction determines nearly every design choice in this document, in particular why the balance cannot be reported through <code>RateLimit</code> (<span>[<a href="#I-D.ietf-httpapi-ratelimit-headers" class="cite xref">I-D.ietf-httpapi-ratelimit-headers</a>]</span>) — see <a href="#why-not-ratelimit" class="auto internal xref">Appendix A.4</a>.<a href="#section-1-5" class="pilcrow">¶</a></p>
-<p id="section-1-6">Metered inference is the initiating use case, and <a href="#inference" class="auto internal xref">Section 19</a> covers it as a named deployment pattern. The mechanism is general: any resource that meters and charges per call uses it unchanged.<a href="#section-1-6" class="pilcrow">¶</a></p>
-<p id="section-1-7">TPX <span>[<a href="#TPX" class="cite xref">TPX</a>]</span> profiles the same grant for OAuth 2.0: a person grants a human-driven app a metered inference budget — "a damage cap, not a payment" — from a provider the person chooses and pays. This document is the AAuth counterpart: the same grant, carried to an autonomous agent through the narrowing chain, and generalized beyond inference to any resource that meters. A provider implementing both accepts two authorization envelopes over one meter <a href="#inference" class="auto internal xref">Section 19</a>.<a href="#section-1-7" class="pilcrow">¶</a></p>
+<p id="section-1-5">A budget is an authorization, not a hint. The PS has authorized the agent to spend up to a stated amount, and the resource is the party that counts. That distinction determines nearly every design choice in this document, in particular why the balance cannot be reported through <code>RateLimit</code> (<span>[<a href="#I-D.ietf-httpapi-ratelimit-headers" class="cite xref">I-D.ietf-httpapi-ratelimit-headers</a>]</span>) — see <a href="#why-not-ratelimit" class="auto internal xref">Appendix A.6</a>.<a href="#section-1-5" class="pilcrow">¶</a></p>
+<p id="section-1-6">Metered inference is the initiating use case, and <a href="#inference" class="auto internal xref">Section 18</a> covers it as a named deployment pattern. The mechanism is general: any resource that meters and charges per call uses it unchanged.<a href="#section-1-6" class="pilcrow">¶</a></p>
+<p id="section-1-7">TPX <span>[<a href="#TPX" class="cite xref">TPX</a>]</span> profiles the same grant for OAuth 2.0: a person grants a human-driven app a metered inference budget — "a damage cap, not a payment" — from a provider the person chooses and pays. This document is the AAuth counterpart: the same grant, carried to an autonomous agent through the narrowing chain, and generalized beyond inference to any resource that meters. A provider implementing both accepts two authorization envelopes over one meter <a href="#inference" class="auto internal xref">Section 18</a>.<a href="#section-1-7" class="pilcrow">¶</a></p>
 <div id="non-goals">
 <section id="section-1.1">
         <h3 id="name-non-goals">
@@ -1609,7 +1620,7 @@ svg {
         </h3>
 <p id="section-4.4-1">Two carriers bound the representable range:<a href="#section-4.4-1" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-4.4-2.1">A Structured Field Integer (<span>[<a href="#RFC9651" class="cite xref">RFC9651</a>]</span>, Section 3.3.1) is limited to 15 digits, which bounds <code>remaining</code> and <code>consumed</code> in the <code>AAuth-Budget</code> header <a href="#aauth-budget-header" class="auto internal xref">Section 11</a>.<a href="#section-4.4-2.1" class="pilcrow">¶</a>
+<li class="compact" id="section-4.4-2.1">A Structured Field Integer (<span>[<a href="#RFC9651" class="cite xref">RFC9651</a>]</span>, Section 3.3.1) is limited to 15 digits, which bounds <code>remaining</code>, <code>cost</code>, and <code>reserved</code> in the <code>AAuth-Budget</code> header <a href="#aauth-budget-header" class="auto internal xref">Section 11</a>.<a href="#section-4.4-2.1" class="pilcrow">¶</a>
 </li>
           <li class="compact" id="section-4.4-2.2">A JSON number is exact only to 2^53 (approximately 9.0 x 10^15), which bounds the <code>amount</code> member of the <code>budget</code> claim.<a href="#section-4.4-2.2" class="pilcrow">¶</a>
 </li>
@@ -1678,8 +1689,7 @@ svg {
     { "unit": "USD", "decimals": 6, "max": 10000000 },
     { "unit": "tokens", "decimals": 0, "max": 5000000 }
   ],
-  "usage_endpoint": "https://inference.example/usage",
-  "balance_endpoint": "https://inference.example/balance"
+  "usage_endpoint": "https://inference.example/usage"
 }
 
 </pre><a href="#section-5-2" class="pilcrow">¶</a>
@@ -1700,10 +1710,8 @@ svg {
 </li>
       </ul>
 <p id="section-5-5">A resource that declares <code>budget_units</code> MUST NOT issue a resource token whose <code>budget.unit</code> is absent from the array, and MUST set <code>budget.decimals</code> to the value declared for that unit.<a href="#section-5-5" class="pilcrow">¶</a></p>
-<p id="section-5-6"><strong><code>usage_endpoint</code></strong> (OPTIONAL). The HTTPS URL where a person server queries usage counters <a href="#usage-counters" class="auto internal xref">Section 16</a>.<a href="#section-5-6" class="pilcrow">¶</a></p>
-<p id="section-5-7"><strong><code>balance_endpoint</code></strong> (OPTIONAL). The HTTPS URL where an agent reads the balance of its own granted budget <a href="#balance-endpoint" class="auto internal xref">Section 13</a>.<a href="#section-5-7" class="pilcrow">¶</a></p>
-<p id="section-5-8">Both endpoint URLs MUST conform to the Endpoint URL requirements of (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>).<a href="#section-5-8" class="pilcrow">¶</a></p>
-<p id="section-5-9">A PS or AS that receives a resource token carrying <code>budget</code> already fetches <code>{iss}/.well-known/aauth-resource.json</code> to discover the resource's JWKS, per the <code>dwk</code> claim (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). The unit declarations arrive in a fetch it was already making, so the cross-check in <a href="#errors" class="auto internal xref">Section 18</a> costs no extra round trip.<a href="#section-5-9" class="pilcrow">¶</a></p>
+<p id="section-5-6"><strong><code>usage_endpoint</code></strong> (OPTIONAL). The HTTPS URL where a person server queries usage counters <a href="#usage-counters" class="auto internal xref">Section 15</a>. The URL MUST conform to the Endpoint URL requirements of (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>).<a href="#section-5-6" class="pilcrow">¶</a></p>
+<p id="section-5-7">A PS or AS that receives a resource token carrying <code>budget</code> already fetches <code>{iss}/.well-known/aauth-resource.json</code> to discover the resource's JWKS, per the <code>dwk</code> claim (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). The unit declarations arrive in a fetch it was already making, so the cross-check in <a href="#errors" class="auto internal xref">Section 17</a> costs no extra round trip.<a href="#section-5-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="authorization-endpoint">
@@ -1730,7 +1738,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 </pre><a href="#section-6-2" class="pilcrow">¶</a>
 </div>
 <p id="section-6-3"><strong><code>budget</code></strong> (OPTIONAL). The ceiling the agent is requesting. All three members of the budget object are REQUIRED when <code>budget</code> is present.<a href="#section-6-3" class="pilcrow">¶</a></p>
-<p id="section-6-4">The resource MUST NOT reject the request because <code>budget.amount</code> exceeds what it will grant; it narrows instead <a href="#narrowing-chain" class="auto internal xref">Section 4.2</a>. The resource MAY reject a <code>budget</code> whose <code>unit</code> it has not declared <a href="#errors" class="auto internal xref">Section 18</a>.<a href="#section-6-4" class="pilcrow">¶</a></p>
+<p id="section-6-4">The resource MUST NOT reject the request because <code>budget.amount</code> exceeds what it will grant; it narrows instead <a href="#narrowing-chain" class="auto internal xref">Section 4.2</a>. The resource MAY reject a <code>budget</code> whose <code>unit</code> it has not declared <a href="#errors" class="auto internal xref">Section 17</a>.<a href="#section-6-4" class="pilcrow">¶</a></p>
 <p id="section-6-5">When the agent obtains its resource token from a <code>401</code> challenge rather than the authorization endpoint ((<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>), Auth Token Required), it has not stated a budget and the resource sizes the resource token on its own. This is why <code>max</code> in <code>budget_units</code> matters: it is what makes the proactive path useful on a first attempt.<a href="#section-6-5" class="pilcrow">¶</a></p>
 <p id="section-6-6">How an agent knows an operation is metered before its first call is answered by R3 (<span>[<a href="#I-D.hardt-aauth-r3" class="cite xref">I-D.hardt-aauth-r3</a>]</span>): a resource MAY annotate individual operations in its vocabulary with a budget annotation, and an agent that reads one knows to include <code>budget</code> in this request. The annotation states the fact of metering; <code>budget_units</code> states the units and ceilings.<a href="#section-6-6" class="pilcrow">¶</a></p>
 </section>
@@ -1788,12 +1796,12 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
             <strong><code>consumed</code></strong>: What the resource metered against that token's budget, a non-negative integer in the <code>unit</code> and <code>decimals</code> of the <code>budget</code> claim in the same resource token.<a href="#section-7.1-2.2" class="pilcrow">¶</a>
 </li>
         </ul>
-<p id="section-7.1-3">A resource MUST NOT include <code>budget_consumed</code> unless <code>budget</code> is present in the same token, and MUST omit any record it cannot state in that budget's <code>unit</code> and <code>decimals</code> — a record carried in a stale scale is the thousandfold error <a href="#errors" class="auto internal xref">Section 18</a> in miniature.<a href="#section-7.1-3" class="pilcrow">¶</a></p>
-<p id="section-7.1-4">Records cover prior auth tokens matching this token's context: the same <code>(iss, sub, aud)</code> the resource aggregates against <a href="#aggregation" class="auto internal xref">Section 15.4</a>, and, when this resource token carries <code>mission_s256</code>, the same <code>mission_s256</code>. A mission-context re-authorization thus reports that mission's grants; a mission-less one reports the person's most recent grants at this resource.<a href="#section-7.1-4" class="pilcrow">¶</a></p>
+<p id="section-7.1-3">A resource MUST NOT include <code>budget_consumed</code> unless <code>budget</code> is present in the same token, and MUST omit any record it cannot state in that budget's <code>unit</code> and <code>decimals</code> — a record carried in a stale scale is the thousandfold error <a href="#errors" class="auto internal xref">Section 17</a> in miniature.<a href="#section-7.1-3" class="pilcrow">¶</a></p>
+<p id="section-7.1-4">Records cover prior auth tokens matching this token's context: the same <code>(iss, sub, aud)</code> the resource aggregates against <a href="#aggregation" class="auto internal xref">Section 14.4</a>, and, when this resource token carries <code>mission_s256</code>, the same <code>mission_s256</code>. A mission-context re-authorization thus reports that mission's grants; a mission-less one reports the person's most recent grants at this resource.<a href="#section-7.1-4" class="pilcrow">¶</a></p>
 <p id="section-7.1-5">A resource SHOULD NOT include more than 20 records. The practical bound is size: the resource token travels inside the <code>AAuth-Requirement</code> header on the <code>401</code> path, where header-field limits apply; twenty records cost roughly a kilobyte after base64 encoding.<a href="#section-7.1-5" class="pilcrow">¶</a></p>
 <p id="section-7.1-6">A record is deliberately two members and no more. Every <code>jti</code> it names is a token the PS issued — or, in four-party access, relayed from the AS — so the PS already holds the granted amount, the mission, the scope, and the issuance time for each record and joins them from its own ledger. Carrying those values again would duplicate what the PS knows and put more of the person's financial detail into a token the agent also reads. What the PS cannot know, and what the record supplies, is what the resource actually metered.<a href="#section-7.1-6" class="pilcrow">¶</a></p>
 <p id="section-7.1-7">Records are attributable only when the resource can identify the person, which it can once it has verified an auth token for them. A resource issuing a resource token to an agent it has not previously authorized has nothing to report and omits <code>budget_consumed</code>.<a href="#section-7.1-7" class="pilcrow">¶</a></p>
-<p id="section-7.1-8">The records ride in the resource token because it already travels resource → agent → PS at exactly the moment the PS re-decides: no extra round trip, resource-signed, and interpretable without a metadata fetch. Totals over horizons longer than 20 grants are served at the usage endpoint <a href="#usage-counters" class="auto internal xref">Section 16</a>.<a href="#section-7.1-8" class="pilcrow">¶</a></p>
+<p id="section-7.1-8">The records ride in the resource token because it already travels resource → agent → PS at exactly the moment the PS re-decides: no extra round trip, resource-signed, and interpretable without a metadata fetch. Totals over horizons longer than 20 grants are served at the usage endpoint <a href="#usage-counters" class="auto internal xref">Section 15</a>.<a href="#section-7.1-8" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -1804,7 +1812,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 <a href="#section-8" class="section-number selfRef">8. </a><a href="#name-ps-token-endpoint-extension" class="section-name selfRef">PS Token Endpoint Extensions</a>
       </h2>
 <p id="section-8-1">No new request parameter is defined for the agent's request to the PS's <code>auth_token_endpoint</code>. The budget reaches the PS inside the resource token.<a href="#section-8-1" class="pilcrow">¶</a></p>
-<p id="section-8-2">An agent seeking a larger budget obtains a fresh resource token from the resource — stating the larger figure in the authorization endpoint request <a href="#authorization-endpoint" class="auto internal xref">Section 6</a>, or being handed one on a <code>401</code> <a href="#exhaustion" class="auto internal xref">Section 14</a> — and SHOULD explain the need in the <code>justification</code> parameter of the PS token request.<a href="#section-8-2" class="pilcrow">¶</a></p>
+<p id="section-8-2">An agent seeking a larger budget obtains a fresh resource token from the resource — stating the larger figure in the authorization endpoint request <a href="#authorization-endpoint" class="auto internal xref">Section 6</a>, or being handed one on a <code>401</code> <a href="#exhaustion" class="auto internal xref">Section 13</a> — and SHOULD explain the need in the <code>justification</code> parameter of the PS token request.<a href="#section-8-2" class="pilcrow">¶</a></p>
 <p id="section-8-3">When the PS issues the auth token itself (three-party), it applies the person's policy and issues per <a href="#auth-token" class="auto internal xref">Section 10</a>. When it federates (four-party), it proceeds per <a href="#as-token-endpoint" class="auto internal xref">Section 9</a>.<a href="#section-8-3" class="pilcrow">¶</a></p>
 <p id="section-8-4">A PS that puts a budget to the person for consent MUST present the amount as a human-readable figure in its unit — "$5.00", not <code>{5000000, USD, 6}</code> — visually distinct from any resource-supplied description, which is Markdown and MUST be sanitized before rendering <a href="#budget-units" class="auto internal xref">Section 5</a>. The amount is the decision the person is making.<a href="#section-8-4" class="pilcrow">¶</a></p>
 </section>
@@ -1888,7 +1896,7 @@ Signature-Key: sig=jwks_uri;
       </h2>
 <p id="section-11-1"><code>AAuth-Budget</code> is a response header carrying the remaining balance of the granted budget. It is a Dictionary (<span>[<a href="#RFC9651" class="cite xref">RFC9651</a>]</span>, Section 3.2), matching <code>AAuth-Requirement</code>.<a href="#section-11-1" class="pilcrow">¶</a></p>
 <div class="lang-http sourcecode" id="section-11-2">
-<pre>AAuth-Budget: remaining=1568800; consumed=431200;
+<pre>AAuth-Budget: cost=221200; remaining=1568800;
     unit="USD"; decimals=6
 
 </pre><a href="#section-11-2" class="pilcrow">¶</a>
@@ -1896,36 +1904,38 @@ Signature-Key: sig=jwks_uri;
 <p id="section-11-3">Members:<a href="#section-11-3" class="pilcrow">¶</a></p>
 <ul class="compact">
 <li class="compact" id="section-11-4.1">
-          <strong><code>remaining</code></strong> (REQUIRED): A non-negative Integer, in the granted scale, giving what is left of the budget on this auth token, net of reservations for requests in flight <a href="#overshoot" class="auto internal xref">Section 15.6</a>. It is a floor — committed consumption will not exceed the grant — though the figure may lag metering. Exhaustion is signaled by the <code>401</code> <a href="#exhaustion" class="auto internal xref">Section 14</a>, for which the agent stays prepared regardless.<a href="#section-11-4.1" class="pilcrow">¶</a>
+          <strong><code>remaining</code></strong> (REQUIRED): A non-negative Integer, in the granted scale, giving what is left of the budget on this auth token, net of reservations for requests in flight <a href="#overshoot" class="auto internal xref">Section 14.6</a>. It is a floor — committed consumption will not exceed the grant — though the figure may lag metering. Exhaustion is signaled by the <code>401</code> <a href="#exhaustion" class="auto internal xref">Section 13</a>, for which the agent stays prepared regardless.<a href="#section-11-4.1" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-11-4.2">
-          <strong><code>consumed</code></strong> (OPTIONAL): A non-negative Integer, in the granted scale, giving what has been consumed against this auth token. It never exceeds the granted amount <a href="#overshoot" class="auto internal xref">Section 15.6</a>. Provided for reconciliation against the person's bill.<a href="#section-11-4.2" class="pilcrow">¶</a>
+          <strong><code>cost</code></strong> (OPTIONAL): A non-negative Integer, in the granted scale, giving what <strong>this request</strong> cost. Sent in the header when the resource knows the figure as it writes the response, and in a trailer when it does not <a href="#streaming" class="auto internal xref">Section 12</a>. A resource that meters the request MUST NOT omit <code>cost</code> from both.<a href="#section-11-4.2" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-11-4.3">
-          <strong><code>unit</code></strong> (OPTIONAL): A String naming the unit. <strong><code>decimals</code></strong> (OPTIONAL): an Integer giving its scale. Informational, and a pair: a sender MUST include both or neither, because an amount carrying a unit but no scale misreads by a factor of 10^decimals to exactly the readers self-description serves.<a href="#section-11-4.3" class="pilcrow">¶</a>
+          <strong><code>reserved</code></strong> (OPTIONAL): A non-negative Integer, in the granted scale, giving what the resource has held against the grant for this request and not yet committed <a href="#overshoot" class="auto internal xref">Section 14.6</a>. Meaningful only where <code>cost</code> is not yet known, so in practice it accompanies a streamed response. It is a statement about this request, not a running total, and is never revised.<a href="#section-11-4.3" class="pilcrow">¶</a>
+</li>
+        <li class="compact" id="section-11-4.4">
+          <strong><code>unit</code></strong> (OPTIONAL): A String naming the unit. <strong><code>decimals</code></strong> (OPTIONAL): an Integer giving its scale. Informational, and a pair: a sender MUST include both or neither, because an amount carrying a unit but no scale misreads by a factor of 10^decimals to exactly the readers self-description serves.<a href="#section-11-4.4" class="pilcrow">¶</a>
 </li>
       </ul>
 <p id="section-11-5">Recipients MUST ignore members they do not recognize.<a href="#section-11-5" class="pilcrow">¶</a></p>
-<p id="section-11-6">The header carries no <code>granted</code> member and no token reference: the agent holds the auth token it signed the request with, and reads both from there.<a href="#section-11-6" class="pilcrow">¶</a></p>
-<p id="section-11-7">The scope of the reported figures is this auth token's budget, because the budget expires with the token <a href="#enforcement" class="auto internal xref">Section 15</a>. Consumption records and usage counters are a different set of numbers, reported to the PS in the resource token <a href="#budget-consumed" class="auto internal xref">Section 7.1</a> and at the usage endpoint <a href="#usage-counters" class="auto internal xref">Section 16</a>, not to the agent.<a href="#section-11-7" class="pilcrow">¶</a></p>
+<p id="section-11-6">The header carries no <code>granted</code> member, no cumulative consumption figure, and no token reference. The agent holds the auth token it signed the request with and reads <code>granted</code> from there; what it needs per response is what this call cost and what is left, which is what the field carries. Cumulative consumption is a PS-facing figure, reported in the resource token <a href="#budget-consumed" class="auto internal xref">Section 7.1</a> and at the usage endpoint <a href="#usage-counters" class="auto internal xref">Section 15</a>; see <a href="#why-no-cumulative" class="auto internal xref">Appendix A.4</a> for why it is not also reported to the agent.<a href="#section-11-6" class="pilcrow">¶</a></p>
+<p id="section-11-7">The scope of the reported figures is this auth token's budget, because the budget expires with the token <a href="#enforcement" class="auto internal xref">Section 14</a>.<a href="#section-11-7" class="pilcrow">¶</a></p>
 <div id="header-rules">
 <section id="section-11.1">
         <h3 id="name-sending-rules">
 <a href="#section-11.1" class="section-number selfRef">11.1. </a><a href="#name-sending-rules" class="section-name selfRef">Sending Rules</a>
         </h3>
-<p id="section-11.1-1">A resource that granted a budget SHOULD include <code>AAuth-Budget</code> on every response to a request bearing that auth token — success, error, and the <code>401</code> challenge, where it reads <code>remaining=0</code> beside the <code>AAuth-Requirement</code> header <a href="#exhaustion" class="auto internal xref">Section 14</a>.<a href="#section-11.1-1" class="pilcrow">¶</a></p>
-<p id="section-11.1-2">This is SHOULD rather than MUST because the failing layer may sit below the metering layer: a gateway timeout, a crashed worker, or a fault in metering itself produces a response no budget figure can ride on. A resource MUST NOT omit the field for any other reason. Where the figure matters and the header may be missing, the agent has the balance endpoint <a href="#balance-endpoint" class="auto internal xref">Section 13</a>.<a href="#section-11.1-2" class="pilcrow">¶</a></p>
+<p id="section-11.1-1">A resource that granted a budget SHOULD include <code>AAuth-Budget</code> on every response to a request bearing that auth token — success, error, and the <code>401</code> challenge, where it reads <code>remaining=0</code> beside the <code>AAuth-Requirement</code> header <a href="#exhaustion" class="auto internal xref">Section 13</a>.<a href="#section-11.1-1" class="pilcrow">¶</a></p>
+<p id="section-11.1-2">This is SHOULD rather than MUST because the failing layer may sit below the metering layer: a gateway timeout, a crashed worker, or a fault in metering itself produces a response no budget figure can ride on. A resource MUST NOT omit the field for any other reason. An agent that misses the field learns the balance from its next response, and until then applies <a href="#ambiguous-failure" class="auto internal xref">Section 12.2</a>.<a href="#section-11.1-2" class="pilcrow">¶</a></p>
 <div class="lang-http sourcecode" id="section-11.1-3">
 <pre>HTTP/1.1 401 Unauthorized
 AAuth-Requirement: requirement=auth-token;
     resource-token="eyJ..."; reason=budget-exhausted
-AAuth-Budget: remaining=0; consumed=2000000;
-    unit="USD"; decimals=6
+AAuth-Budget: remaining=0; unit="USD"; decimals=6
 
 </pre><a href="#section-11.1-3" class="pilcrow">¶</a>
 </div>
 <p id="section-11.1-4">That the field appears on every response regardless of status is the point of putting it in a header. The agent reads the same field whether the body is JSON, a server-sent event stream, a streamed completion, or a problem document <span>[<a href="#RFC9457" class="cite xref">RFC9457</a>]</span>.<a href="#section-11.1-4" class="pilcrow">¶</a></p>
-<p id="section-11.1-5">Intermediaries MUST NOT add, alter, or remove <code>AAuth-Budget</code>. The field reports the state of an authorization the resource issued; an intermediary rewriting it is asserting authorization state it does not hold. This is the inverse of the <code>RateLimit</code> rule permitting intermediaries to tighten values (<span>[<a href="#I-D.ietf-httpapi-ratelimit-headers" class="cite xref">I-D.ietf-httpapi-ratelimit-headers</a>]</span>) — see <a href="#why-not-ratelimit" class="auto internal xref">Appendix A.4</a>.<a href="#section-11.1-5" class="pilcrow">¶</a></p>
+<p id="section-11.1-5">Intermediaries MUST NOT add, alter, or remove <code>AAuth-Budget</code>. The field reports the state of an authorization the resource issued; an intermediary rewriting it is asserting authorization state it does not hold. This is the inverse of the <code>RateLimit</code> rule permitting intermediaries to tighten values (<span>[<a href="#I-D.ietf-httpapi-ratelimit-headers" class="cite xref">I-D.ietf-httpapi-ratelimit-headers</a>]</span>) — see <a href="#why-not-ratelimit" class="auto internal xref">Appendix A.6</a>.<a href="#section-11.1-5" class="pilcrow">¶</a></p>
 <p id="section-11.1-6">Recipients MUST ignore <code>AAuth-Budget</code> on a response served from cache with a positive <code>current_age</code> (<span>[<a href="#RFC9111" class="cite xref">RFC9111</a>]</span>, Section 4.2.3). This is the one <code>RateLimit</code> rule that carries over unchanged.<a href="#section-11.1-6" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -1945,207 +1955,221 @@ AAuth-Budget: remaining=0; consumed=2000000;
       <h2 id="name-streaming">
 <a href="#section-12" class="section-number selfRef">12. </a><a href="#name-streaming" class="section-name selfRef">Streaming</a>
       </h2>
-<p id="section-12-1">Response headers are written before the body, and a streamed response's actual cost is known only when the stream ends. The <code>remaining</code> on that response already covers it at its maximum: the resource reserved before serving <a href="#overshoot" class="auto internal xref">Section 15.6</a>, and the figure is net of the reservation. When the stream completes, the unused portion of the reservation is released into the next response's figure.<a href="#section-12-1" class="pilcrow">¶</a></p>
-<p id="section-12-2">Trailers are not used. The RateLimit work considered and rejected them: intermediaries drop trailers, and combining a header value with a trailer value complicates clients. Both objections apply here unchanged.<a href="#section-12-2" class="pilcrow">¶</a></p>
-<p id="section-12-3">Inference APIs commonly emit final usage in the stream's terminal event. That is application-layer and does not provide the application independence this header exists for, but it does mean the exact number exists when the stream ends, so a resource wanting to report it on the same response has somewhere to put it without this document defining anything.<a href="#section-12-3" class="pilcrow">¶</a></p>
-</section>
-</div>
-<div id="balance-endpoint">
-<section id="section-13">
-      <h2 id="name-balance-endpoint">
-<a href="#section-13" class="section-number selfRef">13. </a><a href="#name-balance-endpoint" class="section-name selfRef">Balance Endpoint</a>
-      </h2>
-<p id="section-13-1">A resource MAY publish a <code>balance_endpoint</code> <a href="#budget-units" class="auto internal xref">Section 5</a> where an agent reads the balance of its own granted budget without consuming any of it.<a href="#section-13-1" class="pilcrow">¶</a></p>
-<p id="section-13-2">The agent makes a signed GET, presenting its auth token via the <code>Signature-Key</code> header exactly as on any other request to the resource. The auth token is the whole query: its <code>budget</code> claim names the grant being asked about. The resource MUST NOT meter the call.<a href="#section-13-2" class="pilcrow">¶</a></p>
-<p id="section-13-3">The response carries the <code>AAuth-Budget</code> header <a href="#aauth-budget-header" class="auto internal xref">Section 11</a> and a body repeating the same figures as JSON:<a href="#section-13-3" class="pilcrow">¶</a></p>
-<div class="lang-http sourcecode" id="section-13-4">
+<p id="section-12-1">Response headers are written before the body, and a streamed response's actual cost is known only when the stream ends. The resource therefore cannot state <code>cost</code> in the header. What it can state is what it has held: it reserved before serving <a href="#overshoot" class="auto internal xref">Section 14.6</a>, and <code>remaining</code> is already net of that reservation.<a href="#section-12-1" class="pilcrow">¶</a></p>
+<p id="section-12-2">A resource serving a streamed response SHOULD send <code>reserved</code> in the header and <code>cost</code> in a trailer:<a href="#section-12-2" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-12-3">
 <pre>HTTP/1.1 200 OK
-Content-Type: application/json
-Cache-Control: no-store
-AAuth-Budget: remaining=1568800; consumed=431200;
+Content-Type: text/event-stream
+Trailer: AAuth-Budget
+AAuth-Budget: remaining=1568800; reserved=431200;
     unit="USD"; decimals=6
 
-{
-  "remaining": 1568800,
-  "consumed": 431200,
-  "unit": "USD",
-  "decimals": 6
-}
+   ...stream...
 
-</pre><a href="#section-13-4" class="pilcrow">¶</a>
+AAuth-Budget: cost=221200
+
+</pre><a href="#section-12-3" class="pilcrow">¶</a>
 </div>
-<p id="section-13-5">Body members <code>remaining</code>, <code>consumed</code>, <code>unit</code>, and <code>decimals</code> are all REQUIRED — a body pays no size cost for self-description. The response MUST carry <code>Cache-Control: no-store</code>. An auth token without a <code>budget</code> claim gets <code>invalid_request</code> <a href="#errors" class="auto internal xref">Section 18</a>; an invalid or expired auth token gets the <code>401</code> challenge it would get anywhere else at the resource.<a href="#section-13-5" class="pilcrow">¶</a></p>
-<p id="section-13-6">The endpoint exists for ambiguous failures. When a connection drops mid-request, the agent does not know whether the request charged, and the <code>AAuth-Budget</code> header that would have said so is on the response that was lost. An agent SHOULD NOT retry a chargeable request after an ambiguous failure without first learning whether the original charged — from the balance endpoint where the resource offers one, or from the <code>AAuth-Budget</code> header of its next response otherwise. <code>consumed</code> is the figure that answers the question, which is why the body requires it.<a href="#section-13-6" class="pilcrow">¶</a></p>
+<p id="section-12-4">The agent computes the balance after the request as <code>remaining + reserved - cost</code>. Here that is 1,778,800: the 431,200 held was not all spent, and the unspent 210,000 returns to the grant.<a href="#section-12-4" class="pilcrow">¶</a></p>
+<div id="trailer-rules">
+<section id="section-12.1">
+        <h3 id="name-trailer-rules">
+<a href="#section-12.1" class="section-number selfRef">12.1. </a><a href="#name-trailer-rules" class="section-name selfRef">Trailer Rules</a>
+        </h3>
+<p id="section-12.1-1">A resource MAY send <code>AAuth-Budget</code> as a trailer field, subject to three rules:<a href="#section-12.1-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="compact type-1" id="section-12.1-2">
+<li id="section-12.1-2.1">The response MUST list <code>AAuth-Budget</code> in a <code>Trailer</code> header field (<span>[<a href="#RFC9110" class="cite xref">RFC9110</a>]</span>, Section 6.6.1).<a href="#section-12.1-2.1" class="pilcrow">¶</a>
+</li>
+          <li id="section-12.1-2.2">A trailer instance MUST NOT restate a member the header instance carried. It carries <code>cost</code> and nothing else.<a href="#section-12.1-2.2" class="pilcrow">¶</a>
+</li>
+          <li id="section-12.1-2.3">A recipient MUST NOT treat the trailer as necessary. A response that never delivers one is complete.<a href="#section-12.1-2.3" class="pilcrow">¶</a>
+</li>
+        </ol>
+<p id="section-12.1-3">Rule 2 is what makes the field safe under either way a recipient handles trailers. A recipient that discards trailers keeps the header's <code>remaining</code>, which is a floor and therefore correct if conservative. A recipient that merges trailer fields into the header set produces a single Dictionary whose keys do not collide, because no key appears twice. Restating a member is the case that would break: <code>AAuth-Budget</code> is a Dictionary, duplicate keys resolve last-wins (<span>[<a href="#RFC9651" class="cite xref">RFC9651</a>]</span>, Section 3.2), and which value won would then depend on whether the recipient merged — a difference no sender can observe or control.<a href="#section-12.1-3" class="pilcrow">¶</a></p>
+<p id="section-12.1-4">Rule 3 follows from trailers being droppable in transit (<span>[<a href="#RFC9110" class="cite xref">RFC9110</a>]</span>, Section 6.5.2) and from trailers existing only on a chunked or HTTP/2-and-later response. The figure a trailer would have carried is also in the next response's <code>remaining</code>, so nothing is lost that is not recovered on the following call.<a href="#section-12.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="ambiguous-failure">
+<section id="section-12.2">
+        <h3 id="name-ambiguous-failures">
+<a href="#section-12.2" class="section-number selfRef">12.2. </a><a href="#name-ambiguous-failures" class="section-name selfRef">Ambiguous Failures</a>
+        </h3>
+<p id="section-12.2-1">A request whose response never arrives — a dropped connection, an aborted stream — leaves the agent unable to say whether it was metered. No trailer arrives on an aborted stream, and the header that would have carried <code>cost</code> is on the response that was lost.<a href="#section-12.2-1" class="pilcrow">¶</a></p>
+<p id="section-12.2-2">The agent MUST assume the request cost as much as the resource had held for it: <code>reserved</code> where it saw one, and otherwise the request's maximum cost as the resource would have bounded it <a href="#overshoot" class="auto internal xref">Section 14.6</a>. It carries that assumption until a later response's <code>remaining</code> supersedes it, and it SHOULD NOT retry a chargeable request before then.<a href="#section-12.2-2" class="pilcrow">¶</a></p>
+<p id="section-12.2-3">Assuming the maximum is the conservative direction: an agent that under-assumes plans spending it does not have and discovers the shortfall as a <code>401</code> <a href="#exhaustion" class="auto internal xref">Section 13</a>.<a href="#section-12.2-3" class="pilcrow">¶</a></p>
+<p id="section-12.2-4">Inference APIs commonly emit final usage in the stream's terminal event. That is application-layer and does not provide the application independence this header exists for, and a resource emitting it is not excused from the trailer — but it does mean the exact number exists when the stream ends.<a href="#section-12.2-4" class="pilcrow">¶</a></p>
+</section>
+</div>
 </section>
 </div>
 <div id="exhaustion">
-<section id="section-14">
+<section id="section-13">
       <h2 id="name-budget-exhaustion">
-<a href="#section-14" class="section-number selfRef">14. </a><a href="#name-budget-exhaustion" class="section-name selfRef">Budget Exhaustion</a>
+<a href="#section-13" class="section-number selfRef">13. </a><a href="#name-budget-exhaustion" class="section-name selfRef">Budget Exhaustion</a>
       </h2>
-<p id="section-14-1"><strong>Auth token expired.</strong> The budget expires with the token. This is already-defined behavior: <code>401</code> with <code>AAuth-Requirement: requirement=auth-token; resource-token="..."</code>. This document adds nothing.<a href="#section-14-1" class="pilcrow">¶</a></p>
-<p id="section-14-2"><strong>Budget exhausted, token still valid.</strong> The same response. The base protocol already permits a resource to return <code>requirement=auth-token</code> with a new resource token to a request that already carries an auth token, when the request requires higher authorization than the current token provides, and requires agents to be prepared for step-up at any time. Budget exhaustion is that case, and the agent's action is identical either way: take the fresh resource token to its PS.<a href="#section-14-2" class="pilcrow">¶</a></p>
-<p id="section-14-3"><strong>Request exceeds the remainder.</strong> The budget has remainder, but this request's maximum cost exceeds it <a href="#overshoot" class="auto internal xref">Section 15.6</a>. The same <code>401</code> challenge, with <code>reason=insufficient-budget</code>. The agent has a second move here that exhaustion does not offer: lower the request's bound to fit the <code>remaining</code> reported beside the challenge, and retry on the token it already holds.<a href="#section-14-3" class="pilcrow">¶</a></p>
-<p id="section-14-4">A request refused under this section MUST NOT draw down the budget or appear in the records and counters. The resource declined to serve it; metering the refusal would make exhaustion self-perpetuating.<a href="#section-14-4" class="pilcrow">¶</a></p>
-<p id="section-14-5">The fresh resource token SHOULD carry updated <code>budget_consumed</code> records <a href="#budget-consumed" class="auto internal xref">Section 7.1</a>, which show the PS what the last several grants were actually consumed — the context for deciding whether to authorize more.<a href="#section-14-5" class="pilcrow">¶</a></p>
+<p id="section-13-1"><strong>Auth token expired.</strong> The budget expires with the token. This is already-defined behavior: <code>401</code> with <code>AAuth-Requirement: requirement=auth-token; resource-token="..."</code>. This document adds nothing.<a href="#section-13-1" class="pilcrow">¶</a></p>
+<p id="section-13-2"><strong>Budget exhausted, token still valid.</strong> The same response. The base protocol already permits a resource to return <code>requirement=auth-token</code> with a new resource token to a request that already carries an auth token, when the request requires higher authorization than the current token provides, and requires agents to be prepared for step-up at any time. Budget exhaustion is that case, and the agent's action is identical either way: take the fresh resource token to its PS.<a href="#section-13-2" class="pilcrow">¶</a></p>
+<p id="section-13-3"><strong>Request exceeds the remainder.</strong> The budget has remainder, but this request's maximum cost exceeds it <a href="#overshoot" class="auto internal xref">Section 14.6</a>. The same <code>401</code> challenge, with <code>reason=insufficient-budget</code>. The agent has a second move here that exhaustion does not offer: lower the request's bound to fit the <code>remaining</code> reported beside the challenge, and retry on the token it already holds.<a href="#section-13-3" class="pilcrow">¶</a></p>
+<p id="section-13-4">A request refused under this section MUST NOT draw down the budget or appear in the records and counters. The resource declined to serve it; metering the refusal would make exhaustion self-perpetuating.<a href="#section-13-4" class="pilcrow">¶</a></p>
+<p id="section-13-5">The fresh resource token SHOULD carry updated <code>budget_consumed</code> records <a href="#budget-consumed" class="auto internal xref">Section 7.1</a>, which show the PS what the last several grants were actually consumed — the context for deciding whether to authorize more.<a href="#section-13-5" class="pilcrow">¶</a></p>
 <div id="reason-parameter">
-<section id="section-14.1">
+<section id="section-13.1">
         <h3 id="name-the-reason-parameter">
-<a href="#section-14.1" class="section-number selfRef">14.1. </a><a href="#name-the-reason-parameter" class="section-name selfRef">The <code>reason</code> Parameter</a>
+<a href="#section-13.1" class="section-number selfRef">13.1. </a><a href="#name-the-reason-parameter" class="section-name selfRef">The <code>reason</code> Parameter</a>
         </h3>
-<p id="section-14.1-1">A resource challenging because the budget is exhausted rather than because the token expired SHOULD include a <code>reason</code> parameter on the <code>requirement</code> member:<a href="#section-14.1-1" class="pilcrow">¶</a></p>
-<div class="lang-http sourcecode" id="section-14.1-2">
+<p id="section-13.1-1">A resource challenging because the budget is exhausted rather than because the token expired SHOULD include a <code>reason</code> parameter on the <code>requirement</code> member:<a href="#section-13.1-1" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-13.1-2">
 <pre>HTTP/1.1 401 Unauthorized
 AAuth-Requirement: requirement=auth-token;
     resource-token="eyJ..."; reason=budget-exhausted
-AAuth-Budget: remaining=0; consumed=2000000;
+AAuth-Budget: cost=180000; remaining=0;
     unit="USD"; decimals=6
 
-</pre><a href="#section-14.1-2" class="pilcrow">¶</a>
+</pre><a href="#section-13.1-2" class="pilcrow">¶</a>
 </div>
-<p id="section-14.1-3"><code>reason</code> is a Token. This document defines two values:<a href="#section-14.1-3" class="pilcrow">¶</a></p>
+<p id="section-13.1-3"><code>reason</code> is a Token. This document defines two values:<a href="#section-13.1-3" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-14.1-4.1">
-            <strong><code>budget-exhausted</code></strong>: The granted budget is spent.<a href="#section-14.1-4.1" class="pilcrow">¶</a>
+<li class="compact" id="section-13.1-4.1">
+            <strong><code>budget-exhausted</code></strong>: The granted budget is spent.<a href="#section-13.1-4.1" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-14.1-4.2">
-            <strong><code>insufficient-budget</code></strong>: The budget has remainder, but this request's maximum cost exceeds it <a href="#overshoot" class="auto internal xref">Section 15.6</a>.<a href="#section-14.1-4.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-13.1-4.2">
+            <strong><code>insufficient-budget</code></strong>: The budget has remainder, but this request's maximum cost exceeds it <a href="#overshoot" class="auto internal xref">Section 14.6</a>.<a href="#section-13.1-4.2" class="pilcrow">¶</a>
 </li>
         </ul>
-<p id="section-14.1-5">For either value, the enclosed resource token MAY carry a <code>budget</code> sized for what the resource would need to see granted — for <code>insufficient-budget</code>, the cost of the refused operation. The denial is itself the re-authorization offer.<a href="#section-14.1-5" class="pilcrow">¶</a></p>
-<p id="section-14.1-6">No new <code>requirement</code> value is minted. The base protocol says an agent that does not recognize a <code>requirement</code> value MUST NOT treat the response as satisfiable and surfaces it as an error, while recipients MUST ignore unknown <em>parameters</em> on the <code>requirement</code> member. A new value would hard-fail every budget-unaware agent on a condition that plain <code>auth-token</code> resolves correctly. That asymmetry — unknown values fail, unknown parameters are ignored — is why this extension extends by parameter.<a href="#section-14.1-6" class="pilcrow">¶</a></p>
-<p id="section-14.1-7">An agent that understands the <code>reason</code> values knows what to do beyond re-authorizing: for <code>budget-exhausted</code>, request a larger budget and say why in the <code>justification</code> it sends to its PS; for <code>insufficient-budget</code>, either that, or shrink the request and retry without involving the PS at all. An agent that understands neither ignores the parameter and re-authorizes, which is always correct.<a href="#section-14.1-7" class="pilcrow">¶</a></p>
+<p id="section-13.1-5">For either value, the enclosed resource token MAY carry a <code>budget</code> sized for what the resource would need to see granted — for <code>insufficient-budget</code>, the cost of the refused operation. The denial is itself the re-authorization offer.<a href="#section-13.1-5" class="pilcrow">¶</a></p>
+<p id="section-13.1-6">No new <code>requirement</code> value is minted. The base protocol says an agent that does not recognize a <code>requirement</code> value MUST NOT treat the response as satisfiable and surfaces it as an error, while recipients MUST ignore unknown <em>parameters</em> on the <code>requirement</code> member. A new value would hard-fail every budget-unaware agent on a condition that plain <code>auth-token</code> resolves correctly. That asymmetry — unknown values fail, unknown parameters are ignored — is why this extension extends by parameter.<a href="#section-13.1-6" class="pilcrow">¶</a></p>
+<p id="section-13.1-7">An agent that understands the <code>reason</code> values knows what to do beyond re-authorizing: for <code>budget-exhausted</code>, request a larger budget and say why in the <code>justification</code> it sends to its PS; for <code>insufficient-budget</code>, either that, or shrink the request and retry without involving the PS at all. An agent that understands neither ignores the parameter and re-authorizes, which is always correct.<a href="#section-13.1-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="exhaustion-boundaries">
-<section id="section-14.2">
+<section id="section-13.2">
         <h3 id="name-boundaries">
-<a href="#section-14.2" class="section-number selfRef">14.2. </a><a href="#name-boundaries" class="section-name selfRef">Boundaries</a>
+<a href="#section-13.2" class="section-number selfRef">13.2. </a><a href="#name-boundaries" class="section-name selfRef">Boundaries</a>
         </h3>
-<p id="section-14.2-1"><code>429 Too Many Requests</code> is not used. It is rate limiting, and in this protocol it already means "increase the polling interval by 5 seconds" in the deferred response state machine.<a href="#section-14.2-1" class="pilcrow">¶</a></p>
-<p id="section-14.2-2"><code>402 Payment Required</code> is a different condition: the resource needs payment rather than re-authorization from the person. The base protocol already permits <code>AAuth-Requirement</code> on a <code>402</code>, and this document does not change that.<a href="#section-14.2-2" class="pilcrow">¶</a></p>
+<p id="section-13.2-1"><code>429 Too Many Requests</code> is not used. It is rate limiting, and in this protocol it already means "increase the polling interval by 5 seconds" in the deferred response state machine.<a href="#section-13.2-1" class="pilcrow">¶</a></p>
+<p id="section-13.2-2"><code>402 Payment Required</code> is a different condition: the resource needs payment rather than re-authorization from the person. The base protocol already permits <code>AAuth-Requirement</code> on a <code>402</code>, and this document does not change that.<a href="#section-13.2-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
 </div>
 <div id="enforcement">
-<section id="section-15">
+<section id="section-14">
       <h2 id="name-enforcement">
-<a href="#section-15" class="section-number selfRef">15. </a><a href="#name-enforcement" class="section-name selfRef">Enforcement</a>
+<a href="#section-14" class="section-number selfRef">14. </a><a href="#name-enforcement" class="section-name selfRef">Enforcement</a>
       </h2>
 <div id="resource-enforces">
-<section id="section-15.1">
+<section id="section-14.1">
         <h3 id="name-the-resource-enforces">
-<a href="#section-15.1" class="section-number selfRef">15.1. </a><a href="#name-the-resource-enforces" class="section-name selfRef">The Resource Enforces</a>
+<a href="#section-14.1" class="section-number selfRef">14.1. </a><a href="#name-the-resource-enforces" class="section-name selfRef">The Resource Enforces</a>
         </h3>
-<p id="section-15.1-1">The PS authorizes a number. The resource counts. The PS is not in the request path and does not meter.<a href="#section-15.1-1" class="pilcrow">¶</a></p>
+<p id="section-14.1-1">The PS authorizes a number. The resource counts. The PS is not in the request path and does not meter.<a href="#section-14.1-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="requires-auth-token">
-<section id="section-15.2">
+<section id="section-14.2">
         <h3 id="name-budgets-require-auth-token-">
-<a href="#section-15.2" class="section-number selfRef">15.2. </a><a href="#name-budgets-require-auth-token-" class="section-name selfRef">Budgets Require Auth-Token Mode</a>
+<a href="#section-14.2" class="section-number selfRef">14.2. </a><a href="#name-budgets-require-auth-token-" class="section-name selfRef">Budgets Require Auth-Token Mode</a>
         </h3>
-<p id="section-15.2-1">A budget is carried in the <code>budget</code> claim of an auth token, so a resource can enforce one only where it issues auth tokens. A resource that declares <code>access_mode: person-token</code> and serves requests on the person's identity alone ((<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>), Person Identity Access) has no auth token to read a budget from, and neither does a resource operating in <code>agent-token</code> or <code>session-token</code> mode.<a href="#section-15.2-1" class="pilcrow">¶</a></p>
-<p id="section-15.2-2">A metered resource therefore declares <code>access_mode: auth-token</code> for the endpoints it meters. It MAY continue to serve unmetered endpoints on a person token; access modes apply per endpoint. A resource MUST NOT rely on this extension for an endpoint it serves without an auth token.<a href="#section-15.2-2" class="pilcrow">¶</a></p>
-<p id="section-15.2-3">Where the resource holds the authorization state itself rather than reading it from a signed claim, there is nothing for the person server to have bounded.<a href="#section-15.2-3" class="pilcrow">¶</a></p>
+<p id="section-14.2-1">A budget is carried in the <code>budget</code> claim of an auth token, so a resource can enforce one only where it issues auth tokens. A resource that declares <code>access_mode: person-token</code> and serves requests on the person's identity alone ((<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>), Person Identity Access) has no auth token to read a budget from, and neither does a resource operating in <code>agent-token</code> or <code>session-token</code> mode.<a href="#section-14.2-1" class="pilcrow">¶</a></p>
+<p id="section-14.2-2">A metered resource therefore declares <code>access_mode: auth-token</code> for the endpoints it meters. It MAY continue to serve unmetered endpoints on a person token; access modes apply per endpoint. A resource MUST NOT rely on this extension for an endpoint it serves without an auth token.<a href="#section-14.2-2" class="pilcrow">¶</a></p>
+<p id="section-14.2-3">Where the resource holds the authorization state itself rather than reading it from a signed claim, there is nothing for the person server to have bounded.<a href="#section-14.2-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="token-scope">
-<section id="section-15.3">
+<section id="section-14.3">
         <h3 id="name-token-scope">
-<a href="#section-15.3" class="section-number selfRef">15.3. </a><a href="#name-token-scope" class="section-name selfRef">Token Scope</a>
+<a href="#section-14.3" class="section-number selfRef">14.3. </a><a href="#name-token-scope" class="section-name selfRef">Token Scope</a>
         </h3>
-<p id="section-15.3-1">A budget is scoped to the auth token that carries it and expires with it. This document defines no persistent grant identifier and does not require the PS to carry a budget across re-issuance. Auth tokens are capped at one hour by the base protocol; re-issuance is the intended point at which the PS re-decides, not a bypass.<a href="#section-15.3-1" class="pilcrow">¶</a></p>
+<p id="section-14.3-1">A budget is scoped to the auth token that carries it and expires with it. This document defines no persistent grant identifier and does not require the PS to carry a budget across re-issuance. Auth tokens are capped at one hour by the base protocol; re-issuance is the intended point at which the PS re-decides, not a bypass.<a href="#section-14.3-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="aggregation">
-<section id="section-15.4">
+<section id="section-14.4">
         <h3 id="name-aggregation">
-<a href="#section-15.4" class="section-number selfRef">15.4. </a><a href="#name-aggregation" class="section-name selfRef">Aggregation</a>
+<a href="#section-14.4" class="section-number selfRef">14.4. </a><a href="#name-aggregation" class="section-name selfRef">Aggregation</a>
         </h3>
-<p id="section-15.4-1">The resource MUST aggregate consumption against the key <code>(iss, sub, aud)</code> of the auth token. <code>(iss, sub)</code> identifies the person — <code>sub</code> is unique within its issuer, and values from different issuers are different people — and <code>aud</code> is the resource itself. This document introduces no new identifier.<a href="#section-15.4-1" class="pilcrow">¶</a></p>
-<p id="section-15.4-2">The key is the person, not the agent. An auth token names no agent, and a person's spending at a resource is theirs whichever agent incurred it; a per-agent key would also reset every time the person changed agents.<a href="#section-15.4-2" class="pilcrow">¶</a></p>
+<p id="section-14.4-1">The resource MUST aggregate consumption against the key <code>(iss, sub, aud)</code> of the auth token. <code>(iss, sub)</code> identifies the person — <code>sub</code> is unique within its issuer, and values from different issuers are different people — and <code>aud</code> is the resource itself. This document introduces no new identifier.<a href="#section-14.4-1" class="pilcrow">¶</a></p>
+<p id="section-14.4-2">The key is the person, not the agent. An auth token names no agent, and a person's spending at a resource is theirs whichever agent incurred it; a per-agent key would also reset every time the person changed agents.<a href="#section-14.4-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="concurrency">
-<section id="section-15.5">
+<section id="section-14.5">
         <h3 id="name-concurrency">
-<a href="#section-15.5" class="section-number selfRef">15.5. </a><a href="#name-concurrency" class="section-name selfRef">Concurrency</a>
+<a href="#section-14.5" class="section-number selfRef">14.5. </a><a href="#name-concurrency" class="section-name selfRef">Concurrency</a>
         </h3>
-<p id="section-15.5-1">An agent may hold several concurrent auth tokens at the same resource — the <code>mission_s256</code> claim means concurrent missions produce concurrent tokens, each with its own budget, for up to an hour. Handling this is mandatory, not optional:<a href="#section-15.5-1" class="pilcrow">¶</a></p>
+<p id="section-14.5-1">An agent may hold several concurrent auth tokens at the same resource — the <code>mission_s256</code> claim means concurrent missions produce concurrent tokens, each with its own budget, for up to an hour. Handling this is mandatory, not optional:<a href="#section-14.5-1" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-15.5-2.1">A resource MUST aggregate atomically against <code>(iss, sub, aud)</code> across all live auth tokens.<a href="#section-15.5-2.1" class="pilcrow">¶</a>
+<li class="compact" id="section-14.5-2.1">A resource MUST aggregate atomically against <code>(iss, sub, aud)</code> across all live auth tokens.<a href="#section-14.5-2.1" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-15.5-2.2">A PS SHOULD size per-token budgets so that their sum stays within whatever standing ceiling it holds for the person at that resource.<a href="#section-15.5-2.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-14.5-2.2">A PS SHOULD size per-token budgets so that their sum stays within whatever standing ceiling it holds for the person at that resource.<a href="#section-14.5-2.2" class="pilcrow">¶</a>
 </li>
         </ul>
-<p id="section-15.5-3">The bound on over-issuance is the auth token lifetime multiplied by the number of concurrent tokens. A PS that issues <em>n</em> concurrent tokens of <em>X</em> each has authorized up to <em>nX</em> for as long as an hour, regardless of any standing figure it intended to hold.<a href="#section-15.5-3" class="pilcrow">¶</a></p>
+<p id="section-14.5-3">The bound on over-issuance is the auth token lifetime multiplied by the number of concurrent tokens. A PS that issues <em>n</em> concurrent tokens of <em>X</em> each has authorized up to <em>nX</em> for as long as an hour, regardless of any standing figure it intended to hold.<a href="#section-14.5-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="overshoot">
-<section id="section-15.6">
+<section id="section-14.6">
         <h3 id="name-the-budget-is-a-hard-cap">
-<a href="#section-15.6" class="section-number selfRef">15.6. </a><a href="#name-the-budget-is-a-hard-cap" class="section-name selfRef">The Budget Is a Hard Cap</a>
+<a href="#section-14.6" class="section-number selfRef">14.6. </a><a href="#name-the-budget-is-a-hard-cap" class="section-name selfRef">The Budget Is a Hard Cap</a>
         </h3>
-<p id="section-15.6-1">A resource MUST NOT let metered consumption exceed the granted <code>amount</code>. A budget is an authorization, and an authorization the enforcer may exceed is a hint.<a href="#section-15.6-1" class="pilcrow">¶</a></p>
-<p id="section-15.6-2">Output is metered after it is generated, so honoring the cap means bounding the request before serving it. Before serving a chargeable request, the resource determines the request's maximum cost — from a bound the request declares, such as a maximum output length, or from a documented default — and refuses the request with <code>reason=insufficient-budget</code> <a href="#reason-parameter" class="auto internal xref">Section 14.1</a> when that maximum exceeds the remainder. An operation with no finite cost bound MUST be given one, be truncated when the remainder is consumed, or be refused.<a href="#section-15.6-2" class="pilcrow">¶</a></p>
-<p id="section-15.6-3">The implementation shape is reserve-commit-release: atomically reserve the maximum against the grant, serve, commit the actual charge, release the difference. The normative requirement is the invariant, not the mechanism: committed consumption plus outstanding reservations MUST NOT exceed the granted <code>amount</code> at any moment, including under concurrent requests <a href="#concurrency" class="auto internal xref">Section 15.5</a>.<a href="#section-15.6-3" class="pilcrow">¶</a></p>
-<p id="section-15.6-4">The honest cost of the invariant lands near exhaustion: a request bounded at more than the remainder is refused even when its actual cost would have fit. The mitigation is the agent's — read <code>remaining</code> from the refusal's <code>AAuth-Budget</code> header and retry with a bound that fits — and that is the correct pressure, since it rewards realistic bounds.<a href="#section-15.6-4" class="pilcrow">¶</a></p>
+<p id="section-14.6-1">A resource MUST NOT let metered consumption exceed the granted <code>amount</code>. A budget is an authorization, and an authorization the enforcer may exceed is a hint.<a href="#section-14.6-1" class="pilcrow">¶</a></p>
+<p id="section-14.6-2">Output is metered after it is generated, so honoring the cap means bounding the request before serving it. Before serving a chargeable request, the resource determines the request's maximum cost — from a bound the request declares, such as a maximum output length, or from a documented default — and refuses the request with <code>reason=insufficient-budget</code> <a href="#reason-parameter" class="auto internal xref">Section 13.1</a> when that maximum exceeds the remainder. An operation with no finite cost bound MUST be given one, be truncated when the remainder is consumed, or be refused.<a href="#section-14.6-2" class="pilcrow">¶</a></p>
+<p id="section-14.6-3">The implementation shape is reserve-commit-release: atomically reserve the maximum against the grant, serve, commit the actual charge, release the difference. The normative requirement is the invariant, not the mechanism: committed consumption plus outstanding reservations MUST NOT exceed the granted <code>amount</code> at any moment, including under concurrent requests <a href="#concurrency" class="auto internal xref">Section 14.5</a>.<a href="#section-14.6-3" class="pilcrow">¶</a></p>
+<p id="section-14.6-4">The honest cost of the invariant lands near exhaustion: a request bounded at more than the remainder is refused even when its actual cost would have fit. The mitigation is the agent's — read <code>remaining</code> from the refusal's <code>AAuth-Budget</code> header and retry with a bound that fits — and that is the correct pressure, since it rewards realistic bounds.<a href="#section-14.6-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="failed-calls">
-<section id="section-15.7">
+<section id="section-14.7">
         <h3 id="name-failed-calls">
-<a href="#section-15.7" class="section-number selfRef">15.7. </a><a href="#name-failed-calls" class="section-name selfRef">Failed Calls</a>
+<a href="#section-14.7" class="section-number selfRef">14.7. </a><a href="#name-failed-calls" class="section-name selfRef">Failed Calls</a>
         </h3>
-<p id="section-15.7-1">Whether a request that fails — a <code>5xx</code> after input tokens were consumed — draws down the budget is the resource's metering policy. Whatever it meters, the records and counters MUST reflect, or the person's numbers will not reconcile with the bill.<a href="#section-15.7-1" class="pilcrow">¶</a></p>
+<p id="section-14.7-1">Whether a request that fails — a <code>5xx</code> after input tokens were consumed — draws down the budget is the resource's metering policy. Whatever it meters, the records and counters MUST reflect, or the person's numbers will not reconcile with the bill.<a href="#section-14.7-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="delegation">
-<section id="section-15.8">
+<section id="section-14.8">
         <h3 id="name-delegation">
-<a href="#section-15.8" class="section-number selfRef">15.8. </a><a href="#name-delegation" class="section-name selfRef">Delegation</a>
+<a href="#section-14.8" class="section-number selfRef">14.8. </a><a href="#name-delegation" class="section-name selfRef">Delegation</a>
         </h3>
-<p id="section-15.8-1">A budget is not delegable. Each auth token carries its own budget, and consumption through a delegated token draws down that token's budget alone. Both delegation paths — call chaining and sub-agent authorization (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>) — obtain each downstream auth token from the person server, so the PS sizes every grant in a chain, and <a href="#concurrency" class="auto internal xref">Section 15.5</a> already governs their sum. No sub-budget or draw-down-from-parent mechanism is defined.<a href="#section-15.8-1" class="pilcrow">¶</a></p>
+<p id="section-14.8-1">A budget is not delegable. Each auth token carries its own budget, and consumption through a delegated token draws down that token's budget alone. Both delegation paths — call chaining and sub-agent authorization (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>) — obtain each downstream auth token from the person server, so the PS sizes every grant in a chain, and <a href="#concurrency" class="auto internal xref">Section 14.5</a> already governs their sum. No sub-budget or draw-down-from-parent mechanism is defined.<a href="#section-14.8-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="mission-attribution">
-<section id="section-15.9">
+<section id="section-14.9">
         <h3 id="name-mission-attribution">
-<a href="#section-15.9" class="section-number selfRef">15.9. </a><a href="#name-mission-attribution" class="section-name selfRef">Mission Attribution</a>
+<a href="#section-14.9" class="section-number selfRef">14.9. </a><a href="#name-mission-attribution" class="section-name selfRef">Mission Attribution</a>
         </h3>
-<p id="section-15.9-1">Consumption is attributed to a mission using the <code>mission_s256</code> claim of the auth token. That claim is PS-asserted throughout: the person server validated the mission when it issued the person token, the resource copied it into the resource token, and the person server bound the resource token to the person token it had issued. No party in the chain takes the mission on the agent's word, which is what makes a resource's per-mission figures worth reading.<a href="#section-15.9-1" class="pilcrow">¶</a></p>
+<p id="section-14.9-1">Consumption is attributed to a mission using the <code>mission_s256</code> claim of the auth token. That claim is PS-asserted throughout: the person server validated the mission when it issued the person token, the resource copied it into the resource token, and the person server bound the resource token to the person token it had issued. No party in the chain takes the mission on the agent's word, which is what makes a resource's per-mission figures worth reading.<a href="#section-14.9-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
 </div>
 <div id="usage-counters">
-<section id="section-16">
+<section id="section-15">
       <h2 id="name-usage-counters">
-<a href="#section-16" class="section-number selfRef">16. </a><a href="#name-usage-counters" class="section-name selfRef">Usage Counters</a>
+<a href="#section-15" class="section-number selfRef">15. </a><a href="#name-usage-counters" class="section-name selfRef">Usage Counters</a>
       </h2>
-<p id="section-16-1">Consumption records reach the PS only when the agent brings a resource token back. The agent is the party being budgeted and also the courier of the evidence: it cannot falsify the records, but between re-authorizations it does not appear, and the PS is blind for up to an hour per token. The <code>usage_endpoint</code> <a href="#budget-units" class="auto internal xref">Section 5</a> removes the agent from that loop: the PS queries the resource directly, on a channel the agent is never on.<a href="#section-16-1" class="pilcrow">¶</a></p>
-<p id="section-16-2">The endpoint serves <strong>usage counters</strong>: pre-summed consumption totals over fixed calendar periods. The PS reads figures it can act on and display; it does not compute, convert, or round. The resource keeps a handful of running integers per key and unit, incremented at metering time; serving the endpoint requires no per-record history.<a href="#section-16-2" class="pilcrow">¶</a></p>
+<p id="section-15-1">Consumption records reach the PS only when the agent brings a resource token back. The agent is the party being budgeted and also the courier of the evidence: it cannot falsify the records, but between re-authorizations it does not appear, and the PS is blind for up to an hour per token. The <code>usage_endpoint</code> <a href="#budget-units" class="auto internal xref">Section 5</a> removes the agent from that loop: the PS queries the resource directly, on a channel the agent is never on.<a href="#section-15-1" class="pilcrow">¶</a></p>
+<p id="section-15-2">The endpoint serves <strong>usage counters</strong>: pre-summed consumption totals over fixed calendar periods. The PS reads figures it can act on and display; it does not compute, convert, or round. The resource keeps a handful of running integers per key and unit, incremented at metering time; serving the endpoint requires no per-record history.<a href="#section-15-2" class="pilcrow">¶</a></p>
 <div id="usage-request">
-<section id="section-16.1">
+<section id="section-15.1">
         <h3 id="name-usage-request">
-<a href="#section-16.1" class="section-number selfRef">16.1. </a><a href="#name-usage-request" class="section-name selfRef">Usage Request</a>
+<a href="#section-15.1" class="section-number selfRef">15.1. </a><a href="#name-usage-request" class="section-name selfRef">Usage Request</a>
         </h3>
-<p id="section-16.1-1">The PS MUST make a signed POST to the <code>usage_endpoint</code>, authenticating exactly as it does at an AS <code>auth_token_endpoint</code> (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>): an HTTP Sig whose <code>Signature-Key</code> header carries <code>scheme=jwks_uri</code>, with the signature additionally covering <code>content-type</code> and <code>content-digest</code>.<a href="#section-16.1-1" class="pilcrow">¶</a></p>
-<p id="section-16.1-2">The body carries exactly one of three query keys, each a claim value the resource has seen in auth tokens:<a href="#section-16.1-2" class="pilcrow">¶</a></p>
+<p id="section-15.1-1">The PS MUST make a signed POST to the <code>usage_endpoint</code>, authenticating exactly as it does at an AS <code>auth_token_endpoint</code> (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>): an HTTP Sig whose <code>Signature-Key</code> header carries <code>scheme=jwks_uri</code>, with the signature additionally covering <code>content-type</code> and <code>content-digest</code>.<a href="#section-15.1-1" class="pilcrow">¶</a></p>
+<p id="section-15.1-2">The body carries exactly one of three query keys, each a claim value the resource has seen in auth tokens:<a href="#section-15.1-2" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-16.1-3.1">
-            <strong><code>sub</code></strong>: A directed person identifier. Scope: the person at this resource, across all their agents and missions.<a href="#section-16.1-3.1" class="pilcrow">¶</a>
+<li class="compact" id="section-15.1-3.1">
+            <strong><code>sub</code></strong>: A directed person identifier. Scope: the person at this resource, across all their agents and missions.<a href="#section-15.1-3.1" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-16.1-3.2">
-            <strong><code>tenant</code></strong>: A tenant identifier. Scope: the organization, across its people.<a href="#section-16.1-3.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-15.1-3.2">
+            <strong><code>tenant</code></strong>: A tenant identifier. Scope: the organization, across its people.<a href="#section-15.1-3.2" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-16.1-3.3">
-            <strong><code>mission_s256</code></strong>: A mission identifier. Scope: one mission.<a href="#section-16.1-3.3" class="pilcrow">¶</a>
+          <li class="compact" id="section-15.1-3.3">
+            <strong><code>mission_s256</code></strong>: A mission identifier. Scope: one mission.<a href="#section-15.1-3.3" class="pilcrow">¶</a>
 </li>
         </ul>
-<div class="lang-http sourcecode" id="section-16.1-4">
+<div class="lang-http sourcecode" id="section-15.1-4">
 <pre>POST /usage HTTP/1.1
 Host: inference.example
 Content-Type: application/json
@@ -2159,16 +2183,16 @@ Signature-Key: sig=jwks_uri;
 
 { "sub": "8f14e45fceea167a5a36dedd4bea2543" }
 
-</pre><a href="#section-16.1-4" class="pilcrow">¶</a>
+</pre><a href="#section-15.1-4" class="pilcrow">¶</a>
 </div>
 </section>
 </div>
 <div id="usage-response">
-<section id="section-16.2">
+<section id="section-15.2">
         <h3 id="name-usage-response">
-<a href="#section-16.2" class="section-number selfRef">16.2. </a><a href="#name-usage-response" class="section-name selfRef">Usage Response</a>
+<a href="#section-15.2" class="section-number selfRef">15.2. </a><a href="#name-usage-response" class="section-name selfRef">Usage Response</a>
         </h3>
-<div class="lang-json sourcecode" id="section-16.2-1">
+<div class="lang-json sourcecode" id="section-15.2-1">
 <pre>{
   "as_of": 1754619970,
   "usage": [
@@ -2184,80 +2208,80 @@ Signature-Key: sig=jwks_uri;
   ]
 }
 
-</pre><a href="#section-16.2-1" class="pilcrow">¶</a>
+</pre><a href="#section-15.2-1" class="pilcrow">¶</a>
 </div>
 <ul class="compact">
-<li class="compact" id="section-16.2-2.1">
-            <strong><code>as_of</code></strong> (REQUIRED): The time through which the figures are complete, in seconds since the Unix epoch. Metering aggregation MAY lag serving; <code>as_of</code> is what keeps a lagging figure honest.<a href="#section-16.2-2.1" class="pilcrow">¶</a>
+<li class="compact" id="section-15.2-2.1">
+            <strong><code>as_of</code></strong> (REQUIRED): The time through which the figures are complete, in seconds since the Unix epoch. Metering aggregation MAY lag serving; <code>as_of</code> is what keeps a lagging figure honest.<a href="#section-15.2-2.1" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-16.2-2.2">
-            <strong><code>usage</code></strong> (REQUIRED): An array with one entry per unit the resource has metered budgets in under the queried key. Each entry carries <code>unit</code> and <code>decimals</code> as in the budget object <a href="#budget-object" class="auto internal xref">Section 4.5</a>, plus counters in that scale.<a href="#section-16.2-2.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-15.2-2.2">
+            <strong><code>usage</code></strong> (REQUIRED): An array with one entry per unit the resource has metered budgets in under the queried key. Each entry carries <code>unit</code> and <code>decimals</code> as in the budget object <a href="#budget-object" class="auto internal xref">Section 4.5</a>, plus counters in that scale.<a href="#section-15.2-2.2" class="pilcrow">¶</a>
 </li>
         </ul>
-<p id="section-16.2-3">The counters are <code>day</code>, <code>week</code>, <code>month</code>, <code>year</code>, and <code>all_time</code>, following the interval enumeration of Stripe Issuing <span>[<a href="#Stripe.Issuing" class="cite xref">Stripe.Issuing</a>]</span> <a href="#pa-stripe" class="auto internal xref">Appendix B.4</a>. Each is a non-negative integer giving consumption within the current period:<a href="#section-16.2-3" class="pilcrow">¶</a></p>
+<p id="section-15.2-3">The counters are <code>day</code>, <code>week</code>, <code>month</code>, <code>year</code>, and <code>all_time</code>, following the interval enumeration of Stripe Issuing <span>[<a href="#Stripe.Issuing" class="cite xref">Stripe.Issuing</a>]</span> <a href="#pa-stripe" class="auto internal xref">Appendix B.4</a>. Each is a non-negative integer giving consumption within the current period:<a href="#section-15.2-3" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-16.2-4.1">
-            <strong><code>day</code></strong>: since 00:00 UTC today.<a href="#section-16.2-4.1" class="pilcrow">¶</a>
+<li class="compact" id="section-15.2-4.1">
+            <strong><code>day</code></strong>: since 00:00 UTC today.<a href="#section-15.2-4.1" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-16.2-4.2">
-            <strong><code>week</code></strong>: since Monday 00:00 UTC of the current ISO 8601 week.<a href="#section-16.2-4.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-15.2-4.2">
+            <strong><code>week</code></strong>: since Monday 00:00 UTC of the current ISO 8601 week.<a href="#section-15.2-4.2" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-16.2-4.3">
-            <strong><code>month</code></strong>, <strong><code>year</code></strong>: since the start of the current UTC calendar month or year.<a href="#section-16.2-4.3" class="pilcrow">¶</a>
+          <li class="compact" id="section-15.2-4.3">
+            <strong><code>month</code></strong>, <strong><code>year</code></strong>: since the start of the current UTC calendar month or year.<a href="#section-15.2-4.3" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-16.2-4.4">
-            <strong><code>all_time</code></strong> (REQUIRED): everything the resource has metered against budgets under this key.<a href="#section-16.2-4.4" class="pilcrow">¶</a>
+          <li class="compact" id="section-15.2-4.4">
+            <strong><code>all_time</code></strong> (REQUIRED): everything the resource has metered against budgets under this key.<a href="#section-15.2-4.4" class="pilcrow">¶</a>
 </li>
         </ul>
-<p id="section-16.2-5">All period boundaries are UTC. This is a definition, not a deployment choice: no timezone appears in metadata or in the response, and every party computes the same figure. The cost is that "today" resets mid-afternoon in Auckland, which Stripe Issuing accepts for the same reason this document does — the counter is decision context, not a bill.<a href="#section-16.2-5" class="pilcrow">¶</a></p>
-<p id="section-16.2-6">The calendar counters are OPTIONAL; a resource omits periods it does not track. For a <code>mission_s256</code> query, <code>all_time</code> is the mission total — the figure a PS wants when deciding whether to fund a mission's continuation — and a resource MAY serve it alone.<a href="#section-16.2-6" class="pilcrow">¶</a></p>
-<p id="section-16.2-7">Counters are subject to the 15-digit bound of <a href="#range-limits" class="auto internal xref">Section 4.4</a>. A resource whose cumulative figure would exceed it omits that counter rather than reporting an inexact number.<a href="#section-16.2-7" class="pilcrow">¶</a></p>
-<p id="section-16.2-8"><code>all_time</code> reaches as far back as the resource retains. This document sets no retention requirement; the person's bill is the durable record.<a href="#section-16.2-8" class="pilcrow">¶</a></p>
+<p id="section-15.2-5">All period boundaries are UTC. This is a definition, not a deployment choice: no timezone appears in metadata or in the response, and every party computes the same figure. The cost is that "today" resets mid-afternoon in Auckland, which Stripe Issuing accepts for the same reason this document does — the counter is decision context, not a bill.<a href="#section-15.2-5" class="pilcrow">¶</a></p>
+<p id="section-15.2-6">The calendar counters are OPTIONAL; a resource omits periods it does not track. For a <code>mission_s256</code> query, <code>all_time</code> is the mission total — the figure a PS wants when deciding whether to fund a mission's continuation — and a resource MAY serve it alone.<a href="#section-15.2-6" class="pilcrow">¶</a></p>
+<p id="section-15.2-7">Counters are subject to the 15-digit bound of <a href="#range-limits" class="auto internal xref">Section 4.4</a>. A resource whose cumulative figure would exceed it omits that counter rather than reporting an inexact number.<a href="#section-15.2-7" class="pilcrow">¶</a></p>
+<p id="section-15.2-8"><code>all_time</code> reaches as far back as the resource retains. This document sets no retention requirement; the person's bill is the durable record.<a href="#section-15.2-8" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="usage-authorization">
-<section id="section-16.3">
+<section id="section-15.3">
         <h3 id="name-authorization-and-errors">
-<a href="#section-16.3" class="section-number selfRef">16.3. </a><a href="#name-authorization-and-errors" class="section-name selfRef">Authorization and Errors</a>
+<a href="#section-15.3" class="section-number selfRef">15.3. </a><a href="#name-authorization-and-errors" class="section-name selfRef">Authorization and Errors</a>
         </h3>
-<p id="section-16.3-1">The <code>jwks_uri</code> in the <code>Signature-Key</code> header names the calling person server. The resource MUST only answer for key values that have appeared in auth tokens it accepted from that person server — tokens whose <code>iss</code> (three-party) or <code>ps</code> claim (four-party) names it. <code>sub</code> is directed per PS, so one person server cannot even name another's subjects; <code>tenant</code> and <code>mission_s256</code> are not directed, and this check is what stops a third party from querying them.<a href="#section-16.3-1" class="pilcrow">¶</a></p>
-<p id="section-16.3-2">The access server is not an entitled caller. The AS acts for the resource and sits in its trust domain; whatever consumption figures it needs, it gets from the resource directly, outside this protocol.<a href="#section-16.3-2" class="pilcrow">¶</a></p>
-<p id="section-16.3-3">A query for a value the resource does not recognize returns <code>200</code> with an empty <code>usage</code> array; "never seen" and "nothing consumed" are deliberately indistinguishable. A body carrying zero or several query keys, or a malformed value, returns <code>invalid_request</code> using the error response format of (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>).<a href="#section-16.3-3" class="pilcrow">¶</a></p>
-<p id="section-16.3-4">A resource MAY rate-limit the endpoint, using the <code>RateLimit</code> fields (<span>[<a href="#I-D.ietf-httpapi-ratelimit-headers" class="cite xref">I-D.ietf-httpapi-ratelimit-headers</a>]</span>) as on any endpoint. A PS SHOULD poll no faster than its decisions require.<a href="#section-16.3-4" class="pilcrow">¶</a></p>
+<p id="section-15.3-1">The <code>jwks_uri</code> in the <code>Signature-Key</code> header names the calling person server. The resource MUST only answer for key values that have appeared in auth tokens it accepted from that person server — tokens whose <code>iss</code> (three-party) or <code>ps</code> claim (four-party) names it. <code>sub</code> is directed per PS, so one person server cannot even name another's subjects; <code>tenant</code> and <code>mission_s256</code> are not directed, and this check is what stops a third party from querying them.<a href="#section-15.3-1" class="pilcrow">¶</a></p>
+<p id="section-15.3-2">The access server is not an entitled caller. The AS acts for the resource and sits in its trust domain; whatever consumption figures it needs, it gets from the resource directly, outside this protocol.<a href="#section-15.3-2" class="pilcrow">¶</a></p>
+<p id="section-15.3-3">A query for a value the resource does not recognize returns <code>200</code> with an empty <code>usage</code> array; "never seen" and "nothing consumed" are deliberately indistinguishable. A body carrying zero or several query keys, or a malformed value, returns <code>invalid_request</code> using the error response format of (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>).<a href="#section-15.3-3" class="pilcrow">¶</a></p>
+<p id="section-15.3-4">A resource MAY rate-limit the endpoint, using the <code>RateLimit</code> fields (<span>[<a href="#I-D.ietf-httpapi-ratelimit-headers" class="cite xref">I-D.ietf-httpapi-ratelimit-headers</a>]</span>) as on any endpoint. A PS SHOULD poll no faster than its decisions require.<a href="#section-15.3-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="usage-division">
-<section id="section-16.4">
+<section id="section-15.4">
         <h3 id="name-division-of-labor">
-<a href="#section-16.4" class="section-number selfRef">16.4. </a><a href="#name-division-of-labor" class="section-name selfRef">Division of Labor</a>
+<a href="#section-15.4" class="section-number selfRef">15.4. </a><a href="#name-division-of-labor" class="section-name selfRef">Division of Labor</a>
         </h3>
-<p id="section-16.4-1">The two PS-facing channels answer different questions at different moments. The consumption records <a href="#budget-consumed" class="auto internal xref">Section 7.1</a> serve the re-authorization decision: they arrive in-band, resource-signed, at no round-trip cost, exactly when the PS is deciding. The usage counters serve everything else: supervision between re-authorizations, mission totals past the 20-record window, tenant-level exposure, and the person's dashboard. A metered resource SHOULD implement both; the narrowing chain <a href="#narrowing-chain" class="auto internal xref">Section 4.2</a> functions with records alone. The agent's own view is neither of these: it is the <code>AAuth-Budget</code> header <a href="#aauth-budget-header" class="auto internal xref">Section 11</a> and the balance endpoint <a href="#balance-endpoint" class="auto internal xref">Section 13</a>, scoped to the token it holds.<a href="#section-16.4-1" class="pilcrow">¶</a></p>
+<p id="section-15.4-1">The two PS-facing channels answer different questions at different moments. The consumption records <a href="#budget-consumed" class="auto internal xref">Section 7.1</a> serve the re-authorization decision: they arrive in-band, resource-signed, at no round-trip cost, exactly when the PS is deciding. The usage counters serve everything else: supervision between re-authorizations, mission totals past the 20-record window, tenant-level exposure, and the person's dashboard. A metered resource SHOULD implement both; the narrowing chain <a href="#narrowing-chain" class="auto internal xref">Section 4.2</a> functions with records alone. The agent's own view is neither of these: it is the <code>AAuth-Budget</code> header <a href="#aauth-budget-header" class="auto internal xref">Section 11</a>, scoped to the token it holds and to the request it just made.<a href="#section-15.4-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
 </div>
 <div id="capability">
-<section id="section-17">
+<section id="section-16">
       <h2 id="name-capability-negotiation">
-<a href="#section-17" class="section-number selfRef">17. </a><a href="#name-capability-negotiation" class="section-name selfRef">Capability Negotiation</a>
+<a href="#section-16" class="section-number selfRef">16. </a><a href="#name-capability-negotiation" class="section-name selfRef">Capability Negotiation</a>
       </h2>
-<p id="section-17-1">This document adds <code>budget</code> to the AAuth Capability Value Registry. An agent that understands budget semantics — the <code>budget</code> claim, the <code>AAuth-Budget</code> header, and the <code>reason</code> values <a href="#reason-parameter" class="auto internal xref">Section 14.1</a> — SHOULD include <code>budget</code> in its <code>AAuth-Capabilities</code> request header, and in the <code>capabilities</code> parameter of its PS token requests:<a href="#section-17-1" class="pilcrow">¶</a></p>
-<div class="lang-http sourcecode" id="section-17-2">
+<p id="section-16-1">This document adds <code>budget</code> to the AAuth Capability Value Registry. An agent that understands budget semantics — the <code>budget</code> claim, the <code>AAuth-Budget</code> header, and the <code>reason</code> values <a href="#reason-parameter" class="auto internal xref">Section 13.1</a> — SHOULD include <code>budget</code> in its <code>AAuth-Capabilities</code> request header, and in the <code>capabilities</code> parameter of its PS token requests:<a href="#section-16-1" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-16-2">
 <pre>AAuth-Capabilities: interaction, clarification, budget
 
-</pre><a href="#section-17-2" class="pilcrow">¶</a>
+</pre><a href="#section-16-2" class="pilcrow">¶</a>
 </div>
-<p id="section-17-3">This tells the resource up front whether the agent will read what it sends, rather than leaving it to rely on ignore-unknown-parameter behavior. It is the same negotiation <code>interaction</code> performs for <code>requirement=interaction</code>. Recipients MUST ignore unrecognized capability values.<a href="#section-17-3" class="pilcrow">¶</a></p>
-<p id="section-17-4">A resource MUST NOT withhold <code>AAuth-Budget</code> from an agent that did not declare the capability. The header is safe to ignore.<a href="#section-17-4" class="pilcrow">¶</a></p>
+<p id="section-16-3">This tells the resource up front whether the agent will read what it sends, rather than leaving it to rely on ignore-unknown-parameter behavior. It is the same negotiation <code>interaction</code> performs for <code>requirement=interaction</code>. Recipients MUST ignore unrecognized capability values.<a href="#section-16-3" class="pilcrow">¶</a></p>
+<p id="section-16-4">A resource MUST NOT withhold <code>AAuth-Budget</code> from an agent that did not declare the capability. The header is safe to ignore.<a href="#section-16-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="errors">
-<section id="section-18">
+<section id="section-17">
       <h2 id="name-errors">
-<a href="#section-18" class="section-number selfRef">18. </a><a href="#name-errors" class="section-name selfRef">Errors</a>
+<a href="#section-17" class="section-number selfRef">17. </a><a href="#name-errors" class="section-name selfRef">Errors</a>
       </h2>
-<p id="section-18-1">Narrowing is never an error. A resource that will grant less than the agent asked for issues a smaller <code>budget</code>; a PS or AS that will allow less issues a smaller <code>amount</code>. No error is returned in either case.<a href="#section-18-1" class="pilcrow">¶</a></p>
-<p id="section-18-2">Errors are reserved for statements that cannot be reconciled:<a href="#section-18-2" class="pilcrow">¶</a></p>
+<p id="section-17-1">Narrowing is never an error. A resource that will grant less than the agent asked for issues a smaller <code>budget</code>; a PS or AS that will allow less issues a smaller <code>amount</code>. No error is returned in either case.<a href="#section-17-1" class="pilcrow">¶</a></p>
+<p id="section-17-2">Errors are reserved for statements that cannot be reconciled:<a href="#section-17-2" class="pilcrow">¶</a></p>
 <table class="center" id="table-2">
         <caption><a href="#table-2" class="selfRef">Table 2</a></caption>
 <thead>
@@ -2292,136 +2316,127 @@ Signature-Key: sig=jwks_uri;
 </td>
             <td class="text-left" rowspan="1" colspan="1">400</td>
             <td class="text-left" rowspan="1" colspan="1">Usage endpoint</td>
-            <td class="text-left" rowspan="1" colspan="1">Zero or several query keys, or a malformed value <a href="#usage-authorization" class="auto internal xref">Section 16.3</a>
-</td>
-          </tr>
-          <tr>
-            <td class="text-left" rowspan="1" colspan="1">
-              <code>invalid_request</code>
-</td>
-            <td class="text-left" rowspan="1" colspan="1">400</td>
-            <td class="text-left" rowspan="1" colspan="1">Balance endpoint</td>
-            <td class="text-left" rowspan="1" colspan="1">The auth token presented carries no <code>budget</code> claim <a href="#balance-endpoint" class="auto internal xref">Section 13</a>
+            <td class="text-left" rowspan="1" colspan="1">Zero or several query keys, or a malformed value <a href="#usage-authorization" class="auto internal xref">Section 15.3</a>
 </td>
           </tr>
         </tbody>
       </table>
-<p id="section-18-4">Error responses use the error response format defined in AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>).<a href="#section-18-4" class="pilcrow">¶</a></p>
-<p id="section-18-5"><code>invalid_budget</code> at the authorization endpoint parallels <code>invalid_scope</code>: the agent named something the resource does not recognize.<a href="#section-18-5" class="pilcrow">¶</a></p>
-<p id="section-18-6">A <code>decimals</code> mismatch at the PS or AS MUST be a hard reject rather than a narrowing. A mismatch means one of the two figures is stale, and guessing which one is worse than failing — the error modes are a budget interpreted a thousandfold too large or too small.<a href="#section-18-6" class="pilcrow">¶</a></p>
-<p id="section-18-7">A PS or AS that has no cached <code>budget_units</code> for the resource and cannot fetch the metadata MAY proceed on the resource token's <code>decimals</code>, which is signed by the resource. The cross-check is a defense against staleness, not against the resource.<a href="#section-18-7" class="pilcrow">¶</a></p>
+<p id="section-17-4">Error responses use the error response format defined in AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>).<a href="#section-17-4" class="pilcrow">¶</a></p>
+<p id="section-17-5"><code>invalid_budget</code> at the authorization endpoint parallels <code>invalid_scope</code>: the agent named something the resource does not recognize.<a href="#section-17-5" class="pilcrow">¶</a></p>
+<p id="section-17-6">A <code>decimals</code> mismatch at the PS or AS MUST be a hard reject rather than a narrowing. A mismatch means one of the two figures is stale, and guessing which one is worse than failing — the error modes are a budget interpreted a thousandfold too large or too small.<a href="#section-17-6" class="pilcrow">¶</a></p>
+<p id="section-17-7">A PS or AS that has no cached <code>budget_units</code> for the resource and cannot fetch the metadata MAY proceed on the resource token's <code>decimals</code>, which is signed by the resource. The cross-check is a defense against staleness, not against the resource.<a href="#section-17-7" class="pilcrow">¶</a></p>
 <div id="declining">
-<section id="section-18.1">
+<section id="section-17.1">
         <h3 id="name-declining-with-guidance">
-<a href="#section-18.1" class="section-number selfRef">18.1. </a><a href="#name-declining-with-guidance" class="section-name selfRef">Declining with Guidance</a>
+<a href="#section-17.1" class="section-number selfRef">17.1. </a><a href="#name-declining-with-guidance" class="section-name selfRef">Declining with Guidance</a>
         </h3>
-<p id="section-18.1-1">A PS granting less than the resource offered needs no mechanism: the <code>amount</code> in the issued claim says it. A PS or AS that declines a token request outright on budget grounds MAY include <strong><code>suggested_budget</code></strong> in its error response body: a budget object <a href="#budget-object" class="auto internal xref">Section 4.5</a> whose <code>unit</code> and <code>decimals</code> are copied from the resource token, and whose <code>amount</code> is what the issuer would currently accept. It is guidance, not a grant — the agent's move is a fresh resource token at that figure <a href="#authorization-endpoint" class="auto internal xref">Section 6</a> and a new token request, with the usual consent and policy evaluation.<a href="#section-18.1-1" class="pilcrow">¶</a></p>
+<p id="section-17.1-1">A PS granting less than the resource offered needs no mechanism: the <code>amount</code> in the issued claim says it. A PS or AS that declines a token request outright on budget grounds MAY include <strong><code>suggested_budget</code></strong> in its error response body: a budget object <a href="#budget-object" class="auto internal xref">Section 4.5</a> whose <code>unit</code> and <code>decimals</code> are copied from the resource token, and whose <code>amount</code> is what the issuer would currently accept. It is guidance, not a grant — the agent's move is a fresh resource token at that figure <a href="#authorization-endpoint" class="auto internal xref">Section 6</a> and a new token request, with the usual consent and policy evaluation.<a href="#section-17.1-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
 </div>
 <div id="inference">
-<section id="section-19">
+<section id="section-18">
       <h2 id="name-standing-authorization-for-">
-<a href="#section-19" class="section-number selfRef">19. </a><a href="#name-standing-authorization-for-" class="section-name selfRef">Standing Authorization for Metered Inference</a>
+<a href="#section-18" class="section-number selfRef">18. </a><a href="#name-standing-authorization-for-" class="section-name selfRef">Standing Authorization for Metered Inference</a>
       </h2>
-<p id="section-19-1">Metered inference is the initiating use case for this extension and has a property that distinguishes it from most resource access: the agent needs it before it can do anything else, including decide what else it needs.<a href="#section-19-1" class="pilcrow">¶</a></p>
-<p id="section-19-2"><strong>Inference authorization is agent-scoped and standing.</strong> It is established at first PS contact, not per mission. The reason is a termination argument rather than a preference: a per-mission inference budget requires the agent to run inference in order to evaluate whether it needs more inference budget, and that evaluation itself consumes inference. A standing allocation terminates; a per-mission one does not.<a href="#section-19-2" class="pilcrow">¶</a></p>
-<p id="section-19-3"><strong>Mission-less auth tokens are already legal.</strong> <code>mission_s256</code> is optional in a person token and therefore in everything derived from it, and the PS permission and interaction endpoints work with or without a mission. No new token type is needed for this pattern.<a href="#section-19-3" class="pilcrow">¶</a></p>
-<p id="section-19-4"><strong>Do not model the harness as a mission.</strong> A mission <code>description</code> is defined as human intent expressed in Markdown. Synthesizing an "operating mission" or "harness mission" to hold the inference budget would put a fabricated description into a signed, content-addressed blob, and mission revocation — a kill switch for one piece of work — would then also be the kill switch for the agent's ability to think. Those are two distinct controls and conflating them is a mistake.<a href="#section-19-4" class="pilcrow">¶</a></p>
-<p id="section-19-5"><strong>Pre-mission inference runs on a mission-less auth token</strong> and lands in the person's usage with no mission attribution. Mission boundaries become natural auth token re-issuance points, which costs nothing: the agent is already talking to its PS to create the mission.<a href="#section-19-5" class="pilcrow">¶</a></p>
-<p id="section-19-6"><strong>AP-bundled inference is out of scope.</strong> Where the agent provider pays for the agent's inference, the agent token is the credential, the person server never appears, and nothing in this document applies. This is the common deployment today, and readers will otherwise assume the extension covers it. The case that does engage this extension is a harness written by the agent provider spending against the <em>person's</em> inference account — which is where a ceiling matters most, because the agent provider's software is deciding how much of the person's money to consume.<a href="#section-19-6" class="pilcrow">¶</a></p>
-<p id="section-19-7"><strong>A TPX provider adds agent support without touching its meter.</strong> A TPX <span>[<a href="#TPX" class="cite xref">TPX</a>]</span> provider already prices per token, reports cost in each response's <code>usage</code>, and enforces a person-granted budget as a hard cap — for human-driven apps holding OAuth grants. Serving agents means accepting AAuth auth tokens carrying <code>budget</code> beside those grants: two authorization envelopes over one metering core. Deployed this way, this extension is the AAuth binding of TPX.<a href="#section-19-7" class="pilcrow">¶</a></p>
+<p id="section-18-1">Metered inference is the initiating use case for this extension and has a property that distinguishes it from most resource access: the agent needs it before it can do anything else, including decide what else it needs.<a href="#section-18-1" class="pilcrow">¶</a></p>
+<p id="section-18-2"><strong>Inference authorization is agent-scoped and standing.</strong> It is established at first PS contact, not per mission. The reason is a termination argument rather than a preference: a per-mission inference budget requires the agent to run inference in order to evaluate whether it needs more inference budget, and that evaluation itself consumes inference. A standing allocation terminates; a per-mission one does not.<a href="#section-18-2" class="pilcrow">¶</a></p>
+<p id="section-18-3"><strong>Mission-less auth tokens are already legal.</strong> <code>mission_s256</code> is optional in a person token and therefore in everything derived from it, and the PS permission and interaction endpoints work with or without a mission. No new token type is needed for this pattern.<a href="#section-18-3" class="pilcrow">¶</a></p>
+<p id="section-18-4"><strong>Do not model the harness as a mission.</strong> A mission <code>description</code> is defined as human intent expressed in Markdown. Synthesizing an "operating mission" or "harness mission" to hold the inference budget would put a fabricated description into a signed, content-addressed blob, and mission revocation — a kill switch for one piece of work — would then also be the kill switch for the agent's ability to think. Those are two distinct controls and conflating them is a mistake.<a href="#section-18-4" class="pilcrow">¶</a></p>
+<p id="section-18-5"><strong>Pre-mission inference runs on a mission-less auth token</strong> and lands in the person's usage with no mission attribution. Mission boundaries become natural auth token re-issuance points, which costs nothing: the agent is already talking to its PS to create the mission.<a href="#section-18-5" class="pilcrow">¶</a></p>
+<p id="section-18-6"><strong>AP-bundled inference is out of scope.</strong> Where the agent provider pays for the agent's inference, the agent token is the credential, the person server never appears, and nothing in this document applies. This is the common deployment today, and readers will otherwise assume the extension covers it. The case that does engage this extension is a harness written by the agent provider spending against the <em>person's</em> inference account — which is where a ceiling matters most, because the agent provider's software is deciding how much of the person's money to consume.<a href="#section-18-6" class="pilcrow">¶</a></p>
+<p id="section-18-7"><strong>A TPX provider adds agent support without touching its meter.</strong> A TPX <span>[<a href="#TPX" class="cite xref">TPX</a>]</span> provider already prices per token, reports cost in each response's <code>usage</code>, and enforces a person-granted budget as a hard cap — for human-driven apps holding OAuth grants. Serving agents means accepting AAuth auth tokens carrying <code>budget</code> beside those grants: two authorization envelopes over one metering core. Deployed this way, this extension is the AAuth binding of TPX.<a href="#section-18-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="security-considerations">
-<section id="section-20">
+<section id="section-19">
       <h2 id="name-security-considerations">
-<a href="#section-20" class="section-number selfRef">20. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
+<a href="#section-19" class="section-number selfRef">19. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
       </h2>
 <div id="header-trust">
-<section id="section-20.1">
+<section id="section-19.1">
         <h3 id="name-the-header-is-unsigned">
-<a href="#section-20.1" class="section-number selfRef">20.1. </a><a href="#name-the-header-is-unsigned" class="section-name selfRef">The Header Is Unsigned</a>
+<a href="#section-19.1" class="section-number selfRef">19.1. </a><a href="#name-the-header-is-unsigned" class="section-name selfRef">The Header Is Unsigned</a>
         </h3>
-<p id="section-20.1-1"><code>AAuth-Budget</code> is not signed, so an intermediary can lie about the balance. The failure modes are bounded. Understating <code>remaining</code> makes the agent re-authorize earlier than it needed to. Overstating it makes the agent hit an unexpected <code>401</code>. Neither causes overspend, because enforcement is the resource checking metered consumption against the signed <code>budget</code> claim of the auth token — the header is a pacing signal, not the authorization.<a href="#section-20.1-1" class="pilcrow">¶</a></p>
-<p id="section-20.1-2">An implementation that needs the balance to be trustworthy rather than merely harmless can cover <code>AAuth-Budget</code> with an HTTP Message Signature on the response (<span>[<a href="#RFC9421" class="cite xref">RFC9421</a>]</span>). AAuth's signature profile is request-side today, and adding a response-side profile is a larger change than this extension makes.<a href="#section-20.1-2" class="pilcrow">¶</a></p>
+<p id="section-19.1-1"><code>AAuth-Budget</code> is not signed, so an intermediary can lie about the balance. The failure modes are bounded. Understating <code>remaining</code> makes the agent re-authorize earlier than it needed to. Overstating it makes the agent hit an unexpected <code>401</code>. Neither causes overspend, because enforcement is the resource checking metered consumption against the signed <code>budget</code> claim of the auth token — the header is a pacing signal, not the authorization.<a href="#section-19.1-1" class="pilcrow">¶</a></p>
+<p id="section-19.1-2">An implementation that needs the balance to be trustworthy rather than merely harmless can cover <code>AAuth-Budget</code> with an HTTP Message Signature on the response (<span>[<a href="#RFC9421" class="cite xref">RFC9421</a>]</span>). AAuth's signature profile is request-side today, and adding a response-side profile is a larger change than this extension makes.<a href="#section-19.1-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="budget-not-scope">
-<section id="section-20.2">
+<section id="section-19.2">
         <h3 id="name-budget-is-not-a-substitute-">
-<a href="#section-20.2" class="section-number selfRef">20.2. </a><a href="#name-budget-is-not-a-substitute-" class="section-name selfRef">Budget Is Not a Substitute for Scope</a>
+<a href="#section-19.2" class="section-number selfRef">19.2. </a><a href="#name-budget-is-not-a-substitute-" class="section-name selfRef">Budget Is Not a Substitute for Scope</a>
         </h3>
-<p id="section-20.2-1">A budget bounds how much an agent may consume, not what it may do. An agent with a small budget at a resource that performs irreversible actions can still perform them. Resources MUST continue to enforce scope, and SHOULD NOT treat the presence of a budget as evidence that the person reviewed anything beyond the amount.<a href="#section-20.2-1" class="pilcrow">¶</a></p>
+<p id="section-19.2-1">A budget bounds how much an agent may consume, not what it may do. An agent with a small budget at a resource that performs irreversible actions can still perform them. Resources MUST continue to enforce scope, and SHOULD NOT treat the presence of a budget as evidence that the person reviewed anything beyond the amount.<a href="#section-19.2-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="security-concurrency">
-<section id="section-20.3">
+<section id="section-19.3">
         <h3 id="name-over-issuance-through-concu">
-<a href="#section-20.3" class="section-number selfRef">20.3. </a><a href="#name-over-issuance-through-concu" class="section-name selfRef">Over-Issuance Through Concurrency</a>
+<a href="#section-19.3" class="section-number selfRef">19.3. </a><a href="#name-over-issuance-through-concu" class="section-name selfRef">Over-Issuance Through Concurrency</a>
         </h3>
-<p id="section-20.3-1">A PS that issues concurrent auth tokens without tracking their sum has authorized their sum, not any single one of them <a href="#concurrency" class="auto internal xref">Section 15.5</a>. A resource that aggregates non-atomically across concurrent requests can be driven past the ceiling by parallel calls. Both are implementation errors that produce real overspend, and both are easy to make.<a href="#section-20.3-1" class="pilcrow">¶</a></p>
+<p id="section-19.3-1">A PS that issues concurrent auth tokens without tracking their sum has authorized their sum, not any single one of them <a href="#concurrency" class="auto internal xref">Section 14.5</a>. A resource that aggregates non-atomically across concurrent requests can be driven past the ceiling by parallel calls. Both are implementation errors that produce real overspend, and both are easy to make.<a href="#section-19.3-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="counters-trust">
-<section id="section-20.4">
+<section id="section-19.4">
         <h3 id="name-consumption-reports-as-atta">
-<a href="#section-20.4" class="section-number selfRef">20.4. </a><a href="#name-consumption-reports-as-atta" class="section-name selfRef">Consumption Reports as Attack Surface</a>
+<a href="#section-19.4" class="section-number selfRef">19.4. </a><a href="#name-consumption-reports-as-atta" class="section-name selfRef">Consumption Reports as Attack Surface</a>
         </h3>
-<p id="section-20.4-1"><code>budget_consumed</code> records are resource-signed and usage counters are served from the resource's authenticated endpoint; both are the resource's own account of what it metered. A resource that inflates them can induce a PS to authorize more than the person intended, or to refuse further authorization. A PS SHOULD reconcile them against the person's billing relationship with the resource where one exists, and SHOULD NOT treat them as authoritative for anything other than its own next decision.<a href="#section-20.4-1" class="pilcrow">¶</a></p>
+<p id="section-19.4-1"><code>budget_consumed</code> records are resource-signed and usage counters are served from the resource's authenticated endpoint; both are the resource's own account of what it metered. A resource that inflates them can induce a PS to authorize more than the person intended, or to refuse further authorization. A PS SHOULD reconcile them against the person's billing relationship with the resource where one exists, and SHOULD NOT treat them as authoritative for anything other than its own next decision.<a href="#section-19.4-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="unit-substitution">
-<section id="section-20.5">
+<section id="section-19.5">
         <h3 id="name-unit-substitution">
-<a href="#section-20.5" class="section-number selfRef">20.5. </a><a href="#name-unit-substitution" class="section-name selfRef">Unit Substitution</a>
+<a href="#section-19.5" class="section-number selfRef">19.5. </a><a href="#name-unit-substitution" class="section-name selfRef">Unit Substitution</a>
         </h3>
-<p id="section-20.5-1">Because a resource may change the unit between what the agent requested and what it offers <a href="#narrowing-chain" class="auto internal xref">Section 4.2</a>, a PS reading a <code>budget</code> claim must read <code>unit</code> and <code>decimals</code> rather than assuming the denomination the agent described in <code>justification</code>. The cross-check against <code>budget_units</code> in <a href="#errors" class="auto internal xref">Section 18</a> is the defense against a stale scale; there is no defense against a resource that misdenominates deliberately, and none is needed — that resource is equally free to ignore the budget it was granted.<a href="#section-20.5-1" class="pilcrow">¶</a></p>
+<p id="section-19.5-1">Because a resource may change the unit between what the agent requested and what it offers <a href="#narrowing-chain" class="auto internal xref">Section 4.2</a>, a PS reading a <code>budget</code> claim must read <code>unit</code> and <code>decimals</code> rather than assuming the denomination the agent described in <code>justification</code>. The cross-check against <code>budget_units</code> in <a href="#errors" class="auto internal xref">Section 17</a> is the defense against a stale scale; there is no defense against a resource that misdenominates deliberately, and none is needed — that resource is equally free to ignore the budget it was granted.<a href="#section-19.5-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
 </div>
 <div id="privacy-considerations">
-<section id="section-21">
+<section id="section-20">
       <h2 id="name-privacy-considerations">
-<a href="#section-21" class="section-number selfRef">21. </a><a href="#name-privacy-considerations" class="section-name selfRef">Privacy Considerations</a>
+<a href="#section-20" class="section-number selfRef">20. </a><a href="#name-privacy-considerations" class="section-name selfRef">Privacy Considerations</a>
       </h2>
-<p id="section-21-1">A budget amount is financial information about the person. It travels from the resource to the PS in the resource token and back in the auth token, and appears in plaintext in the <code>AAuth-Budget</code> response header on every response.<a href="#section-21-1" class="pilcrow">¶</a></p>
-<p id="section-21-2">Consumption records and usage counters are more revealing than the budget itself: counters describe the person's spending at that resource over time and by mission, and records itemize it per grant. All of it is visible to the person's PS by design — the PS is deciding on the person's behalf.<a href="#section-21-2" class="pilcrow">¶</a></p>
-<p id="section-21-3">The two channels differ in who else can read them. Usage counters travel only between resource and PS, so tenant-scope and long-horizon figures exist nowhere the agent can see. Consumption records ride in the resource token, which the agent relays and can read, and because records are matched per person rather than per agent <a href="#budget-consumed" class="auto internal xref">Section 7.1</a>, they can name tokens the person's <em>other</em> agents incurred. Each record is only a <code>jti</code> and an amount — the minimal record shape is what caps the exposure there — and a resource that considers even that too revealing omits <code>budget_consumed</code> and serves the usage endpoint alone.<a href="#section-21-3" class="pilcrow">¶</a></p>
-<p id="section-21-4">Because <code>AAuth-Budget</code> is unsigned and unencrypted above TLS, every intermediary on the path sees the person's remaining balance at that resource. Deployments that consider the balance sensitive should weigh omitting the OPTIONAL <code>consumed</code> member, which is the member that most directly describes spending.<a href="#section-21-4" class="pilcrow">¶</a></p>
+<p id="section-20-1">A budget amount is financial information about the person. It travels from the resource to the PS in the resource token and back in the auth token, and appears in plaintext in the <code>AAuth-Budget</code> response header on every response.<a href="#section-20-1" class="pilcrow">¶</a></p>
+<p id="section-20-2">Consumption records and usage counters are more revealing than the budget itself: counters describe the person's spending at that resource over time and by mission, and records itemize it per grant. All of it is visible to the person's PS by design — the PS is deciding on the person's behalf.<a href="#section-20-2" class="pilcrow">¶</a></p>
+<p id="section-20-3">The two channels differ in who else can read them. Usage counters travel only between resource and PS, so tenant-scope and long-horizon figures exist nowhere the agent can see. Consumption records ride in the resource token, which the agent relays and can read, and because records are matched per person rather than per agent <a href="#budget-consumed" class="auto internal xref">Section 7.1</a>, they can name tokens the person's <em>other</em> agents incurred. Each record is only a <code>jti</code> and an amount — the minimal record shape is what caps the exposure there — and a resource that considers even that too revealing omits <code>budget_consumed</code> and serves the usage endpoint alone.<a href="#section-20-3" class="pilcrow">¶</a></p>
+<p id="section-20-4">Because <code>AAuth-Budget</code> is unsigned and unencrypted above TLS, every intermediary on the path sees the person's remaining balance at that resource, and the price of the request that produced the response. Carrying no cumulative figure bounds this: an intermediary sees what one call cost and what is left of one hour's grant, not the person's spending history at that resource. Deployments that consider even the per-call figure sensitive may omit the OPTIONAL <code>cost</code> member from the header, at the price of leaving the agent to derive it from successive <code>remaining</code> values.<a href="#section-20-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="iana-considerations">
-<section id="section-22">
+<section id="section-21">
       <h2 id="name-iana-considerations">
-<a href="#section-22" class="section-number selfRef">22. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
+<a href="#section-21" class="section-number selfRef">21. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
       </h2>
 <div id="http-header-field-registration">
-<section id="section-22.1">
+<section id="section-21.1">
         <h3 id="name-http-header-field-registrat">
-<a href="#section-22.1" class="section-number selfRef">22.1. </a><a href="#name-http-header-field-registrat" class="section-name selfRef">HTTP Header Field Registration</a>
+<a href="#section-21.1" class="section-number selfRef">21.1. </a><a href="#name-http-header-field-registrat" class="section-name selfRef">HTTP Header Field Registration</a>
         </h3>
-<p id="section-22.1-1">This specification registers the following HTTP header field in the "Hypertext Transfer Protocol (HTTP) Field Name Registry" established by <span>[<a href="#RFC9110" class="cite xref">RFC9110</a>]</span>:<a href="#section-22.1-1" class="pilcrow">¶</a></p>
+<p id="section-21.1-1">This specification registers the following HTTP header field in the "Hypertext Transfer Protocol (HTTP) Field Name Registry" established by <span>[<a href="#RFC9110" class="cite xref">RFC9110</a>]</span>:<a href="#section-21.1-1" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-22.1-2.1">Header Field Name: <code>AAuth-Budget</code><a href="#section-22.1-2.1" class="pilcrow">¶</a>
+<li class="compact" id="section-21.1-2.1">Header Field Name: <code>AAuth-Budget</code><a href="#section-21.1-2.1" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-22.1-2.2">Status: permanent<a href="#section-22.1-2.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-21.1-2.2">Status: permanent<a href="#section-21.1-2.2" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-22.1-2.3">Structured Type: Dictionary<a href="#section-22.1-2.3" class="pilcrow">¶</a>
+          <li class="compact" id="section-21.1-2.3">Structured Type: Dictionary<a href="#section-21.1-2.3" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-22.1-2.4">Reference: This document, <a href="#aauth-budget-header" class="auto internal xref">Section 11</a><a href="#section-22.1-2.4" class="pilcrow">¶</a>
+          <li class="compact" id="section-21.1-2.4">Reference: This document, <a href="#aauth-budget-header" class="auto internal xref">Section 11</a><a href="#section-21.1-2.4" class="pilcrow">¶</a>
 </li>
         </ul>
 </section>
 </div>
 <div id="jwt-claims-registration">
-<section id="section-22.2">
+<section id="section-21.2">
         <h3 id="name-jwt-claims-registration">
-<a href="#section-22.2" class="section-number selfRef">22.2. </a><a href="#name-jwt-claims-registration" class="section-name selfRef">JWT Claims Registration</a>
+<a href="#section-21.2" class="section-number selfRef">21.2. </a><a href="#name-jwt-claims-registration" class="section-name selfRef">JWT Claims Registration</a>
         </h3>
-<p id="section-22.2-1">This document requests registration of the following claims in the IANA "JSON Web Token Claims" registry established by <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>:<a href="#section-22.2-1" class="pilcrow">¶</a></p>
+<p id="section-21.2-1">This document requests registration of the following claims in the IANA "JSON Web Token Claims" registry established by <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>:<a href="#section-21.2-1" class="pilcrow">¶</a></p>
 <table class="center" id="table-3">
           <caption><a href="#table-3" class="selfRef">Table 3</a></caption>
 <thead>
@@ -2456,11 +2471,11 @@ Signature-Key: sig=jwks_uri;
 </section>
 </div>
 <div id="aauth-capability-value-registry">
-<section id="section-22.3">
+<section id="section-21.3">
         <h3 id="name-aauth-capability-value-regi">
-<a href="#section-22.3" class="section-number selfRef">22.3. </a><a href="#name-aauth-capability-value-regi" class="section-name selfRef">AAuth Capability Value Registry</a>
+<a href="#section-21.3" class="section-number selfRef">21.3. </a><a href="#name-aauth-capability-value-regi" class="section-name selfRef">AAuth Capability Value Registry</a>
         </h3>
-<p id="section-22.3-1">This document requests registration of the following value in the AAuth Capability Value Registry established by AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>). The registry policy is Specification Required (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>, Section 4.6).<a href="#section-22.3-1" class="pilcrow">¶</a></p>
+<p id="section-21.3-1">This document requests registration of the following value in the AAuth Capability Value Registry established by AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>). The registry policy is Specification Required (<span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span>, Section 4.6).<a href="#section-21.3-1" class="pilcrow">¶</a></p>
 <table class="center" id="table-4">
           <caption><a href="#table-4" class="selfRef">Table 4</a></caption>
 <thead>
@@ -2474,7 +2489,7 @@ Signature-Key: sig=jwks_uri;
               <td class="text-left" rowspan="1" colspan="1">
                 <code>budget</code>
 </td>
-              <td class="text-left" rowspan="1" colspan="1">This document, <a href="#capability" class="auto internal xref">Section 17</a>
+              <td class="text-left" rowspan="1" colspan="1">This document, <a href="#capability" class="auto internal xref">Section 16</a>
 </td>
             </tr>
           </tbody>
@@ -2482,58 +2497,73 @@ Signature-Key: sig=jwks_uri;
 </section>
 </div>
 <div id="no-budget-unit-registry">
-<section id="section-22.4">
+<section id="section-21.4">
         <h3 id="name-no-budget-unit-registry">
-<a href="#section-22.4" class="section-number selfRef">22.4. </a><a href="#name-no-budget-unit-registry" class="section-name selfRef">No Budget Unit Registry</a>
+<a href="#section-21.4" class="section-number selfRef">21.4. </a><a href="#name-no-budget-unit-registry" class="section-name selfRef">No Budget Unit Registry</a>
         </h3>
-<p id="section-22.4-1">This document deliberately establishes no registry of unit values. Units are declared by each resource in its <code>budget_units</code> metadata, exactly as scope values are declared in <code>scope_descriptions</code>. See <a href="#why-no-unit-registry" class="auto internal xref">Appendix A.6</a>.<a href="#section-22.4-1" class="pilcrow">¶</a></p>
+<p id="section-21.4-1">This document deliberately establishes no registry of unit values. Units are declared by each resource in its <code>budget_units</code> metadata, exactly as scope values are declared in <code>scope_descriptions</code>. See <a href="#why-no-unit-registry" class="auto internal xref">Appendix A.8</a>.<a href="#section-21.4-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
 </div>
 <div id="implementation-status">
-<section id="section-23">
+<section id="section-22">
       <h2 id="name-implementation-status">
-<a href="#section-23" class="section-number selfRef">23. </a><a href="#name-implementation-status" class="section-name selfRef">Implementation Status</a>
+<a href="#section-22" class="section-number selfRef">22. </a><a href="#name-implementation-status" class="section-name selfRef">Implementation Status</a>
       </h2>
-<p id="section-23-1"><em>Note: This section is to be removed before publishing as an RFC.</em><a href="#section-23-1" class="pilcrow">¶</a></p>
-<p id="section-23-2">This section records the status of known implementations of the protocol defined by this specification at the time of posting of this Internet-Draft, and is based on a proposal described in <span>[<a href="#RFC7942" class="cite xref">RFC7942</a>]</span>. The description of implementations in this section is intended to assist the IETF in its decision processes in progressing drafts to RFCs.<a href="#section-23-2" class="pilcrow">¶</a></p>
-<p id="section-23-3">There are currently no known implementations.<a href="#section-23-3" class="pilcrow">¶</a></p>
+<p id="section-22-1"><em>Note: This section is to be removed before publishing as an RFC.</em><a href="#section-22-1" class="pilcrow">¶</a></p>
+<p id="section-22-2">This section records the status of known implementations of the protocol defined by this specification at the time of posting of this Internet-Draft, and is based on a proposal described in <span>[<a href="#RFC7942" class="cite xref">RFC7942</a>]</span>. The description of implementations in this section is intended to assist the IETF in its decision processes in progressing drafts to RFCs.<a href="#section-22-2" class="pilcrow">¶</a></p>
+<p id="section-22-3">There are currently no known implementations.<a href="#section-22-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="document-history">
-<section id="section-24">
+<section id="section-23">
       <h2 id="name-document-history">
-<a href="#section-24" class="section-number selfRef">24. </a><a href="#name-document-history" class="section-name selfRef">Document History</a>
+<a href="#section-23" class="section-number selfRef">23. </a><a href="#name-document-history" class="section-name selfRef">Document History</a>
       </h2>
-<p id="section-24-1"><em>Note: This section is to be removed before publishing as an RFC.</em><a href="#section-24-1" class="pilcrow">¶</a></p>
-<ul class="compact">
-<li class="compact" id="section-24-2.1">
-          <p id="section-24-2.1.1">draft-hardt-aauth-budgets-00<a href="#section-24-2.1.1" class="pilcrow">¶</a></p>
-<ul class="compact">
-<li class="compact" id="section-24-2.1.2.1">Initial submission<a href="#section-24-2.1.2.1" class="pilcrow">¶</a>
+<p id="section-23-1"><em>Note: This section is to be removed before publishing as an RFC.</em><a href="#section-23-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-23-2.1">
+          <p id="section-23-2.1.1">draft-hardt-aauth-budgets-01<a href="#section-23-2.1.1" class="pilcrow">¶</a></p>
+<ul class="compact normal">
+<li class="compact normal" id="section-23-2.1.2.1">Replaced the header's cumulative <code>consumed</code> member with <code>cost</code>, what <strong>this request</strong> cost. The agent's question per response is the price of the call it just made and whether it can afford another; cumulative spend answered neither, was derivable as <code>granted - remaining</code>, and collided with the <code>consumed</code> of a consumption record, which is a per-token total. See <a href="#why-no-cumulative" class="auto internal xref">Appendix A.4</a>.<a href="#section-23-2.1.2.1" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-23-2.1.2.2">Added the OPTIONAL <code>reserved</code> member, what the resource holds for a request whose cost it cannot yet state. It is a fact about the request and is never revised.<a href="#section-23-2.1.2.2" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-23-2.1.2.3">Permitted <code>AAuth-Budget</code> as a trailer, carrying <code>cost</code> for a streamed response. A trailer MUST NOT restate a member the header carried, which makes the field correct whether a recipient merges trailers or discards them, without mandating either. Reverses this document's earlier position that trailers are not used; see <a href="#why-trailer-adds" class="auto internal xref">Appendix A.5</a>.<a href="#section-23-2.1.2.3" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-23-2.1.2.4">Added Ambiguous Failures <a href="#ambiguous-failure" class="auto internal xref">Section 12.2</a>: an agent that never receives a response assumes the request cost what the resource had held for it, until a later <code>remaining</code> supersedes that.<a href="#section-23-2.1.2.4" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-23-2.1.2.5">Removed the <code>balance_endpoint</code> and its metadata field. It was OPTIONAL and existed for the ambiguous-failure case, which a local conservative rule now covers without a round trip.<a href="#section-23-2.1.2.5" class="pilcrow">¶</a>
+</li>
+          </ul>
+</li>
+        <li class="normal" id="section-23-2.2">
+          <p id="section-23-2.2.1">draft-hardt-aauth-budgets-00<a href="#section-23-2.2.1" class="pilcrow">¶</a></p>
+<ul class="compact normal">
+<li class="compact normal" id="section-23-2.2.2.1">Initial submission<a href="#section-23-2.2.2.1" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
       </ul>
-<p id="section-24-3"><em>Note: written against draft-hardt-oauth-aauth-protocol-11, which introduces the person token, replaces the <code>mission</code> object with <code>mission_s256</code>, and removes the agent identifier from auth tokens.</em><a href="#section-24-3" class="pilcrow">¶</a></p>
+<p id="section-23-3"><em>Note: written against draft-hardt-oauth-aauth-protocol-11, which introduces the person token, replaces the <code>mission</code> object with <code>mission_s256</code>, and removes the agent identifier from auth tokens.</em><a href="#section-23-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="acknowledgments">
-<section id="section-25">
+<section id="section-24">
       <h2 id="name-acknowledgments">
-<a href="#section-25" class="section-number selfRef">25. </a><a href="#name-acknowledgments" class="section-name selfRef">Acknowledgments</a>
+<a href="#section-24" class="section-number selfRef">24. </a><a href="#name-acknowledgments" class="section-name selfRef">Acknowledgments</a>
       </h2>
-<p id="section-25-1">The author would like to thank reviewers for their feedback.<a href="#section-25-1" class="pilcrow">¶</a></p>
+<p id="section-24-1">The author would like to thank reviewers for their feedback.<a href="#section-24-1" class="pilcrow">¶</a></p>
 </section>
 </div>
-<section id="section-26">
+<section id="section-25">
       <h2 id="name-references">
-<a href="#section-26" class="section-number selfRef">26. </a><a href="#name-references" class="section-name selfRef">References</a>
+<a href="#section-25" class="section-number selfRef">25. </a><a href="#name-references" class="section-name selfRef">References</a>
       </h2>
-<section id="section-26.1">
+<section id="section-25.1">
         <h3 id="name-normative-references">
-<a href="#section-26.1" class="section-number selfRef">26.1. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+<a href="#section-25.1" class="section-number selfRef">25.1. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
         </h3>
 <dl class="references">
 <dt id="I-D.hardt-httpbis-signature-key">[I-D.hardt-httpbis-signature-key]</dt>
@@ -2570,9 +2600,9 @@ Signature-Key: sig=jwks_uri;
 <dd class="break"></dd>
 </dl>
 </section>
-<section id="section-26.2">
+<section id="section-25.2">
         <h3 id="name-informative-references">
-<a href="#section-26.2" class="section-number selfRef">26.2. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
+<a href="#section-25.2" class="section-number selfRef">25.2. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
         </h3>
 <dl class="references">
 <dt id="AP2">[AP2]</dt>
@@ -2674,46 +2704,70 @@ Signature-Key: sig=jwks_uri;
         </ul>
 </section>
 </div>
-<div id="why-not-ratelimit">
+<div id="why-no-cumulative">
 <section id="appendix-A.4">
-        <h3 id="name-why-not-ratelimit">
-<a href="#appendix-A.4" class="section-number selfRef">A.4. </a><a href="#name-why-not-ratelimit" class="section-name selfRef">Why Not <code>RateLimit</code></a>
+        <h3 id="name-why-the-agent-is-not-told-i">
+<a href="#appendix-A.4" class="section-number selfRef">A.4. </a><a href="#name-why-the-agent-is-not-told-i" class="section-name selfRef">Why the Agent Is Not Told Its Cumulative Consumption</a>
         </h3>
-<p id="appendix-A.4-1"><code>RateLimit</code> and <code>RateLimit-Policy</code> (<span>[<a href="#I-D.ietf-httpapi-ratelimit-headers" class="cite xref">I-D.ietf-httpapi-ratelimit-headers</a>]</span>) already report a server-side quota and its remaining balance. Reusing them would avoid a new header. Four things prevent it, all following from a budget being an authorization rather than a capacity hint:<a href="#appendix-A.4-1" class="pilcrow">¶</a></p>
-<ol start="1" type="1" class="compact type-1" id="appendix-A.4-2">
-<li id="appendix-A.4-2.1">
-            <strong>Stated non-goal.</strong> The RateLimit specification excludes authorization from its scope. Reporting the balance of a PS-issued grant through a field whose own specification says it is not for access control is a misuse a reviewer will name.<a href="#appendix-A.4-2.1" class="pilcrow">¶</a>
+<p id="appendix-A.4-1">An earlier revision of this document carried a <code>consumed</code> member in the header, giving what had been consumed against the auth token to date, and a <code>balance_endpoint</code> where the agent could read the same figure on demand. Both are gone. The agent is told what a request cost and what is left; cumulative consumption is reported to the person server and not to the agent.<a href="#appendix-A.4-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.4-2">Three reasons.<a href="#appendix-A.4-2" class="pilcrow">¶</a></p>
+<p id="appendix-A.4-3">The figure is redundant. <code>granted</code> is in the auth token the agent signed the request with, and <code>remaining</code> is in the response, so cumulative consumption is <code>granted - remaining</code> whenever nothing is reserved. Carrying a member the recipient can already compute is weight without information.<a href="#appendix-A.4-3" class="pilcrow">¶</a></p>
+<p id="appendix-A.4-4">The word is already spoken for. A consumption record is a <code>{jti, consumed}</code> pair <a href="#budget-consumed" class="auto internal xref">Section 7.1</a> where <code>consumed</code> means the total metered against one token's whole budget. A person server reads those records and this header's semantics against each other. Having <code>consumed</code> mean a per-request figure in one place and a per-token total in the other is the kind of collision that survives review and then costs an implementer a day.<a href="#appendix-A.4-4" class="pilcrow">¶</a></p>
+<p id="appendix-A.4-5">Cumulative spend is the more revealing figure. It describes a pattern rather than a transaction, and <code>AAuth-Budget</code> travels unsigned past every intermediary on the path <a href="#privacy-considerations" class="auto internal xref">Section 20</a>. What the agent genuinely needs per response is the price of the call it just made and whether it can afford another. Both are per-request facts, and that is what the field now carries.<a href="#appendix-A.4-5" class="pilcrow">¶</a></p>
+<p id="appendix-A.4-6">The <code>balance_endpoint</code> went with it. It was OPTIONAL, existed for one case — an ambiguous failure, where the agent cannot say whether a request was metered — and cost a resource an endpoint to implement and this document a section to specify. That case is now answered by a rule the agent applies locally <a href="#ambiguous-failure" class="auto internal xref">Section 12.2</a>: assume the maximum until a later <code>remaining</code> says otherwise. A conservative default that every agent applies is better than an optional round trip that some resources offer.<a href="#appendix-A.4-6" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="why-trailer-adds">
+<section id="appendix-A.5">
+        <h3 id="name-why-a-trailer-only-adds-a-m">
+<a href="#appendix-A.5" class="section-number selfRef">A.5. </a><a href="#name-why-a-trailer-only-adds-a-m" class="section-name selfRef">Why a Trailer Only Adds a Member</a>
+        </h3>
+<p id="appendix-A.5-1"><code>AAuth-Budget</code> may be sent as a trailer, carrying <code>cost</code> for a response whose cost was unknown when the header was written <a href="#streaming" class="auto internal xref">Section 12</a>. This document rejected trailers in an earlier revision, on the reasoning of the RateLimit work (<span>[<a href="#I-D.ietf-httpapi-ratelimit-headers" class="cite xref">I-D.ietf-httpapi-ratelimit-headers</a>]</span>): intermediaries drop them, and combining a header value with a trailer value complicates clients.<a href="#appendix-A.5-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.5-2">The first objection carries less weight here. It is largely a browser property — <code>fetch</code> does not surface trailers — and the traffic this document governs is an agent calling a resource, which is server-to-server and commonly HTTP/2. Where a trailer is dropped anyway, rule 3 of <a href="#trailer-rules" class="auto internal xref">Section 12.1</a> makes that harmless.<a href="#appendix-A.5-2" class="pilcrow">¶</a></p>
+<p id="appendix-A.5-3">The second objection is the real one, and <a href="#trailer-rules" class="auto internal xref">Section 12.1</a> answers it structurally rather than by mandating client behavior. A recipient may discard trailer fields or merge them into the header set, and a sender can neither observe nor control which. Restating a member across the two would therefore produce a value that depends on the recipient's choice: <code>AAuth-Budget</code> is a Dictionary, duplicate keys resolve last-wins (<span>[<a href="#RFC9651" class="cite xref">RFC9651</a>]</span>, Section 3.2), so merging yields the trailer's value and discarding yields the header's. Adding a member that the header did not carry has no such fork. Merge yields a complete picture, discard yields a conservative one, and neither is wrong.<a href="#appendix-A.5-3" class="pilcrow">¶</a></p>
+<p id="appendix-A.5-4">This is why <code>reserved</code> is a statement about a request rather than a running balance. A running figure would go stale the moment the reservation was released, and a stale member surviving a merge is exactly the failure the rule exists to prevent. What was held for a request does not change after the fact.<a href="#appendix-A.5-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="why-not-ratelimit">
+<section id="appendix-A.6">
+        <h3 id="name-why-not-ratelimit">
+<a href="#appendix-A.6" class="section-number selfRef">A.6. </a><a href="#name-why-not-ratelimit" class="section-name selfRef">Why Not <code>RateLimit</code></a>
+        </h3>
+<p id="appendix-A.6-1"><code>RateLimit</code> and <code>RateLimit-Policy</code> (<span>[<a href="#I-D.ietf-httpapi-ratelimit-headers" class="cite xref">I-D.ietf-httpapi-ratelimit-headers</a>]</span>) already report a server-side quota and its remaining balance. Reusing them would avoid a new header. Four things prevent it, all following from a budget being an authorization rather than a capacity hint:<a href="#appendix-A.6-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="compact type-1" id="appendix-A.6-2">
+<li id="appendix-A.6-2.1">
+            <strong>Stated non-goal.</strong> The RateLimit specification excludes authorization from its scope. Reporting the balance of a PS-issued grant through a field whose own specification says it is not for access control is a misuse a reviewer will name.<a href="#appendix-A.6-2.1" class="pilcrow">¶</a>
 </li>
-          <li id="appendix-A.4-2.2">
-            <strong>No unit carrier.</strong> <code>q</code> and <code>r</code> MUST be non-negative Integers, and the quota units registry covers <code>request</code>, <code>content-bytes</code>, and <code>concurrent-requests</code>. There is no currency carrier, so the denomination would be invisible in the field reporting the number.<a href="#appendix-A.4-2.2" class="pilcrow">¶</a>
+          <li id="appendix-A.6-2.2">
+            <strong>No unit carrier.</strong> <code>q</code> and <code>r</code> MUST be non-negative Integers, and the quota units registry covers <code>request</code>, <code>content-bytes</code>, and <code>concurrent-requests</code>. There is no currency carrier, so the denomination would be invisible in the field reporting the number.<a href="#appendix-A.6-2.2" class="pilcrow">¶</a>
 </li>
-          <li id="appendix-A.4-2.3">
-            <strong>Opposite reliability contracts.</strong> RateLimit says servers need not send the fields on every response, clients must not assume future responses will carry them, and a positive <code>r</code> is not a guarantee of anything. Those are correct properties for a capacity hint and wrong ones for the remaining portion of an authorization, which is why <a href="#header-rules" class="auto internal xref">Section 11.1</a> says MUST send rather than MAY.<a href="#appendix-A.4-2.3" class="pilcrow">¶</a>
+          <li id="appendix-A.6-2.3">
+            <strong>Opposite reliability contracts.</strong> RateLimit says servers need not send the fields on every response, clients must not assume future responses will carry them, and a positive <code>r</code> is not a guarantee of anything. Those are correct properties for a capacity hint and wrong ones for the remaining portion of an authorization, which is why <a href="#header-rules" class="auto internal xref">Section 11.1</a> says MUST send rather than MAY.<a href="#appendix-A.6-2.3" class="pilcrow">¶</a>
 </li>
-          <li id="appendix-A.4-2.4">
-            <strong>Intermediary rewriting.</strong> Intermediaries MAY tighten <code>RateLimit</code> values. An intermediary tightening a budget balance is forging authorization state.<a href="#appendix-A.4-2.4" class="pilcrow">¶</a>
+          <li id="appendix-A.6-2.4">
+            <strong>Intermediary rewriting.</strong> Intermediaries MAY tighten <code>RateLimit</code> values. An intermediary tightening a budget balance is forging authorization state.<a href="#appendix-A.6-2.4" class="pilcrow">¶</a>
 </li>
         </ol>
-<p id="appendix-A.4-3">The two fields are complementary and MAY appear on the same response. A resource limiting an agent to 100 requests per minute <em>and</em> to five dollars of spend is stating two different things, and collapsing them loses one.<a href="#appendix-A.4-3" class="pilcrow">¶</a></p>
+<p id="appendix-A.6-3">The two fields are complementary and MAY appear on the same response. A resource limiting an agent to 100 requests per minute <em>and</em> to five dollars of spend is stating two different things, and collapsing them loses one.<a href="#appendix-A.6-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="why-not-mission-aggregate">
-<section id="appendix-A.5">
+<section id="appendix-A.7">
         <h3 id="name-why-budget-is-not-a-mission">
-<a href="#appendix-A.5" class="section-number selfRef">A.5. </a><a href="#name-why-budget-is-not-a-mission" class="section-name selfRef">Why Budget Is Not a Mission Aggregate</a>
+<a href="#appendix-A.7" class="section-number selfRef">A.7. </a><a href="#name-why-budget-is-not-a-mission" class="section-name selfRef">Why Budget Is Not a Mission Aggregate</a>
         </h3>
-<p id="appendix-A.5-1">A mission description may well say "budget around $5,000," and the obvious next step is to make that a protocol object the PS enforces across every resource the mission touches. This document does not, for two reasons.<a href="#appendix-A.5-1" class="pilcrow">¶</a></p>
-<p id="appendix-A.5-2">The resources in a mission meter in units that do not add up. An airline meters in USD, an inference endpoint in micro-dollars or tokens, a storage service in gigabyte-months. Aggregating requires conversion rates and a common denomination, neither of which the protocol has, and both of which change.<a href="#appendix-A.5-2" class="pilcrow">¶</a></p>
-<p id="appendix-A.5-3">More fundamentally, the enforcement point is wrong. The party that can enforce a per-resource ceiling is the resource, because it meters. No party meters the mission. A mission-level total is a PS policy input — the PS decides how much of the person's $5,000 to authorize at each resource as it goes — which is exactly what the narrowing chain in <a href="#narrowing-chain" class="auto internal xref">Section 4.2</a> gives it. The mission description already carries the person's intent, and the PS already reads it.<a href="#appendix-A.5-3" class="pilcrow">¶</a></p>
+<p id="appendix-A.7-1">A mission description may well say "budget around $5,000," and the obvious next step is to make that a protocol object the PS enforces across every resource the mission touches. This document does not, for two reasons.<a href="#appendix-A.7-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.7-2">The resources in a mission meter in units that do not add up. An airline meters in USD, an inference endpoint in micro-dollars or tokens, a storage service in gigabyte-months. Aggregating requires conversion rates and a common denomination, neither of which the protocol has, and both of which change.<a href="#appendix-A.7-2" class="pilcrow">¶</a></p>
+<p id="appendix-A.7-3">More fundamentally, the enforcement point is wrong. The party that can enforce a per-resource ceiling is the resource, because it meters. No party meters the mission. A mission-level total is a PS policy input — the PS decides how much of the person's $5,000 to authorize at each resource as it goes — which is exactly what the narrowing chain in <a href="#narrowing-chain" class="auto internal xref">Section 4.2</a> gives it. The mission description already carries the person's intent, and the PS already reads it.<a href="#appendix-A.7-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="why-no-unit-registry">
-<section id="appendix-A.6">
+<section id="appendix-A.8">
         <h3 id="name-why-units-are-not-registere">
-<a href="#appendix-A.6" class="section-number selfRef">A.6. </a><a href="#name-why-units-are-not-registere" class="section-name selfRef">Why Units Are Not Registered</a>
+<a href="#appendix-A.8" class="section-number selfRef">A.8. </a><a href="#name-why-units-are-not-registere" class="section-name selfRef">Why Units Are Not Registered</a>
         </h3>
-<p id="appendix-A.6-1">RateLimit establishes an IANA registry of quota units because its units — <code>request</code>, <code>content-bytes</code>, <code>concurrent-requests</code> — are protocol-generic and every server means the same thing by them.<a href="#appendix-A.6-1" class="pilcrow">¶</a></p>
-<p id="appendix-A.6-2">Budget units are not generic. A unit is meaningful only against a resource's own pricing, and the parties that need to interpret it are the resource that declared it and the PS that fetched the resource's metadata. This is the same situation as scope values, which the base protocol leaves to each resource's <code>scope_descriptions</code> rather than registering. Registering <code>USD</code> would add nothing that ISO 4217 does not already provide, and registering <code>tokens</code> would suggest an interoperable meaning that does not exist.<a href="#appendix-A.6-2" class="pilcrow">¶</a></p>
+<p id="appendix-A.8-1">RateLimit establishes an IANA registry of quota units because its units — <code>request</code>, <code>content-bytes</code>, <code>concurrent-requests</code> — are protocol-generic and every server means the same thing by them.<a href="#appendix-A.8-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.8-2">Budget units are not generic. A unit is meaningful only against a resource's own pricing, and the parties that need to interpret it are the resource that declared it and the PS that fetched the resource's metadata. This is the same situation as scope values, which the base protocol leaves to each resource's <code>scope_descriptions</code> rather than registering. Registering <code>USD</code> would add nothing that ISO 4217 does not already provide, and registering <code>tokens</code> would suggest an interoperable meaning that does not exist.<a href="#appendix-A.8-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2741,8 +2795,8 @@ Signature-Key: sig=jwks_uri;
 <a href="#appendix-B.2" class="section-number selfRef">B.2. </a><a href="#name-tpx" class="section-name selfRef">TPX</a>
         </h3>
 <p id="appendix-B.2-1">TPX <span>[<a href="#TPX" class="cite xref">TPX</a>]</span> is an OAuth 2.0 profile for metered LLM inference grants: apps ship without provider keys, and the person grants each app a metered budget from a provider the person chooses and pays. The budget rides RFC 9396 <code>authorization_details</code> as <code>{type: "llm-inference", budget, models}</code>; the user or provider MAY grant less than requested and the client MUST read the granted figure from the token response — the requested/granted split of the narrowing chain <a href="#narrowing-chain" class="auto internal xref">Section 4.2</a>, in OAuth form.<a href="#appendix-B.2-1" class="pilcrow">¶</a></p>
-<p id="appendix-B.2-2">Three of its mechanisms have direct counterparts here. Its <code>GET /credits</code> spend summary and <code>budget_used</code> introspection member are the precedent for the balance endpoint <a href="#balance-endpoint" class="auto internal xref">Section 13</a>. Its separation of <code>budget_exhausted</code> from <code>balance_exhausted</code> is the same boundary <a href="#exhaustion-boundaries" class="auto internal xref">Section 14.2</a> draws between re-authorization and payment. And its budget is "a damage cap, not a payment" — the hard-cap property <a href="#overshoot" class="auto internal xref">Section 15.6</a> states, which TPX asserts as a property of the grant and this document additionally realizes with reservations, since an agent's operations are unbounded before generation.<a href="#appendix-B.2-2" class="pilcrow">¶</a></p>
-<p id="appendix-B.2-3">TPX denominates in USD as decimal JSON numbers with at most six fractional digits, where this document uses an integer in a declared scale <a href="#why-integer" class="auto internal xref">Appendix A.1</a>. TPX serves human-driven apps over OAuth; <a href="#inference" class="auto internal xref">Section 19</a> describes the deployment where one provider's meter serves both envelopes.<a href="#appendix-B.2-3" class="pilcrow">¶</a></p>
+<p id="appendix-B.2-2">Three of its mechanisms have direct counterparts here. Its <code>GET /credits</code> spend summary and <code>budget_used</code> introspection member report cumulative spend on a grant, which this document reports to the person server <a href="#usage-counters" class="auto internal xref">Section 15</a> rather than to the agent <a href="#why-no-cumulative" class="auto internal xref">Appendix A.4</a>. Its separation of <code>budget_exhausted</code> from <code>balance_exhausted</code> is the same boundary <a href="#exhaustion-boundaries" class="auto internal xref">Section 13.2</a> draws between re-authorization and payment. And its budget is "a damage cap, not a payment" — the hard-cap property <a href="#overshoot" class="auto internal xref">Section 14.6</a> states, which TPX asserts as a property of the grant and this document additionally realizes with reservations, since an agent's operations are unbounded before generation.<a href="#appendix-B.2-2" class="pilcrow">¶</a></p>
+<p id="appendix-B.2-3">TPX denominates in USD as decimal JSON numbers with at most six fractional digits, where this document uses an integer in a declared scale <a href="#why-integer" class="auto internal xref">Appendix A.1</a>. TPX serves human-driven apps over OAuth; <a href="#inference" class="auto internal xref">Section 18</a> describes the deployment where one provider's meter serves both envelopes.<a href="#appendix-B.2-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="pa-vrp">
@@ -2750,7 +2804,7 @@ Signature-Key: sig=jwks_uri;
         <h3 id="name-uk-open-banking-variable-re">
 <a href="#appendix-B.3" class="section-number selfRef">B.3. </a><a href="#name-uk-open-banking-variable-re" class="section-name selfRef">UK Open Banking Variable Recurring Payments</a>
         </h3>
-<p id="appendix-B.3-1"><span>[<a href="#OBIE.VRP" class="cite xref">OBIE.VRP</a>]</span> <code>ControlParameters</code> is the most complete standing-budget model in production: <code>MaximumIndividualAmount</code>, <code>MaximumCumulativeAmount</code>, <code>MaximumCumulativeNumberOfPayments</code>, and <code>PeriodicLimits[]</code> carrying <code>PeriodType</code> and <code>PeriodAlignment</code>. <code>PeriodAlignment</code> — <code>Consent</code> versus <code>Calendar</code> — names the choice the usage counters <a href="#usage-counters" class="auto internal xref">Section 16</a> make: calendar alignment, with the timezone question answered by fixing UTC.<a href="#appendix-B.3-1" class="pilcrow">¶</a></p>
+<p id="appendix-B.3-1"><span>[<a href="#OBIE.VRP" class="cite xref">OBIE.VRP</a>]</span> <code>ControlParameters</code> is the most complete standing-budget model in production: <code>MaximumIndividualAmount</code>, <code>MaximumCumulativeAmount</code>, <code>MaximumCumulativeNumberOfPayments</code>, and <code>PeriodicLimits[]</code> carrying <code>PeriodType</code> and <code>PeriodAlignment</code>. <code>PeriodAlignment</code> — <code>Consent</code> versus <code>Calendar</code> — names the choice the usage counters <a href="#usage-counters" class="auto internal xref">Section 15</a> make: calendar alignment, with the timezone question answered by fixing UTC.<a href="#appendix-B.3-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="pa-stripe">
@@ -2758,7 +2812,7 @@ Signature-Key: sig=jwks_uri;
         <h3 id="name-stripe-issuing-spending-con">
 <a href="#appendix-B.4" class="section-number selfRef">B.4. </a><a href="#name-stripe-issuing-spending-con" class="section-name selfRef">Stripe Issuing Spending Controls</a>
         </h3>
-<p id="appendix-B.4-1"><span>[<a href="#Stripe.Issuing" class="cite xref">Stripe.Issuing</a>]</span> <code>spending_controls.spending_limits[]</code> is <code>{amount, interval, categories}</code>, with <code>amount</code> an integer in the currency's smallest unit. <code>interval</code> spans <code>per_authorization</code> through <code>all_time</code>, which is the precedent for expressing a per-transaction cap and a periodic cap in a single enumeration rather than two fields; the usage counters <a href="#usage-counters" class="auto internal xref">Section 16</a> adopt the date-based portion of that enumeration directly. Stripe computes all date-based intervals from midnight UTC — the precedent for fixing UTC by definition — and documents spending aggregation as best-effort with up to 30 seconds of delay, the precedent for <code>as_of</code>.<a href="#appendix-B.4-1" class="pilcrow">¶</a></p>
+<p id="appendix-B.4-1"><span>[<a href="#Stripe.Issuing" class="cite xref">Stripe.Issuing</a>]</span> <code>spending_controls.spending_limits[]</code> is <code>{amount, interval, categories}</code>, with <code>amount</code> an integer in the currency's smallest unit. <code>interval</code> spans <code>per_authorization</code> through <code>all_time</code>, which is the precedent for expressing a per-transaction cap and a periodic cap in a single enumeration rather than two fields; the usage counters <a href="#usage-counters" class="auto internal xref">Section 15</a> adopt the date-based portion of that enumeration directly. Stripe computes all date-based intervals from midnight UTC — the precedent for fixing UTC by definition — and documents spending aggregation as best-effort with up to 30 seconds of delay, the precedent for <code>as_of</code>.<a href="#appendix-B.4-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="pa-w3c">
@@ -2791,7 +2845,7 @@ Signature-Key: sig=jwks_uri;
 <a href="#appendix-B.8" class="section-number selfRef">B.8. </a><a href="#name-ratelimit-header-fields" class="section-name selfRef">RateLimit Header Fields</a>
         </h3>
 <p id="appendix-B.8-1"><span>[<a href="#I-D.ietf-httpapi-ratelimit-headers" class="cite xref">I-D.ietf-httpapi-ratelimit-headers</a>]</span> (HTTPAPI WG, Standards Track, not yet an RFC) defines <code>RateLimit-Policy</code> with <code>q</code>, <code>qu</code>, <code>w</code>, and <code>pk</code>, and <code>RateLimit</code> with <code>r</code>, <code>t</code>, and <code>pk</code>, both as RFC 9651 Lists. It establishes an IANA RateLimit Quota Units registry (Specification Required) with initial entries <code>request</code>, <code>content-bytes</code>, and <code>concurrent-requests</code>, and three RFC 9457 problem types: <code>quota-exceeded</code> (429), <code>temporary-reduced-capacity</code> (503), and <code>abnormal-usage-detected</code> (429).<a href="#appendix-B.8-1" class="pilcrow">¶</a></p>
-<p id="appendix-B.8-2">It is cited here for why <code>AAuth-Budget</code> exists separately <a href="#why-not-ratelimit" class="auto internal xref">Appendix A.4</a>, for the rejection of trailers <a href="#streaming" class="auto internal xref">Section 12</a>, and for <code>pk</code> as the precedent for a documented, client-predictable partition key.<a href="#appendix-B.8-2" class="pilcrow">¶</a></p>
+<p id="appendix-B.8-2">It is cited here for why <code>AAuth-Budget</code> exists separately <a href="#why-not-ratelimit" class="auto internal xref">Appendix A.6</a>, for the rejection of trailers <a href="#streaming" class="auto internal xref">Section 12</a>, and for <code>pk</code> as the precedent for a documented, client-predictable partition key.<a href="#appendix-B.8-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>

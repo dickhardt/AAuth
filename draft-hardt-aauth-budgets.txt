@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                          13 August 2026
-Expires: 14 February 2027
+Intended status: Standards Track                          14 August 2026
+Expires: 15 February 2027
 
 
                              AAuth Budgets
@@ -23,8 +23,8 @@ Abstract
    may narrow, and the auth token carries what was granted.  The
    extension adds a budget claim to resource tokens and auth tokens, a
    budget_consumed claim reporting recent consumption, a budget_units
-   field, a usage_endpoint, and a balance_endpoint to resource metadata,
-   and an AAuth-Budget response header reporting the remaining balance.
+   field and a usage_endpoint to resource metadata, and an AAuth-Budget
+   response header reporting what a request cost and what remains.
 
 Discussion Venues
 
@@ -50,7 +50,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 14 February 2027.
+   This Internet-Draft will expire on 15 February 2027.
 
 Copyright Notice
 
@@ -89,54 +89,57 @@ Table of Contents
      11.1.  Sending Rules
      11.2.  Denomination Conflict
    12. Streaming
-   13. Balance Endpoint
-   14. Budget Exhaustion
-     14.1.  The reason Parameter
-     14.2.  Boundaries
-   15. Enforcement
-     15.1.  The Resource Enforces
-     15.2.  Budgets Require Auth-Token Mode
-     15.3.  Token Scope
-     15.4.  Aggregation
-     15.5.  Concurrency
-     15.6.  The Budget Is a Hard Cap
-     15.7.  Failed Calls
-     15.8.  Delegation
-     15.9.  Mission Attribution
-   16. Usage Counters
-     16.1.  Usage Request
-     16.2.  Usage Response
-     16.3.  Authorization and Errors
-     16.4.  Division of Labor
-   17. Capability Negotiation
-   18. Errors
-     18.1.  Declining with Guidance
-   19. Standing Authorization for Metered Inference
-   20. Security Considerations
-     20.1.  The Header Is Unsigned
-     20.2.  Budget Is Not a Substitute for Scope
-     20.3.  Over-Issuance Through Concurrency
-     20.4.  Consumption Reports as Attack Surface
-     20.5.  Unit Substitution
-   21. Privacy Considerations
-   22. IANA Considerations
-     22.1.  HTTP Header Field Registration
-     22.2.  JWT Claims Registration
-     22.3.  AAuth Capability Value Registry
-     22.4.  No Budget Unit Registry
-   23. Implementation Status
-   24. Document History
-   25. Acknowledgments
-   26. References
-     26.1.  Normative References
-     26.2.  Informative References
+     12.1.  Trailer Rules
+     12.2.  Ambiguous Failures
+   13. Budget Exhaustion
+     13.1.  The reason Parameter
+     13.2.  Boundaries
+   14. Enforcement
+     14.1.  The Resource Enforces
+     14.2.  Budgets Require Auth-Token Mode
+     14.3.  Token Scope
+     14.4.  Aggregation
+     14.5.  Concurrency
+     14.6.  The Budget Is a Hard Cap
+     14.7.  Failed Calls
+     14.8.  Delegation
+     14.9.  Mission Attribution
+   15. Usage Counters
+     15.1.  Usage Request
+     15.2.  Usage Response
+     15.3.  Authorization and Errors
+     15.4.  Division of Labor
+   16. Capability Negotiation
+   17. Errors
+     17.1.  Declining with Guidance
+   18. Standing Authorization for Metered Inference
+   19. Security Considerations
+     19.1.  The Header Is Unsigned
+     19.2.  Budget Is Not a Substitute for Scope
+     19.3.  Over-Issuance Through Concurrency
+     19.4.  Consumption Reports as Attack Surface
+     19.5.  Unit Substitution
+   20. Privacy Considerations
+   21. IANA Considerations
+     21.1.  HTTP Header Field Registration
+     21.2.  JWT Claims Registration
+     21.3.  AAuth Capability Value Registry
+     21.4.  No Budget Unit Registry
+   22. Implementation Status
+   23. Document History
+   24. Acknowledgments
+   25. References
+     25.1.  Normative References
+     25.2.  Informative References
    Appendix A.  Design Rationale
      A.1.  Why an Integer in a Declared Scale
      A.2.  Why the Scale Is Explicit
      A.3.  Why decimals Is in the Signed Claim
-     A.4.  Why Not RateLimit
-     A.5.  Why Budget Is Not a Mission Aggregate
-     A.6.  Why Units Are Not Registered
+     A.4.  Why the Agent Is Not Told Its Cumulative Consumption
+     A.5.  Why a Trailer Only Adds a Member
+     A.6.  Why Not RateLimit
+     A.7.  Why Budget Is Not a Mission Aggregate
+     A.8.  Why Units Are Not Registered
    Appendix B.  Prior Art
      B.1.  RFC 9396, Rich Authorization Requests
      B.2.  TPX
@@ -175,9 +178,9 @@ Table of Contents
    that counts.  That distinction determines nearly every design choice
    in this document, in particular why the balance cannot be reported
    through RateLimit ([I-D.ietf-httpapi-ratelimit-headers]) — see
-   Appendix A.4.
+   Appendix A.6.
 
-   Metered inference is the initiating use case, and Section 19 covers
+   Metered inference is the initiating use case, and Section 18 covers
    it as a named deployment pattern.  The mechanism is general: any
    resource that meters and charges per call uses it unchanged.
 
@@ -187,7 +190,7 @@ Table of Contents
    document is the AAuth counterpart: the same grant, carried to an
    autonomous agent through the narrowing chain, and generalized beyond
    inference to any resource that meters.  A provider implementing both
-   accepts two authorization envelopes over one meter Section 19.
+   accepts two authorization envelopes over one meter Section 18.
 
 1.1.  Non-Goals
 
@@ -372,8 +375,8 @@ Table of Contents
    Two carriers bound the representable range:
 
    *  A Structured Field Integer ([RFC9651], Section 3.3.1) is limited
-      to 15 digits, which bounds remaining and consumed in the AAuth-
-      Budget header Section 11.
+      to 15 digits, which bounds remaining, cost, and reserved in the
+      AAuth-Budget header Section 11.
    *  A JSON number is exact only to 2^53 (approximately 9.0 x 10^15),
       which bounds the amount member of the budget claim.
 
@@ -438,8 +441,7 @@ Table of Contents
        { "unit": "USD", "decimals": 6, "max": 10000000 },
        { "unit": "tokens", "decimals": 0, "max": 5000000 }
      ],
-     "usage_endpoint": "https://inference.example/usage",
-     "balance_endpoint": "https://inference.example/balance"
+     "usage_endpoint": "https://inference.example/usage"
    }
 
    *budget_units* (OPTIONAL).  An array of objects, each declaring one
@@ -463,19 +465,14 @@ Table of Contents
    budget.decimals to the value declared for that unit.
 
    *usage_endpoint* (OPTIONAL).  The HTTPS URL where a person server
-   queries usage counters Section 16.
-
-   *balance_endpoint* (OPTIONAL).  The HTTPS URL where an agent reads
-   the balance of its own granted budget Section 13.
-
-   Both endpoint URLs MUST conform to the Endpoint URL requirements of
-   ([I-D.hardt-oauth-aauth-protocol]).
+   queries usage counters Section 15.  The URL MUST conform to the
+   Endpoint URL requirements of ([I-D.hardt-oauth-aauth-protocol]).
 
    A PS or AS that receives a resource token carrying budget already
    fetches {iss}/.well-known/aauth-resource.json to discover the
    resource's JWKS, per the dwk claim
    ([I-D.hardt-httpbis-signature-key]).  The unit declarations arrive in
-   a fetch it was already making, so the cross-check in Section 18 costs
+   a fetch it was already making, so the cross-check in Section 17 costs
    no extra round trip.
 
 6.  Authorization Endpoint Extensions
@@ -503,7 +500,7 @@ Table of Contents
    The resource MUST NOT reject the request because budget.amount
    exceeds what it will grant; it narrows instead Section 4.2.  The
    resource MAY reject a budget whose unit it has not declared
-   Section 18.
+   Section 17.
 
    When the agent obtains its resource token from a 401 challenge rather
    than the authorization endpoint (([I-D.hardt-oauth-aauth-protocol]),
@@ -566,10 +563,10 @@ Table of Contents
    A resource MUST NOT include budget_consumed unless budget is present
    in the same token, and MUST omit any record it cannot state in that
    budget's unit and decimals — a record carried in a stale scale is the
-   thousandfold error Section 18 in miniature.
+   thousandfold error Section 17 in miniature.
 
    Records cover prior auth tokens matching this token's context: the
-   same (iss, sub, aud) the resource aggregates against Section 15.4,
+   same (iss, sub, aud) the resource aggregates against Section 14.4,
    and, when this resource token carries mission_s256, the same
    mission_s256.  A mission-context re-authorization thus reports that
    mission's grants; a mission-less one reports the person's most recent
@@ -598,7 +595,7 @@ Table of Contents
    resource → agent → PS at exactly the moment the PS re-decides: no
    extra round trip, resource-signed, and interpretable without a
    metadata fetch.  Totals over horizons longer than 20 grants are
-   served at the usage endpoint Section 16.
+   served at the usage endpoint Section 15.
 
 8.  PS Token Endpoint Extensions
 
@@ -608,7 +605,7 @@ Table of Contents
 
    An agent seeking a larger budget obtains a fresh resource token from
    the resource — stating the larger figure in the authorization
-   endpoint request Section 6, or being handed one on a 401 Section 14 —
+   endpoint request Section 6, or being handed one on a 401 Section 13 —
    and SHOULD explain the need in the justification parameter of the PS
    token request.
 
@@ -706,21 +703,28 @@ Table of Contents
    the granted budget.  It is a Dictionary ([RFC9651], Section 3.2),
    matching AAuth-Requirement.
 
-   AAuth-Budget: remaining=1568800; consumed=431200;
+   AAuth-Budget: cost=221200; remaining=1568800;
        unit="USD"; decimals=6
 
    Members:
 
    *  *remaining* (REQUIRED): A non-negative Integer, in the granted
       scale, giving what is left of the budget on this auth token, net
-      of reservations for requests in flight Section 15.6.  It is a
+      of reservations for requests in flight Section 14.6.  It is a
       floor — committed consumption will not exceed the grant — though
       the figure may lag metering.  Exhaustion is signaled by the 401
-      Section 14, for which the agent stays prepared regardless.
-   *  *consumed* (OPTIONAL): A non-negative Integer, in the granted
-      scale, giving what has been consumed against this auth token.  It
-      never exceeds the granted amount Section 15.6.  Provided for
-      reconciliation against the person's bill.
+      Section 13, for which the agent stays prepared regardless.
+   *  *cost* (OPTIONAL): A non-negative Integer, in the granted scale,
+      giving what *this request* cost.  Sent in the header when the
+      resource knows the figure as it writes the response, and in a
+      trailer when it does not Section 12.  A resource that meters the
+      request MUST NOT omit cost from both.
+   *  *reserved* (OPTIONAL): A non-negative Integer, in the granted
+      scale, giving what the resource has held against the grant for
+      this request and not yet committed Section 14.6.  Meaningful only
+      where cost is not yet known, so in practice it accompanies a
+      streamed response.  It is a statement about this request, not a
+      running total, and is never revised.
    *  *unit* (OPTIONAL): A String naming the unit. *decimals*
       (OPTIONAL): an Integer giving its scale.  Informational, and a
       pair: a sender MUST include both or neither, because an amount
@@ -729,35 +733,36 @@ Table of Contents
 
    Recipients MUST ignore members they do not recognize.
 
-   The header carries no granted member and no token reference: the
-   agent holds the auth token it signed the request with, and reads both
-   from there.
+   The header carries no granted member, no cumulative consumption
+   figure, and no token reference.  The agent holds the auth token it
+   signed the request with and reads granted from there; what it needs
+   per response is what this call cost and what is left, which is what
+   the field carries.  Cumulative consumption is a PS-facing figure,
+   reported in the resource token Section 7.1 and at the usage endpoint
+   Section 15; see Appendix A.4 for why it is not also reported to the
+   agent.
 
    The scope of the reported figures is this auth token's budget,
-   because the budget expires with the token Section 15.  Consumption
-   records and usage counters are a different set of numbers, reported
-   to the PS in the resource token Section 7.1 and at the usage endpoint
-   Section 16, not to the agent.
+   because the budget expires with the token Section 14.
 
 11.1.  Sending Rules
 
    A resource that granted a budget SHOULD include AAuth-Budget on every
    response to a request bearing that auth token — success, error, and
    the 401 challenge, where it reads remaining=0 beside the AAuth-
-   Requirement header Section 14.
+   Requirement header Section 13.
 
    This is SHOULD rather than MUST because the failing layer may sit
    below the metering layer: a gateway timeout, a crashed worker, or a
    fault in metering itself produces a response no budget figure can
    ride on.  A resource MUST NOT omit the field for any other reason.
-   Where the figure matters and the header may be missing, the agent has
-   the balance endpoint Section 13.
+   An agent that misses the field learns the balance from its next
+   response, and until then applies Section 12.2.
 
    HTTP/1.1 401 Unauthorized
    AAuth-Requirement: requirement=auth-token;
        resource-token="eyJ..."; reason=budget-exhausted
-   AAuth-Budget: remaining=0; consumed=2000000;
-       unit="USD"; decimals=6
+   AAuth-Budget: remaining=0; unit="USD"; decimals=6
 
    That the field appears on every response regardless of status is the
    point of putting it in a header.  The agent reads the same field
@@ -769,7 +774,7 @@ Table of Contents
    intermediary rewriting it is asserting authorization state it does
    not hold.  This is the inverse of the RateLimit rule permitting
    intermediaries to tighten values
-   ([I-D.ietf-httpapi-ratelimit-headers]) — see Appendix A.4.
+   ([I-D.ietf-httpapi-ratelimit-headers]) — see Appendix A.6.
 
    Recipients MUST ignore AAuth-Budget on a response served from cache
    with a positive current_age ([RFC9111], Section 4.2.3).  This is the
@@ -790,67 +795,80 @@ Table of Contents
 
    Response headers are written before the body, and a streamed
    response's actual cost is known only when the stream ends.  The
-   remaining on that response already covers it at its maximum: the
-   resource reserved before serving Section 15.6, and the figure is net
-   of the reservation.  When the stream completes, the unused portion of
-   the reservation is released into the next response's figure.
+   resource therefore cannot state cost in the header.  What it can
+   state is what it has held: it reserved before serving Section 14.6,
+   and remaining is already net of that reservation.
 
-   Trailers are not used.  The RateLimit work considered and rejected
-   them: intermediaries drop trailers, and combining a header value with
-   a trailer value complicates clients.  Both objections apply here
-   unchanged.
+   A resource serving a streamed response SHOULD send reserved in the
+   header and cost in a trailer:
+
+   HTTP/1.1 200 OK
+   Content-Type: text/event-stream
+   Trailer: AAuth-Budget
+   AAuth-Budget: remaining=1568800; reserved=431200;
+       unit="USD"; decimals=6
+
+      ...stream...
+
+   AAuth-Budget: cost=221200
+
+   The agent computes the balance after the request as remaining +
+   reserved - cost.  Here that is 1,778,800: the 431,200 held was not
+   all spent, and the unspent 210,000 returns to the grant.
+
+12.1.  Trailer Rules
+
+   A resource MAY send AAuth-Budget as a trailer field, subject to three
+   rules:
+
+   1.  The response MUST list AAuth-Budget in a Trailer header field
+       ([RFC9110], Section 6.6.1).
+   2.  A trailer instance MUST NOT restate a member the header instance
+       carried.  It carries cost and nothing else.
+   3.  A recipient MUST NOT treat the trailer as necessary.  A response
+       that never delivers one is complete.
+
+   Rule 2 is what makes the field safe under either way a recipient
+   handles trailers.  A recipient that discards trailers keeps the
+   header's remaining, which is a floor and therefore correct if
+   conservative.  A recipient that merges trailer fields into the header
+   set produces a single Dictionary whose keys do not collide, because
+   no key appears twice.  Restating a member is the case that would
+   break: AAuth-Budget is a Dictionary, duplicate keys resolve last-wins
+   ([RFC9651], Section 3.2), and which value won would then depend on
+   whether the recipient merged — a difference no sender can observe or
+   control.
+
+   Rule 3 follows from trailers being droppable in transit ([RFC9110],
+   Section 6.5.2) and from trailers existing only on a chunked or
+   HTTP/2-and-later response.  The figure a trailer would have carried
+   is also in the next response's remaining, so nothing is lost that is
+   not recovered on the following call.
+
+12.2.  Ambiguous Failures
+
+   A request whose response never arrives — a dropped connection, an
+   aborted stream — leaves the agent unable to say whether it was
+   metered.  No trailer arrives on an aborted stream, and the header
+   that would have carried cost is on the response that was lost.
+
+   The agent MUST assume the request cost as much as the resource had
+   held for it: reserved where it saw one, and otherwise the request's
+   maximum cost as the resource would have bounded it Section 14.6.  It
+   carries that assumption until a later response's remaining supersedes
+   it, and it SHOULD NOT retry a chargeable request before then.
+
+   Assuming the maximum is the conservative direction: an agent that
+   under-assumes plans spending it does not have and discovers the
+   shortfall as a 401 Section 13.
 
    Inference APIs commonly emit final usage in the stream's terminal
    event.  That is application-layer and does not provide the
-   application independence this header exists for, but it does mean the
-   exact number exists when the stream ends, so a resource wanting to
-   report it on the same response has somewhere to put it without this
-   document defining anything.
+   application independence this header exists for, and a resource
+   emitting it is not excused from the trailer — but it does mean the
+   exact number exists when the stream ends.
 
-13.  Balance Endpoint
-
-   A resource MAY publish a balance_endpoint Section 5 where an agent
-   reads the balance of its own granted budget without consuming any of
-   it.
-
-   The agent makes a signed GET, presenting its auth token via the
-   Signature-Key header exactly as on any other request to the resource.
-   The auth token is the whole query: its budget claim names the grant
-   being asked about.  The resource MUST NOT meter the call.
-
-   The response carries the AAuth-Budget header Section 11 and a body
-   repeating the same figures as JSON:
-
-   HTTP/1.1 200 OK
-   Content-Type: application/json
-   Cache-Control: no-store
-   AAuth-Budget: remaining=1568800; consumed=431200;
-       unit="USD"; decimals=6
-
-   {
-     "remaining": 1568800,
-     "consumed": 431200,
-     "unit": "USD",
-     "decimals": 6
-   }
-
-   Body members remaining, consumed, unit, and decimals are all REQUIRED
-   — a body pays no size cost for self-description.  The response MUST
-   carry Cache-Control: no-store.  An auth token without a budget claim
-   gets invalid_request Section 18; an invalid or expired auth token
-   gets the 401 challenge it would get anywhere else at the resource.
-
-   The endpoint exists for ambiguous failures.  When a connection drops
-   mid-request, the agent does not know whether the request charged, and
-   the AAuth-Budget header that would have said so is on the response
-   that was lost.  An agent SHOULD NOT retry a chargeable request after
-   an ambiguous failure without first learning whether the original
-   charged — from the balance endpoint where the resource offers one, or
-   from the AAuth-Budget header of its next response otherwise. consumed
-   is the figure that answers the question, which is why the body
-   requires it.
-
-14.  Budget Exhaustion
+13.  Budget Exhaustion
 
    *Auth token expired.* The budget expires with the token.  This is
    already-defined behavior: 401 with AAuth-Requirement:
@@ -867,7 +885,7 @@ Table of Contents
    PS.
 
    *Request exceeds the remainder.* The budget has remainder, but this
-   request's maximum cost exceeds it Section 15.6.  The same 401
+   request's maximum cost exceeds it Section 14.6.  The same 401
    challenge, with reason=insufficient-budget.  The agent has a second
    move here that exhaustion does not offer: lower the request's bound
    to fit the remaining reported beside the challenge, and retry on the
@@ -882,7 +900,7 @@ Table of Contents
    actually consumed — the context for deciding whether to authorize
    more.
 
-14.1.  The reason Parameter
+13.1.  The reason Parameter
 
    A resource challenging because the budget is exhausted rather than
    because the token expired SHOULD include a reason parameter on the
@@ -891,14 +909,14 @@ Table of Contents
    HTTP/1.1 401 Unauthorized
    AAuth-Requirement: requirement=auth-token;
        resource-token="eyJ..."; reason=budget-exhausted
-   AAuth-Budget: remaining=0; consumed=2000000;
+   AAuth-Budget: cost=180000; remaining=0;
        unit="USD"; decimals=6
 
    reason is a Token.  This document defines two values:
 
    *  *budget-exhausted*: The granted budget is spent.
    *  *insufficient-budget*: The budget has remainder, but this
-      request's maximum cost exceeds it Section 15.6.
+      request's maximum cost exceeds it Section 14.6.
 
    For either value, the enclosed resource token MAY carry a budget
    sized for what the resource would need to see granted — for
@@ -921,7 +939,7 @@ Table of Contents
    at all.  An agent that understands neither ignores the parameter and
    re-authorizes, which is always correct.
 
-14.2.  Boundaries
+13.2.  Boundaries
 
    429 Too Many Requests is not used.  It is rate limiting, and in this
    protocol it already means "increase the polling interval by 5
@@ -932,14 +950,14 @@ Table of Contents
    protocol already permits AAuth-Requirement on a 402, and this
    document does not change that.
 
-15.  Enforcement
+14.  Enforcement
 
-15.1.  The Resource Enforces
+14.1.  The Resource Enforces
 
    The PS authorizes a number.  The resource counts.  The PS is not in
    the request path and does not meter.
 
-15.2.  Budgets Require Auth-Token Mode
+14.2.  Budgets Require Auth-Token Mode
 
    A budget is carried in the budget claim of an auth token, so a
    resource can enforce one only where it issues auth tokens.  A
@@ -959,7 +977,7 @@ Table of Contents
    reading it from a signed claim, there is nothing for the person
    server to have bounded.
 
-15.3.  Token Scope
+14.3.  Token Scope
 
    A budget is scoped to the auth token that carries it and expires with
    it.  This document defines no persistent grant identifier and does
@@ -967,7 +985,7 @@ Table of Contents
    are capped at one hour by the base protocol; re-issuance is the
    intended point at which the PS re-decides, not a bypass.
 
-15.4.  Aggregation
+14.4.  Aggregation
 
    The resource MUST aggregate consumption against the key (iss, sub,
    aud) of the auth token. (iss, sub) identifies the person — sub is
@@ -980,7 +998,7 @@ Table of Contents
    incurred it; a per-agent key would also reset every time the person
    changed agents.
 
-15.5.  Concurrency
+14.5.  Concurrency
 
    An agent may hold several concurrent auth tokens at the same resource
    — the mission_s256 claim means concurrent missions produce concurrent
@@ -998,7 +1016,7 @@ Table of Contents
    tokens of _X_ each has authorized up to _nX_ for as long as an hour,
    regardless of any standing figure it intended to hold.
 
-15.6.  The Budget Is a Hard Cap
+14.6.  The Budget Is a Hard Cap
 
    A resource MUST NOT let metered consumption exceed the granted
    amount.  A budget is an authorization, and an authorization the
@@ -1009,7 +1027,7 @@ Table of Contents
    request, the resource determines the request's maximum cost — from a
    bound the request declares, such as a maximum output length, or from
    a documented default — and refuses the request with
-   reason=insufficient-budget Section 14.1 when that maximum exceeds the
+   reason=insufficient-budget Section 13.1 when that maximum exceeds the
    remainder.  An operation with no finite cost bound MUST be given one,
    be truncated when the remainder is consumed, or be refused.
 
@@ -1018,7 +1036,7 @@ Table of Contents
    charge, release the difference.  The normative requirement is the
    invariant, not the mechanism: committed consumption plus outstanding
    reservations MUST NOT exceed the granted amount at any moment,
-   including under concurrent requests Section 15.5.
+   including under concurrent requests Section 14.5.
 
    The honest cost of the invariant lands near exhaustion: a request
    bounded at more than the remainder is refused even when its actual
@@ -1027,24 +1045,24 @@ Table of Contents
    fits — and that is the correct pressure, since it rewards realistic
    bounds.
 
-15.7.  Failed Calls
+14.7.  Failed Calls
 
    Whether a request that fails — a 5xx after input tokens were consumed
    — draws down the budget is the resource's metering policy.  Whatever
    it meters, the records and counters MUST reflect, or the person's
    numbers will not reconcile with the bill.
 
-15.8.  Delegation
+14.8.  Delegation
 
    A budget is not delegable.  Each auth token carries its own budget,
    and consumption through a delegated token draws down that token's
    budget alone.  Both delegation paths — call chaining and sub-agent
    authorization ([I-D.hardt-oauth-aauth-protocol]) — obtain each
    downstream auth token from the person server, so the PS sizes every
-   grant in a chain, and Section 15.5 already governs their sum.  No
+   grant in a chain, and Section 14.5 already governs their sum.  No
    sub-budget or draw-down-from-parent mechanism is defined.
 
-15.9.  Mission Attribution
+14.9.  Mission Attribution
 
    Consumption is attributed to a mission using the mission_s256 claim
    of the auth token.  That claim is PS-asserted throughout: the person
@@ -1054,7 +1072,7 @@ Table of Contents
    in the chain takes the mission on the agent's word, which is what
    makes a resource's per-mission figures worth reading.
 
-16.  Usage Counters
+15.  Usage Counters
 
    Consumption records reach the PS only when the agent brings a
    resource token back.  The agent is the party being budgeted and also
@@ -1070,7 +1088,7 @@ Table of Contents
    a handful of running integers per key and unit, incremented at
    metering time; serving the endpoint requires no per-record history.
 
-16.1.  Usage Request
+15.1.  Usage Request
 
    The PS MUST make a signed POST to the usage_endpoint, authenticating
    exactly as it does at an AS auth_token_endpoint
@@ -1100,7 +1118,7 @@ Table of Contents
 
    { "sub": "8f14e45fceea167a5a36dedd4bea2543" }
 
-16.2.  Usage Response
+15.2.  Usage Response
 
    {
      "as_of": 1754619970,
@@ -1157,7 +1175,7 @@ Table of Contents
    sets no retention requirement; the person's bill is the durable
    record.
 
-16.3.  Authorization and Errors
+15.3.  Authorization and Errors
 
    The jwks_uri in the Signature-Key header names the calling person
    server.  The resource MUST only answer for key values that have
@@ -1181,7 +1199,7 @@ Table of Contents
    ([I-D.ietf-httpapi-ratelimit-headers]) as on any endpoint.  A PS
    SHOULD poll no faster than its decisions require.
 
-16.4.  Division of Labor
+15.4.  Division of Labor
 
    The two PS-facing channels answer different questions at different
    moments.  The consumption records Section 7.1 serve the re-
@@ -1192,14 +1210,14 @@ Table of Contents
    person's dashboard.  A metered resource SHOULD implement both; the
    narrowing chain Section 4.2 functions with records alone.  The
    agent's own view is neither of these: it is the AAuth-Budget header
-   Section 11 and the balance endpoint Section 13, scoped to the token
-   it holds.
+   Section 11, scoped to the token it holds and to the request it just
+   made.
 
-17.  Capability Negotiation
+16.  Capability Negotiation
 
    This document adds budget to the AAuth Capability Value Registry.  An
    agent that understands budget semantics — the budget claim, the
-   AAuth-Budget header, and the reason values Section 14.1 — SHOULD
+   AAuth-Budget header, and the reason values Section 13.1 — SHOULD
    include budget in its AAuth-Capabilities request header, and in the
    capabilities parameter of its PS token requests:
 
@@ -1214,7 +1232,7 @@ Table of Contents
    A resource MUST NOT withhold AAuth-Budget from an agent that did not
    declare the capability.  The header is safe to ignore.
 
-18.  Errors
+17.  Errors
 
    Narrowing is never an error.  A resource that will grant less than
    the agent asked for issues a smaller budget; a PS or AS that will
@@ -1246,12 +1264,7 @@ Table of Contents
    | invalid_request | 400    | Usage         | Zero or several        |
    |                 |        | endpoint      | query keys, or a       |
    |                 |        |               | malformed value        |
-   |                 |        |               | Section 16.3           |
-   +-----------------+--------+---------------+------------------------+
-   | invalid_request | 400    | Balance       | The auth token         |
-   |                 |        | endpoint      | presented carries no   |
-   |                 |        |               | budget claim           |
-   |                 |        |               | Section 13             |
+   |                 |        |               | Section 15.3           |
    +-----------------+--------+---------------+------------------------+
 
                                   Table 2
@@ -1272,7 +1285,7 @@ Table of Contents
    decimals, which is signed by the resource.  The cross-check is a
    defense against staleness, not against the resource.
 
-18.1.  Declining with Guidance
+17.1.  Declining with Guidance
 
    A PS granting less than the resource offered needs no mechanism: the
    amount in the issued claim says it.  A PS or AS that declines a token
@@ -1283,7 +1296,7 @@ Table of Contents
    agent's move is a fresh resource token at that figure Section 6 and a
    new token request, with the usual consent and policy evaluation.
 
-19.  Standing Authorization for Metered Inference
+18.  Standing Authorization for Metered Inference
 
    Metered inference is the initiating use case for this extension and
    has a property that distinguishes it from most resource access: the
@@ -1335,9 +1348,9 @@ Table of Contents
    authorization envelopes over one metering core.  Deployed this way,
    this extension is the AAuth binding of TPX.
 
-20.  Security Considerations
+19.  Security Considerations
 
-20.1.  The Header Is Unsigned
+19.1.  The Header Is Unsigned
 
    AAuth-Budget is not signed, so an intermediary can lie about the
    balance.  The failure modes are bounded.  Understating remaining
@@ -1353,7 +1366,7 @@ Table of Contents
    request-side today, and adding a response-side profile is a larger
    change than this extension makes.
 
-20.2.  Budget Is Not a Substitute for Scope
+19.2.  Budget Is Not a Substitute for Scope
 
    A budget bounds how much an agent may consume, not what it may do.
    An agent with a small budget at a resource that performs irreversible
@@ -1361,16 +1374,16 @@ Table of Contents
    scope, and SHOULD NOT treat the presence of a budget as evidence that
    the person reviewed anything beyond the amount.
 
-20.3.  Over-Issuance Through Concurrency
+19.3.  Over-Issuance Through Concurrency
 
    A PS that issues concurrent auth tokens without tracking their sum
-   has authorized their sum, not any single one of them Section 15.5.  A
+   has authorized their sum, not any single one of them Section 14.5.  A
    resource that aggregates non-atomically across concurrent requests
    can be driven past the ceiling by parallel calls.  Both are
    implementation errors that produce real overspend, and both are easy
    to make.
 
-20.4.  Consumption Reports as Attack Surface
+19.4.  Consumption Reports as Attack Surface
 
    budget_consumed records are resource-signed and usage counters are
    served from the resource's authenticated endpoint; both are the
@@ -1381,18 +1394,18 @@ Table of Contents
    and SHOULD NOT treat them as authoritative for anything other than
    its own next decision.
 
-20.5.  Unit Substitution
+19.5.  Unit Substitution
 
    Because a resource may change the unit between what the agent
    requested and what it offers Section 4.2, a PS reading a budget claim
    must read unit and decimals rather than assuming the denomination the
    agent described in justification.  The cross-check against
-   budget_units in Section 18 is the defense against a stale scale;
+   budget_units in Section 17 is the defense against a stale scale;
    there is no defense against a resource that misdenominates
    deliberately, and none is needed — that resource is equally free to
    ignore the budget it was granted.
 
-21.  Privacy Considerations
+20.  Privacy Considerations
 
    A budget amount is financial information about the person.  It
    travels from the resource to the PS in the resource token and back in
@@ -1417,13 +1430,17 @@ Table of Contents
 
    Because AAuth-Budget is unsigned and unencrypted above TLS, every
    intermediary on the path sees the person's remaining balance at that
-   resource.  Deployments that consider the balance sensitive should
-   weigh omitting the OPTIONAL consumed member, which is the member that
-   most directly describes spending.
+   resource, and the price of the request that produced the response.
+   Carrying no cumulative figure bounds this: an intermediary sees what
+   one call cost and what is left of one hour's grant, not the person's
+   spending history at that resource.  Deployments that consider even
+   the per-call figure sensitive may omit the OPTIONAL cost member from
+   the header, at the price of leaving the agent to derive it from
+   successive remaining values.
 
-22.  IANA Considerations
+21.  IANA Considerations
 
-22.1.  HTTP Header Field Registration
+21.1.  HTTP Header Field Registration
 
    This specification registers the following HTTP header field in the
    "Hypertext Transfer Protocol (HTTP) Field Name Registry" established
@@ -1434,7 +1451,7 @@ Table of Contents
    *  Structured Type: Dictionary
    *  Reference: This document, Section 11
 
-22.2.  JWT Claims Registration
+21.2.  JWT Claims Registration
 
    This document requests registration of the following claims in the
    IANA "JSON Web Token Claims" registry established by [RFC7519]:
@@ -1455,7 +1472,7 @@ Table of Contents
 
                                   Table 3
 
-22.3.  AAuth Capability Value Registry
+21.3.  AAuth Capability Value Registry
 
    This document requests registration of the following value in the
    AAuth Capability Value Registry established by AAuth Protocol
@@ -1465,19 +1482,19 @@ Table of Contents
                   +========+===========================+
                   | Value  | Reference                 |
                   +========+===========================+
-                  | budget | This document, Section 17 |
+                  | budget | This document, Section 16 |
                   +--------+---------------------------+
 
                                  Table 4
 
-22.4.  No Budget Unit Registry
+21.4.  No Budget Unit Registry
 
    This document deliberately establishes no registry of unit values.
    Units are declared by each resource in its budget_units metadata,
    exactly as scope values are declared in scope_descriptions.  See
-   Appendix A.6.
+   Appendix A.8.
 
-23.  Implementation Status
+22.  Implementation Status
 
    _Note: This section is to be removed before publishing as an RFC._
 
@@ -1490,24 +1507,50 @@ Table of Contents
 
    There are currently no known implementations.
 
-24.  Document History
+23.  Document History
 
    _Note: This section is to be removed before publishing as an RFC._
 
+   *  draft-hardt-aauth-budgets-01
+
+      -  Replaced the header's cumulative consumed member with cost,
+         what *this request* cost.  The agent's question per response is
+         the price of the call it just made and whether it can afford
+         another; cumulative spend answered neither, was derivable as
+         granted - remaining, and collided with the consumed of a
+         consumption record, which is a per-token total.  See
+         Appendix A.4.
+      -  Added the OPTIONAL reserved member, what the resource holds for
+         a request whose cost it cannot yet state.  It is a fact about
+         the request and is never revised.
+      -  Permitted AAuth-Budget as a trailer, carrying cost for a
+         streamed response.  A trailer MUST NOT restate a member the
+         header carried, which makes the field correct whether a
+         recipient merges trailers or discards them, without mandating
+         either.  Reverses this document's earlier position that
+         trailers are not used; see Appendix A.5.
+      -  Added Ambiguous Failures Section 12.2: an agent that never
+         receives a response assumes the request cost what the resource
+         had held for it, until a later remaining supersedes that.
+      -  Removed the balance_endpoint and its metadata field.  It was
+         OPTIONAL and existed for the ambiguous-failure case, which a
+         local conservative rule now covers without a round trip.
+
    *  draft-hardt-aauth-budgets-00
+
       -  Initial submission
 
    _Note: written against draft-hardt-oauth-aauth-protocol-11, which
    introduces the person token, replaces the mission object with
    mission_s256, and removes the agent identifier from auth tokens._
 
-25.  Acknowledgments
+24.  Acknowledgments
 
    The author would like to thank reviewers for their feedback.
 
-26.  References
+25.  References
 
-26.1.  Normative References
+25.1.  Normative References
 
    [I-D.hardt-httpbis-signature-key]
               Hardt, D. and T. Meunier, "HTTP Signature Keys", 2026,
@@ -1546,7 +1589,7 @@ Table of Contents
               HTTP", RFC 9651, DOI 10.17487/RFC9651, September 2024,
               <https://www.rfc-editor.org/info/rfc9651>.
 
-26.2.  Informative References
+25.2.  Informative References
 
    [AP2]      Google, "Agent Payments Protocol (AP2)", 2025,
               <https://ap2-protocol.org/>.
@@ -1661,7 +1704,81 @@ A.3.  Why decimals Is in the Signed Claim
       resolve the number against mutable metadata fetched at some
       unspecified later time.
 
-A.4.  Why Not RateLimit
+A.4.  Why the Agent Is Not Told Its Cumulative Consumption
+
+   An earlier revision of this document carried a consumed member in the
+   header, giving what had been consumed against the auth token to date,
+   and a balance_endpoint where the agent could read the same figure on
+   demand.  Both are gone.  The agent is told what a request cost and
+   what is left; cumulative consumption is reported to the person server
+   and not to the agent.
+
+   Three reasons.
+
+   The figure is redundant. granted is in the auth token the agent
+   signed the request with, and remaining is in the response, so
+   cumulative consumption is granted - remaining whenever nothing is
+   reserved.  Carrying a member the recipient can already compute is
+   weight without information.
+
+   The word is already spoken for.  A consumption record is a {jti,
+   consumed} pair Section 7.1 where consumed means the total metered
+   against one token's whole budget.  A person server reads those
+   records and this header's semantics against each other.  Having
+   consumed mean a per-request figure in one place and a per-token total
+   in the other is the kind of collision that survives review and then
+   costs an implementer a day.
+
+   Cumulative spend is the more revealing figure.  It describes a
+   pattern rather than a transaction, and AAuth-Budget travels unsigned
+   past every intermediary on the path Section 20.  What the agent
+   genuinely needs per response is the price of the call it just made
+   and whether it can afford another.  Both are per-request facts, and
+   that is what the field now carries.
+
+   The balance_endpoint went with it.  It was OPTIONAL, existed for one
+   case — an ambiguous failure, where the agent cannot say whether a
+   request was metered — and cost a resource an endpoint to implement
+   and this document a section to specify.  That case is now answered by
+   a rule the agent applies locally Section 12.2: assume the maximum
+   until a later remaining says otherwise.  A conservative default that
+   every agent applies is better than an optional round trip that some
+   resources offer.
+
+A.5.  Why a Trailer Only Adds a Member
+
+   AAuth-Budget may be sent as a trailer, carrying cost for a response
+   whose cost was unknown when the header was written Section 12.  This
+   document rejected trailers in an earlier revision, on the reasoning
+   of the RateLimit work ([I-D.ietf-httpapi-ratelimit-headers]):
+   intermediaries drop them, and combining a header value with a trailer
+   value complicates clients.
+
+   The first objection carries less weight here.  It is largely a
+   browser property — fetch does not surface trailers — and the traffic
+   this document governs is an agent calling a resource, which is
+   server-to-server and commonly HTTP/2.  Where a trailer is dropped
+   anyway, rule 3 of Section 12.1 makes that harmless.
+
+   The second objection is the real one, and Section 12.1 answers it
+   structurally rather than by mandating client behavior.  A recipient
+   may discard trailer fields or merge them into the header set, and a
+   sender can neither observe nor control which.  Restating a member
+   across the two would therefore produce a value that depends on the
+   recipient's choice: AAuth-Budget is a Dictionary, duplicate keys
+   resolve last-wins ([RFC9651], Section 3.2), so merging yields the
+   trailer's value and discarding yields the header's.  Adding a member
+   that the header did not carry has no such fork.  Merge yields a
+   complete picture, discard yields a conservative one, and neither is
+   wrong.
+
+   This is why reserved is a statement about a request rather than a
+   running balance.  A running figure would go stale the moment the
+   reservation was released, and a stale member surviving a merge is
+   exactly the failure the rule exists to prevent.  What was held for a
+   request does not change after the fact.
+
+A.6.  Why Not RateLimit
 
    RateLimit and RateLimit-Policy ([I-D.ietf-httpapi-ratelimit-headers])
    already report a server-side quota and its remaining balance.
@@ -1693,7 +1810,7 @@ A.4.  Why Not RateLimit
    dollars of spend is stating two different things, and collapsing them
    loses one.
 
-A.5.  Why Budget Is Not a Mission Aggregate
+A.7.  Why Budget Is Not a Mission Aggregate
 
    A mission description may well say "budget around $5,000," and the
    obvious next step is to make that a protocol object the PS enforces
@@ -1714,7 +1831,7 @@ A.5.  Why Budget Is Not a Mission Aggregate
    narrowing chain in Section 4.2 gives it.  The mission description
    already carries the person's intent, and the PS already reads it.
 
-A.6.  Why Units Are Not Registered
+A.8.  Why Units Are Not Registered
 
    RateLimit establishes an IANA registry of quota units because its
    units — request, content-bytes, concurrent-requests — are protocol-
@@ -1774,19 +1891,20 @@ B.2.  TPX
    Section 4.2, in OAuth form.
 
    Three of its mechanisms have direct counterparts here.  Its GET
-   /credits spend summary and budget_used introspection member are the
-   precedent for the balance endpoint Section 13.  Its separation of
-   budget_exhausted from balance_exhausted is the same boundary
-   Section 14.2 draws between re-authorization and payment.  And its
-   budget is "a damage cap, not a payment" — the hard-cap property
-   Section 15.6 states, which TPX asserts as a property of the grant and
-   this document additionally realizes with reservations, since an
-   agent's operations are unbounded before generation.
+   /credits spend summary and budget_used introspection member report
+   cumulative spend on a grant, which this document reports to the
+   person server Section 15 rather than to the agent Appendix A.4.  Its
+   separation of budget_exhausted from balance_exhausted is the same
+   boundary Section 13.2 draws between re-authorization and payment.
+   And its budget is "a damage cap, not a payment" — the hard-cap
+   property Section 14.6 states, which TPX asserts as a property of the
+   grant and this document additionally realizes with reservations,
+   since an agent's operations are unbounded before generation.
 
    TPX denominates in USD as decimal JSON numbers with at most six
    fractional digits, where this document uses an integer in a declared
    scale Appendix A.1.  TPX serves human-driven apps over OAuth;
-   Section 19 describes the deployment where one provider's meter serves
+   Section 18 describes the deployment where one provider's meter serves
    both envelopes.
 
 B.3.  UK Open Banking Variable Recurring Payments
@@ -1796,7 +1914,7 @@ B.3.  UK Open Banking Variable Recurring Payments
    MaximumCumulativeAmount, MaximumCumulativeNumberOfPayments, and
    PeriodicLimits[] carrying PeriodType and PeriodAlignment.
    PeriodAlignment — Consent versus Calendar — names the choice the
-   usage counters Section 16 make: calendar alignment, with the timezone
+   usage counters Section 15 make: calendar alignment, with the timezone
    question answered by fixing UTC.
 
 B.4.  Stripe Issuing Spending Controls
@@ -1806,7 +1924,7 @@ B.4.  Stripe Issuing Spending Controls
    smallest unit. interval spans per_authorization through all_time,
    which is the precedent for expressing a per-transaction cap and a
    periodic cap in a single enumeration rather than two fields; the
-   usage counters Section 16 adopt the date-based portion of that
+   usage counters Section 15 adopt the date-based portion of that
    enumeration directly.  Stripe computes all date-based intervals from
    midnight UTC — the precedent for fixing UTC by definition — and
    documents spending aggregation as best-effort with up to 30 seconds
@@ -1846,7 +1964,7 @@ B.8.  RateLimit Header Fields
    three RFC 9457 problem types: quota-exceeded (429), temporary-
    reduced-capacity (503), and abnormal-usage-detected (429).
 
-   It is cited here for why AAuth-Budget exists separately Appendix A.4,
+   It is cited here for why AAuth-Budget exists separately Appendix A.6,
    for the rejection of trailers Section 12, and for pk as the precedent
    for a documented, client-predictable partition key.
 
