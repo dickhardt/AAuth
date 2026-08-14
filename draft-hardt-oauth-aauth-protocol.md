@@ -695,6 +695,8 @@ The PS MAY require user interaction before issuing and return a `202 Accepted` d
 
 Errors use the token endpoint error codes (#token-endpoint-error-codes); `invalid_request` covers a missing or malformed `resource` or `mission_s256` value.
 
+Issuing a person token creates a retention obligation. A PS MUST retain a record of each person token it issues — `jti`, `ps`, `sub`, `mission_s256`, `tenant`, and `exp` — sufficient to answer resource token verification (#resource-token-verification). Because a resource token may name a person token that was valid when the resource token was issued, the record MUST be retained beyond the person token's `exp` by at least the longest resource token lifetime the PS accepts (#resource-tokens). A resource token naming a `jti` the PS has no record of is rejected with `unknown_person_token` (#token-endpoint-error-codes).
+
 An agent SHOULD cache a person token for a resource until it expires rather than requesting one per call. A person token is scoped to one resource and, when it carries `mission_s256`, to one mission, so an agent working across several resources or several concurrent missions holds one per combination. All of them bind the same key through `cnf`, so an agent that rotates its signing key invalidates all of them at once; the agent SHOULD re-request lazily, on next use of each resource, rather than re-minting the whole set.
 
 ## Person Token Structure {#person-token-structure}
@@ -1014,7 +1016,7 @@ Verify the resource token per [@!RFC7515] and [@!RFC7519]:
 3. Verify `exp` is in the future and `iat` is not in the future.
 4. Verify `aud` matches the recipient's own identifier (the PS in three-party, or the AS in four-party).
 5. Verify `agent_jkt` matches the JWK Thumbprint of the key used to sign the HTTP request.
-6. A PS MUST look up the person token identified by `presented_jti` among those it issued, and MUST verify that `ps`, `sub`, `mission_s256`, and `tenant` match that token exactly, rejecting the resource token on any mismatch or omission. An AS MUST verify that `ps` names the PS that sent the token request.
+6. A PS MUST resolve `presented_jti` against its retained records of issued person tokens (#person-token-endpoint). If no record exists — a tampered token, another PS's `jti`, or a token outside the retention window — the PS MUST reject the resource token with `unknown_person_token`. If a record exists, the PS MUST verify that `ps`, `sub`, `mission_s256`, and `tenant` match it exactly, rejecting the resource token on any mismatch or omission; a mismatch against an existing record is evidence of tampering, such as mission stripping, and SHOULD be surfaced to operators rather than only rejected. An AS MUST verify that `ps` names the PS that sent the token request.
 7. If `mission_s256` is present, a PS MUST verify the mission is active and that the current time precedes its `expires_at` where one is set.
 
 For a parent-mediated sub-agent authorization (a `subagent_token` is present, see (#sub-agents)), step 5 instead verifies `agent_jkt` against the `subagent_token`'s `cnf.jwk` — the sub-agent's key — because the parent, not the sub-agent, signs the HTTP request.
@@ -2519,6 +2521,7 @@ Other RFC 9457 members (`type`, `title`, `status`, `instance`) MAY be present wi
 | `expired_agent_token` | 400 | Agent token has expired |
 | `invalid_resource_token` | 400 | Resource token malformed or signature verification failed |
 | `expired_resource_token` | 400 | Resource token has expired |
+| `unknown_person_token` | 400 | The person token named by the resource token's `presented_jti` is not among those the PS retains (#resource-token-verification) |
 | `user_unreachable` | 403 | Terminal. The PS has no channel to reach the user and the agent did not declare the `interaction` capability, so the user cannot be reached at all. The non-terminal "user action is needed" case uses a `202` with `requirement=interaction` (#requirement-responses), not this error. |
 | `server_error` | 500 | Internal error |
 
