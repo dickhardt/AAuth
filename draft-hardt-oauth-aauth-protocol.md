@@ -370,7 +370,7 @@ Policy decisions in AAuth evaluate what the agent is doing. The Agent is the sub
 - **Access Server** decides whether to issue an auth token on behalf of the resource — based on resource policy, the claims the PS has provided, and any further requirements (interaction, payment, claims) gathered via deferred responses.
 - **Resource** plays two roles in policy: it *decides what is required* to access the resource at the moment it issues a resource token (audience, scope, mission requirement), and it *enforces* the resulting auth token at the moment of access (signature verification, proof-of-possession, access rules).
 
-All AAuth tokens have limited lifetimes, so each issuance is a natural re-evaluation point. An auth token that lives for an hour means every party that contributed to its issuance gets a fresh decision opportunity every hour — combined with real-time revocation (#token-revocation), this produces layered control without any single party needing to coordinate with the others.
+All AAuth tokens have limited lifetimes, so each issuance is a natural re-evaluation point; real-time revocation (#token-revocation) complements it.
 
 ## Agent Governance {#agent-governance}
 
@@ -1856,7 +1856,7 @@ Agents and resources MAY publish a `login_endpoint` in their metadata. The `logi
 - `login_hint` (OPTIONAL): Hint about who to authorize, per [@!OpenID.Core] Section 3.1.2.1.
 - `domain_hint` (OPTIONAL): Domain hint, per OpenID Connect Enterprise Extensions 1.0 [@OpenID.Enterprise].
 - `tenant` (OPTIONAL): Tenant identifier, per OpenID Connect Enterprise Extensions 1.0 [@OpenID.Enterprise].
-- `start_path` (OPTIONAL): Path on the agent's or resource's origin where the user should be directed after login completes. The recipient MUST validate that `start_path` is a relative path on its own origin.
+- `start_path` (OPTIONAL): Path on the agent's or resource's origin where the user should be directed after login completes. The recipient MUST validate that `start_path` is a relative path on its own origin, preventing open redirects.
 
 **Example login URL:**
 ```
@@ -1923,7 +1923,6 @@ The third party does not need to be the PS. Any party that knows the agent's or 
 ## Security Considerations for Third-Party Login
 
 - The `login_endpoint` does not carry any tokens, codes, or pre-authorized state. The agent or resource initiates a standard signed flow with the PS, which independently authenticates the user.
-- The `start_path` parameter MUST be validated as a relative path on the recipient's own origin to prevent open redirect attacks.
 - The `ps` parameter is untrusted input. The agent or resource MUST discover and verify the PS via its well-known metadata before proceeding.
 
 # Protocol Primitives {#protocol-primitives}
@@ -2716,25 +2715,11 @@ Each step builds on the previous one. A resource that adopts any step works with
 
 ## Proof-of-Possession
 
-All AAuth tokens are proof-of-possession tokens. The holder must prove possession of the private key corresponding to the public key in the token's `cnf` claim.
-
-## Token Security
-
-- Agent tokens bind agent keys to agent identity
-- Resource tokens bind access requests to resource identity, preventing confused deputy attacks
-- Auth tokens bind authorization grants to agent keys
+All AAuth tokens are proof-of-possession tokens: the holder must prove possession of the private key corresponding to the public key in the token's `cnf` claim. Agent tokens bind agent keys to agent identity; resource tokens bind access requests to resource identity, preventing confused deputy attacks; auth tokens bind authorization grants to agent keys.
 
 ## Pending URL Security
 
-- Pending URLs MUST be unguessable and SHOULD have limited lifetime
-- Pending URLs MUST be on the same origin as the server that issued them
-- Servers MUST verify the agent's identity on every poll
-- Once a terminal response is returned, the pending URL MUST return `410 Gone`
-
-## Clarification Chat Security
-
-- PSes MUST enforce a maximum number of clarification rounds
-- Clarification responses from agents are untrusted input and MUST be sanitized before display
+Pending URLs MUST be unguessable, SHOULD have limited lifetime, and MUST be on the same origin as the server that issued them. Servers MUST verify the agent's identity on every poll, and once a terminal response is returned the pending URL MUST return `410 Gone`. For clarification chat over a pending URL, PSes MUST enforce a maximum number of rounds, and clarification responses are untrusted input that MUST be sanitized before display.
 
 ## Untrusted Input
 
@@ -2820,14 +2805,6 @@ This invariant enables:
 The PS is a centralized authority that sees every authorization in a mission. PS implementations MUST apply appropriate security controls including access control, audit logging, and monitoring. Compromise of a PS could affect all agents and missions it manages.
 
 Several architectural properties mitigate this centralization risk. The person chooses their PS — no other party in the protocol imposes a PS, and the person can migrate to a different PS at any time. The PS MAY delegate authentication to an identity provider chosen by the person or organization (e.g., an enterprise IdP via OIDC federation), reducing the PS's role in credential management. The PS MAY also delegate policy evaluation to external services selected by the person, so that consent and authorization decisions are not solely determined by the PS operator. To the rest of the protocol, the PS presents a single interface regardless of how it is composed internally.
-
-## Call Chaining Identity
-
-When a resource acts as an agent in call chaining, it uses its own signing key and presents its own credentials. The resource MUST publish agent metadata so downstream parties can verify its identity.
-
-## Token Revocation and Lifecycle
-
-Real-time revocation (#token-revocation) and short token lifetimes provide layered access control. Organizations have multiple control points — agent provider, PS, and AS — each of which can deny renewal or revoke tokens independently. Shorter auth token lifetimes reduce the window between a control action and natural expiration.
 
 ## TLS Requirements
 
