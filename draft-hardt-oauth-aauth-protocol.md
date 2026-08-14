@@ -642,7 +642,9 @@ Verify the agent token per [@!RFC7515] and [@!RFC7519]:
 
 # Person Token {#person-tokens}
 
-A person token is a PS-issued JWT that identifies the person an agent acts for to a single resource. It carries no authorization from the PS: no scope, no account, no permission. Whether identity alone is sufficient to serve a request is the resource's decision, and a resource that decides it is (#overview-person-identity) serves whatever it serves on identity — so holding a person token is, at such a resource, effectively access. What a person token MUST NOT do is stand in for an auth token where one is required (#person-token-not-authorization).
+A person token is a PS-issued JWT that identifies the person an agent acts for to a single resource. It is not a bearer credential — `cnf` binds it to the agent's signing key — its `aud` is one resource, and it lives at most one hour. It carries no authorization from the PS: no scope, no account, no permission. Whether identity alone is sufficient to serve a request is the resource's decision, and a resource that decides it is (#overview-person-identity) serves whatever it serves on identity — so holding a person token is, at such a resource, effectively access. What a person token MUST NOT do is stand in for an auth token where one is required (#person-token-not-authorization).
+
+A person token asserts that its issuer recognizes this person and that this agent acts for them. It carries no statement about how the person server established the person's identity, and a resource MUST NOT treat it as evidence of identity proofing, of legal identity, or of any assurance level. What it guarantees is continuity: the same `(iss, sub)` is the same person at this resource over time (#continuity-not-proofing).
 
 The agent presents it via the `Signature-Key` header in place of its agent token (#keying-material). A resource MUST have verified a person token before it issues a resource token (#resource-tokens), so the identity and mission a resource records are PS-asserted rather than agent-asserted.
 
@@ -3079,6 +3081,10 @@ A person token identifies the person to a resource before any authorization deci
 The directed `sub` bounds the exposure to one `(PS, resource)` pair. The PS bounds it further: it decides whether to issue at all, and SHOULD treat the first person token for a given resource as requiring the person's approval (#person-token-endpoint).
 
 A person token grants nothing, so disclosure to an unintended party leaks an identifier and no access, and `cnf` prevents another party from presenting it.
+
+## Continuity, Not Identity Proofing {#continuity-not-proofing}
+
+A person token proves "the same entity again", not a verified legal identity. The protocol does not state what standard, if any, a PS applied before recognizing a person, and a resource MUST NOT infer one (#person-tokens). Continuity is sufficient for most resource access: authorizing an agent, keeping an account stable across agents and sessions, applying per-person policy. A resource requiring more — an age check, a residency check, regulated onboarding — obtains it out of band or through claims a person server explicitly asserts.
 
 ## Organization Identification {#person-token-org-policy}
 
