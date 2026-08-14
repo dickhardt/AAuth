@@ -642,7 +642,9 @@ Verify the agent token per [@!RFC7515] and [@!RFC7519]:
 
 # Person Token {#person-tokens}
 
-A person token is a PS-issued JWT that identifies the person an agent acts for to a single resource. It carries no authorization from the PS: no scope, no account, no permission. Whether identity alone is sufficient to serve a request is the resource's decision, and a resource that decides it is (#overview-person-identity) serves whatever it serves on identity — so holding a person token is, at such a resource, effectively access. What a person token MUST NOT do is stand in for an auth token where one is required (#person-token-not-authorization).
+A person token is a PS-issued JWT that identifies the person an agent acts for to a single resource. It is not a bearer credential — `cnf` binds it to the agent's signing key — its `aud` is one resource, and it lives at most one hour. It carries no authorization from the PS: no scope, no account, no permission. Whether identity alone is sufficient to serve a request is the resource's decision, and a resource that decides it is (#overview-person-identity) serves whatever it serves on identity — so holding a person token is, at such a resource, effectively access. What a person token MUST NOT do is stand in for an auth token where one is required (#person-token-not-authorization).
+
+A person token asserts that its issuer recognizes this person and that this agent acts for them. It carries no statement about how the person server established the person's identity, and a resource MUST NOT treat it as evidence of identity proofing, of legal identity, or of any assurance level. What it guarantees is continuity: the same `(iss, sub)` is the same person at this resource over time (#continuity-not-proofing).
 
 The agent presents it via the `Signature-Key` header in place of its agent token (#keying-material). A resource MUST have verified a person token before it issues a resource token (#resource-tokens), so the identity and mission a resource records are PS-asserted rather than agent-asserted.
 
@@ -692,6 +694,8 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 The PS MAY require user interaction before issuing and return a `202 Accepted` deferred response with `requirement=interaction` (#requirement-responses). Because a resource MAY serve requests on identity alone, the question put to the person is whether this agent may act at the resource as them, not merely whether it may name them. A PS SHOULD fetch the resource's metadata (#resource-metadata) before issuing for a resource the person has not used, and present its `name`, `description`, and `access_mode` so that the person is answering the question the resource will actually apply.
 
 Errors use the token endpoint error codes (#token-endpoint-error-codes); `invalid_request` covers a missing or malformed `resource` or `mission_s256` value.
+
+Issuing a person token creates a retention obligation. A PS MUST retain a record of each person token it issues — `jti`, `ps`, `sub`, `mission_s256`, `tenant`, and `exp` — sufficient to answer resource token verification (#resource-token-verification). Because a resource token may name a person token that was valid when the resource token was issued, the record MUST be retained beyond the person token's `exp` by at least the longest resource token lifetime the PS accepts (#resource-tokens). A resource token naming a `jti` the PS has no record of is rejected with `unknown_person_token` (#token-endpoint-error-codes).
 
 An agent SHOULD cache a person token for a resource until it expires rather than requesting one per call. A person token is scoped to one resource and, when it carries `mission_s256`, to one mission, so an agent working across several resources or several concurrent missions holds one per combination. All of them bind the same key through `cnf`, so an agent that rotates its signing key invalidates all of them at once; the agent SHOULD re-request lazily, on next use of each resource, rather than re-minting the whole set.
 
@@ -967,6 +971,28 @@ The agent MUST extract the `resource-token` parameter, verify the resource token
 
 A resource MAY return `requirement=auth-token` with a new resource token to a request that already includes an auth token — for example, when the request requires a higher level of authorization than the current token provides. Agents MUST be prepared for this step-up authorization at any time.
 
+### Deferred Delivery {#deferred-auth-token}
+
+A resource MAY instead deliver the same requirement as a `202 Accepted` deferred response (#deferred-responses), holding the invocation rather than requiring the agent to retry it:
+
+```http
+HTTP/1.1 202 Accepted
+Location: /pending/f7a3b9c
+Retry-After: 5
+Cache-Control: no-store
+AAuth-Requirement: requirement=auth-token; resource-token="eyJ..."
+
+{
+  "status": "pending"
+}
+```
+
+The agent verifies the resource token and obtains an auth token exactly as in the `401` case, then completes at the pending URL: it polls with signed `GET` requests per (#deferred-responses), presenting the auth token via `Signature-Key` once it holds one. The resource executes the held invocation on the first poll that presents a valid auth token, and answers with the invocation's response.
+
+Completion consumes the pending record. The resource MUST retain the record, with the invocation's result, at least until the auth token's `exp`, and MUST answer a repeated presentation of the same auth token at the pending URL from that result rather than executing again — a response can be lost in transit, and the agent cannot otherwise distinguish "not executed" from "executed, response lost". If the resource token expires before the agent obtains an auth token, the resource MAY include a fresh resource token in the `AAuth-Requirement` header of a subsequent poll response; it still holds the invocation, so nothing is re-sent.
+
+Which delivery to use is the resource's choice, per invocation. The `401` is the baseline every resource can implement without holding state, and the only delivery that maps onto transports with no place to complete at a separate URL. The `202` suits a resource that can hold the invocation; a resource hosting its own interaction already returns this shape (#interaction-response-poll-authority). Agents MUST support both: the deferred-response handling agents already implement (#deferred-responses) applies unchanged, with `requirement=auth-token` in the pending response rather than `requirement=interaction`.
+
 ## Resource Token
 
 ### Resource Token Structure
@@ -985,7 +1011,7 @@ Payload:
 - `jti`: Unique token identifier for replay detection, audit, and revocation
 - `ps`: The `iss` of the person token the resource verified — the person server whose namespace `sub` belongs to
 - `sub`: The `sub` of that person token, identifying the person this authorization is for
-- `person_token_jti`: The `jti` of that person token, binding this resource token to it
+- `presented_jti`: The `jti` of the person token whose verification established `ps` and `sub`. On the first challenge of a grant that token was presented with the request; on a step-up or per-call challenge the request carries an auth token, and the resource supplies the value from its record of the person token it verified earlier. Binding the resource token to one person token by `jti` is what makes mission stripping detectable (#why-presented-jti)
 - `agent_jkt`: JWK Thumbprint ([@!RFC7638]) of the agent's current signing key
 - `iat`: Issued at timestamp
 - `exp`: Expiration timestamp
@@ -1012,12 +1038,10 @@ Verify the resource token per [@!RFC7515] and [@!RFC7519]:
 3. Verify `exp` is in the future and `iat` is not in the future.
 4. Verify `aud` matches the recipient's own identifier (the PS in three-party, or the AS in four-party).
 5. Verify `agent_jkt` matches the JWK Thumbprint of the key used to sign the HTTP request.
-6. A PS MUST look up the person token identified by `person_token_jti` among those it issued, and MUST verify that `ps`, `sub`, `mission_s256`, and `tenant` match that token exactly, rejecting the resource token on any mismatch or omission. An AS MUST verify that `ps` names the PS that sent the token request.
+6. A PS MUST resolve `presented_jti` against its retained records of issued person tokens (#person-token-endpoint). If no record exists — a tampered token, another PS's `jti`, or a token outside the retention window — the PS MUST reject the resource token with `unknown_person_token`. If a record exists, the PS MUST verify that `ps`, `sub`, `mission_s256`, and `tenant` match it exactly, rejecting the resource token on any mismatch or omission; a mismatch against an existing record is evidence of tampering, such as mission stripping, and SHOULD be surfaced to operators rather than only rejected. An AS MUST verify that `ps` names the PS that sent the token request.
 7. If `mission_s256` is present, a PS MUST verify the mission is active and that the current time precedes its `expires_at` where one is set.
 
 For a parent-mediated sub-agent authorization (a `subagent_token` is present, see (#sub-agents)), step 5 instead verifies `agent_jkt` against the `subagent_token`'s `cnf.jwk` — the sub-agent's key — because the parent, not the sub-agent, signs the HTTP request.
-
-Binding the resource token to one person token by `jti` is what makes mission stripping detectable. A resource cannot drop `mission_s256` and present the result as an unscoped request, because the PS resolves the person token it actually issued and compares. Comparing the claims alone would not suffice: an agent running concurrent missions holds several person tokens for the same resource, so "the person token for this agent and resource" does not identify one.
 
 ### Resource Challenge Verification
 
@@ -2519,6 +2543,7 @@ Other RFC 9457 members (`type`, `title`, `status`, `instance`) MAY be present wi
 | `expired_agent_token` | 400 | Agent token has expired |
 | `invalid_resource_token` | 400 | Resource token malformed or signature verification failed |
 | `expired_resource_token` | 400 | Resource token has expired |
+| `unknown_person_token` | 400 | The person token named by the resource token's `presented_jti` is not among those the PS retains (#resource-token-verification) |
 | `user_unreachable` | 403 | Terminal. The PS has no channel to reach the user and the agent did not declare the `interaction` capability, so the user cannot be reached at all. The non-terminal "user action is needed" case uses a `202` with `requirement=interaction` (#requirement-responses), not this error. |
 | `server_error` | 500 | Internal error |
 
@@ -2790,6 +2815,7 @@ The following fields are defined identically across all four metadata documents 
 |-------|-------------|-------------|
 | `issuer` | REQUIRED | The server's HTTPS URL. MUST match the URL the document was fetched from. Placed in the `iss` claim of JWTs issued by this server. Required by any Signature-Key verifier to confirm the document belongs to the claimed signer ([@!I-D.hardt-httpbis-signature-key]). |
 | `jwks_uri` | REQUIRED (see per-role) | URL to the server's JSON Web Key Set. |
+| `accept_signature_algs` | OPTIONAL | JSON array of fully-specified JWS algorithm identifiers the server's verifier accepts — exactly the set, neither a subset nor a superset. Semantics identical to the `Accept-Signature-Alg` response header ([@!I-D.hardt-httpbis-signature-key]), advertised before first contact rather than after a failure. One list per server, covering every endpoint. Since `Ed25519` is REQUIRED of every party (#signature-algorithms), the list's value is naming the additional algorithms. A server MAY omit it for the same disclosure reasons it MAY omit the header. |
 | `name` | OPTIONAL | Human-readable display name. |
 | `description` | OPTIONAL | Markdown string describing the server, for display at consent screens or dashboards. Implementations MUST sanitize before rendering. |
 | `logo_uri` | OPTIONAL | URL to the server's logo. MUST use `https`. |
@@ -3082,6 +3108,10 @@ The directed `sub` bounds the exposure to one `(PS, resource)` pair. The PS boun
 
 A person token grants nothing, so disclosure to an unintended party leaks an identifier and no access, and `cnf` prevents another party from presenting it.
 
+## Continuity, Not Identity Proofing {#continuity-not-proofing}
+
+A person token proves "the same entity again", not a verified legal identity. The protocol does not state what standard, if any, a PS applied before recognizing a person, and a resource MUST NOT infer one (#person-tokens). Continuity is sufficient for most resource access: authorizing an agent, keeping an account stable across agents and sessions, applying per-person policy. A resource requiring more — an age check, a residency check, regulated onboarding — obtains it out of band or through claims a person server explicitly asserts.
+
 ## Organization Identification {#person-token-org-policy}
 
 The OPTIONAL `tenant` claim declares the organization the person belongs to, and unlike `sub` it is not directed — the same value appears at every resource the organization's agents reach.
@@ -3298,7 +3328,7 @@ This specification registers the following claims in the IANA "JSON Web Token Cl
 | `ps` | Person server URL — the agent's person server in an agent token, and the person server whose namespace `sub` belongs to in a resource or auth token | IETF | This document |
 | `agent_jkt` | JWK Thumbprint of the agent's signing key, in a resource token | IETF | This document |
 | `parent_agent` | Parent agent identifier in a sub-agent's agent token | IETF | This document |
-| `person_token_jti` | The `jti` of the person token a resource token is bound to | IETF | This document |
+| `presented_jti` | The `jti` of the person token a resource token is bound to | IETF | This document |
 | `mission_s256` | SHA-256 hash of the approved mission JSON, in person, resource, and auth tokens | IETF | This document |
 | `account` | Account the authorization is for, in resource and auth tokens | IETF | This document |
 | `interaction` | Resource interaction step required before authorization, an object with `url` and `code`, in a resource token | IETF | This document |
@@ -3397,7 +3427,7 @@ The following implementations are known:
 
 - draft-hardt-oauth-aauth-protocol-11
   - Three places still said a resource discovers the agent's PS from the `ps` claim in the agent token — the three-party access mode, the bootstrapping requirements, and the claim's own definition — which the Design Rationale already contradicted. The agent token's `ps` is the advance signal that the agent has a person server, which is what lets a resource decide to challenge for a person token. The PS of an issued authorization is the `iss` of the person token the resource verified, which the resource copies into the resource token's `ps`.
-  - Corrected the JWT Claims Registrations table. `ps` was registered twice; the two rows are collapsed into one covering agent, resource, and auth tokens. `agent` is no longer a claim in any token and its row is removed — it survives only as a member of the mission blob, which is not a JWT. Added `person_token_jti`, `account`, and `interaction`, none of which were registered.
+  - Corrected the JWT Claims Registrations table. `ps` was registered twice; the two rows are collapsed into one covering agent, resource, and auth tokens. `agent` is no longer a claim in any token and its row is removed — it survives only as a member of the mission blob, which is not a JWT. Added `presented_jti`, `account`, and `interaction`, none of which were registered.
   - Established the AAuth Access Mode Value Registry, seeded with `agent-token`, `person-token`, `session-token`, and `auth-token`. The `access_mode` field was described as a closed list of four, which left no room for the `per-call` value R3 defines; the registry is how the other extensible AAuth value spaces are already handled.
   - Pointed `access_mode` at R3 operation access annotations. Two places said a resource MAY apply different modes to different endpoints without naming a mechanism for saying which.
   - Added the person token (`aa-person+jwt`), issued by a PS to identify the person to one resource. Presented via `Signature-Key` in place of the agent token. A resource MUST verify one before issuing a resource token. Lifetime capped at 1 hour, as for auth tokens.
@@ -3406,7 +3436,7 @@ The following implementations are known:
   - A person token carries no authorization from the PS, but a resource MAY serve requests on identity alone, so holding one is effectively access at such a resource. The consent question at first issuance is whether the agent may act at the resource as the person.
   - Renamed the PS and AS metadata field `token_endpoint` to `auth_token_endpoint`; added `person-token` to `access_mode`.
   - Added `requirement=person-token`, and the `invalid_person_token` and `invalid_account` authorization endpoint errors.
-  - Resource tokens carry `ps`, `sub`, and `person_token_jti`, and no agent identifier. The PS resolves the named person token and rejects any mismatch, which makes mission stripping detectable — comparing claims alone cannot, because concurrent missions mean several person tokens per agent and resource.
+  - Resource tokens carry `ps`, `sub`, and `presented_jti`, and no agent identifier. The PS resolves the named person token and rejects any mismatch, which makes mission stripping detectable — comparing claims alone cannot, because concurrent missions mean several person tokens per agent and resource.
   - Auth tokens carry `ps` and a REQUIRED `sub`, and no agent identifier. `act` and the delegation chain are removed.
   - Replaced the `mission` object with the `mission_s256` claim in person, resource, and auth tokens; `approver` is dropped everywhere but the mission blob.
   - Removed the `AAuth-Mission` header and its registration. A mission reaches a resource only inside a PS-issued token, so it is no longer agent-asserted. The approval response carries the mission blob base64url-encoded, with `s256` alongside it, so the digest covers an unambiguous byte sequence and the agent can verify it as it would a JWT payload.
@@ -3425,6 +3455,11 @@ The following implementations are known:
   - A request carrying a body to a PS or AS endpoint MUST additionally sign `content-digest` and `content-type`. Those requests decide what is authorized and only their tokens were self-protecting. Resources keep declaring what they need through `additional_signature_components`, since bodyless requests and streamed uploads make a blanket requirement wrong there.
   - Stated that the mission blob's member lists are a floor: a PS MAY add members, readers ignore what they do not recognize, and a blob with an extra member has a different identifier because it is a different mission.
   - Named the opaque credential a resource issues in resource-managed access the **session token**. It was the only credential in the protocol without a name. The `access_mode` value `aauth-access-token` becomes `session-token`.
+  - Renamed the resource token claim `person_token_jti` to `presented_jti`. The old name asserted the credential presented was a person token, which is false on every step-up and per-call challenge, where it is an auth token. The value is unchanged: the `jti` of the person token whose verification established `ps` and `sub`. Addresses issue #95.
+  - Stated the person token's assurance floor where the token is introduced: it asserts recognition and agency, guarantees continuity of `(iss, sub)`, and a resource MUST NOT treat it as evidence of identity proofing, legal identity, or any assurance level. Addresses issue #97.
+  - Stated the retention obligation resource token verification already implied: a PS MUST retain a record of each person token it issues, beyond `exp` by at least the longest resource token lifetime it accepts, and rejects a resource token naming an unretained `jti` with the new `unknown_person_token` error, distinct from a claim mismatch against an existing record. Addresses issue #87.
+  - Added the OPTIONAL common metadata field `accept_signature_algs`, the out-of-band twin of the `Accept-Signature-Alg` response header: exactly the set of fully-specified algorithms the server's verifier accepts, one list per server. Addresses issue #94.
+  - A resource MAY deliver `requirement=auth-token` as a `202 Accepted` deferred response that holds the invocation; the agent completes at the pending URL with the auth token, and completion consumes the pending record. The `401` remains the baseline delivery; agents MUST support both. Addresses issue #92.
 
 - draft-hardt-oauth-aauth-protocol-10
   - Adopted the fully-specified `Ed25519` of [@!RFC9864] in place of the `EdDSA` it deprecates. `alg` is REQUIRED and MUST be fully specified; `EdDSA`, `none`, and symmetric algorithms MUST NOT be used; a verifier MUST reject a key whose `kty` or `crv` disagrees with its `alg`. Addresses issue #57.
@@ -3668,9 +3703,9 @@ An earlier revision avoided the problem by making the response body the mission 
 
 An opaque identifier would name the mission but leave the person server free to attach it to different text afterwards. A digest binds every token carrying `mission_s256` to one specific mission, so the mission in the log and the mission those tokens authorized are demonstrably the same. Verification is available to the agent at approval and to anyone holding the blob later.
 
-### Why a Resource Token Names the Person Token
+### Why a Resource Token Names the Person Token {#why-presented-jti}
 
-Binding by `person_token_jti` rather than by comparing claims is what makes mission stripping detectable. Comparing claims alone cannot work: an agent running concurrent missions holds several person tokens for the same resource, so "the person token issued for this agent and resource" does not identify one, and a resource that omitted `mission_s256` could not be caught. Naming the token resolves it exactly, and the person server compares everything it issued in one lookup.
+Binding by `presented_jti` rather than by comparing claims is what makes mission stripping detectable. A resource cannot drop `mission_s256` and present the result as an unscoped request, because the person server resolves the person token it actually issued and compares. Comparing claims alone cannot work: an agent running concurrent missions holds several person tokens for the same resource, so "the person token issued for this agent and resource" does not identify one, and a resource that omitted `mission_s256` could not be caught. Naming the token resolves it exactly, and the person server compares everything it issued in one lookup.
 
 ### Why Tool Pre-Approval Is Not Enforced {#why-tools-are-not-enforced}
 
