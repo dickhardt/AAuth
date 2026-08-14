@@ -785,6 +785,8 @@ There are currently no known implementations.
   - Added the `access_mode` value `per-call`, for a resource or an operation that authorizes each invocation individually against its parameters, and registered it in the AAuth Access Mode Value Registry.
   - Renamed the auth token claim `r3_conditional` to `r3_per_call`, matching the `per-call` access mode. "Conditional" did not say what the condition was.
   - Removed the `version` field. R3 documents are content-addressed, so a revision is a different document at a different hash; `version` named nothing the hash did not, and nothing prevented two different documents carrying the same value.
+  - Per-call grants are single-use on either delivery, with completion answered idempotently from the retained result. The `401` retry gained the comparison semantics it lacked — structural equality for inline parameters, digest equality for `s256` parameters — and a resource that can hold the invocation SHOULD use the `202` deferred delivery AAuth Protocol defines, under which nothing is re-sent and nothing is compared. Addresses issue #92.
+  - Renamed `person_token_jti` to `presented_jti`, following AAuth Protocol.
 
 - draft-hardt-aauth-r3-01
   - Added per-call proposals: an `r3_conditional` operation is challenged at call time, and the resource builds a content-addressed proposal carrying the concrete parameters, which the AS evaluates and the resource binds on retry. A parameter MAY be carried as a digest so large or sensitive values stay between the agent and the resource.
