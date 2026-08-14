@@ -649,23 +649,7 @@ The resource can handle authorization itself, or it can issue a resource token w
 
 ### Response without Resource Token
 
-The resource handles authorization itself. It evaluates the request and returns a deferred response if user interaction is needed:
-
-```http
-HTTP/1.1 202 Accepted
-Location: https://resource.example/authorize/pending/abc123
-Retry-After: 0
-Cache-Control: no-store
-AAuth-Requirement: requirement=interaction;
-    url="https://resource.example/interaction"; code="A1B2-C3D4"
-Content-Type: application/json
-
-{
-  "status": "pending"
-}
-```
-
-The user completes interaction at the resource's own consent page. The agent polls the `Location` URL. When authorization is complete, the resource returns `200 OK` and MAY include an `AAuth-Access` header (#aauth-access) containing a session token for subsequent calls.
+The resource handles authorization itself. It evaluates the request and, if user interaction is needed, returns a `202 Accepted` with `requirement=interaction` and its pending URL (#requirement-interaction). The user completes interaction at the resource's own consent page and the agent polls the `Location` URL. When authorization is complete, the resource returns `200 OK` and MAY include an `AAuth-Access` header (#aauth-access) containing a session token for subsequent calls.
 
 ```http
 HTTP/1.1 200 OK
@@ -755,23 +739,7 @@ The `AAuth-Access` value, and the credential carried in `Authorization: AAuth`, 
 
 ## Resource-Managed Authorization {#resource-managed-auth}
 
-When a resource manages authorization itself and requires user interaction, it returns a `202 Accepted` response with an interaction requirement:
-
-```http
-HTTP/1.1 202 Accepted
-Location: https://resource.example/pending/abc123
-Retry-After: 0
-Cache-Control: no-store
-AAuth-Requirement: requirement=interaction;
-    url="https://resource.example/interaction"; code="A1B2-C3D4"
-Content-Type: application/json
-
-{
-  "status": "pending"
-}
-```
-
-The agent directs the user to the interaction URL (#user-interaction) and polls the `Location` URL per the deferred response pattern (#deferred-responses). When the interaction completes, the resource returns `200 OK` and MAY include an `AAuth-Access` header (#aauth-access) with a session token for subsequent calls.
+When a resource manages authorization itself and requires user interaction, it returns a `202 Accepted` with `requirement=interaction` and its pending URL (#requirement-interaction). The agent directs the user to the interaction URL (#user-interaction) and polls the `Location` URL per the deferred response pattern (#deferred-responses). When the interaction completes, the resource returns `200 OK` and MAY include an `AAuth-Access` header (#aauth-access) with a session token for subsequent calls.
 
 A resource MAY also authorize the agent based solely on its identity (from the agent token) without any interaction — for example, when the agent's key is already known or the agent's domain is trusted.
 
@@ -939,22 +907,7 @@ In both cases, the PS handles user consent if needed and returns one of:
 }
 ```
 
-**User interaction required response** (`202`):
-```http
-HTTP/1.1 202 Accepted
-Location: /pending/abc123
-Retry-After: 0
-Cache-Control: no-store
-AAuth-Requirement: requirement=interaction;
-    url="https://ps.example/interaction"; code="A1B2-C3D4"
-Content-Type: application/json
-
-{
-  "status": "pending"
-}
-```
-
-In four-party mode, the PS may also pass through a clarification from the AS to the agent via the `202` response (#as-token-endpoint).
+**User interaction required response**: a `202 Accepted` with `requirement=interaction` and the PS's pending URL (#requirement-interaction). In four-party mode, the PS may also pass through a clarification from the AS to the agent via the `202` response (#as-token-endpoint).
 
 ### Resource-Initiated Interaction {#resource-initiated-interaction}
 
@@ -1051,10 +1004,6 @@ The agent MUST respond to a clarification with one of:
 
 A POST body MUST include an `action` member identifying the response type. A server MUST reject a POST with a missing or unrecognized `action` value with `400 Bad Request`. The `action` member makes each POST self-describing and keeps the pending route extensible for future response types.
 
-#### Clarification Response
-
-The agent responds by POSTing JSON with an `action` of `clarification_response` to the pending URL:
-
 ```http
 POST /pending/abc123 HTTP/1.1
 Host: ps.example
@@ -1070,40 +1019,9 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 }
 ```
 
-The `clarification_response` value is a Markdown string. **TODO:** Define recommended sections. After posting, the agent resumes polling with `GET`.
-
-#### Updated Request
-
-The agent MAY obtain a new resource token from the resource (e.g., with reduced scope) and POST it to the pending URL:
-
-```http
-POST /pending/abc123 HTTP/1.1
-Host: ps.example
-Content-Type: application/json
-[...signature headers per (#http-message-signatures-profile)...]
-Signature-Key: sig=jwt;jwt="eyJhbGc..."
-
-{
-  "action": "updated_request",
-  "resource_token": "eyJ...",
-  "justification": "I've reduced my request to read-only access."
-}
-```
-
-The new resource token MUST have the same `iss`, `agent`, and `agent_jkt` as the original. The PS presents the updated request to the user. A `justification` is OPTIONAL but RECOMMENDED to explain the change to the user.
-
-#### Cancel Request
-
-The agent MAY cancel the request by sending DELETE to the pending URL:
-
-```http
-DELETE /pending/abc123 HTTP/1.1
-Host: ps.example
-[...signature headers per (#http-message-signatures-profile)...]
-Signature-Key: sig=jwt;jwt="eyJhbGc..."
-```
-
-The PS terminates the consent session and informs the user that the agent withdrew its request. Subsequent requests to the pending URL return `410 Gone`.
+- A **clarification response** carries an `action` of `clarification_response` and a Markdown `clarification_response` string, as above. **TODO:** Define recommended sections. After posting, the agent resumes polling with `GET`.
+- An **updated request** carries an `action` of `updated_request`, a `resource_token` newly obtained from the resource (e.g., with reduced scope) that MUST have the same `iss` and `agent_jkt` as the original, and a `justification` Markdown string — OPTIONAL but RECOMMENDED — explaining the change. The PS presents the updated request to the user.
+- A **cancellation** is a `DELETE` to the pending URL, with no body. The PS terminates the consent session and informs the user that the agent withdrew its request; subsequent requests to the pending URL return `410 Gone`.
 
 ### Clarification Limits
 
@@ -2105,7 +2023,7 @@ The `agent-token` requirement is defined in (#requirement-agent-token); the `per
 
 An agent that does not recognize the `requirement` value MUST NOT treat the response as satisfiable. It surfaces the unsupported requirement to the caller as an error. For a `202` response with an unrecognized `requirement`, the agent MAY continue polling the `Location` URL in case a later response carries a requirement value it does understand, rather than immediately abandoning the request.
 
-### Interaction Required
+### Interaction Required {#requirement-interaction}
 
 When a server requires user action — such as authentication, consent, payment approval, or any decision requiring a human in the loop — it returns a `202 Accepted` response:
 
