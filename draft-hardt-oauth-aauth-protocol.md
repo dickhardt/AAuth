@@ -2651,7 +2651,7 @@ The following fields are defined identically across all four metadata documents 
 
 AAuth intentionally diverges from RFC 9728 on two points: AAuth uses `issuer` (not `resource`) as the primary identifier field so that a generic Signature-Key verifier can extract the signer identity uniformly from any dwk document without knowing which role it represents; and AAuth uses unprefixed field names (`name`, `tos_uri`, `policy_uri`, `documentation_uri`) rather than the `resource_`-prefixed forms in RFC 9728, for consistency across all four roles.
 
-Per-role sections below list these common fields in their examples and note any role-specific REQUIRED/conditional differences (e.g., `jwks_uri` is conditionally REQUIRED for resources). Role-specific fields are listed after the common fields.
+Per-role sections below show the common fields in their examples; their field lists carry only role-specific fields and any divergence from this table (e.g., `jwks_uri` is conditionally REQUIRED for resources).
 
 ### Agent Provider Metadata {#agent-provider-metadata}
 
@@ -2676,19 +2676,11 @@ Published at `/.well-known/aauth-agent.json`:
 
 Fields:
 
-- `issuer` (REQUIRED): The agent provider's HTTPS URL (the `domain` in agent identifiers it issues). This is the value placed in the `iss` claim of agent tokens.
-- `jwks_uri` (REQUIRED): URL to the agent provider's JSON Web Key Set
-- `name` (OPTIONAL): Human-readable agent name
-- `description` (OPTIONAL): A Markdown string describing the agent or its provider, for display to users (for example, at a PS consent screen or connected-agents dashboard). Implementations MUST sanitize the Markdown before rendering to users.
-- `logo_uri` (OPTIONAL): URL to agent logo (per [@RFC7591])
-- `logo_dark_uri` (OPTIONAL): URL to agent logo for dark backgrounds
-- `documentation_uri` (OPTIONAL): URL with developer documentation for the agent provider
+- `issuer` (REQUIRED): The agent provider's HTTPS URL — additionally the `domain` in agent identifiers it issues.
 - `callback_endpoint` (OPTIONAL): The agent's HTTPS callback endpoint URL
 - `event_endpoint` (OPTIONAL): HTTPS URL at which the AP receives event tokens from resources. Required if the AP supports AAuth Events ([@?I-D.hardt-aauth-events]).
 - `login_endpoint` (OPTIONAL): URL where third parties can direct users to initiate authentication (#third-party-login)
 - `localhost_callback_allowed` (OPTIONAL): Boolean. Default: `false`.
-- `tos_uri` (OPTIONAL): URL to terms of service (per [@RFC7591])
-- `policy_uri` (OPTIONAL): URL to privacy policy (per [@RFC7591])
 
 ### Person Server Metadata {#ps-metadata}
 
@@ -2717,14 +2709,6 @@ Published at `/.well-known/aauth-person.json`:
 
 Fields:
 
-- `issuer` (REQUIRED): The PS's HTTPS URL. MUST match the URL used to fetch the metadata document. This is the value placed in the `iss` claim of JWTs issued by the PS.
-- `name` (OPTIONAL): Human-readable person server name
-- `description` (OPTIONAL): A Markdown string describing the person server, for display to users. Implementations MUST sanitize the Markdown before rendering to users.
-- `logo_uri` (OPTIONAL): URL to person server logo
-- `logo_dark_uri` (OPTIONAL): URL to person server logo for dark backgrounds
-- `documentation_uri` (OPTIONAL): URL with developer documentation for the person server
-- `tos_uri` (OPTIONAL): URL to terms of service
-- `policy_uri` (OPTIONAL): URL to privacy policy
 - `auth_token_endpoint` (REQUIRED): URL where agents send token requests
 - `person_token_endpoint` (REQUIRED): URL where agents request a person token for a resource (#person-token-endpoint)
 - `mission_endpoint` (OPTIONAL): URL where an agent proposes, updates, and completes the missions it owns (#missions). Present when the PS supports missions. A mission's own URL is `{mission_endpoint}/{mission_s256}`.
@@ -2733,7 +2717,6 @@ Fields:
 - `interaction_endpoint` (OPTIONAL): URL where agents relay interactions to the user through the PS (#interaction-endpoint)
 - `mission_control_endpoint` (OPTIONAL): URL of the PS's mission control plane — where parties other than the owning agent read and manage missions: the person, an organization's administrator, or a management service. `mission_endpoint` is the agent's surface and authenticates callers by agent token; this endpoint serves principals AAuth does not define, so its authentication model, operations, and responses are left to a companion specification (#mission-management). A PS MAY also use it for a deployment's human-facing administrative interface.
 - `revocation_endpoint` (OPTIONAL): URL where authorized parties can revoke tokens (#token-revocation). This is also where an agent provider revokes an agent token it issued, so that the PS denies the agent token and revokes what it issued for that agent.
-- `jwks_uri` (REQUIRED): URL to the PS's JSON Web Key Set
 - `scopes_supported` (RECOMMENDED): Array of scope values the PS supports, including identity scopes (e.g., `openid`, `profile`, `email`) and enterprise scopes (e.g., `tenant`, `groups`, `roles`)
 - `claims_supported` (RECOMMENDED): Array of identity claim names the PS can provide (e.g., `sub`, `email`, `name`, `tenant`)
 
@@ -2758,17 +2741,8 @@ Published at `/.well-known/aauth-access.json`:
 
 Fields:
 
-- `issuer` (REQUIRED): The AS's HTTPS URL. MUST match the URL used to fetch the metadata document. This is the value placed in the `iss` claim of auth tokens.
-- `name` (OPTIONAL): Human-readable access server name
-- `description` (OPTIONAL): A Markdown string describing the access server, for display to users. Implementations MUST sanitize the Markdown before rendering to users.
-- `logo_uri` (OPTIONAL): URL to access server logo
-- `logo_dark_uri` (OPTIONAL): URL to access server logo for dark backgrounds
-- `documentation_uri` (OPTIONAL): URL with developer documentation for the access server
-- `tos_uri` (OPTIONAL): URL to terms of service
-- `policy_uri` (OPTIONAL): URL to privacy policy
 - `auth_token_endpoint` (REQUIRED): URL where PSes send token requests
 - `revocation_endpoint` (OPTIONAL): URL where authorized parties can revoke tokens (#token-revocation)
-- `jwks_uri` (REQUIRED): URL to the AS's JSON Web Key Set
 
 ### Resource Metadata {#resource-metadata}
 
@@ -2798,16 +2772,8 @@ Published at `/.well-known/aauth-resource.json`:
 
 Fields:
 
-- `issuer` (REQUIRED): The resource's HTTPS URL. This is the value placed in the `iss` claim of resource tokens.
 - `jwks_uri` (REQUIRED when the resource issues resource tokens or makes signed calls): URL to the resource's JSON Web Key Set. A resource that only verifies agent signatures for identity-based access — issuing no resource tokens and making no signed requests of its own (e.g., as an agent in multi-hop, #multi-hop) — has no keys to publish and MAY omit `jwks_uri`.
 - `access_mode` (OPTIONAL): The credential flow the resource expects, letting an agent plan its first call without a speculative challenge. This document defines `agent-token` (identity-only — the agent signs with its agent token), `person-token` (the resource authorizes on the person's identity alone — the agent signs with a person token), `session-token` (resource-managed — the agent completes the resource's interaction/consent flow and receives a session token via `AAuth-Access`), and `auth-token` (the agent obtains an auth token from its PS using a resource token; the initial call MUST present a person token). Extensions MAY define further values, which are recorded in the AAuth Access Mode Value Registry (#aauth-access-mode-value-registry); R3 ([@?I-D.hardt-aauth-r3]) defines `per-call`, for a resource that authorizes each invocation individually against that call's parameters. An agent that does not recognize a declared value proceeds as it would with no declaration, calling the resource and reading the `AAuth-Requirement` it gets back. Default: `agent-token`. The declaration is advisory: a resource MAY return any `AAuth-Requirement` at runtime regardless of the declared mode (#requirement-responses), and MAY apply different modes to different endpoints — a resource advertising an R3 vocabulary states the mode for an individual operation there ([@?I-D.hardt-aauth-r3]), and otherwise an agent learns of any variation from the runtime requirement. An agent MAY use `access_mode` to skip resources its setup cannot satisfy — for example, a PS-less agent (no `ps` claim in its agent token) cannot complete the `auth-token` flow.
-- `name` (OPTIONAL): Human-readable resource name
-- `description` (OPTIONAL): A Markdown string describing the resource, for display to users (for example, at a consent screen). Implementations MUST sanitize the Markdown before rendering to users.
-- `logo_uri` (OPTIONAL): URL to resource logo
-- `logo_dark_uri` (OPTIONAL): URL to resource logo for dark backgrounds
-- `documentation_uri` (OPTIONAL): URL with developer documentation for the resource
-- `tos_uri` (OPTIONAL): URL to terms of service
-- `policy_uri` (OPTIONAL): URL to privacy policy
 - `authorization_endpoint` (OPTIONAL): URL where agents request authorization (#authorization-endpoint-request). When absent, the resource issues resource tokens and interaction requirements via `401` responses (#requirement-auth-token, #resource-managed-auth).
 - `login_endpoint` (OPTIONAL): URL where third parties can direct users to initiate authentication (#third-party-login)
 - `scope_descriptions` (OPTIONAL): Object mapping scope values to Markdown strings for consent display. Scope values are resource-specific; resources that already define OAuth scopes SHOULD use the same scope values in AAuth. Identity-related scopes (e.g., `openid`, `profile`, `email`) follow [@!OpenID.Core].
