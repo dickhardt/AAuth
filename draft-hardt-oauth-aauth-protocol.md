@@ -666,12 +666,7 @@ If the resource can authorize immediately (e.g., the agent's key is already auth
 
 ### Response with Resource Token
 
-Alternatively, the resource MAY return a resource token. The resource sets the `aud` claim based on its configuration:
-
-- If the resource has its own AS: `aud` = AS URL (four-party)
-- If the resource has no AS but the agent has a PS (`ps` claim): `aud` = PS URL (three-party)
-
-When the person token carries `mission_s256`, the resource copies it into the resource token.
+Alternatively, the resource MAY return a resource token, setting `aud` per the rule above. When the person token carries `mission_s256`, the resource copies it into the resource token.
 
 ```json
 {
@@ -705,7 +700,7 @@ AAuth-Requirement: requirement=agent-token
 
 The header carries no additional parameters: the agent already holds its agent token and need only present it. The agent retries the request, signing it per (#http-message-signatures-profile) and presenting its agent token via the `Signature-Key` header using `sig=jwt;jwt="<agent-token>"`.
 
-`requirement=agent-token` is distinct from `requirement=auth-token`: the former asks for the agent's own identity token, with no PS or AS involved; the latter asks the agent to obtain an auth token from its PS using the enclosed resource token. It is also more specific than an `Accept-Signature-Scheme` challenge ([@!I-D.hardt-httpbis-signature-key]), which names schemes and so would accept any key those schemes can convey — `requirement=agent-token` tells the agent that an AAuth agent token in particular is required.
+`requirement=agent-token` is more specific than an `Accept-Signature-Scheme` challenge ([@!I-D.hardt-httpbis-signature-key]), which names schemes and so would accept any key those schemes can convey — it tells the agent that an AAuth agent token in particular is required, with no PS or AS involved.
 
 ## Person Token Required {#requirement-person-token}
 
@@ -718,30 +713,6 @@ AAuth-Requirement: requirement=person-token
 ```
 
 The header carries no additional parameters. The agent obtains a person token for this resource from its PS's person token endpoint (#person-token-endpoint) and retries. An agent with no person server cannot satisfy this requirement and surfaces it as an error per (#requirement-values).
-
-## AAuth-Access Response Header {#aauth-access}
-
-The `AAuth-Access` response header carries a **session token** from a resource to an agent. The token is opaque to the agent — the resource wraps its internal authorization state (which MAY be an existing OAuth access token or other credential). It is the one AAuth credential a resource issues for its own consumption, and it names the continuing relationship the resource has established with this agent for this person. The agent passes the token back to the resource via the `Authorization` header on subsequent requests:
-
-```http
-GET /api/data HTTP/1.1
-Host: resource.example
-Authorization: AAuth wrapped-session-token-value
-[...signature headers per (#http-message-signatures-profile)...]
-Signature-Key: sig=jwt;jwt="eyJhbGc..."
-```
-
-The agent MUST include `authorization` in the covered components of its HTTP signature, binding the session token to the signed request. This prevents the token from being stolen and replayed as a standalone bearer token — the token is useless without a valid AAuth signature from the agent.
-
-A resource MAY return a new `AAuth-Access` header on any response, replacing the agent's current session token. This enables rolling refresh without an explicit refresh flow. When the agent receives a new `AAuth-Access` value, it MUST use the new value on subsequent requests.
-
-The `AAuth-Access` value, and the credential carried in `Authorization: AAuth`, is a `token68` ([@!RFC9110], Section 11.2). Recipients MUST reject empty values, values containing embedded whitespace or control characters, and responses carrying more than one credential.
-
-## Resource-Managed Authorization {#resource-managed-auth}
-
-When a resource manages authorization itself and requires user interaction, it returns a `202 Accepted` with `requirement=interaction` and its pending URL (#requirement-interaction). The agent directs the user to the interaction URL (#user-interaction) and polls the `Location` URL per the deferred response pattern (#deferred-responses). When the interaction completes, the resource returns `200 OK` and MAY include an `AAuth-Access` header (#aauth-access) with a session token for subsequent calls.
-
-A resource MAY also authorize the agent based solely on its identity (from the agent token) without any interaction — for example, when the agent's key is already known or the agent's domain is trusted.
 
 ## Auth Token Required {#requirement-auth-token}
 
@@ -777,6 +748,30 @@ The agent verifies the resource token and obtains an auth token exactly as in th
 Completion consumes the pending record. The resource MUST retain the record, with the invocation's result, at least until the auth token's `exp`, and MUST answer a repeated presentation of the same auth token at the pending URL from that result rather than executing again — a response can be lost in transit, and the agent cannot otherwise distinguish "not executed" from "executed, response lost". If the resource token expires before the agent obtains an auth token, the resource MAY include a fresh resource token in the `AAuth-Requirement` header of a subsequent poll response; it still holds the invocation, so nothing is re-sent.
 
 Which delivery to use is the resource's choice, per invocation. The `401` is the baseline every resource can implement without holding state, and the only delivery that maps onto transports with no place to complete at a separate URL. The `202` suits a resource that can hold the invocation; a resource hosting its own interaction already returns this shape (#interaction-response-poll-authority). Agents MUST support both: the deferred-response handling agents already implement (#deferred-responses) applies unchanged, with `requirement=auth-token` in the pending response rather than `requirement=interaction`.
+
+## AAuth-Access Response Header {#aauth-access}
+
+The `AAuth-Access` response header carries a **session token** from a resource to an agent. The token is opaque to the agent — the resource wraps its internal authorization state (which MAY be an existing OAuth access token or other credential). It is the one AAuth credential a resource issues for its own consumption, and it names the continuing relationship the resource has established with this agent for this person. The agent passes the token back to the resource via the `Authorization` header on subsequent requests:
+
+```http
+GET /api/data HTTP/1.1
+Host: resource.example
+Authorization: AAuth wrapped-session-token-value
+[...signature headers per (#http-message-signatures-profile)...]
+Signature-Key: sig=jwt;jwt="eyJhbGc..."
+```
+
+The agent MUST include `authorization` in the covered components of its HTTP signature, binding the session token to the signed request. This prevents the token from being stolen and replayed as a standalone bearer token — the token is useless without a valid AAuth signature from the agent.
+
+A resource MAY return a new `AAuth-Access` header on any response, replacing the agent's current session token. This enables rolling refresh without an explicit refresh flow. When the agent receives a new `AAuth-Access` value, it MUST use the new value on subsequent requests.
+
+The `AAuth-Access` value, and the credential carried in `Authorization: AAuth`, is a `token68` ([@!RFC9110], Section 11.2). Recipients MUST reject empty values, values containing embedded whitespace or control characters, and responses carrying more than one credential.
+
+## Resource-Managed Authorization {#resource-managed-auth}
+
+When a resource manages authorization itself and requires user interaction, it returns a `202 Accepted` with `requirement=interaction` and its pending URL (#requirement-interaction). The agent directs the user to the interaction URL (#user-interaction) and polls the `Location` URL per the deferred response pattern (#deferred-responses). When the interaction completes, the resource returns `200 OK` and MAY include an `AAuth-Access` header (#aauth-access) with a session token for subsequent calls.
+
+A resource MAY also authorize the agent based solely on its identity (from the agent token) without any interaction — for example, when the agent's key is already known or the agent's domain is trusted.
 
 ## Resource Token
 
@@ -1657,10 +1652,6 @@ The following is a non-normative description of how an AS might evaluate a token
 
 The AS is not required to follow this order. The decision logic is entirely at the AS's discretion based on resource policy.
 
-### Organization Visibility
-
-Organizations benefit from the trust model: an organization's agents share a single PS, and internal resources may share a single AS. The PS provides centralized audit across all agents and missions. Federation is only incurred at the boundary, when an internal agent accesses an external resource. When the same server fills both the PS and AS roles, federation collapses to a single internal evaluation — see (#ps-as-collapse).
-
 ### PS-AS Collapse {#ps-as-collapse}
 
 When the agent's PS and the resource's chosen AS are the same server (an instance of role collocation, see (#roles)), federation collapses to a single internal evaluation. This is operationally similar to three-party access — no cross-server hop — but structurally different:
@@ -2268,18 +2259,6 @@ Content-Type: application/problem+json
 | `slow_down` | 429 | Polling too frequently — increase interval by 5 seconds |
 | `server_error` | 500 | Internal error |
 
-Example — the user denied the pending request:
-
-```http
-HTTP/1.1 403 Forbidden
-Content-Type: application/problem+json
-
-{
-  "error": "denied",
-  "detail": "The user declined the request."
-}
-```
-
 ## Token Revocation {#token-revocation}
 
 Any AAuth server that issues tokens MAY provide a revocation endpoint. The endpoint accepts a signed POST identifying the token to revoke by the pair `(iss, jti)`. Both members are REQUIRED. The server identifies the token from that pair and its own records; no token type is needed, since `(iss, jti)` is unique.
@@ -2482,19 +2461,9 @@ Invalid identifiers:
 
 Implementations MUST perform exact string comparison on server identifiers.
 
-### Endpoint URLs
+### Endpoint and Other URLs
 
-The `auth_token_endpoint`, `person_token_endpoint`, `authorization_endpoint`, `mission_endpoint`, and `callback_endpoint` values MUST conform to the following:
-
-- MUST use the `https` scheme
-- MUST NOT contain a fragment
-- MUST NOT contain a query string
-
-When `localhost_callback_allowed` is `true` in the agent's metadata, the agent MAY use a localhost callback URL as the `callback` parameter to the interaction endpoint.
-
-### Other URLs
-
-The `jwks_uri`, `tos_uri`, `policy_uri`, `logo_uri`, and `logo_dark_uri` values MUST use the `https` scheme.
+The `auth_token_endpoint`, `person_token_endpoint`, `authorization_endpoint`, `mission_endpoint`, and `callback_endpoint` values MUST use the `https` scheme and MUST NOT contain a fragment or query string. When `localhost_callback_allowed` is `true` in the agent's metadata, the agent MAY use a localhost callback URL as the `callback` parameter to the interaction endpoint. The `jwks_uri`, `tos_uri`, `policy_uri`, `logo_uri`, and `logo_dark_uri` values MUST use the `https` scheme.
 
 ## Metadata Documents {#metadata-documents}
 
