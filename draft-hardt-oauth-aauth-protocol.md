@@ -2793,6 +2793,7 @@ The following fields are defined identically across all four metadata documents 
 |-------|-------------|-------------|
 | `issuer` | REQUIRED | The server's HTTPS URL. MUST match the URL the document was fetched from. Placed in the `iss` claim of JWTs issued by this server. Required by any Signature-Key verifier to confirm the document belongs to the claimed signer ([@!I-D.hardt-httpbis-signature-key]). |
 | `jwks_uri` | REQUIRED (see per-role) | URL to the server's JSON Web Key Set. |
+| `accept_signature_algs` | OPTIONAL | JSON array of fully-specified JWS algorithm identifiers the server's verifier accepts — exactly the set, neither a subset nor a superset. Semantics identical to the `Accept-Signature-Alg` response header ([@!I-D.hardt-httpbis-signature-key]), advertised before first contact rather than after a failure. One list per server, covering every endpoint. Since `Ed25519` is REQUIRED of every party (#signature-algorithms), the list's value is naming the additional algorithms. A server MAY omit it for the same disclosure reasons it MAY omit the header. |
 | `name` | OPTIONAL | Human-readable display name. |
 | `description` | OPTIONAL | Markdown string describing the server, for display at consent screens or dashboards. Implementations MUST sanitize before rendering. |
 | `logo_uri` | OPTIONAL | URL to the server's logo. MUST use `https`. |
