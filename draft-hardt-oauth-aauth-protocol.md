@@ -1204,7 +1204,7 @@ Errors use the error response format (#error-response-format).
 
 ## Re-authorization
 
-AAuth does not have a separate refresh token or refresh flow. When an auth token expires, the agent obtains a fresh resource token from the resource's authorization endpoint and submits it to the PS's token endpoint — the same flow as the initial authorization. This gives the resource a voice in every re-authorization: the resource can adjust scope, require step-up authorization, or deny access based on current policy.
+AAuth does not have a separate refresh token or refresh flow. When an auth token expires, the agent obtains a fresh resource token from the resource's authorization endpoint and submits it to the PS's token endpoint — the same flow as the initial authorization. This gives the resource a voice in every re-authorization: the resource can adjust scope, require step-up authorization, or deny access based on current policy. A separate refresh token would bypass the resource entirely, and is unnecessary given that the standard flow is a single additional request.
 
 When an agent rotates its signing key, all existing auth tokens are bound to the old key and can no longer be used. The agent MUST re-authorize by obtaining fresh resource tokens and submitting them to the PS.
 
@@ -1484,7 +1484,7 @@ This section defines auth tokens and the mechanisms by which they are issued. Th
 
 The AS evaluates resource policy and issues auth tokens. It accepts JSON POST requests.
 
-### PS-to-AS Token Request
+### PS-to-AS Token Request {#ps-to-as-token-request}
 
 The PS MUST make a signed POST to the AS's `auth_token_endpoint`. The PS authenticates via an HTTP Sig (#http-message-signatures-profile).
 
@@ -1780,7 +1780,7 @@ Because the intermediary obtains a person token for the downstream resource befo
 
 Copying instead would fail in both directions at once. The value would be meaningless under the new issuer, so the downstream resource would either misidentify the person or key state to an identifier no one can resolve; and the same string appearing at two resources is exactly the correlation handle pairwise identifiers exist to prevent, handed to a party the user never consented to share it with.
 
-Note that downstream authorization is not required to be a subset of the upstream scopes. A downstream resource may have capabilities that are orthogonal to the upstream resource — for example, a flight booking API that calls a payment processor needs the payment processor to charge a card, an operation the user and original agent could never perform directly. The downstream resource's scope is constrained by its own AS policy and the PS's evaluation of the mission context, not by the upstream token's scope. The PS provides the governance constraint — it evaluates each hop independently and can deny requests that fall outside the mission or the user's intent.
+Note that downstream authorization is not required to be a subset of the upstream scopes. A downstream resource may have capabilities that are orthogonal to the upstream resource — for example, a flight booking API that calls a payment processor needs the payment processor to charge a card, an operation the user and original agent could never perform directly, and a formal subset rule would prevent that legitimate chain. The downstream resource's scope is constrained by its own AS policy and the PS's evaluation of the mission context, not by the upstream token's scope. The PS provides the governance constraint — it evaluates each hop independently and can deny requests that fall outside the mission or the user's intent.
 
 Because the resource acts as an agent, it MUST have its own agent identity — it MUST publish agent metadata at `/.well-known/aauth-agent.json` so that downstream resources and ASes can verify its identity.
 
@@ -3315,10 +3315,6 @@ User      Agent       Resource 1      Resource 2    PS
 
 ## Identity and Foundation
 
-### Why HTTPS-Based Agent Identity
-
-HTTPS URLs as agent identifiers enable dynamic ecosystems without pre-registration.
-
 ### Why Per-Instance Agent Identity
 
 OAuth's `client_id` identifies an application — every instance of the same app shares a single identifier and typically a single set of credentials. AAuth's `aauth:local@domain` agent identifier identifies a specific instance with its own signing key. This enables per-instance authorization (grant access to this specific agent process, not all instances of the app), per-instance revocation (revoke one compromised instance without affecting others), and per-instance audit (trace every action to the specific instance that performed it). The agent provider controls which instances receive agent tokens, providing centralized governance over a distributed agent fleet.
@@ -3347,7 +3343,7 @@ The practical effect is that anything done under a mission identifier was done b
 
 Naming the agent, or its provider, in a token the resource reads would restore exactly the coupling the person token exists to remove: a resource able to see either can pin policy to it, and the person's relationship stops surviving a change of agent. So neither the person token, the resource token, nor the auth token carries one. `agent_jkt` and `cnf` still bind every request to one key.
 
-The agent token still reaches the AS, because a resource deploys an AS to have policy evaluated and an agent token MAY carry claims bearing on that — attestation, platform integrity, workload identity. The resource enforces; the AS evaluates; posture goes to the evaluator. The consequence is that agent-provider independence is complete in three-party and partial in four-party, where the resource has explicitly delegated policy to an AS.
+The agent token still reaches the AS, for the posture claims it may carry (#ps-to-as-token-request). The consequence is that agent-provider independence is complete in three-party and partial in four-party, where the resource has explicitly delegated policy to an AS.
 
 ### Why Identity Alone Can Authorize
 
@@ -3360,10 +3356,6 @@ What follows is that issuing a person token is consequential even though it gran
 The approval response carries the mission blob base64url-encoded rather than as a JSON object so that `s256` has an unambiguous byte sequence to cover. A nested object has no defined serialization once it is inside an envelope — the receiver would have to re-serialize it to hash it, and any difference in key order, whitespace, or escaping produces a different digest. Encoding makes the string itself the bytes, so the agent decodes, hashes, and compares, which is the operation it already performs on a JWT payload.
 
 An earlier revision avoided the problem by making the response body the mission and putting `s256` in a header, which worked but left no room in the response for anything else. The encoded member restores that room without giving up verifiability.
-
-### Why the Mission Identifier Is a Hash
-
-An opaque identifier would name the mission but leave the person server free to attach it to different text afterwards. A digest binds every token carrying `mission_s256` to one specific mission, so the mission in the log and the mission those tokens authorized are demonstrably the same. Verification is available to the agent at approval and to anyone holding the blob later.
 
 ### Why a Resource Token Names the Person Token {#why-presented-jti}
 
@@ -3391,29 +3383,16 @@ A resource learns the agent's PS from the person token it verifies, but it needs
 
 AAuth well-known metadata URIs use the `.json` extension (e.g., `/.well-known/aauth-agent.json`) rather than the extensionless convention used by OAuth and OpenID Connect. The `.json` extension makes the content type immediately obvious — no content negotiation is needed. More importantly, it enables static file hosting: a `.json` file served from GitHub Pages, S3, or a CDN works without server-side configuration. This aligns with AAuth's self-hosted agent model (see [@?I-D.hardt-aauth-bootstrap]), where an agent's metadata can be published as static files with no active server.
 
-### Why Standard HTTP Async Pattern
-
-AAuth uses standard HTTP async semantics (`202 Accepted`, `Location`, `Prefer: wait`, `Retry-After`). This applies uniformly to all endpoints, aligns with RFC 7240, replaces OAuth device flow, supports headless agents, and enables clarification chat.
-
-### Why JSON Instead of Form-Encoded
-
-JSON is the standard format for modern APIs. AAuth uses JSON for both request and response bodies.
-
 ### Why No Authorization Code
 
-AAuth eliminates authorization codes entirely. OAuth authorization codes require PKCE ([@RFC7636]) to prevent interception attacks, adding complexity for both clients and servers. AAuth avoids the problem: the user redirect carries only the callback URL, which has no security value to an attacker. The auth token is delivered exclusively via polling, authenticated by the agent's HTTP Message Signature.
+AAuth eliminates authorization codes entirely. OAuth authorization codes require PKCE ([@RFC7636]) to prevent interception attacks, adding complexity for both clients and servers. AAuth avoids the problem: the user redirect carries only the callback URL, which has no security value to an attacker — tokens never pass through the user's browser, so the callback is purely a UX optimization. The auth token is delivered exclusively via polling, authenticated by the agent's HTTP Message Signature.
 
-### Why Callback URL Has No Security Role
+### In Brief
 
-Tokens never pass through the user's browser. The callback URL is purely a UX optimization.
-
-### Why No Refresh Token
-
-AAuth has no refresh tokens. When an auth token expires, the agent obtains a fresh resource token and submits it through the standard authorization flow. This gives the resource a voice in every re-authorization — the resource can adjust scope, require step-up authorization, or deny access based on current policy. A separate refresh token would bypass the resource entirely, and is unnecessary given that the standard flow is a single additional request.
-
-### Why Reuse OpenID Connect Vocabulary
-
-AAuth reuses OpenID Connect scope values, identity claims, and enterprise parameters. This lowers the adoption barrier.
+- **HTTPS-based agent identity** enables dynamic ecosystems without pre-registration.
+- **Standard HTTP async semantics** (`202 Accepted`, `Location`, `Prefer: wait`, `Retry-After`) apply uniformly to all endpoints, align with RFC 7240, replace the OAuth device flow, support headless agents, and enable clarification chat.
+- **JSON rather than form encoding**, for both request and response bodies, matching modern APIs.
+- **OpenID Connect vocabulary is reused** — scope values, identity claims, enterprise parameters — lowering the adoption barrier.
 
 ## Architecture
 
@@ -3456,10 +3435,6 @@ The mission's `description` is Markdown because it represents human intent, not 
 ### Why Missions Have Only Two States
 
 Missions are either **active** or **terminated**. There is no suspended state. An `expires_at` in the mission blob does not add a state — it declares in advance when the PS will treat the mission as terminated, which the person can see at approval time. A suspended state would require the agent to learn that the mission has resumed, but AAuth has no push channel from the PS to the agent — the agent can only poll. For short pauses (minutes), the deferred response mechanism already provides natural waiting via `202` polling. For long pauses (hours or more), the agent would need to poll indefinitely with no indication of when to stop, making suspension operationally equivalent to termination. Terminating the mission and creating a new one is cleaner — the PS retains the old mission's log for audit, and the new mission can be scoped appropriately for the changed circumstances that prompted the pause. This keeps mission lifecycle simple: a mission is alive until it is done.
-
-### Why Downstream Scope Is Not Constrained by Upstream Scope
-
-In multi-hop scenarios, downstream authorization is intentionally not required to be a subset of upstream scopes. A flight booking API that calls a payment processor needs the payment processor to charge a card — an operation orthogonal to the upstream scope. Formal subset rules would prevent legitimate delegation chains. Instead, the PS evaluates each hop against the mission context, providing governance-based constraints that are more flexible than algebraic attenuation rules while maintaining a complete audit trail.
 
 ## Comparisons with Alternatives
 
