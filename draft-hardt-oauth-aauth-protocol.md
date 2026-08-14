@@ -971,6 +971,28 @@ The agent MUST extract the `resource-token` parameter, verify the resource token
 
 A resource MAY return `requirement=auth-token` with a new resource token to a request that already includes an auth token — for example, when the request requires a higher level of authorization than the current token provides. Agents MUST be prepared for this step-up authorization at any time.
 
+### Deferred Delivery {#deferred-auth-token}
+
+A resource MAY instead deliver the same requirement as a `202 Accepted` deferred response (#deferred-responses), holding the invocation rather than requiring the agent to retry it:
+
+```http
+HTTP/1.1 202 Accepted
+Location: /pending/f7a3b9c
+Retry-After: 5
+Cache-Control: no-store
+AAuth-Requirement: requirement=auth-token; resource-token="eyJ..."
+
+{
+  "status": "pending"
+}
+```
+
+The agent verifies the resource token and obtains an auth token exactly as in the `401` case, then completes at the pending URL: it polls with signed `GET` requests per (#deferred-responses), presenting the auth token via `Signature-Key` once it holds one. The resource executes the held invocation on the first poll that presents a valid auth token, and answers with the invocation's response.
+
+Completion consumes the pending record. The resource MUST retain the record, with the invocation's result, at least until the auth token's `exp`, and MUST answer a repeated presentation of the same auth token at the pending URL from that result rather than executing again — a response can be lost in transit, and the agent cannot otherwise distinguish "not executed" from "executed, response lost". If the resource token expires before the agent obtains an auth token, the resource MAY include a fresh resource token in the `AAuth-Requirement` header of a subsequent poll response; it still holds the invocation, so nothing is re-sent.
+
+Which delivery to use is the resource's choice, per invocation. The `401` is the baseline every resource can implement without holding state, and the only delivery that maps onto transports with no place to complete at a separate URL. The `202` suits a resource that can hold the invocation; a resource hosting its own interaction already returns this shape (#interaction-response-poll-authority). Agents MUST support both: the deferred-response handling agents already implement (#deferred-responses) applies unchanged, with `requirement=auth-token` in the pending response rather than `requirement=interaction`.
+
 ## Resource Token
 
 ### Resource Token Structure
