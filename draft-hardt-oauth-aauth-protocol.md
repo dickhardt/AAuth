@@ -149,13 +149,9 @@ Raw markdown source is at https://raw.githubusercontent.com/dickhardt/AAuth/refs
 
 ## HTTP Clients Need Their Own Identity
 
-In OAuth 2.0 [@!RFC6749] and OpenID Connect [@OpenID.Core], the client has no independent identity. Client identifiers are issued by each authorization server or OpenID provider — a `client_id` at Google is meaningless at GitHub. The client's identity exists only in the context of each server it has pre-registered with. This made sense when the web had a manageable number of integrations and a human developer could visit each portal to register.
+In OAuth 2.0 [@!RFC6749] and OpenID Connect [@OpenID.Core], a client's identity exists only at each server it has pre-registered with — a `client_id` at one provider is meaningless at the next. API keys push the same model further: shared secrets that must be copied to where the workload runs, and so will eventually be copied somewhere they shouldn't be. SPIFFE and WIMSE prove workload identity without shared secrets, but within a single enterprise's trust domain (see (#why-not-extend-oauth)).
 
-API keys are the same model pushed further: a shared secret issued by a service, copied to the client, and used as a bearer credential. The problem is that any secret that must be copied to where the workload runs will eventually be copied somewhere it shouldn't be.
-
-SPIFFE and WIMSE brought workload identity to enterprise infrastructure — a workload can prove who it is without shared secrets. But these operate within a single enterprise's trust domain. They don't help an agent that needs to access resources across organizational boundaries, or a developer's tool that runs outside any enterprise platform.
-
-AAuth starts from this premise: every agent has its own cryptographic identity. An agent identifier (`aauth:local@domain`) is bound to a signing key, published at a well-known URL, and verifiable by any party — no pre-registration, no shared secrets, no dependency on a particular server. At its simplest, an agent signs a request and a resource decides what to do based on who the agent is. This identity-based access replaces API keys and is the foundation that authorization, governance, and federation build on incrementally.
+AAuth starts from a different premise: every agent has its own cryptographic identity. An agent identifier (`aauth:local@domain`) is bound to a signing key, published at a well-known URL, and verifiable by any party — no pre-registration, no shared secrets, no dependency on a particular server. At its simplest, an agent signs a request and a resource decides what to do based on who the agent is; authorization, governance, and federation build on that incrementally.
 
 ## Agents Are Different
 
@@ -165,22 +161,11 @@ Agents don't work this way. They discover resources at runtime. They execute lon
 
 ## What AAuth Provides
 
-- **Agent identity without pre-registration**: A domain, static metadata, and a JWKS establish identity with no portal, no bilateral agreement, no shared secret.
-- **Per-instance identity**: Each agent instance gets its own identifier (`aauth:local@domain`) and signing key.
-- **Proof-of-possession on every request**: HTTP Message Signatures ([@!RFC9421]) bind every request the agent makes to the agent's key — a stolen token is useless without the private key.
-- **Two-party mode with first-call registration**: An agent calls a resource it has never contacted before; the resource returns `AAuth-Requirement`; a browser interaction handles account creation, payment, and consent. The first API call is the registration.
-- **Tool-call governance**: A person server (PS) represents the user and manages what tools the agent can call, providing permission and audit for tool use — no resource involved.
-- **Missions**: Optional scoped authorization contexts that span multiple resources. The agent proposes what it intends to do in natural language; the person server provides full context — mission, history, justification — to the appropriate decision-maker (human or AI); every resource access is evaluated in context. Missions enable governance over decisions that cannot be reduced to predefined machine-evaluable rules.
-- **Cross-domain federation**: The PS federates with access servers (AS) — the policy engines that guard resources — to enable access across trust domains without the agent needing to know about each one.
-- **Clarification chat**: Users can ask questions during consent; agents can explain or adjust their requests.
-- **Progressive adoption**: Each party can adopt independently; modes build on each other.
-- **Asynchronous event delivery**: Agents receive events from resources through the AP, without requiring a public endpoint. Resources post event tokens to the AP's event endpoint; the AP routes them to the agent. Defined in AAuth Events ([@?I-D.hardt-aauth-events]).
-
-## What AAuth Does Not Do
-
-- Does not require centralized identity providers — agents publish their own identity
-- Does not use shared secrets or bearer tokens — every credential is bound to a signing key and useless without it
-- Does not require coordination to adopt — each party adds support independently
+- **Agent identity without pre-registration**: A domain, static metadata, and a JWKS establish an identity any party can verify — no portal, no bilateral agreement, no shared secret (#agent-identity).
+- **Proof-of-possession on every request**: HTTP Message Signatures ([@!RFC9421]) bind every request to the agent's key. No credential in the protocol is a bearer credential; a stolen token is useless without the key (#http-message-signatures-profile).
+- **Person identity that survives a change of agent**: A person token identifies the person the agent acts for, and the resource keys its account and history on `(iss, sub)` — so the person can change agents without arriving at the resource as a stranger (#person-tokens).
+- **Governance over what agents do**: A mission states the agent's intent in natural language for the person to approve; permission, audit, and interaction relay run through the person server — governance over decisions that cannot be reduced to machine-evaluable rules (#agent-governance).
+- **Cross-domain authorization without coordination**: The PS federates with any resource's AS on first contact; each party adopts independently, and the first API call can be the registration (#ps-as-federation, #incremental-adoption).
 
 ## Relationship to Existing Standards
 
@@ -192,7 +177,9 @@ AAuth builds on existing standards and design patterns:
 
 The HTTP Signature Keys specification ([@!I-D.hardt-httpbis-signature-key]) defines how signing keys are bound to JWTs and discovered via well-known metadata, and how agents present cryptographic identity using HTTP Message Signatures ([@!RFC9421]). This specification defines the `AAuth-Requirement`, `AAuth-Access`, and `AAuth-Capabilities` headers, and the authorization protocol across five resource access modes.
 
-Because agent identity is independent and self-contained, AAuth is designed for incremental adoption: each party can add support independently, and rollout does not need to be coordinated. A resource that verifies an agent's signature can manage access by identity alone, with no other infrastructure; adding a person server and an access server is additive. The five resource access modes and the orthogonal agent-governance layer are introduced in (#protocol-overview) and detailed in (#incremental-adoption).
+AAuth does not replace OAuth. OAuth remains the right protocol for applications with a fixed, pre-registered set of integrations, and works better for flows that originate on the web — a user in a browser authorizing a site they are visiting — and need none of the functionality AAuth adds. AAuth addresses the clients OAuth cannot serve: those that discover resources at runtime and cannot pre-register with each one (see (#why-not-extend-oauth)).
+
+Because agent identity is independent and self-contained, adoption is incremental: each party adds support on its own, with no coordinated rollout. The five resource access modes and the orthogonal agent-governance layer are introduced in (#protocol-overview) and detailed in (#incremental-adoption).
 
 # Conventions and Definitions
 
@@ -3801,7 +3788,7 @@ WWW-Authenticate: Payment id="x7Tg2pLq", method="example",
 Accept-Signature: sig=("@method" "@authority" "@path");sigkey=jkt
 ```
 
-### Why Not Extend OAuth?
+### Why Not Extend OAuth? {#why-not-extend-oauth}
 
 OAuth 2.0 ([@!RFC6749]) was designed for delegated access — a user authorizes a pre-registered client to act on their behalf at a specific server. Extending OAuth for agent-to-resource authorization would require changing its foundational assumptions:
 
