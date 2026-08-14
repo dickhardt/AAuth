@@ -483,7 +483,7 @@ Base claims (from AAuth Protocol):
 - `jti`: Unique token identifier
 - `ps`: The `iss` of the person token the resource verified
 - `sub`: The `sub` of that person token, identifying the person this authorization is for
-- `person_token_jti`: The `jti` of that person token, binding this resource token to it
+- `presented_jti`: The `jti` of that person token, binding this resource token to it
 - `agent_jkt`: JWK Thumbprint of the agent's signing key
 - `iat`: Issued at timestamp
 - `exp`: Expiration timestamp
@@ -511,7 +511,7 @@ R3 extension claims:
   "jti": "rt-8f3a2b",
   "ps": "https://ps.example",
   "sub": "8f14e45fceea167a5a36dedd4bea2543",
-  "person_token_jti": "pt-3ab910",
+  "presented_jti": "pt-3ab910",
   "agent_jkt": "NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs",
   "r3_uri": "https://calendar.example.com/r3/a1b2c3d4",
   "r3_s256": "aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789abcd",
@@ -672,9 +672,10 @@ In addition to the R3 document fields (#r3-document), a per-call proposal carrie
 
 ## Flow
 
-1. **Per-call challenge.** The agent invokes an `r3_per_call` operation. The resource builds the proposal, persists it keyed by its `r3_s256`, and returns `AAuth-Requirement` with a resource token whose `r3_uri`/`r3_s256` reference the proposal. The token carries only the reference, not the parameters.
+1. **Per-call challenge.** The agent invokes an `r3_per_call` operation. The resource builds the proposal, persists it keyed by its `r3_s256`, and returns `AAuth-Requirement` with a resource token whose `r3_uri`/`r3_s256` reference the proposal — either as a `401` the agent retries, or as a `202 Accepted` deferred delivery that holds the invocation ([@!I-D.hardt-oauth-aauth-protocol]). A resource that can hold the invocation SHOULD use `202`: the parameters never leave its hands, so the verification in step 3 disappears and the agent never reconstructs the call. The token carries only the reference, not the parameters.
 2. **Approval.** The AS fetches the proposal and evaluates `parameters` per policy; the PS renders `display` for user consent. On approval, the AS issues a per-call auth token that echoes the proposal's `r3_uri`/`r3_s256` and lists the now-approved operation in `r3_granted`.
-3. **Enforced retry.** The agent retries the actual call with the per-call auth token. The resource recovers the proposal from its store via `r3_s256` and MUST verify that the agent's actual parameters match the approved proposal. For any parameter represented as a digest, the resource MUST verify that `BASE64URL(SHA-256(presented-value))` equals the stored `s256`. If anything differs, the resource MUST reject the call. An approval to email one recipient cannot be replayed against another.
+3. **Enforced completion.** Under `202`, the resource executes the held call when a valid per-call auth token arrives at the pending URL; there are no parameters to verify, because the agent never re-sends the call. Under `401`, the agent retries the actual call with the per-call auth token, and the resource recovers the proposal from its store via `r3_s256` and MUST verify that the agent's actual parameters match the approved proposal: inline parameter values MUST be compared structurally (JSON value equality — member order and insignificant whitespace do not affect the result), and for any parameter represented as a digest the resource MUST verify that `BASE64URL(SHA-256(presented-value))` equals the stored `s256`, so the agent MUST present those values byte-identically. If anything differs, the resource MUST reject the call. An approval to email one recipient cannot be replayed against another.
+4. **Single use.** The grant is consumed by the call it approved, on either delivery. A resource MUST NOT execute more than one invocation under one per-call auth token: under `202`, completion consumes the pending record; under `401`, the resource MUST mark the stored proposal consumed when it executes the call. A repeated presentation of the same per-call auth token MUST be answered from the retained result of the executed call, not executed again — the first response can be lost in transit, and the agent cannot otherwise distinguish "not executed" from "executed, response lost". The resource SHOULD retain the result at least until the auth token's `exp`.
 
 ## Large and Sensitive Payloads
 
@@ -777,13 +778,15 @@ There are currently no known implementations.
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-aauth-r3-02
-  - Brought the base-claim recitals in Resource Token Extensions and Auth Token Extensions up to AAuth Protocol -11. The `agent` claim is gone from both tokens: a resource token now carries `ps`, `sub`, and `person_token_jti`, and an auth token carries `ps` and a REQUIRED directed `sub`, with `mission_s256` OPTIONAL. The examples were updated to match, including the auth token's `sub`, which showed an email address where the value is an opaque directed identifier.
+  - Brought the base-claim recitals in Resource Token Extensions and Auth Token Extensions up to AAuth Protocol -11. The `agent` claim is gone from both tokens: a resource token now carries `ps`, `sub`, and `presented_jti`, and an auth token carries `ps` and a REQUIRED directed `sub`, with `mission_s256` OPTIONAL. The examples were updated to match, including the auth token's `sub`, which showed an email address where the value is an opaque directed identifier.
   - AS Processing required the AS to log "the agent identifier" against a resource token that no longer carries one. The step now names identifiers the AS actually holds — `ps`, `sub`, and `agent_jkt` from the resource token — and says where the agent identifier does come from: the `sub` of the `agent_token` the PS is REQUIRED to send on the PS-to-AS token request, or of the `subagent_token` where one is present. An AS reached any other way has no agent token and MUST NOT infer an agent identity.
   - R3 Document Access Restriction identified the entitled PS by the `ps` claim of the agent token. Under -11 an agent presents a person token in place of its agent token at the authorization endpoint, so the resource may never see an agent token, and that claim is OPTIONAL in any case. The entitled PS is now the issuer of the person token the resource verified, which is the REQUIRED `ps` claim of the resource token the resource itself issued.
   - Added operation access annotations: a resource states, on the operation in its own vocabulary, which credential the operation requires and whether it consumes budget. The vocabulary is where they go because it is the only description of the resource's operations an agent can read — R3 documents are PS- and AS-only. Annotations are sparse against the resource-wide `access_mode`, replace it rather than intersect with it, and stay advisory: the runtime `AAuth-Requirement` remains authoritative. Encodings defined for MCP, OpenAPI, AsyncAPI, and OData; none for gRPC, GraphQL, or WSDL, whose discovery mechanisms do not carry annotations to a generic caller.
   - Added the `access_mode` value `per-call`, for a resource or an operation that authorizes each invocation individually against its parameters, and registered it in the AAuth Access Mode Value Registry.
   - Renamed the auth token claim `r3_conditional` to `r3_per_call`, matching the `per-call` access mode. "Conditional" did not say what the condition was.
   - Removed the `version` field. R3 documents are content-addressed, so a revision is a different document at a different hash; `version` named nothing the hash did not, and nothing prevented two different documents carrying the same value.
+  - Per-call grants are single-use on either delivery, with completion answered idempotently from the retained result. The `401` retry gained the comparison semantics it lacked — structural equality for inline parameters, digest equality for `s256` parameters — and a resource that can hold the invocation SHOULD use the `202` deferred delivery AAuth Protocol defines, under which nothing is re-sent and nothing is compared. Addresses issue #92.
+  - Renamed `person_token_jti` to `presented_jti`, following AAuth Protocol.
 
 - draft-hardt-aauth-r3-01
   - Added per-call proposals: an `r3_conditional` operation is challenged at call time, and the resource builds a content-addressed proposal carrying the concrete parameters, which the AS evaluates and the resource binds on retry. A parameter MAY be carried as a digest so large or sensitive values stay between the agent and the resource.

@@ -39,7 +39,7 @@ The agent presents it to the resource via `Signature-Key: sig=jwt;jwt="<person t
 
 A resource MUST have verified a person token before it issues a resource token, and copies `ps`, `sub`, `mission_s256`, and the person token's `jti` into the resource token it issues.
 
-**What to verify:** the person token's `cnf.jwk` matches the key that signed the request; the resource token's `ps`, `sub`, and `mission_s256` match the person token, and `person_token_jti` names it. This can be confirmed locally by decoding both JWTs — no live AS required.
+**What to verify:** the person token's `cnf.jwk` matches the key that signed the request; the resource token's `ps`, `sub`, and `mission_s256` match the person token, and `presented_jti` names it. This can be confirmed locally by decoding both JWTs — no live AS required.
 
 ## Surface 3 — Resource-token issuance and issuer discovery
 
@@ -49,7 +49,7 @@ The resource signs a resource token as `aa-resource+jwt` with `iss` set to its o
 
 ## Surface 4 — Auth-token issuance and presentation
 
-The agent sends the resource token to the PS's `auth_token_endpoint`. The PS resolves the person token named by `person_token_jti`, confirms the resource token's claims match what it issued, and either issues the auth token itself (three-party) or federates with the resource's AS (four-party).
+The agent sends the resource token to the PS's `auth_token_endpoint`. The PS resolves the person token named by `presented_jti`, confirms the resource token's claims match what it issued, and either issues the auth token itself (three-party) or federates with the resource's AS (four-party).
 
 The issued `aa-auth+jwt` carries:
 
