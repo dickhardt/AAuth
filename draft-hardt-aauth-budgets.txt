@@ -535,7 +535,7 @@ Table of Contents
      "jti": "rt-4c81fa",
      "ps": "https://ps.example",
      "sub": "8f14e45fceea167a5a36dedd4bea2543",
-     "person_token_jti": "pt-3ab910",
+     "presented_jti": "pt-3ab910",
      "agent_jkt": "NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs",
      "tenant": "corp",
      "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",

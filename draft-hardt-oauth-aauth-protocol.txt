@@ -113,6 +113,7 @@ Table of Contents
      7.5.  AAuth-Access Response Header
      7.6.  Resource-Managed Authorization
      7.7.  Auth Token Required
+       7.7.1.  Deferred Delivery
      7.8.  Resource Token
        7.8.1.  Resource Token Structure
        7.8.2.  Resource Token Verification
@@ -232,16 +233,17 @@ Table of Contents
      15.8.  AAuth-Access Security
      15.9.  Trust Posture in PS-Asserted Access
      15.10. Person Token Exposure
-     15.11. Organization Identification
-     15.12. Person Token Is Not Authorization
-     15.13. Incremental Consent
-     15.14. PS Approval Endpoint Authentication
-     15.15. Agent-Person Binding
-     15.16. PS as High-Value Target
-     15.17. Call Chaining Identity
-     15.18. Token Revocation and Lifecycle
-     15.19. TLS Requirements
-     15.20. Non-Repudiation and Audit After Key Rotation
+     15.11. Continuity, Not Identity Proofing
+     15.12. Organization Identification
+     15.13. Person Token Is Not Authorization
+     15.14. Incremental Consent
+     15.15. PS Approval Endpoint Authentication
+     15.16. Agent-Person Binding
+     15.17. PS as High-Value Target
+     15.18. Call Chaining Identity
+     15.19. Token Revocation and Lifecycle
+     15.20. TLS Requirements
+     15.21. Non-Repudiation and Audit After Key Rotation
    16. Privacy Considerations
      16.1.  Directed Identifiers
      16.2.  PS Visibility
@@ -1206,13 +1208,23 @@ Table of Contents
 6.  Person Token
 
    A person token is a PS-issued JWT that identifies the person an agent
-   acts for to a single resource.  It carries no authorization from the
-   PS: no scope, no account, no permission.  Whether identity alone is
+   acts for to a single resource.  It is not a bearer credential — cnf
+   binds it to the agent's signing key — its aud is one resource, and it
+   lives at most one hour.  It carries no authorization from the PS: no
+   scope, no account, no permission.  Whether identity alone is
    sufficient to serve a request is the resource's decision, and a
    resource that decides it is Section 4.1.3 serves whatever it serves
    on identity — so holding a person token is, at such a resource,
    effectively access.  What a person token MUST NOT do is stand in for
-   an auth token where one is required Section 15.12.
+   an auth token where one is required Section 15.13.
+
+   A person token asserts that its issuer recognizes this person and
+   that this agent acts for them.  It carries no statement about how the
+   person server established the person's identity, and a resource MUST
+   NOT treat it as evidence of identity proofing, of legal identity, or
+   of any assurance level.  What it guarantees is continuity: the same
+   (iss, sub) is the same person at this resource over time
+   Section 15.11.
 
    The agent presents it via the Signature-Key header in place of its
    agent token Section 13.8.2.  A resource MUST have verified a person
@@ -1250,7 +1262,7 @@ Table of Contents
       Section 11.1.1.  The PS MUST verify it per Section 10.4.5.
 
    Without upstream_token the PS issues for the person bound to the
-   requesting agent Section 15.15.  With it, the PS issues for the
+   requesting agent Section 15.16.  With it, the PS issues for the
    person the upstream token was issued for, determined from the
    upstream token's sub, which this PS MUST have issued.  A PS that
    cannot determine the person MUST reject the request.
@@ -1294,6 +1306,16 @@ Table of Contents
    Errors use the token endpoint error codes Section 13.6.3;
    invalid_request covers a missing or malformed resource or
    mission_s256 value.
+
+   Issuing a person token creates a retention obligation.  A PS MUST
+   retain a record of each person token it issues — jti, ps, sub,
+   mission_s256, tenant, and exp — sufficient to answer resource token
+   verification Section 7.8.2.  Because a resource token may name a
+   person token that was valid when the resource token was issued, the
+   record MUST be retained beyond the person token's exp by at least the
+   longest resource token lifetime the PS accepts Section 7.  A resource
+   token naming a jti the PS has no record of is rejected with
+   unknown_person_token Section 13.6.3.
 
    An agent SHOULD cache a person token for a resource until it expires
    rather than requesting one per call.  A person token is scoped to one
@@ -1343,7 +1365,7 @@ Table of Contents
    *  tenant: Tenant identifier per OpenID Connect Enterprise Extensions
       1.0 [OpenID.Enterprise], declaring the organization the person
       belongs to.  It lets a resource apply organizational policy before
-      it issues anything Section 15.11.  It is not part of the
+      it issues anything Section 15.12.  It is not part of the
       identifier; see Section 16.1.
 
    {
@@ -1400,7 +1422,7 @@ Table of Contents
        verification Section 10.4.3.2.
 
    A recipient MUST reject an aa-person+jwt wherever an auth token is
-   required.  Only typ distinguishes the two Section 15.12.
+   required.  Only typ distinguishes the two Section 15.13.
 
    sub is unique within the issuer, not globally.  A resource MUST treat
    (iss, sub) as the identifier, MUST treat the value as opaque, and
@@ -1706,6 +1728,50 @@ Table of Contents
    current token provides.  Agents MUST be prepared for this step-up
    authorization at any time.
 
+7.7.1.  Deferred Delivery
+
+   A resource MAY instead deliver the same requirement as a 202 Accepted
+   deferred response Section 13.5, holding the invocation rather than
+   requiring the agent to retry it:
+
+   HTTP/1.1 202 Accepted
+   Location: /pending/f7a3b9c
+   Retry-After: 5
+   Cache-Control: no-store
+   AAuth-Requirement: requirement=auth-token; resource-token="eyJ..."
+
+   {
+     "status": "pending"
+   }
+
+   The agent verifies the resource token and obtains an auth token
+   exactly as in the 401 case, then completes at the pending URL: it
+   polls with signed GET requests per Section 13.5, presenting the auth
+   token via Signature-Key once it holds one.  The resource executes the
+   held invocation on the first poll that presents a valid auth token,
+   and answers with the invocation's response.
+
+   Completion consumes the pending record.  The resource MUST retain the
+   record, with the invocation's result, at least until the auth token's
+   exp, and MUST answer a repeated presentation of the same auth token
+   at the pending URL from that result rather than executing again — a
+   response can be lost in transit, and the agent cannot otherwise
+   distinguish "not executed" from "executed, response lost".  If the
+   resource token expires before the agent obtains an auth token, the
+   resource MAY include a fresh resource token in the AAuth-Requirement
+   header of a subsequent poll response; it still holds the invocation,
+   so nothing is re-sent.
+
+   Which delivery to use is the resource's choice, per invocation.  The
+   401 is the baseline every resource can implement without holding
+   state, and the only delivery that maps onto transports with no place
+   to complete at a separate URL.  The 202 suits a resource that can
+   hold the invocation; a resource hosting its own interaction already
+   returns this shape Section 8.6.2.  Agents MUST support both: the
+   deferred-response handling agents already implement Section 13.5
+   applies unchanged, with requirement=auth-token in the pending
+   response rather than requirement=interaction.
+
 7.8.  Resource Token
 
 7.8.1.  Resource Token Structure
@@ -1726,12 +1792,18 @@ Table of Contents
    ps: The iss of the person token the resource verified — the person
    server whose namespace sub belongs to - sub: The sub of that person
    token, identifying the person this authorization is for -
-   person_token_jti: The jti of that person token, binding this resource
-   token to it - agent_jkt: JWK Thumbprint ([RFC7638]) of the agent's
-   current signing key - iat: Issued at timestamp - exp: Expiration
-   timestamp - scope: Requested scopes, as a space-separated string of
-   scope values.  Companion specifications MAY define alternative
-   authorization claims that replace scope.
+   presented_jti: The jti of the person token whose verification
+   established ps and sub.  On the first challenge of a grant that token
+   was presented with the request; on a step-up or per-call challenge
+   the request carries an auth token, and the resource supplies the
+   value from its record of the person token it verified earlier.
+   Binding the resource token to one person token by jti is what makes
+   mission stripping detectable Appendix B.1.11 - agent_jkt: JWK
+   Thumbprint ([RFC7638]) of the agent's current signing key - iat:
+   Issued at timestamp - exp: Expiration timestamp - scope: Requested
+   scopes, as a space-separated string of scope values.  Companion
+   specifications MAY define alternative authorization claims that
+   replace scope.
 
    A resource token carries no agent identifier. agent_jkt binds it to
    the agent's key, and the recipient learns the agent's identity from
@@ -1774,11 +1846,17 @@ Table of Contents
        three-party, or the AS in four-party).
    5.  Verify agent_jkt matches the JWK Thumbprint of the key used to
        sign the HTTP request.
-   6.  A PS MUST look up the person token identified by person_token_jti
-       among those it issued, and MUST verify that ps, sub,
-       mission_s256, and tenant match that token exactly, rejecting the
-       resource token on any mismatch or omission.  An AS MUST verify
-       that ps names the PS that sent the token request.
+   6.  A PS MUST resolve presented_jti against its retained records of
+       issued person tokens Section 6.1.  If no record exists — a
+       tampered token, another PS's jti, or a token outside the
+       retention window — the PS MUST reject the resource token with
+       unknown_person_token.  If a record exists, the PS MUST verify
+       that ps, sub, mission_s256, and tenant match it exactly,
+       rejecting the resource token on any mismatch or omission; a
+       mismatch against an existing record is evidence of tampering,
+       such as mission stripping, and SHOULD be surfaced to operators
+       rather than only rejected.  An AS MUST verify that ps names the
+       PS that sent the token request.
    7.  If mission_s256 is present, a PS MUST verify the mission is
        active and that the current time precedes its expires_at where
        one is set.
@@ -1787,14 +1865,6 @@ Table of Contents
    present, see Section 11.2), step 5 instead verifies agent_jkt against
    the subagent_token's cnf.jwk — the sub-agent's key — because the
    parent, not the sub-agent, signs the HTTP request.
-
-   Binding the resource token to one person token by jti is what makes
-   mission stripping detectable.  A resource cannot drop mission_s256
-   and present the result as an unscoped request, because the PS
-   resolves the person token it actually issued and compares.  Comparing
-   the claims alone would not suffice: an agent running concurrent
-   missions holds several person tokens for the same resource, so "the
-   person token for this agent and resource" does not identify one.
 
 7.8.3.  Resource Challenge Verification
 
@@ -4334,6 +4404,11 @@ Initial request (with Prefer: wait=N)
    +------------------------+--------+--------------------------------+
    | expired_resource_token | 400    | Resource token has expired     |
    +------------------------+--------+--------------------------------+
+   | unknown_person_token   | 400    | The person token named by the  |
+   |                        |        | resource token's presented_jti |
+   |                        |        | is not among those the PS      |
+   |                        |        | retains Section 7.8.2          |
+   +------------------------+--------+--------------------------------+
    | user_unreachable       | 403    | Terminal.  The PS has no       |
    |                        |        | channel to reach the user and  |
    |                        |        | the agent did not declare the  |
@@ -4899,47 +4974,64 @@ Initial request (with Prefer: wait=N)
    documents (aauth-agent.json, aauth-resource.json, aauth-person.json,
    aauth-access.json):
 
-   +=================+===========+====================================+
-   |Field            |Requirement|Description                         |
-   +=================+===========+====================================+
-   |issuer           |REQUIRED   |The server's HTTPS URL.  MUST match |
-   |                 |           |the URL the document was fetched    |
-   |                 |           |from.  Placed in the iss claim of   |
-   |                 |           |JWTs issued by this server.         |
-   |                 |           |Required by any Signature-Key       |
-   |                 |           |verifier to confirm the document    |
-   |                 |           |belongs to the claimed signer       |
-   |                 |           |([I-D.hardt-httpbis-signature-key]).|
-   +-----------------+-----------+------------------------------------+
-   |jwks_uri         |REQUIRED   |URL to the server's JSON Web Key    |
-   |                 |(see per-  |Set.                                |
-   |                 |role)      |                                    |
-   +-----------------+-----------+------------------------------------+
-   |name             |OPTIONAL   |Human-readable display name.        |
-   +-----------------+-----------+------------------------------------+
-   |description      |OPTIONAL   |Markdown string describing the      |
-   |                 |           |server, for display at consent      |
-   |                 |           |screens or dashboards.              |
-   |                 |           |Implementations MUST sanitize before|
-   |                 |           |rendering.                          |
-   +-----------------+-----------+------------------------------------+
-   |logo_uri         |OPTIONAL   |URL to the server's logo.  MUST use |
-   |                 |           |https.                              |
-   +-----------------+-----------+------------------------------------+
-   |logo_dark_uri    |OPTIONAL   |URL to the server's logo for dark   |
-   |                 |           |backgrounds.  MUST use https.       |
-   +-----------------+-----------+------------------------------------+
-   |documentation_uri|OPTIONAL   |URL with developer documentation.   |
-   |                 |           |MUST use https.                     |
-   +-----------------+-----------+------------------------------------+
-   |tos_uri          |OPTIONAL   |URL to terms of service.  MUST use  |
-   |                 |           |https.                              |
-   +-----------------+-----------+------------------------------------+
-   |policy_uri       |OPTIONAL   |URL to privacy policy.  MUST use    |
-   |                 |           |https.                              |
-   +-----------------+-----------+------------------------------------+
+   +=====================+===========+====================================+
+   |Field                |Requirement|Description                         |
+   +=====================+===========+====================================+
+   |issuer               |REQUIRED   |The server's HTTPS URL.  MUST match |
+   |                     |           |the URL the document was fetched    |
+   |                     |           |from.  Placed in the iss claim of   |
+   |                     |           |JWTs issued by this server.         |
+   |                     |           |Required by any Signature-Key       |
+   |                     |           |verifier to confirm the document    |
+   |                     |           |belongs to the claimed signer       |
+   |                     |           |([I-D.hardt-httpbis-signature-key]).|
+   +---------------------+-----------+------------------------------------+
+   |jwks_uri             |REQUIRED   |URL to the server's JSON Web Key    |
+   |                     |(see per-  |Set.                                |
+   |                     |role)      |                                    |
+   +---------------------+-----------+------------------------------------+
+   |accept_signature_algs|OPTIONAL   |JSON array of fully-specified JWS   |
+   |                     |           |algorithm identifiers the server's  |
+   |                     |           |verifier accepts — exactly the set, |
+   |                     |           |neither a subset nor a superset.    |
+   |                     |           |Semantics identical to the Accept-  |
+   |                     |           |Signature-Alg response header       |
+   |                     |           |([I-D.hardt-httpbis-signature-key]),|
+   |                     |           |advertised before first contact     |
+   |                     |           |rather than after a failure.  One   |
+   |                     |           |list per server, covering every     |
+   |                     |           |endpoint.  Since Ed25519 is REQUIRED|
+   |                     |           |of every party Section 13.8.1, the  |
+   |                     |           |list's value is naming the          |
+   |                     |           |additional algorithms.  A server MAY|
+   |                     |           |omit it for the same disclosure     |
+   |                     |           |reasons it MAY omit the header.     |
+   +---------------------+-----------+------------------------------------+
+   |name                 |OPTIONAL   |Human-readable display name.        |
+   +---------------------+-----------+------------------------------------+
+   |description          |OPTIONAL   |Markdown string describing the      |
+   |                     |           |server, for display at consent      |
+   |                     |           |screens or dashboards.              |
+   |                     |           |Implementations MUST sanitize before|
+   |                     |           |rendering.                          |
+   +---------------------+-----------+------------------------------------+
+   |logo_uri             |OPTIONAL   |URL to the server's logo.  MUST use |
+   |                     |           |https.                              |
+   +---------------------+-----------+------------------------------------+
+   |logo_dark_uri        |OPTIONAL   |URL to the server's logo for dark   |
+   |                     |           |backgrounds.  MUST use https.       |
+   +---------------------+-----------+------------------------------------+
+   |documentation_uri    |OPTIONAL   |URL with developer documentation.   |
+   |                     |           |MUST use https.                     |
+   +---------------------+-----------+------------------------------------+
+   |tos_uri              |OPTIONAL   |URL to terms of service.  MUST use  |
+   |                     |           |https.                              |
+   +---------------------+-----------+------------------------------------+
+   |policy_uri           |OPTIONAL   |URL to privacy policy.  MUST use    |
+   |                     |           |https.                              |
+   +---------------------+-----------+------------------------------------+
 
-                                 Table 15
+                                  Table 15
 
    AAuth intentionally diverges from RFC 9728 on two points: AAuth uses
    issuer (not resource) as the primary identifier field so that a
@@ -5519,7 +5611,18 @@ Initial request (with Prefer: wait=N)
    leaks an identifier and no access, and cnf prevents another party
    from presenting it.
 
-15.11.  Organization Identification
+15.11.  Continuity, Not Identity Proofing
+
+   A person token proves "the same entity again", not a verified legal
+   identity.  The protocol does not state what standard, if any, a PS
+   applied before recognizing a person, and a resource MUST NOT infer
+   one Section 6.  Continuity is sufficient for most resource access:
+   authorizing an agent, keeping an account stable across agents and
+   sessions, applying per-person policy.  A resource requiring more — an
+   age check, a residency check, regulated onboarding — obtains it out
+   of band or through claims a person server explicitly asserts.
+
+15.12.  Organization Identification
 
    The OPTIONAL tenant claim declares the organization the person
    belongs to, and unlike sub it is not directed — the same value
@@ -5536,7 +5639,7 @@ Initial request (with Prefer: wait=N)
    tenant is organizational context and MUST NOT be treated as part of
    the person's identifier, which is (iss, sub) Section 16.1.
 
-15.12.  Person Token Is Not Authorization
+15.13.  Person Token Is Not Authorization
 
    A PS-issued auth token and a person token carry the same iss, dwk,
    aud, sub, and cnf.  Only typ distinguishes them.  A resource that
@@ -5548,7 +5651,7 @@ Initial request (with Prefer: wait=N)
    Section 6.4.  Deployments SHOULD test this case explicitly; it fails
    open.
 
-15.13.  Incremental Consent
+15.14.  Incremental Consent
 
    A mission can be updated Section 9.4, and an update may broaden the
    work as well as narrow it.  An agent could therefore propose a modest
@@ -5567,7 +5670,7 @@ Initial request (with Prefer: wait=N)
    update mechanism.  It is stated here because the update mechanism
    makes it cheap.
 
-15.14.  PS Approval Endpoint Authentication
+15.15.  PS Approval Endpoint Authentication
 
    When the PS approval/consent endpoint is reachable beyond a single-
    user local deployment, the PS MUST authenticate the approving party
@@ -5577,12 +5680,12 @@ Initial request (with Prefer: wait=N)
 
    An unauthenticated approval endpoint allows a remote party to consent
    on the user's behalf — a privilege escalation that breaks the agent-
-   person binding invariant Section 15.15.  A locally-trusted PS
+   person binding invariant Section 15.16.  A locally-trusted PS
    (loopback only, no external network reachability) is exempt from this
    requirement provided it enforces OS-level access controls on the
    loopback interface.
 
-15.15.  Agent-Person Binding
+15.16.  Agent-Person Binding
 
    The PS MUST ensure that each agent is associated with exactly one
    person.  This one-to-one binding is a trust invariant — it ensures
@@ -5614,7 +5717,7 @@ Initial request (with Prefer: wait=N)
    *  *Revocation*: Revoking an agent's association with its person
       immediately prevents the agent from obtaining new auth tokens.
 
-15.16.  PS as High-Value Target
+15.17.  PS as High-Value Target
 
    The PS is a centralized authority that sees every authorization in a
    mission.  PS implementations MUST apply appropriate security controls
@@ -5633,13 +5736,13 @@ Initial request (with Prefer: wait=N)
    presents a single interface regardless of how it is composed
    internally.
 
-15.17.  Call Chaining Identity
+15.18.  Call Chaining Identity
 
    When a resource acts as an agent in call chaining, it uses its own
    signing key and presents its own credentials.  The resource MUST
    publish agent metadata so downstream parties can verify its identity.
 
-15.18.  Token Revocation and Lifecycle
+15.19.  Token Revocation and Lifecycle
 
    Real-time revocation Section 13.7 and short token lifetimes provide
    layered access control.  Organizations have multiple control points —
@@ -5647,12 +5750,12 @@ Initial request (with Prefer: wait=N)
    tokens independently.  Shorter auth token lifetimes reduce the window
    between a control action and natural expiration.
 
-15.19.  TLS Requirements
+15.20.  TLS Requirements
 
    All HTTPS connections MUST use TLS 1.2 or later, following the
    recommendations in BCP 195 [RFC9325].
 
-15.20.  Non-Repudiation and Audit After Key Rotation
+15.21.  Non-Repudiation and Audit After Key Rotation
 
    AAuth signatures prove authenticity at request time: a valid HTTP
    Message Signature shows that the signer held the private key bound to
@@ -5718,7 +5821,7 @@ Initial request (with Prefer: wait=N)
    rather than increasing it.  Presenting an agent token discloses the
    agent provider's domain and an agent identifier that is the same at
    every resource the agent visits — and because each agent belongs to
-   exactly one person Section 15.15, that identifier is a globally
+   exactly one person Section 15.16, that identifier is a globally
    correlatable pseudonym for the person.  A person token replaces both
    with an identifier scoped to the one resource receiving it.
 
@@ -5911,57 +6014,50 @@ Initial request (with Prefer: wait=N)
    This specification registers the following claims in the IANA "JSON
    Web Token Claims" registry established by [RFC7519]:
 
-   +==================+=======================+============+===========+
-   | Claim Name       | Claim Description     | Change     | Reference |
-   |                  |                       | Controller |           |
-   +==================+=======================+============+===========+
-   | dwk              | Discovery Well-       | IETF       | This      |
-   |                  | Known document name   |            | document  |
-   +------------------+-----------------------+------------+-----------+
-   | ps               | Person server URL —   | IETF       | This      |
-   |                  | the agent's person    |            | document  |
-   |                  | server in an agent    |            |           |
-   |                  | token, and the        |            |           |
-   |                  | person server whose   |            |           |
-   |                  | namespace sub         |            |           |
-   |                  | belongs to in a       |            |           |
-   |                  | resource or auth      |            |           |
-   |                  | token                 |            |           |
-   +------------------+-----------------------+------------+-----------+
-   | agent_jkt        | JWK Thumbprint of     | IETF       | This      |
-   |                  | the agent's signing   |            | document  |
-   |                  | key, in a resource    |            |           |
-   |                  | token                 |            |           |
-   +------------------+-----------------------+------------+-----------+
-   | parent_agent     | Parent agent          | IETF       | This      |
-   |                  | identifier in a       |            | document  |
-   |                  | sub-agent's agent     |            |           |
-   |                  | token                 |            |           |
-   +------------------+-----------------------+------------+-----------+
-   | person_token_jti | The jti of the        | IETF       | This      |
-   |                  | person token a        |            | document  |
-   |                  | resource token is     |            |           |
-   |                  | bound to              |            |           |
-   +------------------+-----------------------+------------+-----------+
-   | mission_s256     | SHA-256 hash of the   | IETF       | This      |
-   |                  | approved mission      |            | document  |
-   |                  | JSON, in person,      |            |           |
-   |                  | resource, and auth    |            |           |
-   |                  | tokens                |            |           |
-   +------------------+-----------------------+------------+-----------+
-   | account          | Account the           | IETF       | This      |
-   |                  | authorization is      |            | document  |
-   |                  | for, in resource      |            |           |
-   |                  | and auth tokens       |            |           |
-   +------------------+-----------------------+------------+-----------+
-   | interaction      | Resource              | IETF       | This      |
-   |                  | interaction step      |            | document  |
-   |                  | required before       |            |           |
-   |                  | authorization, an     |            |           |
-   |                  | object with url and   |            |           |
-   |                  | code, in a resource   |            |           |
-   |                  | token                 |            |           |
-   +------------------+-----------------------+------------+-----------+
+    +===============+========================+============+===========+
+    | Claim Name    | Claim Description      | Change     | Reference |
+    |               |                        | Controller |           |
+    +===============+========================+============+===========+
+    | dwk           | Discovery Well-Known   | IETF       | This      |
+    |               | document name          |            | document  |
+    +---------------+------------------------+------------+-----------+
+    | ps            | Person server URL —    | IETF       | This      |
+    |               | the agent's person     |            | document  |
+    |               | server in an agent     |            |           |
+    |               | token, and the person  |            |           |
+    |               | server whose namespace |            |           |
+    |               | sub belongs to in a    |            |           |
+    |               | resource or auth token |            |           |
+    +---------------+------------------------+------------+-----------+
+    | agent_jkt     | JWK Thumbprint of the  | IETF       | This      |
+    |               | agent's signing key,   |            | document  |
+    |               | in a resource token    |            |           |
+    +---------------+------------------------+------------+-----------+
+    | parent_agent  | Parent agent           | IETF       | This      |
+    |               | identifier in a sub-   |            | document  |
+    |               | agent's agent token    |            |           |
+    +---------------+------------------------+------------+-----------+
+    | presented_jti | The jti of the person  | IETF       | This      |
+    |               | token a resource token |            | document  |
+    |               | is bound to            |            |           |
+    +---------------+------------------------+------------+-----------+
+    | mission_s256  | SHA-256 hash of the    | IETF       | This      |
+    |               | approved mission JSON, |            | document  |
+    |               | in person, resource,   |            |           |
+    |               | and auth tokens        |            |           |
+    +---------------+------------------------+------------+-----------+
+    | account       | Account the            | IETF       | This      |
+    |               | authorization is for,  |            | document  |
+    |               | in resource and auth   |            |           |
+    |               | tokens                 |            |           |
+    +---------------+------------------------+------------+-----------+
+    | interaction   | Resource interaction   | IETF       | This      |
+    |               | step required before   |            | document  |
+    |               | authorization, an      |            |           |
+    |               | object with url and    |            |           |
+    |               | code, in a resource    |            |           |
+    |               | token                  |            |           |
+    +---------------+------------------------+------------+-----------+
 
                                   Table 20
 
@@ -6181,7 +6277,7 @@ Initial request (with Prefer: wait=N)
          twice; the two rows are collapsed into one covering agent,
          resource, and auth tokens. agent is no longer a claim in any
          token and its row is removed — it survives only as a member of
-         the mission blob, which is not a JWT.  Added person_token_jti,
+         the mission blob, which is not a JWT.  Added presented_jti,
          account, and interaction, none of which were registered.
       -  Established the AAuth Access Mode Value Registry, seeded with
          agent-token, person-token, session-token, and auth-token.  The
@@ -6213,11 +6309,11 @@ Initial request (with Prefer: wait=N)
          auth_token_endpoint; added person-token to access_mode.
       -  Added requirement=person-token, and the invalid_person_token
          and invalid_account authorization endpoint errors.
-      -  Resource tokens carry ps, sub, and person_token_jti, and no
-         agent identifier.  The PS resolves the named person token and
-         rejects any mismatch, which makes mission stripping detectable
-         — comparing claims alone cannot, because concurrent missions
-         mean several person tokens per agent and resource.
+      -  Resource tokens carry ps, sub, and presented_jti, and no agent
+         identifier.  The PS resolves the named person token and rejects
+         any mismatch, which makes mission stripping detectable —
+         comparing claims alone cannot, because concurrent missions mean
+         several person tokens per agent and resource.
       -  Auth tokens carry ps and a REQUIRED sub, and no agent
          identifier. act and the delegation chain are removed.
       -  Replaced the mission object with the mission_s256 claim in
@@ -6300,6 +6396,35 @@ Initial request (with Prefer: wait=N)
          managed access the *session token*. It was the only credential
          in the protocol without a name.  The access_mode value aauth-
          access-token becomes session-token.
+      -  Renamed the resource token claim person_token_jti to
+         presented_jti.  The old name asserted the credential presented
+         was a person token, which is false on every step-up and per-
+         call challenge, where it is an auth token.  The value is
+         unchanged: the jti of the person token whose verification
+         established ps and sub.  Addresses issue #95.
+      -  Stated the person token's assurance floor where the token is
+         introduced: it asserts recognition and agency, guarantees
+         continuity of (iss, sub), and a resource MUST NOT treat it as
+         evidence of identity proofing, legal identity, or any assurance
+         level.  Addresses issue #97.
+      -  Stated the retention obligation resource token verification
+         already implied: a PS MUST retain a record of each person token
+         it issues, beyond exp by at least the longest resource token
+         lifetime it accepts, and rejects a resource token naming an
+         unretained jti with the new unknown_person_token error,
+         distinct from a claim mismatch against an existing record.
+         Addresses issue #87.
+      -  Added the OPTIONAL common metadata field accept_signature_algs,
+         the out-of-band twin of the Accept-Signature-Alg response
+         header: exactly the set of fully-specified algorithms the
+         server's verifier accepts, one list per server.  Addresses
+         issue #94.
+      -  A resource MAY deliver requirement=auth-token as a 202 Accepted
+         deferred response that holds the invocation; the agent
+         completes at the pending URL with the auth token, and
+         completion consumes the pending record.  The 401 remains the
+         baseline delivery; agents MUST support both.  Addresses issue
+         #92.
 
    *  draft-hardt-oauth-aauth-protocol-10
 
@@ -6985,14 +7110,16 @@ B.1.10.  Why the Mission Identifier Is a Hash
 
 B.1.11.  Why a Resource Token Names the Person Token
 
-   Binding by person_token_jti rather than by comparing claims is what
-   makes mission stripping detectable.  Comparing claims alone cannot
-   work: an agent running concurrent missions holds several person
-   tokens for the same resource, so "the person token issued for this
-   agent and resource" does not identify one, and a resource that
-   omitted mission_s256 could not be caught.  Naming the token resolves
-   it exactly, and the person server compares everything it issued in
-   one lookup.
+   Binding by presented_jti rather than by comparing claims is what
+   makes mission stripping detectable.  A resource cannot drop
+   mission_s256 and present the result as an unscoped request, because
+   the person server resolves the person token it actually issued and
+   compares.  Comparing claims alone cannot work: an agent running
+   concurrent missions holds several person tokens for the same
+   resource, so "the person token issued for this agent and resource"
+   does not identify one, and a resource that omitted mission_s256 could
+   not be caught.  Naming the token resolves it exactly, and the person
+   server compares everything it issued in one lookup.
 
 B.1.12.  Why Tool Pre-Approval Is Not Enforced
 
