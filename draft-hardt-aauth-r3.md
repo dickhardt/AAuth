@@ -483,7 +483,7 @@ Base claims (from AAuth Protocol):
 - `jti`: Unique token identifier
 - `ps`: The `iss` of the person token the resource verified
 - `sub`: The `sub` of that person token, identifying the person this authorization is for
-- `person_token_jti`: The `jti` of that person token, binding this resource token to it
+- `presented_jti`: The `jti` of that person token, binding this resource token to it
 - `agent_jkt`: JWK Thumbprint of the agent's signing key
 - `iat`: Issued at timestamp
 - `exp`: Expiration timestamp
@@ -511,7 +511,7 @@ R3 extension claims:
   "jti": "rt-8f3a2b",
   "ps": "https://ps.example",
   "sub": "8f14e45fceea167a5a36dedd4bea2543",
-  "person_token_jti": "pt-3ab910",
+  "presented_jti": "pt-3ab910",
   "agent_jkt": "NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs",
   "r3_uri": "https://calendar.example.com/r3/a1b2c3d4",
   "r3_s256": "aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789abcd",
@@ -777,7 +777,7 @@ There are currently no known implementations.
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-aauth-r3-02
-  - Brought the base-claim recitals in Resource Token Extensions and Auth Token Extensions up to AAuth Protocol -11. The `agent` claim is gone from both tokens: a resource token now carries `ps`, `sub`, and `person_token_jti`, and an auth token carries `ps` and a REQUIRED directed `sub`, with `mission_s256` OPTIONAL. The examples were updated to match, including the auth token's `sub`, which showed an email address where the value is an opaque directed identifier.
+  - Brought the base-claim recitals in Resource Token Extensions and Auth Token Extensions up to AAuth Protocol -11. The `agent` claim is gone from both tokens: a resource token now carries `ps`, `sub`, and `presented_jti`, and an auth token carries `ps` and a REQUIRED directed `sub`, with `mission_s256` OPTIONAL. The examples were updated to match, including the auth token's `sub`, which showed an email address where the value is an opaque directed identifier.
   - AS Processing required the AS to log "the agent identifier" against a resource token that no longer carries one. The step now names identifiers the AS actually holds — `ps`, `sub`, and `agent_jkt` from the resource token — and says where the agent identifier does come from: the `sub` of the `agent_token` the PS is REQUIRED to send on the PS-to-AS token request, or of the `subagent_token` where one is present. An AS reached any other way has no agent token and MUST NOT infer an agent identity.
   - R3 Document Access Restriction identified the entitled PS by the `ps` claim of the agent token. Under -11 an agent presents a person token in place of its agent token at the authorization endpoint, so the resource may never see an agent token, and that claim is OPTIONAL in any case. The entitled PS is now the issuer of the person token the resource verified, which is the REQUIRED `ps` claim of the resource token the resource itself issued.
   - Added operation access annotations: a resource states, on the operation in its own vocabulary, which credential the operation requires and whether it consumes budget. The vocabulary is where they go because it is the only description of the resource's operations an agent can read — R3 documents are PS- and AS-only. Annotations are sparse against the resource-wide `access_mode`, replace it rather than intersect with it, and stay advisory: the runtime `AAuth-Requirement` remains authoritative. Encodings defined for MCP, OpenAPI, AsyncAPI, and OData; none for gRPC, GraphQL, or WSDL, whose discovery mechanisms do not carry annotations to a generic caller.

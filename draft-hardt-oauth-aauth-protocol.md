@@ -985,7 +985,7 @@ Payload:
 - `jti`: Unique token identifier for replay detection, audit, and revocation
 - `ps`: The `iss` of the person token the resource verified — the person server whose namespace `sub` belongs to
 - `sub`: The `sub` of that person token, identifying the person this authorization is for
-- `person_token_jti`: The `jti` of that person token, binding this resource token to it
+- `presented_jti`: The `jti` of the person token whose verification established `ps` and `sub`. On the first challenge of a grant that token was presented with the request; on a step-up or per-call challenge the request carries an auth token, and the resource supplies the value from its record of the person token it verified earlier. Binding the resource token to one person token by `jti` is what makes mission stripping detectable (#why-presented-jti)
 - `agent_jkt`: JWK Thumbprint ([@!RFC7638]) of the agent's current signing key
 - `iat`: Issued at timestamp
 - `exp`: Expiration timestamp
@@ -1012,12 +1012,10 @@ Verify the resource token per [@!RFC7515] and [@!RFC7519]:
 3. Verify `exp` is in the future and `iat` is not in the future.
 4. Verify `aud` matches the recipient's own identifier (the PS in three-party, or the AS in four-party).
 5. Verify `agent_jkt` matches the JWK Thumbprint of the key used to sign the HTTP request.
-6. A PS MUST look up the person token identified by `person_token_jti` among those it issued, and MUST verify that `ps`, `sub`, `mission_s256`, and `tenant` match that token exactly, rejecting the resource token on any mismatch or omission. An AS MUST verify that `ps` names the PS that sent the token request.
+6. A PS MUST look up the person token identified by `presented_jti` among those it issued, and MUST verify that `ps`, `sub`, `mission_s256`, and `tenant` match that token exactly, rejecting the resource token on any mismatch or omission. An AS MUST verify that `ps` names the PS that sent the token request.
 7. If `mission_s256` is present, a PS MUST verify the mission is active and that the current time precedes its `expires_at` where one is set.
 
 For a parent-mediated sub-agent authorization (a `subagent_token` is present, see (#sub-agents)), step 5 instead verifies `agent_jkt` against the `subagent_token`'s `cnf.jwk` — the sub-agent's key — because the parent, not the sub-agent, signs the HTTP request.
-
-Binding the resource token to one person token by `jti` is what makes mission stripping detectable. A resource cannot drop `mission_s256` and present the result as an unscoped request, because the PS resolves the person token it actually issued and compares. Comparing the claims alone would not suffice: an agent running concurrent missions holds several person tokens for the same resource, so "the person token for this agent and resource" does not identify one.
 
 ### Resource Challenge Verification
 
@@ -3298,7 +3296,7 @@ This specification registers the following claims in the IANA "JSON Web Token Cl
 | `ps` | Person server URL — the agent's person server in an agent token, and the person server whose namespace `sub` belongs to in a resource or auth token | IETF | This document |
 | `agent_jkt` | JWK Thumbprint of the agent's signing key, in a resource token | IETF | This document |
 | `parent_agent` | Parent agent identifier in a sub-agent's agent token | IETF | This document |
-| `person_token_jti` | The `jti` of the person token a resource token is bound to | IETF | This document |
+| `presented_jti` | The `jti` of the person token a resource token is bound to | IETF | This document |
 | `mission_s256` | SHA-256 hash of the approved mission JSON, in person, resource, and auth tokens | IETF | This document |
 | `account` | Account the authorization is for, in resource and auth tokens | IETF | This document |
 | `interaction` | Resource interaction step required before authorization, an object with `url` and `code`, in a resource token | IETF | This document |
@@ -3397,7 +3395,7 @@ The following implementations are known:
 
 - draft-hardt-oauth-aauth-protocol-11
   - Three places still said a resource discovers the agent's PS from the `ps` claim in the agent token — the three-party access mode, the bootstrapping requirements, and the claim's own definition — which the Design Rationale already contradicted. The agent token's `ps` is the advance signal that the agent has a person server, which is what lets a resource decide to challenge for a person token. The PS of an issued authorization is the `iss` of the person token the resource verified, which the resource copies into the resource token's `ps`.
-  - Corrected the JWT Claims Registrations table. `ps` was registered twice; the two rows are collapsed into one covering agent, resource, and auth tokens. `agent` is no longer a claim in any token and its row is removed — it survives only as a member of the mission blob, which is not a JWT. Added `person_token_jti`, `account`, and `interaction`, none of which were registered.
+  - Corrected the JWT Claims Registrations table. `ps` was registered twice; the two rows are collapsed into one covering agent, resource, and auth tokens. `agent` is no longer a claim in any token and its row is removed — it survives only as a member of the mission blob, which is not a JWT. Added `presented_jti`, `account`, and `interaction`, none of which were registered.
   - Established the AAuth Access Mode Value Registry, seeded with `agent-token`, `person-token`, `session-token`, and `auth-token`. The `access_mode` field was described as a closed list of four, which left no room for the `per-call` value R3 defines; the registry is how the other extensible AAuth value spaces are already handled.
   - Pointed `access_mode` at R3 operation access annotations. Two places said a resource MAY apply different modes to different endpoints without naming a mechanism for saying which.
   - Added the person token (`aa-person+jwt`), issued by a PS to identify the person to one resource. Presented via `Signature-Key` in place of the agent token. A resource MUST verify one before issuing a resource token. Lifetime capped at 1 hour, as for auth tokens.
@@ -3406,7 +3404,7 @@ The following implementations are known:
   - A person token carries no authorization from the PS, but a resource MAY serve requests on identity alone, so holding one is effectively access at such a resource. The consent question at first issuance is whether the agent may act at the resource as the person.
   - Renamed the PS and AS metadata field `token_endpoint` to `auth_token_endpoint`; added `person-token` to `access_mode`.
   - Added `requirement=person-token`, and the `invalid_person_token` and `invalid_account` authorization endpoint errors.
-  - Resource tokens carry `ps`, `sub`, and `person_token_jti`, and no agent identifier. The PS resolves the named person token and rejects any mismatch, which makes mission stripping detectable — comparing claims alone cannot, because concurrent missions mean several person tokens per agent and resource.
+  - Resource tokens carry `ps`, `sub`, and `presented_jti`, and no agent identifier. The PS resolves the named person token and rejects any mismatch, which makes mission stripping detectable — comparing claims alone cannot, because concurrent missions mean several person tokens per agent and resource.
   - Auth tokens carry `ps` and a REQUIRED `sub`, and no agent identifier. `act` and the delegation chain are removed.
   - Replaced the `mission` object with the `mission_s256` claim in person, resource, and auth tokens; `approver` is dropped everywhere but the mission blob.
   - Removed the `AAuth-Mission` header and its registration. A mission reaches a resource only inside a PS-issued token, so it is no longer agent-asserted. The approval response carries the mission blob base64url-encoded, with `s256` alongside it, so the digest covers an unambiguous byte sequence and the agent can verify it as it would a JWT payload.
@@ -3668,9 +3666,9 @@ An earlier revision avoided the problem by making the response body the mission 
 
 An opaque identifier would name the mission but leave the person server free to attach it to different text afterwards. A digest binds every token carrying `mission_s256` to one specific mission, so the mission in the log and the mission those tokens authorized are demonstrably the same. Verification is available to the agent at approval and to anyone holding the blob later.
 
-### Why a Resource Token Names the Person Token
+### Why a Resource Token Names the Person Token {#why-presented-jti}
 
-Binding by `person_token_jti` rather than by comparing claims is what makes mission stripping detectable. Comparing claims alone cannot work: an agent running concurrent missions holds several person tokens for the same resource, so "the person token issued for this agent and resource" does not identify one, and a resource that omitted `mission_s256` could not be caught. Naming the token resolves it exactly, and the person server compares everything it issued in one lookup.
+Binding by `presented_jti` rather than by comparing claims is what makes mission stripping detectable. A resource cannot drop `mission_s256` and present the result as an unscoped request, because the person server resolves the person token it actually issued and compares. Comparing claims alone cannot work: an agent running concurrent missions holds several person tokens for the same resource, so "the person token issued for this agent and resource" does not identify one, and a resource that omitted `mission_s256` could not be caught. Naming the token resolves it exactly, and the person server compares everything it issued in one lookup.
 
 ### Why Tool Pre-Approval Is Not Enforced {#why-tools-are-not-enforced}
 
