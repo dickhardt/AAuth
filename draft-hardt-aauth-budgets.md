@@ -784,9 +784,15 @@ Two conditions return the agent to the PS, and either is sufficient. The auth to
 
 ## Aggregation {#aggregation}
 
-The resource MUST aggregate consumption against the key `(iss, sub, aud)` of the auth token. `(iss, sub)` identifies the person — `sub` is unique within its issuer, and values from different issuers are different people — and `aud` is the resource itself. This document introduces no new identifier.
+Two things are counted, against different keys, and they are not the same requirement.
 
-The key is the person, not the agent. An auth token names no agent, and a person's spending at a resource is theirs whichever agent incurred it; a per-agent key would also reset every time the person changed agents.
+**The cap the resource enforces is per auth token.** It is the `budget` claim of the token presented, and (#overshoot) states the invariant: committed consumption plus outstanding reservations against *that token* MUST NOT exceed *its* granted `amount`. A resource needs no cross-token arithmetic to enforce a budget.
+
+**The ledger the resource keeps is per person.** The resource MUST aggregate consumption against the key `(iss, sub, aud)` of the auth token, which is what the consumption records (#budget-consumed) and the usage counters (#usage-counters) report. `(iss, sub)` identifies the person — `sub` is unique within its issuer, and values from different issuers are different people — and `aud` is the resource itself. This document introduces no new identifier.
+
+The ledger is not a second ceiling. A resource MUST NOT refuse a request that fits its token's budget because a per-person total has reached some figure the resource inferred; no party told it such a figure, and the budgets it was handed are what it was authorized to honor. Holding a person's spending across concurrent tokens within bounds is the PS's job (#concurrency), because the PS is the party that issues them and the only one that knows the ceiling (#ps-decision).
+
+The ledger's key is the person, not the agent and not the mission. An auth token names no agent, and a person's spending at a resource is theirs whichever agent incurred it; a per-agent key would also reset every time the person changed agents. `mission_s256` is optional — a token may carry one or not — so a mission-keyed ledger has no bucket for a mission-less token, and (#inference) requires mission-less tokens for standing inference budgets. The person is the only key present on every auth token. Missions are an attribution dimension over that ledger (#mission-attribution), not the ledger itself.
 
 ## The Billing Account {#billing-account}
 
@@ -808,8 +814,9 @@ None of this is specific to budgets, and this document defines no new mechanism 
 
 An agent may hold several concurrent auth tokens at the same resource — the `mission_s256` claim means concurrent missions produce concurrent tokens, each with its own budget, for up to an hour. Handling this is mandatory, not optional:
 
-- A resource MUST aggregate atomically against `(iss, sub, aud)` across all live auth tokens.
-- A PS SHOULD size per-token budgets so that their sum stays within whatever standing ceiling it holds for the person at that resource.
+- A resource MUST apply the reserve-commit-release invariant of (#overshoot) atomically per auth token, so that concurrent requests presenting the same token cannot together exceed its budget.
+- A resource MUST post consumption to the `(iss, sub, aud)` ledger (#aggregation) atomically, so that concurrent requests across different tokens do not lose or double-count against the records and counters.
+- A PS SHOULD size per-token budgets so that their sum stays within whatever standing ceiling it holds for the person at that resource. This is the only place the cross-token total is enforced.
 
 The bound on over-issuance is the auth token lifetime multiplied by the number of concurrent tokens. A PS that issues *n* concurrent tokens of *X* each has authorized up to *nX* for as long as an hour, regardless of any standing figure it intended to hold.
 
@@ -1054,6 +1061,7 @@ There are currently no known implementations.
   - Added a fourth reason to (#why-no-cumulative): cumulative consumption across a series of allocations lets an agent infer the ceiling by subtraction.
   - Permitted a resource to omit `cost` entirely (#cost-omitted). The member previously had two carriers, header and trailer, and a resource that meters a streamed response on a runtime with no trailer support could use neither — making every such response non-conformant. `reserved` becomes REQUIRED in that case, and the agent recovers the exact figure from the following response's `remaining`. Removed the sentence in (#ambiguous-failure) stating that a resource emitting usage in its stream is not excused from the trailer.
   - Added the `required` member of `AAuth-Budget` (#required-member), the maximum cost a resource computed for a request it refused under `reason=insufficient-budget`. The figure was previously available only in the enclosed resource token, whose `aud` is the PS, which left the agent unable to size the shrink-and-retry that (#exhaustion) offers it. It is deliberately distinct from the resource token's `budget`, which is a re-authorization offer rather than a fact about the refused request.
+  - Separated the two things a resource counts (#aggregation). The enforced cap is the presented auth token's own `budget`; the `(iss, sub, aud)` aggregate is a ledger for the records and counters and is not a second ceiling the resource may refuse against. Concurrency (#concurrency) said "aggregate atomically across all live auth tokens", which read as a cross-token cap; the atomicity requirements are now stated separately for the per-token invariant and for the ledger. Holding the cross-token total is the PS's job. Also stated why the ledger is keyed on the person: `mission_s256` is optional and (#inference) requires mission-less tokens, so a mission-keyed ledger has no bucket for them.
   - Added The Billing Account (#billing-account): which account a metered resource charges, and the three base-protocol mechanisms that answer it — `(iss, sub)` lookup, the `account` parameter and claim, and resource-initiated interaction for a person with no account yet. No new mechanism; the document was silent on a question every metered resource meets on its first request.
 
 - draft-hardt-aauth-budgets-01
