@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                            18 July 2026
-Expires: 19 January 2027
+Intended status: Standards Track                          19 August 2026
+Expires: 20 February 2027
 
 
                               AAuth Events
@@ -47,7 +47,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 19 January 2027.
+   This Internet-Draft will expire on 20 February 2027.
 
 Copyright Notice
 
@@ -364,8 +364,9 @@ Table of Contents
 
    Header:
 
-   *  alg: Signing algorithm.  EdDSA is RECOMMENDED.  Implementations
-      MUST NOT accept none.
+   *  alg: Signing algorithm.  A fully-specified identifier is REQUIRED;
+      Ed25519 is RECOMMENDED.  Implementations MUST NOT accept none or
+      the polymorphic EdDSA identifier.
    *  typ: aa-subscribe+jwt
    *  kid: Key identifier (AP's signing key)
 
@@ -410,7 +411,8 @@ Table of Contents
      "dwk": "aauth-agent.json",
      "sub": "aauth:k7q3p9n2@ap.example",
      "aud": "https://resource.example",
-     "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519", "x": "..." } },
+     "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519",
+                       "x": "...", "alg": "Ed25519" } },
      "eid": "evt_8f3k2n9p",
      "iat": 1750000000,
      "exp": 1750086400,
@@ -562,7 +564,8 @@ Table of Contents
 
    Header:
 
-   *  alg: Signing algorithm.  EdDSA is RECOMMENDED.
+   *  alg: Signing algorithm.  A fully-specified identifier is REQUIRED;
+      Ed25519 is RECOMMENDED.
    *  typ: aa-event+jwt
    *  kid: Key identifier (resource's signing key)
 
@@ -970,6 +973,11 @@ Table of Contents
    _Note: This section is to be removed before publishing as an RFC._
 
    *  draft-hardt-aauth-events-00
+      -  Referenced the AAuth Protocol and AAuth Bootstrap by their
+         datatracker document URLs, which track the latest revision.
+      -  Algorithm identifiers: Ed25519 rather than the deprecated
+         polymorphic EdDSA; the cnf.jwk example carries the alg member
+         now required of every conveyed key.
       -  Initial draft.
 
 17.  Acknowledgments
@@ -992,7 +1000,8 @@ Table of Contents
 
    [I-D.hardt-oauth-aauth-protocol]
               Hardt, D., "AAuth Protocol", 2026,
-              <https://github.com/dickhardt/AAuth>.
+              <https://datatracker.ietf.org/doc/draft-hardt-oauth-aauth-
+              protocol>.
 
    [RFC7800]  Jones, M., Bradley, J., and H. Tschofenig, "Proof-of-
               Possession Key Semantics for JSON Web Tokens (JWTs)",
@@ -1007,7 +1016,8 @@ Table of Contents
 
    [I-D.hardt-aauth-bootstrap]
               Hardt, D., "AAuth Bootstrap Guidance", 2026,
-              <https://github.com/dickhardt/AAuth>.
+              <https://datatracker.ietf.org/doc/draft-hardt-aauth-
+              bootstrap>.
 
 Appendix A.  Design Rationale
 

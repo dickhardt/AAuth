@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Informational                              18 July 2026
-Expires: 19 January 2027
+Intended status: Informational                            19 August 2026
+Expires: 20 February 2027
 
 
                         AAuth Bootstrap Guidance
@@ -45,7 +45,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 19 January 2027.
+   This Internet-Draft will expire on 20 February 2027.
 
 Copyright Notice
 
@@ -443,7 +443,7 @@ Table of Contents
 
    JWT header:
 
-   { "alg": "EdDSA", "typ": "aa-agent+jwt", "kid": "..." }
+   { "alg": "Ed25519", "typ": "aa-agent+jwt", "kid": "..." }
 
    JWT payload:
 
@@ -452,7 +452,8 @@ Table of Contents
      "dwk":  "aauth-agent.json",
      "sub":  "aauth:k7q3p9n2@ap.example",
      "ps":   "https://ps.example",
-     "cnf":  { "jwk": { "kty": "OKP", "crv": "Ed25519", "x": "..." } },
+     "cnf":  { "jwk": { "kty": "OKP", "crv": "Ed25519",
+                        "x": "...", "alg": "Ed25519" } },
      "iat":  1746316800,
      "exp":  1746320400,
      "jti":  "..."
@@ -698,6 +699,14 @@ Table of Contents
 
    _Note: This section is to be removed before publishing as an RFC._
 
+   *  draft-hardt-aauth-bootstrap-02
+
+      -  Referenced the AAuth Protocol by its datatracker document URL,
+         which tracks the latest revision.
+      -  Algorithm identifiers: Ed25519 rather than the deprecated
+         polymorphic EdDSA; the cnf.jwk example carries the alg member
+         now required of every conveyed key.
+
    *  draft-hardt-aauth-bootstrap-01
 
       -  Major rewrite.  The document is now informational guidance for
@@ -732,7 +741,8 @@ Table of Contents
 
    [I-D.hardt-oauth-aauth-protocol]
               Hardt, D., "AAuth Protocol", 2026,
-              <https://github.com/dickhardt/AAuth>.
+              <https://datatracker.ietf.org/doc/draft-hardt-oauth-aauth-
+              protocol>.
 
    [RFC9421]  Backman, A., Ed., Richer, J., Ed., and M. Sporny, "HTTP
               Message Signatures", RFC 9421, DOI 10.17487/RFC9421,
