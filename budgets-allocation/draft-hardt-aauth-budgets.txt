@@ -188,14 +188,14 @@ Table of Contents
    Appendix A.7.
 
    The granted budget is an allocation, not the person's ceiling.  The
-   ceiling is the person server's own state: no claim carries it, and
-   the agent is never told it.  The PS sizes each auth token against
-   what the work has cost so far, and the token's expiry or its budget's
-   exhaustion — whichever comes first — brings the agent back for the
-   next allocation.  That return is the supervision point, and the PS's
-   options there are the subject of Section 8.  Nobody knows at mission
-   approval what an agent's work will cost; a figure fixed once up front
-   is either too small to finish or too large to be a control
+   ceiling is the person server's own state: no claim carries it, and it
+   may not be shared with the agent.  The PS sizes each auth token
+   against what the work has cost so far, and the token's expiry or its
+   budget's exhaustion — whichever comes first — brings the agent back
+   for the next allocation.  That return is the supervision point, and
+   the PS's options there are the subject of Section 8.  Nobody knows at
+   mission approval what an agent's work will cost; a figure fixed once
+   up front is either too small to finish or too large to be a control
    Appendix A.5.
 
    Metered inference is the initiating use case, and Section 18 covers
@@ -700,8 +700,7 @@ Table of Contents
         | Decline with a  | Error response carrying               |
         | figure          | suggested_budget Section 17.1         |
         +-----------------+---------------------------------------+
-        | End the work    | Terminate the mission at the          |
-        |                 | mission_control_endpoint              |
+        | End the work    | Terminate the mission                 |
         +-----------------+---------------------------------------+
 
                                   Table 2
@@ -753,10 +752,10 @@ Table of Contents
    Section 5.  The amount is the decision the person is making.
 
    Ending the work is the response to an agent whose spending the PS
-   cannot account for.  Mission termination is defined in the base
-   protocol and is not a budget mechanism; it is named here because a
-   budget escalation is one of the few signals that reliably surfaces an
-   agent behaving unlike its mission.
+   cannot account for.  Terminating a mission is not a budget mechanism
+   and this document defines nothing about it; it is named here because
+   a budget escalation is one of the few signals that reliably surfaces
+   an agent behaving unlike its mission.
 
 9.  PS-to-AS Token Request Extensions
 
@@ -1822,8 +1821,8 @@ Table of Contents
    *  draft-hardt-aauth-budgets-02
 
       -  Stated that the granted budget is an allocation drawn against a
-         ceiling the PS holds and the agent is never told, rather than
-         the person's whole authorization.  This was the design
+         ceiling the PS holds and may not share with the agent, rather
+         than the person's whole authorization.  This was the design
          throughout and was nowhere written down; a reviewer read the
          document end to end and concluded a durable grant was missing.
          See the Introduction and Appendix A.5.
@@ -2152,11 +2151,11 @@ A.5.  Why the Granted Budget Is Not the Person's Ceiling
    least is known.
 
    This is why the ceiling appears nowhere on the wire.  There is no
-   claim for it, the agent is not told it, and cumulative consumption
-   that would reveal it by subtraction is withheld as well Appendix A.4.
-   What the resource enforces is the allocation in the token in front of
-   it.  What the person authorized is a matter between the person and
-   their PS.
+   claim for it, it may not be shared with the agent, and cumulative
+   consumption that would reveal it by subtraction is withheld as well
+   Appendix A.4.  What the resource enforces is the allocation in the
+   token in front of it.  What the person authorized is a matter between
+   the person and their PS.
 
 A.6.  Why a Trailer Only Adds a Member
 
