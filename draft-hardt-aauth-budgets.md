@@ -216,7 +216,7 @@ This document defines a **budget**: a ceiling on what an agent may consume at on
 
 A budget is an authorization, not a hint. The PS has authorized the agent to spend up to a stated amount, and the resource is the party that counts. That distinction determines nearly every design choice in this document, in particular why the balance cannot be reported through `RateLimit` ([@?I-D.ietf-httpapi-ratelimit-headers]) — see (#why-not-ratelimit).
 
-The granted budget is an allocation, not the person's ceiling. The ceiling is the person server's own state: no claim carries it, and the agent is never told it. The PS sizes each auth token against what the work has cost so far, and the token's expiry or its budget's exhaustion — whichever comes first — brings the agent back for the next allocation. That return is the supervision point, and the PS's options there are the subject of (#ps-token-endpoint). Nobody knows at mission approval what an agent's work will cost; a figure fixed once up front is either too small to finish or too large to be a control (#why-not-the-ceiling).
+The granted budget is an allocation, not the person's ceiling. The ceiling is the person server's own state: no claim carries it, and it may not be shared with the agent. The PS sizes each auth token against what the work has cost so far, and the token's expiry or its budget's exhaustion — whichever comes first — brings the agent back for the next allocation. That return is the supervision point, and the PS's options there are the subject of (#ps-token-endpoint). Nobody knows at mission approval what an agent's work will cost; a figure fixed once up front is either too small to finish or too large to be a control (#why-not-the-ceiling).
 
 Metered inference is the initiating use case, and (#inference) covers it as a named deployment pattern. The mechanism is general: any resource that meters and charges per call uses it unchanged.
 
@@ -508,7 +508,7 @@ Six responses are available. None is new to this document; the base protocol def
 | Ask the agent | `202` with `requirement=clarification` |
 | Ask the person | `202` with `requirement=interaction` |
 | Decline with a figure | Error response carrying `suggested_budget` (#declining) |
-| End the work | Terminate the mission at the `mission_control_endpoint` |
+| End the work | Terminate the mission |
 
 Granting less needs no signalling: the `amount` in the issued claim is the answer, and the agent reads it from the token it received (#narrowing-chain).
 
@@ -536,7 +536,7 @@ Asking the person is the same mechanism one step further out, and is the right r
 
 A PS that puts a budget to the person for consent MUST present the amount as a human-readable figure in its unit — "$5.00", not `{5000000, USD, 6}` — visually distinct from any resource-supplied description, which is Markdown and MUST be sanitized before rendering (#budget-units). The amount is the decision the person is making.
 
-Ending the work is the response to an agent whose spending the PS cannot account for. Mission termination is defined in the base protocol and is not a budget mechanism; it is named here because a budget escalation is one of the few signals that reliably surfaces an agent behaving unlike its mission.
+Ending the work is the response to an agent whose spending the PS cannot account for. Terminating a mission is not a budget mechanism and this document defines nothing about it; it is named here because a budget escalation is one of the few signals that reliably surfaces an agent behaving unlike its mission.
 
 # PS-to-AS Token Request Extensions {#as-token-endpoint}
 
@@ -1055,7 +1055,7 @@ There are currently no known implementations.
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-aauth-budgets-02
-  - Stated that the granted budget is an allocation drawn against a ceiling the PS holds and the agent is never told, rather than the person's whole authorization. This was the design throughout and was nowhere written down; a reviewer read the document end to end and concluded a durable grant was missing. See the Introduction and (#why-not-the-ceiling).
+  - Stated that the granted budget is an allocation drawn against a ceiling the PS holds and may not share with the agent, rather than the person's whole authorization. This was the design throughout and was nowhere written down; a reviewer read the document end to end and concluded a durable grant was missing. See the Introduction and (#why-not-the-ceiling).
   - Expanded (#ps-token-endpoint) with what the PS is deciding (#ps-decision), the four inputs it reads (#ps-inputs), and its six responses (#ps-responses). Named `requirement=clarification` as the response for an escalation the PS is not ready to refuse or approve — the channel that lets a PS tell an agent it is overspending, which narrowing an amount cannot do.
   - Rewrote (#token-scope) from a disclaimer about the absent grant identifier into a statement of the mechanism, including that expiry is proportional to time and exhaustion to spend, so the supervision interval tracks whichever moves faster.
   - Added a fourth reason to (#why-no-cumulative): cumulative consumption across a series of allocations lets an agent infer the ceiling by subtraction.
@@ -1131,7 +1131,7 @@ A person server could authorize the whole of a person's intended spend at a reso
 
 **The check-in is the point, not a cost of it.** Re-authorization is where the PS reads what the last allocation bought (#ps-inputs), compares it against the mission, and chooses among its six responses (#ps-responses) — including the two that are not a number at all: asking the agent to account for the spend, and ending the work. A single up-front grant has no such moment. It has one, at approval, when the least is known.
 
-This is why the ceiling appears nowhere on the wire. There is no claim for it, the agent is not told it, and cumulative consumption that would reveal it by subtraction is withheld as well (#why-no-cumulative). What the resource enforces is the allocation in the token in front of it. What the person authorized is a matter between the person and their PS.
+This is why the ceiling appears nowhere on the wire. There is no claim for it, it may not be shared with the agent, and cumulative consumption that would reveal it by subtraction is withheld as well (#why-no-cumulative). What the resource enforces is the allocation in the token in front of it. What the person authorized is a matter between the person and their PS.
 
 ## Why a Trailer Only Adds a Member {#why-trailer-adds}
 
