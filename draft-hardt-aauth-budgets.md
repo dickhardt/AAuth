@@ -216,6 +216,8 @@ This document defines a **budget**: a ceiling on what an agent may consume at on
 
 A budget is an authorization, not a hint. The PS has authorized the agent to spend up to a stated amount, and the resource is the party that counts. That distinction determines nearly every design choice in this document, in particular why the balance cannot be reported through `RateLimit` ([@?I-D.ietf-httpapi-ratelimit-headers]) — see (#why-not-ratelimit).
 
+The granted budget is an allocation, not the person's ceiling. The ceiling is the person server's own state: no claim carries it, and it may not be shared with the agent. The PS sizes each auth token against what the work has cost so far, and the token's expiry or its budget's exhaustion — whichever comes first — brings the agent back for the next allocation. That return is the supervision point, and the PS's options there are the subject of (#ps-token-endpoint). Nobody knows at mission approval what an agent's work will cost; a figure fixed once up front is either too small to finish or too large to be a control (#why-not-the-ceiling).
+
 Metered inference is the initiating use case, and (#inference) covers it as a named deployment pattern. The mechanism is general: any resource that meters and charges per call uses it unchanged.
 
 TPX [@?TPX] profiles the same grant for OAuth 2.0: a person grants a human-driven app a metered inference budget — "a damage cap, not a payment" — from a provider the person chooses and pays. This document is the AAuth counterpart: the same grant, carried to an autonomous agent through the narrowing chain, and generalized beyond inference to any resource that meters. A provider implementing both accepts two authorization envelopes over one meter (#inference).
@@ -474,7 +476,67 @@ An agent seeking a larger budget obtains a fresh resource token from the resourc
 
 When the PS issues the auth token itself (three-party), it applies the person's policy and issues per (#auth-token). When it federates (four-party), it proceeds per (#as-token-endpoint).
 
+## What the PS Is Deciding {#ps-decision}
+
+The resource token's `budget` states what the resource will allow. It is an offer, not a request the PS is obliged to answer in full.
+
+Against that offer the PS holds a ceiling for the person at this resource — a standing limit, a mission's stated intent, an organizational policy, or a figure the person supplied when asked. The ceiling is PS state. This document defines no wire format for it, no claim that carries it, and no way for the agent to read it. What the PS issues is an allocation drawn against it.
+
+Sizing the allocation is where the PS's supervision happens. A PS that issues the resource's full offer every time has authorized the resource's maximum and learns nothing until the money is gone. A PS that issues a fraction sees the agent again when that fraction is spent, with consumption records in hand, and decides then whether the work is going as the person expected.
+
+The interval is not fixed by the clock. An auth token expires within an hour, and its budget is exhausted after however much work it took to spend — whichever comes first returns the agent to the PS. A mission running cheaply reports on the hour; one running expensively reports in minutes. The PS sets that frequency by sizing the allocation, and no party configures it (#token-scope).
+
+## What the PS Reads {#ps-inputs}
+
+Four inputs are available at the moment of the decision, and a PS applying the person's policy SHOULD use all of them:
+
+- **`budget_consumed`** (#budget-consumed) in the resource token the agent just presented: what the last several grants actually cost, resource-signed, arriving at no round-trip cost.
+- **Usage counters** (#usage-counters) at the resource's `usage_endpoint`: totals over calendar periods, and for a mission query the mission's total to date — the figures that cover the stretch when the agent was not talking to the PS.
+- **The mission log** (([@!I-D.hardt-oauth-aauth-protocol]), Mission Log): every prior token request, justification, and clarification in this mission, which is what makes "faster than expected" a judgement the PS can actually make.
+- **The `justification`** parameter of this request: why the agent says it needs more.
+
+The first two are the spend; the second two are the context. A budget escalation is not interpretable without both.
+
+## How the PS Responds {#ps-responses}
+
+Six responses are available. None is new to this document; the base protocol defines each, and this section states which apply to a budget decision.
+
+| Response | Mechanism |
+|---|---|
+| Grant the offer | Issue an auth token with `budget` equal to the resource token's (#auth-token) |
+| Grant less | Issue a lower `amount` (#narrowing-chain) |
+| Ask the agent | `202` with `requirement=clarification` |
+| Ask the person | `202` with `requirement=interaction` |
+| Decline with a figure | Error response carrying `suggested_budget` (#declining) |
+| End the work | Terminate the mission |
+
+Granting less needs no signalling: the `amount` in the issued claim is the answer, and the agent reads it from the token it received (#narrowing-chain).
+
+**Clarification is the response for an escalation the PS is not ready to refuse or approve.** A PS that sees consumption running ahead of what the mission implies MAY return `202` with `requirement=clarification` (([@!I-D.hardt-oauth-aauth-protocol]), Clarification Required), putting a question to the agent before deciding. This is the channel that lets the PS tell an agent it is overspending, which narrowing alone cannot do — a smaller `amount` is silent, and the agent cannot distinguish a PS applying pressure from a resource lowering its own offer.
+
+```http
+HTTP/1.1 202 Accepted
+Location: /pending/abc123
+Retry-After: 0
+AAuth-Requirement: requirement=clarification
+Content-Type: application/json
+
+{
+  "status": "pending",
+  "clarification": "This mission has spent $18 of an
+    expected $25 and has not booked anything yet. What
+    is the remaining $12 for?",
+  "timeout": 120
+}
+```
+
+The agent's three replies are already defined and all three are useful here: a `clarification_response` explaining the spend, an `updated_request` carrying a fresh resource token for a smaller figure, or a `DELETE` withdrawing the request. The PS SHOULD enforce the base protocol's limit on clarification rounds. An agent that did not declare the `clarification` capability cannot be asked, and the PS decides without it.
+
+Asking the person is the same mechanism one step further out, and is the right response when the answer is the person's rather than the agent's — a ceiling raise rather than an allocation.
+
 A PS that puts a budget to the person for consent MUST present the amount as a human-readable figure in its unit — "$5.00", not `{5000000, USD, 6}` — visually distinct from any resource-supplied description, which is Markdown and MUST be sanitized before rendering (#budget-units). The amount is the decision the person is making.
+
+Ending the work is the response to an agent whose spending the PS cannot account for. Terminating a mission is not a budget mechanism and this document defines nothing about it; it is named here because a budget escalation is one of the few signals that reliably surfaces an agent behaving unlike its mission.
 
 # PS-to-AS Token Request Extensions {#as-token-endpoint}
 
@@ -549,9 +611,10 @@ AAuth-Budget: cost=221200; remaining=1568800;
 Members:
 
 - **`remaining`** (REQUIRED): A non-negative Integer, in the granted scale, giving what is left of the budget on this auth token, net of reservations for requests in flight (#overshoot). It is a floor — committed consumption will not exceed the grant — though the figure may lag metering. Exhaustion is signaled by the `401` (#exhaustion), for which the agent stays prepared regardless.
-- **`cost`** (OPTIONAL): A non-negative Integer, in the granted scale, giving what **this request** cost. Sent in the header when the resource knows the figure as it writes the response, and in a trailer when it does not (#streaming). A resource that meters the request MUST NOT omit `cost` from both.
-- **`reserved`** (OPTIONAL): A non-negative Integer, in the granted scale, giving what the resource has held against the grant for this request and not yet committed (#overshoot). Meaningful only where `cost` is not yet known, so in practice it accompanies a streamed response. It is a statement about this request, not a running total, and is never revised.
-- **`unit`** (OPTIONAL): A String naming the unit. **`decimals`** (OPTIONAL): an Integer giving its scale. Informational, and a pair: a sender MUST include both or neither, because an amount carrying a unit but no scale misreads by a factor of 10^decimals to exactly the readers self-description serves.
+- **`cost`** (OPTIONAL): A non-negative Integer, in the granted scale, giving what **this request** cost. A resource sends it in the header when it knows the figure as it writes the response, in a trailer when it learns the figure after (#streaming), and not at all when it will not learn it in time to do either. The third case is bounded by (#cost-omitted).
+- **`reserved`** (OPTIONAL): A non-negative Integer, in the granted scale, giving what the resource has held against the grant for this request and not yet committed (#overshoot). Meaningful only where `cost` is not yet known, so in practice it accompanies a streamed response. It is a statement about this request, not a running total, and is never revised. REQUIRED where `cost` is omitted (#cost-omitted).
+- **`required`** (OPTIONAL): A non-negative Integer, in the granted scale, giving the maximum cost the resource computed for a request it refused under `reason=insufficient-budget` (#reason-parameter). Sent only with that refusal, where it is RECOMMENDED. It is what the request needed, not what the resource is asking the PS to grant next; see (#required-member).
+- **`unit`** (OPTIONAL): A String naming the unit. **`decimals`** (OPTIONAL): an Integer giving its scale. Both are informational, and they are a pair: a sender MUST include both or neither. They exist for readers that never parse a JWT — proxies, logs, dashboards. Those are the same readers that would misinterpret an amount carrying a unit with no scale, by a factor of 10^decimals.
 
 Recipients MUST ignore members they do not recognize.
 
@@ -588,7 +651,7 @@ Including the pair makes the field self-describing for proxies and logs that nev
 
 Response headers are written before the body, and a streamed response's actual cost is known only when the stream ends. The resource therefore cannot state `cost` in the header. What it can state is what it has held: it reserved before serving (#overshoot), and `remaining` is already net of that reservation.
 
-A resource serving a streamed response SHOULD send `reserved` in the header and `cost` in a trailer:
+A resource serving a streamed response SHOULD send `reserved` in the header and `cost` in a trailer. A resource that cannot send trailers sends `reserved` alone (#cost-omitted).
 
 ```http
 HTTP/1.1 200 OK
@@ -603,6 +666,22 @@ AAuth-Budget: cost=221200
 ```
 
 The agent computes the balance after the request as `remaining + reserved - cost`. Here that is 1,778,800: the 431,200 held was not all spent, and the unspent 210,000 returns to the grant.
+
+## When `cost` Is Omitted {#cost-omitted}
+
+Not every resource can send a trailer. Trailers exist only on a chunked or HTTP/2-and-later response, and several widely deployed server runtimes provide no way to emit one at all. A resource in that position knows the cost of a streamed response only after its last opportunity to report it.
+
+Such a resource omits `cost` and MUST send `reserved` in the header. The agent recovers the figure from the following response:
+
+`cost` = previous `remaining` + `reserved` - current `remaining`
+
+The subtraction works because `remaining` is already net of reservations (#aauth-budget-header): the earlier figure is net of the hold, the later one reflects the commit and the release of the unspent remainder. `reserved` is the term that connects them, which is why it stops being optional here.
+
+It recovers one request's cost only where requests on that token are serial. An agent with several requests in flight on one token recovers the net of everything that settled between the two responses, not the cost of any single one, because every concurrent request moves the same `remaining`. An agent that wants per-request figures from a resource that omits `cost` serializes its requests on that token; an agent that only needs the balance does not have to.
+
+Until that next response arrives the agent applies (#ambiguous-failure) and treats the request as having cost the full `reserved` amount. That is the conservative direction, and it is the same rule the agent already applies to a response it never received.
+
+A resource MUST NOT omit both `cost` and `reserved`. That combination reports that a metered request happened and gives the agent no figure for it, neither exact nor conservative.
 
 ## Trailer Rules {#trailer-rules}
 
@@ -624,7 +703,7 @@ The agent MUST assume the request cost as much as the resource had held for it: 
 
 Assuming the maximum is the conservative direction: an agent that under-assumes plans spending it does not have and discovers the shortfall as a `401` (#exhaustion).
 
-Inference APIs commonly emit final usage in the stream's terminal event. That is application-layer and does not provide the application independence this header exists for, and a resource emitting it is not excused from the trailer — but it does mean the exact number exists when the stream ends.
+Inference APIs commonly emit final usage in the stream's terminal event. That is application-layer and does not provide the application independence this header exists for, so a resource that emits it and can also send a trailer SHOULD send both. What it does mean is that the exact number exists when the stream ends, and a resource whose runtime offers no trailer has it and no protocol carrier for it until the next response (#cost-omitted).
 
 # Budget Exhaustion {#exhaustion}
 
@@ -632,7 +711,7 @@ Inference APIs commonly emit final usage in the stream's terminal event. That is
 
 **Budget exhausted, token still valid.** The same response. The base protocol already permits a resource to return `requirement=auth-token` with a new resource token to a request that already carries an auth token, when the request requires higher authorization than the current token provides, and requires agents to be prepared for step-up at any time. Budget exhaustion is that case, and the agent's action is identical either way: take the fresh resource token to its PS.
 
-**Request exceeds the remainder.** The budget has remainder, but this request's maximum cost exceeds it (#overshoot). The same `401` challenge, with `reason=insufficient-budget`. The agent has a second move here that exhaustion does not offer: lower the request's bound to fit the `remaining` reported beside the challenge, and retry on the token it already holds.
+**Request exceeds the remainder.** The budget has remainder, but this request's maximum cost exceeds it (#overshoot). The same `401` challenge, with `reason=insufficient-budget`. The agent has a second move here that exhaustion does not offer: lower the request's bound to fit the `remaining` reported beside the challenge, and retry on the token it already holds. The `required` member (#required-member) is what makes that move a calculation rather than a search.
 
 A request refused under this section MUST NOT draw down the budget or appear in the records and counters. The resource declined to serve it; metering the refusal would make exhaustion self-perpetuating.
 
@@ -655,7 +734,25 @@ AAuth-Budget: cost=180000; remaining=0;
 - **`budget-exhausted`**: The granted budget is spent.
 - **`insufficient-budget`**: The budget has remainder, but this request's maximum cost exceeds it (#overshoot).
 
-For either value, the enclosed resource token MAY carry a `budget` sized for what the resource would need to see granted — for `insufficient-budget`, the cost of the refused operation. The denial is itself the re-authorization offer.
+For either value, the enclosed resource token MAY carry a `budget` sized for what the resource would need to see granted. The denial is itself the re-authorization offer.
+
+## Refusing a Request That Does Not Fit {#required-member}
+
+A resource refusing under `insufficient-budget` has computed the request's maximum cost — (#overshoot) requires it to, before serving — and SHOULD report that figure as the `required` member of `AAuth-Budget`:
+
+```http
+HTTP/1.1 401 Unauthorized
+AAuth-Requirement: requirement=auth-token;
+    resource-token="eyJ..."; reason=insufficient-budget
+AAuth-Budget: remaining=150000; required=400000;
+    unit="USD"; decimals=6
+```
+
+The agent now knows both halves of the refusal: it has 0.15, and the request needed 0.40. Without `required` it knows only the first, and the move (#exhaustion) offers it — lower the request's bound and retry on the token it already holds — becomes a search. It cannot compute the figure itself, because the bound is the resource's own calculation against its own pricing, and no part of this specification requires a resource to publish what an operation costs.
+
+`required` is not the same figure as the `budget` claim of the enclosed resource token, and the two SHOULD differ. The resource token's `budget` is a re-authorization offer addressed to the PS, and a resource sizing it for exactly the refused request hands back a grant good for one call. `required` is a fact about the request that was refused, addressed to the agent. The header carries it because the agent is the party that acts on it, and because the retry path it enables does not involve the person server at all.
+
+A resource MAY refuse without `required` — where the operation has no cost bound it is willing to state, or where stating it would disclose pricing the resource does not publish. The agent then falls back to `remaining` alone.
 
 No new `requirement` value is minted. The base protocol says an agent that does not recognize a `requirement` value MUST NOT treat the response as satisfiable and surfaces it as an error, while recipients MUST ignore unknown *parameters* on the `requirement` member. A new value would hard-fail every budget-unaware agent on a condition that plain `auth-token` resolves correctly. That asymmetry — unknown values fail, unknown parameters are ignored — is why this extension extends by parameter.
 
@@ -683,20 +780,57 @@ Where the resource holds the authorization state itself rather than reading it f
 
 ## Token Scope {#token-scope}
 
-A budget is scoped to the auth token that carries it and expires with it. This document defines no persistent grant identifier and does not require the PS to carry a budget across re-issuance. Auth tokens are capped at one hour by the base protocol; re-issuance is the intended point at which the PS re-decides, not a bypass.
+A budget is scoped to the auth token that carries it and expires with it. There is no persistent grant identifier and no requirement that the PS carry a budget across re-issuance. This is the mechanism, not a gap: re-issuance is where the PS re-decides (#ps-decision), and a budget that survived it would be a standing grant the PS no longer sizes.
+
+The budget is revoked with the token. Any AAuth server that issues tokens MAY provide a revocation endpoint, and revoking an auth token by `(iss, jti)` (([@!I-D.hardt-oauth-aauth-protocol]), Token Revocation) ends its budget along with the rest of its authorization. Consumption already committed is unaffected — a budget is a ceiling on spending, not a claim on what was spent — and a request already in flight completes, because revocation stops a token being used again rather than interrupting a call. This document adds nothing to that mechanism; it is named here because a person hitting stop expects the money to stop, and expiry alone bounds that at an hour.
+
+Two conditions return the agent to the PS, and either is sufficient. The auth token expires, which the base protocol caps at one hour. Or its budget is exhausted (#exhaustion), which happens after however much work it took to spend. Expiry is proportional to time and exhaustion is proportional to spend, so the supervision interval tracks whichever is moving faster: a mission running cheaply reports on the hour, one running expensively reports in minutes, and no party configures the difference.
 
 ## Aggregation {#aggregation}
 
-The resource MUST aggregate consumption against the key `(iss, sub, aud)` of the auth token. `(iss, sub)` identifies the person — `sub` is unique within its issuer, and values from different issuers are different people — and `aud` is the resource itself. This document introduces no new identifier.
+Two things are counted, against different keys, and they are not the same requirement.
 
-The key is the person, not the agent. An auth token names no agent, and a person's spending at a resource is theirs whichever agent incurred it; a per-agent key would also reset every time the person changed agents.
+**The cap the resource enforces is per auth token.** It is the `budget` claim of the token presented, and (#overshoot) states the invariant: committed consumption plus outstanding reservations against *that token* MUST NOT exceed *its* granted `amount`. A resource needs no cross-token arithmetic to enforce a budget.
+
+**The ledger the resource keeps is per person.** The resource MUST aggregate consumption against the key `(iss, sub, aud)` of the auth token, which is what the consumption records (#budget-consumed) and the usage counters (#usage-counters) report. `(iss, sub)` identifies the person — `sub` is unique within its issuer, and values from different issuers are different people — and `aud` is the resource itself. This document introduces no new identifier.
+
+The ledger is not a second ceiling. A resource MUST NOT refuse a request that fits its token's budget because a per-person total has reached some figure the resource inferred; no party told it such a figure, and the budgets it was handed are what it was authorized to honor. Holding a person's spending across concurrent tokens within bounds is the PS's job (#concurrency), because the PS is the party that issues them and the only one that knows the ceiling (#ps-decision).
+
+A per-agent ceiling is not a resource-side key either. A person server that wants one agent capped at less than another issues it a smaller allocation (#ps-decision); the enforcement is the token's own budget, and no resource-side dimension is involved. What a resource cannot supply from allocations alone is how much each agent actually spent, since an allocation is a ceiling rather than a figure — that is what the per-key query at the usage endpoint serves (#per-key).
+
+The ledger's key is the person, not the agent and not the mission. An auth token names no agent, and a person's spending at a resource is theirs whichever agent incurred it; a per-agent key would also reset every time the person changed agents. `mission_s256` is optional — a token may carry one or not — so a mission-keyed ledger has no bucket for a mission-less token, and (#inference) requires mission-less tokens for standing inference budgets. The person is the only key present on every auth token. Missions are an attribution dimension over that ledger (#mission-attribution), not the ledger itself.
+
+## The Billing Account {#billing-account}
+
+A resource that meters usually charges someone for it, and the party it charges is an account in its own systems. Nothing in a budget names that account. The aggregation key above is `(iss, sub, aud)`, and `sub` is directed per person server — it identifies a person at one PS and carries no meaning at the resource beyond what the resource has learned about it.
+
+For most resources that is sufficient and no mechanism is needed. The base protocol keys a person's relationship with a resource on `(iss, sub)` precisely so it survives a change of agent, and a resource holding one account per person looks the account up from that pair, or from `(iss, tenant, sub)` where the person belongs to an organization. Consumption then meters against the account the resource already had.
+
+Beyond that, two different questions arise, and they compose rather than substitute. The first is asked once per person; the second on every authorization.
+
+**Which person is this?** The first budgeted request carrying a `sub` the resource has not seen is a question for the person, not the agent, and both access modes answer it with an interaction the person completes at the party that holds the account.
+
+In three-party access the resource asks. It puts an `interaction` claim in the resource token, and the person server chains the person through the resource's own flow — signing in, creating an account, connecting a payment method — before completing its own consent (([@!I-D.hardt-oauth-aauth-protocol]), Resource-Initiated Interaction). Because the resource issues the resource token, it decides when to ask again: once per person, or once per mission, since it sees `mission_s256` at that moment.
+
+In four-party access the AS asks, returning `202` with `requirement=interaction` to the person server's token request (([@!I-D.hardt-oauth-aauth-protocol]), Access Server Federation). This is the same one-time binding the AS already performs to establish trust with a person server, answering a second question at the moment it is already asking the person who they are.
+
+Because `sub` is directed per person server, a person reaching the same resource through two person servers presents two identifiers. The binding interaction is what attaches both to one account, and a resource that skips it sees two people and bills two ledgers.
+
+**Which of their accounts?** Binding establishes who the person is. It does not say which of several accounts an authorization is for, and a person who holds more than one at the resource has to say. Account Binding (([@!I-D.hardt-oauth-aauth-protocol]), Account Binding) carries the answer: an OPTIONAL `account` parameter on the authorization endpoint request, named from the resource's own namespace, echoed as the `account` claim of the resource token and copied into the auth token.
+
+This applies in both access modes; how `account` reaches the issuer, and what each party does with it, is specified there and not restated here. In four-party access it reaches the AS in the resource token, so the binding tells the AS who the person is and `account` tells it which of their accounts this authorization bills.
+
+A metered resource should ask for `account` where a person may hold more than one, because a budget enforced against the wrong account is charged to the wrong payer. A resource holding one balance per person needs none of it: binding is the whole mechanism, and `account` never appears in its tokens.
+
+None of this is specific to budgets, and this document defines no new mechanism for it. It is stated here because a metered resource meets these cases on its first request and the rest of this document is silent on them.
 
 ## Concurrency {#concurrency}
 
 An agent may hold several concurrent auth tokens at the same resource — the `mission_s256` claim means concurrent missions produce concurrent tokens, each with its own budget, for up to an hour. Handling this is mandatory, not optional:
 
-- A resource MUST aggregate atomically against `(iss, sub, aud)` across all live auth tokens.
-- A PS SHOULD size per-token budgets so that their sum stays within whatever standing ceiling it holds for the person at that resource.
+- A resource MUST apply the reserve-commit-release invariant of (#overshoot) atomically per auth token, so that concurrent requests presenting the same token cannot together exceed its budget.
+- A resource MUST post consumption to the `(iss, sub, aud)` ledger (#aggregation) atomically, so that concurrent requests across different tokens do not lose or double-count against the records and counters.
+- A PS SHOULD size per-token budgets so that their sum stays within whatever standing ceiling it holds for the person at that resource. This is the only place the cross-token total is enforced.
 
 The bound on over-issuance is the auth token lifetime multiplied by the number of concurrent tokens. A PS that issues *n* concurrent tokens of *X* each has authorized up to *nX* for as long as an hour, regardless of any standing figure it intended to hold.
 
@@ -726,17 +860,23 @@ Consumption is attributed to a mission using the `mission_s256` claim of the aut
 
 Consumption records reach the PS only when the agent brings a resource token back. The agent is the party being budgeted and also the courier of the evidence: it cannot falsify the records, but between re-authorizations it does not appear, and the PS is blind for up to an hour per token. The `usage_endpoint` (#budget-units) removes the agent from that loop: the PS queries the resource directly, on a channel the agent is never on.
 
-The endpoint serves **usage counters**: pre-summed consumption totals over fixed calendar periods. The PS reads figures it can act on and display; it does not compute, convert, or round. The resource keeps a handful of running integers per key and unit, incremented at metering time; serving the endpoint requires no per-record history.
+The endpoint serves **usage counters**: pre-summed consumption totals the PS reads, acts on, and displays. It does not compute, convert, or round. The resource keeps a handful of running integers, incremented at metering time; serving the endpoint requires no per-record history.
 
 ## Usage Request {#usage-request}
 
 The PS MUST make a signed POST to the `usage_endpoint`, authenticating exactly as it does at an AS `auth_token_endpoint` ([@!I-D.hardt-oauth-aauth-protocol]): an HTTP Sig whose `Signature-Key` header carries `scheme=jwks_uri`, with the signature additionally covering `content-type` and `content-digest`.
 
-The body carries exactly one of three query keys, each a claim value the resource has seen in auth tokens:
+The body carries at most one **scope key**, naming a claim value the resource has seen in auth tokens:
 
 - **`sub`**: A directed person identifier. Scope: the person at this resource, across all their agents and missions.
 - **`tenant`**: A tenant identifier. Scope: the organization, across its people.
 - **`mission_s256`**: A mission identifier. Scope: one mission.
+
+and one OPTIONAL member:
+
+- **`jkts`**: An array of JWK Thumbprints ([@!RFC7638]), each naming a signing key the resource has seen present an auth token. Asks for what each of those keys consumed (#per-key).
+
+A request MUST carry a scope key or `jkts`, and MAY carry both. At most one scope key may appear. A request with more than one scope key, or with neither a scope key nor `jkts`, is an error (#usage-authorization).
 
 ```http
 POST /usage HTTP/1.1
@@ -750,7 +890,11 @@ Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwks_uri;
     jwks_uri="https://ps.example/.well-known/jwks.json"
 
-{ "sub": "8f14e45fceea167a5a36dedd4bea2543" }
+{
+  "sub": "8f14e45fceea167a5a36dedd4bea2543",
+  "jkts": ["NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs",
+           "0ZcOCORZNYy-DWpqq30BbmLzO1Yw3ZQhIgnHZQKxNVE"]
+}
 ```
 
 ## Usage Response {#usage-response}
@@ -758,24 +902,34 @@ Signature-Key: sig=jwks_uri;
 ```json
 {
   "as_of": 1754619970,
-  "usage": [
-    {
-      "unit": "USD",
-      "decimals": 6,
-      "day": 12400000,
-      "week": 31200000,
-      "month": 84300000,
-      "year": 412000000,
-      "all_time": 989200000
-    }
-  ]
+  "aud": "https://ps.example",
+  "unit": "USD",
+  "decimals": 6,
+  "sub": "8f14e45fceea167a5a36dedd4bea2543",
+  "usage": {
+    "day": 1243180,
+    "week": 3118400,
+    "month": 8432650,
+    "year": 39847220,
+    "all_time": 61438050
+  },
+  "jkts": {
+    "NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs": 38215600,
+    "0ZcOCORZNYy-DWpqq30BbmLzO1Yw3ZQhIgnHZQKxNVE": 23222450
+  }
 }
 ```
 
 - **`as_of`** (REQUIRED): The time through which the figures are complete, in seconds since the Unix epoch. Metering aggregation MAY lag serving; `as_of` is what keeps a lagging figure honest.
-- **`usage`** (REQUIRED): An array with one entry per unit the resource has metered budgets in under the queried key. Each entry carries `unit` and `decimals` as in the budget object (#budget-object), plus counters in that scale.
+- **`aud`** (REQUIRED): The person server the response was produced for, identified as in the `ps` claim of a resource token. It is what stops a signed response being presented to a third party as a statement about them (#signed-response).
+- **`unit`** (REQUIRED) and **`decimals`** (REQUIRED): The unit every figure in the response is denominated in, and its scale, as in the budget object (#budget-object).
+- The **scope key** from the request, echoed unchanged — `sub`, `tenant`, or `mission_s256` — present only when the request carried one.
+- **`usage`** (REQUIRED when the request carried a scope key): Calendar counters for that scope.
+- **`jkts`** (REQUIRED when the request carried `jkts`): An object mapping each thumbprint to what that key consumed (#per-key).
 
-The counters are `day`, `week`, `month`, `year`, and `all_time`, following the interval enumeration of Stripe Issuing [@Stripe.Issuing] (#pa-stripe). Each is a non-negative integer giving consumption within the current period:
+### Calendar Counters {#calendar-counters}
+
+The members of `usage` are `day`, `week`, `month`, `year`, and `all_time`, following the interval enumeration of Stripe Issuing [@Stripe.Issuing] (#pa-stripe). Each is a non-negative integer giving consumption within the current period:
 
 - **`day`**: since 00:00 UTC today.
 - **`week`**: since Monday 00:00 UTC of the current ISO 8601 week.
@@ -784,25 +938,67 @@ The counters are `day`, `week`, `month`, `year`, and `all_time`, following the i
 
 All period boundaries are UTC. This is a definition, not a deployment choice: no timezone appears in metadata or in the response, and every party computes the same figure. The cost is that "today" resets mid-afternoon in Auckland, which Stripe Issuing accepts for the same reason this document does — the counter is decision context, not a bill.
 
-The calendar counters are OPTIONAL; a resource omits periods it does not track. For a `mission_s256` query, `all_time` is the mission total — the figure a PS wants when deciding whether to fund a mission's continuation — and a resource MAY serve it alone.
+The calendar counters other than `all_time` are OPTIONAL; a resource omits periods it does not track. For a `mission_s256` query, `all_time` is the mission total — the figure a PS wants when deciding whether to fund a mission's continuation — and a resource MAY serve it alone.
 
 Counters are subject to the 15-digit bound of (#range-limits). A resource whose cumulative figure would exceed it omits that counter rather than reporting an inexact number.
 
-`all_time` reaches as far back as the resource retains. This document sets no retention requirement; the person's bill is the durable record.
+`all_time` reaches as far back as the resource retains. This document sets no retention requirement for scope keys; the person's bill is the durable record.
+
+### Per-Key Figures {#per-key}
+
+Each member of `jkts` is a thumbprint mapped to a single non-negative integer: everything the resource has metered against budgets on auth tokens presented by that key.
+
+There are no calendar periods here. A key's consumption is already bounded by the tokens issued to it, and an auth token lives at most an hour; a key that has stopped presenting tokens has a figure that no longer moves. Periods answer "how much this month", which is a question about a person, not about a key.
+
+A resource SHOULD retain a key's figure for at least 24 hours after that key's last metered request, and MAY retain it longer. The bound is idle time rather than age, so a key in continuous use is never pruned. Beyond that window the PS is the party that accumulates: it polls, it knows which keys belonged to which agent across rotations, and it holds the history. The resource keeps a short tail.
+
+A resource MUST omit a thumbprint from `jkts` rather than report zero for it when it holds no figure — because the key is unrecognized, or because its figure has been pruned. Absence means the resource cannot answer; a present zero means the key consumed nothing. This differs from the treatment of an unrecognized scope key (#usage-authorization), and the reason is that there is nothing to conceal: the PS issued or relayed every auth token, so it already knows the key exists, and a zero that means "pruned" would be a wrong answer to an allocation decision rather than a withheld one.
+
+### One Unit Per Response {#one-unit}
+
+Every figure in a response is in one unit, named once at the top level, and it is the unit the resource meters in. There is no request parameter selecting it.
+
+The alternative is a per-unit array at every level, which costs every response the shape needed by deployments that meter in one unit — which is nearly all of them, since a resource that meters several quantities collapses them to one billing unit before denominating a budget (#non-goals). A resource may still declare several units in `budget_units` (#budget-units), because that is what an agent may ask a budget to be denominated in; what this endpoint reports is what the resource actually metered, and the response says which unit that was.
+
+### The Signed Response {#signed-response}
+
+Signing the usage response is RECOMMENDED. A resource that signs uses an HTTP Sig with a key from the `jwks_uri` in its resource metadata (#budget-units) — the same key material the PS already fetched to verify resource tokens. The signature MUST cover `@status`, `content-type`, and `content-digest`, and MUST be bound to the request by covering the request's `@authority` and `@path` with the `req` parameter ([@!RFC9421]).
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Digest: sha-256=:...:
+Signature-Input: sig=("@status" "content-type"
+    "content-digest" "@authority";req "@path";req);
+    created=1754620001
+Signature: sig=:...signature bytes...:
+Signature-Key: sig=jwks_uri;
+    jwks_uri="https://inference.example/.well-known/jwks.json"
+```
+
+The endpoint reports what a person owes for, so an unsigned figure is one the party that produced it can later disown. Signing makes the resource committed to what it reported: it cannot tell the person server one number and the biller another. It does not make the meter honest — the resource is the counterparty as well as the signer — and (#counters-trust) covers what remains.
+
+It also closes an asymmetry. Consumption records (#budget-consumed) are already resource-signed, because they ride inside a resource token. The usage endpoint is the only PS-facing consumption channel that is not.
+
+It is RECOMMENDED rather than REQUIRED because the figures are decision context rather than authorization, and because this would be the first response-side signature in the AAuth family — the signature profile is request-side throughout (#header-trust). A person server receiving an unsigned response is not in a position to do anything but read it: refusing it leaves the PS with no figures rather than unattributable ones, which is the worse of the two. What signing changes is whether the resource can later disown what it said, and that is worth having wherever both ends will implement it.
+
+`aud` is what keeps the signed response non-transferable. Without it a resource-signed statement of consumption could be handed to a third party as though it described them, and the figures carry no other indication of who asked.
 
 ## Authorization and Errors {#usage-authorization}
 
-The `jwks_uri` in the `Signature-Key` header names the calling person server. The resource MUST only answer for key values that have appeared in auth tokens it accepted from that person server — tokens whose `iss` (three-party) or `ps` claim (four-party) names it. `sub` is directed per PS, so one person server cannot even name another's subjects; `tenant` and `mission_s256` are not directed, and this check is what stops a third party from querying them.
+The `jwks_uri` in the `Signature-Key` header names the calling person server, and is the value the response echoes as `aud`. The resource MUST only answer for values that have appeared in auth tokens it accepted from that person server — tokens whose `iss` (three-party) or `ps` claim (four-party) names it. This applies to thumbprints in `jkts` as much as to scope keys. `sub` is directed per PS, so one person server cannot even name another's subjects; `tenant`, `mission_s256`, and thumbprints are not directed, and this check is what stops a third party from querying them.
 
 The access server is not an entitled caller. The AS acts for the resource and sits in its trust domain; whatever consumption figures it needs, it gets from the resource directly, outside this protocol.
 
-A query for a value the resource does not recognize returns `200` with an empty `usage` array; "never seen" and "nothing consumed" are deliberately indistinguishable. A body carrying zero or several query keys, or a malformed value, returns `invalid_request` using the error response format of ([@!I-D.hardt-oauth-aauth-protocol]).
+A query for a scope key the resource does not recognize returns `200` with `usage` omitted; "never seen" and "nothing consumed" are deliberately indistinguishable, so that a query cannot be used to discover whether a person holds an account. Unrecognized thumbprints are handled differently and for a stated reason (#per-key).
+
+`invalid_request`, using the error response format of ([@!I-D.hardt-oauth-aauth-protocol]), is returned for a body carrying more than one scope key, carrying neither a scope key nor `jkts`, or carrying a malformed value.
 
 A resource MAY rate-limit the endpoint, using the `RateLimit` fields ([@?I-D.ietf-httpapi-ratelimit-headers]) as on any endpoint. A PS SHOULD poll no faster than its decisions require.
 
 ## Division of Labor {#usage-division}
 
-The two PS-facing channels answer different questions at different moments. The consumption records (#budget-consumed) serve the re-authorization decision: they arrive in-band, resource-signed, at no round-trip cost, exactly when the PS is deciding. The usage counters serve everything else: supervision between re-authorizations, mission totals past the 20-record window, tenant-level exposure, and the person's dashboard. A metered resource SHOULD implement both; the narrowing chain (#narrowing-chain) functions with records alone. The agent's own view is neither of these: it is the `AAuth-Budget` header (#aauth-budget-header), scoped to the token it holds and to the request it just made.
+The two PS-facing channels answer different questions at different moments. The consumption records (#budget-consumed) serve the re-authorization decision: they arrive in-band, resource-signed, at no round-trip cost, exactly when the PS is deciding. The usage counters serve everything else: supervision between re-authorizations, mission totals past the 20-record window, tenant-level exposure, how a person's spending divides among their agents (#per-key), and the person's dashboard. A metered resource SHOULD implement both; the narrowing chain (#narrowing-chain) functions with records alone. The agent's own view is neither of these: it is the `AAuth-Budget` header (#aauth-budget-header), scoped to the token it holds and to the request it just made.
 
 # Capability Negotiation {#capability}
 
@@ -826,7 +1022,7 @@ Errors are reserved for statements that cannot be reconciled:
 |-------|--------|----------|---------|
 | `invalid_budget` | 400 | Authorization endpoint | The `budget` object is malformed, or names a `unit` the resource has not declared in `budget_units` |
 | `invalid_budget` | 400 | PS and AS auth token endpoints | The resource token's `budget.decimals` disagrees with the value declared for that unit in the resource's `budget_units` metadata, or the object is otherwise malformed |
-| `invalid_request` | 400 | Usage endpoint | Zero or several query keys, or a malformed value (#usage-authorization) |
+| `invalid_request` | 400 | Usage endpoint | More than one scope key, neither a scope key nor `jkts`, or a malformed value (#usage-authorization) |
 
 Error responses use the error response format defined in AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]).
 
@@ -856,13 +1052,15 @@ Metered inference is the initiating use case for this extension and has a proper
 
 **A TPX provider adds agent support without touching its meter.** A TPX [@?TPX] provider already prices per token, reports cost in each response's `usage`, and enforces a person-granted budget as a hard cap — for human-driven apps holding OAuth grants. Serving agents means accepting AAuth auth tokens carrying `budget` beside those grants: two authorization envelopes over one metering core. Deployed this way, this extension is the AAuth binding of TPX.
 
+Neither envelope displaces the other. A person driving an app and an agent acting for that person are different situations, and a provider serving both has one meter under two front doors (#implementation-status).
+
 # Security Considerations {#security-considerations}
 
 ## The Header Is Unsigned {#header-trust}
 
 `AAuth-Budget` is not signed, so an intermediary can lie about the balance. The failure modes are bounded. Understating `remaining` makes the agent re-authorize earlier than it needed to. Overstating it makes the agent hit an unexpected `401`. Neither causes overspend, because enforcement is the resource checking metered consumption against the signed `budget` claim of the auth token — the header is a pacing signal, not the authorization.
 
-An implementation that needs the balance to be trustworthy rather than merely harmless can cover `AAuth-Budget` with an HTTP Message Signature on the response ([@!RFC9421]). AAuth's signature profile is request-side today, and adding a response-side profile is a larger change than this extension makes.
+An implementation that needs the balance to be trustworthy rather than merely harmless can cover `AAuth-Budget` with an HTTP Message Signature on the response ([@!RFC9421]), as the usage endpoint recommends for its own responses (#signed-response). It is not required here, and the difference is what each response is for. A usage response is a statement of what a person owes for, read by a party that may later have to hold the resource to it. A balance on a request response is a pacing signal the agent acts on immediately and re-reads on the next call, and signing every metered response to protect a figure that is superseded seconds later buys little for what it costs at inference volumes.
 
 ## Budget Is Not a Substitute for Scope {#budget-not-scope}
 
@@ -874,7 +1072,9 @@ A PS that issues concurrent auth tokens without tracking their sum has authorize
 
 ## Consumption Reports as Attack Surface {#counters-trust}
 
-`budget_consumed` records are resource-signed and usage counters are served from the resource's authenticated endpoint; both are the resource's own account of what it metered. A resource that inflates them can induce a PS to authorize more than the person intended, or to refuse further authorization. A PS SHOULD reconcile them against the person's billing relationship with the resource where one exists, and SHOULD NOT treat them as authoritative for anything other than its own next decision.
+`budget_consumed` records are resource-signed and usage counters are served from the resource's authenticated endpoint, signed where the resource follows (#signed-response); both are the resource's own account of what it metered. A resource that inflates them can induce a PS to authorize more than the person intended, or to refuse further authorization. A PS SHOULD reconcile them against the person's billing relationship with the resource where one exists, and SHOULD NOT treat them as authoritative for anything other than its own next decision.
+
+Signing the usage response (#signed-response) does not change this. It makes the resource committed to a figure rather than able to disown it, which is what stops it reporting one number to the person server and another to the biller. It does not make the meter honest, because the resource meters, reports, and signs. The person's bill is the record a dispute settles against, and a signed report is evidence of what the resource said, not of what it consumed.
 
 ## Unit Substitution {#unit-substitution}
 
@@ -922,33 +1122,60 @@ This document requests registration of the following value in the AAuth Capabili
 
 This document deliberately establishes no registry of unit values. Units are declared by each resource in its `budget_units` metadata, exactly as scope values are declared in `scope_descriptions`. See (#why-no-unit-registry).
 
-# Implementation Status
+# Implementation Status {#implementation-status}
 
 *Note: This section is to be removed before publishing as an RFC.*
 
 This section records the status of known implementations of the protocol defined by this specification at the time of posting of this Internet-Draft, and is based on a proposal described in [@RFC7942]. The description of implementations in this section is intended to assist the IETF in its decision processes in progressing drafts to RFCs.
 
-There are currently no known implementations.
+## Implementations in Progress {#implementations-in-progress}
+
+**tokenpony** (Infinite Logic PBC) meters LLM inference and implements TPX [@?TPX], an OAuth 2.0 profile carrying the same grant for human-driven apps. That deployment is live, and this extension is being added over the same metering core, with AuthGravity as the person server and Harness News as the agent, in four-party access. TPX is a complete deployment on its own: it needs no person server and nothing from this document, and the two specifications share no wire surface — one meter, two independent authorization envelopes.
+
+**Regent Protocol** is implementing both sides: the `budget` claim in auth tokens issued by its gate, with allocation and lifetime derived from the owner's mandate, and resource-side metering middleware in `regent-httpsig` performing atomic reserve-commit-release and emitting `AAuth-Budget`.
+
+**The editor** is implementing this extension in several services.
+
+Implementation reports and test vectors are expected from these efforts and will be recorded here.
 
 # Document History
 
 *Note: This section is to be removed before publishing as an RFC.*
 
-- draft-hardt-aauth-budgets-01
-  - Replaced the header's cumulative `consumed` member with `cost`, what **this request** cost. The agent's question per response is the price of the call it just made and whether it can afford another; cumulative spend answered neither, was derivable as `granted - remaining`, and collided with the `consumed` of a consumption record, which is a per-token total. See (#why-no-cumulative).
-  - Added the OPTIONAL `reserved` member, what the resource holds for a request whose cost it cannot yet state. It is a fact about the request and is never revised.
-  - Permitted `AAuth-Budget` as a trailer, carrying `cost` for a streamed response. A trailer MUST NOT restate a member the header carried, which makes the field correct whether a recipient merges trailers or discards them, without mandating either. Reverses this document's earlier position that trailers are not used; see (#why-trailer-adds).
-  - Added Ambiguous Failures (#ambiguous-failure): an agent that never receives a response assumes the request cost what the resource had held for it, until a later `remaining` supersedes that.
-  - Removed the `balance_endpoint` and its metadata field. It was OPTIONAL and existed for the ambiguous-failure case, which a local conservative rule now covers without a round trip.
+This document has not been submitted to the datatracker. Everything below is a change to the editor's copy, made while the design was being explored against implementations in progress. The log is reset at first submission, which becomes `draft-hardt-aauth-budgets-00`; readers wanting the detail behind any entry will find it in the repository's history and pull requests.
 
-- draft-hardt-aauth-budgets-00
-  - Initial submission
+## Exploratory Changes {#exploratory-changes}
+
+- Dropped the `unit` request parameter from the usage endpoint. It existed for a resource metering one person in more than one unit, which (#non-goals) already discourages, and it bought an error condition and an arbitrary notion of a primary unit. The response reports in the unit the resource meters in and says which that is.
+- Made signing the usage response RECOMMENDED rather than REQUIRED (#signed-response). It would be the first response-side signature in the family, the figures are decision context rather than authorization, and a person server refusing an unsigned response is left with no figures rather than unattributable ones.
+- Stated that the granted budget is an allocation drawn against a ceiling the PS holds and may not share with the agent, rather than the person's whole authorization. This was the design throughout and was nowhere written down; a reviewer read the document end to end and concluded a durable grant was missing. See the Introduction and (#why-not-the-ceiling).
+- Expanded (#ps-token-endpoint) with what the PS is deciding (#ps-decision), the four inputs it reads (#ps-inputs), and its six responses (#ps-responses). Named `requirement=clarification` as the response for an escalation the PS is not ready to refuse or approve — the channel that lets a PS tell an agent it is overspending, which narrowing an amount cannot do.
+- Rewrote (#token-scope) from a disclaimer about the absent grant identifier into a statement of the mechanism, including that expiry is proportional to time and exhaustion to spend, so the supervision interval tracks whichever moves faster.
+- Added a fourth reason to (#why-no-cumulative): cumulative consumption across a series of allocations lets an agent infer the ceiling by subtraction.
+- Permitted a resource to omit `cost` entirely (#cost-omitted). The member previously had two carriers, header and trailer, and a resource that meters a streamed response on a runtime with no trailer support could use neither — making every such response non-conformant. `reserved` becomes REQUIRED in that case, and the agent recovers the exact figure from the following response's `remaining`. Removed the sentence in (#ambiguous-failure) stating that a resource emitting usage in its stream is not excused from the trailer.
+- Added the `required` member of `AAuth-Budget` (#required-member), the maximum cost a resource computed for a request it refused under `reason=insufficient-budget`. The figure was previously available only in the enclosed resource token, whose `aud` is the PS, which left the agent unable to size the shrink-and-retry that (#exhaustion) offers it. It is deliberately distinct from the resource token's `budget`, which is a re-authorization offer rather than a fact about the refused request.
+- Separated the two things a resource counts (#aggregation). The enforced cap is the presented auth token's own `budget`; the `(iss, sub, aud)` aggregate is a ledger for the records and counters and is not a second ceiling the resource may refuse against. Concurrency (#concurrency) said "aggregate atomically across all live auth tokens", which read as a cross-token cap; the atomicity requirements are now stated separately for the per-token invariant and for the ledger. Holding the cross-token total is the PS's job. Also stated why the ledger is keyed on the person: `mission_s256` is optional and (#inference) requires mission-less tokens, so a mission-keyed ledger has no bucket for them.
+- Reshaped the usage endpoint (#usage-counters). `unit` and `decimals` are stated once at the top of the response rather than repeated per entry, since `budget_units` fixes the scale for a unit and a response reports in one unit (#one-unit); `usage` is consequently a counter object rather than an array. The response echoes the scope key and carries `aud` naming the person server it was produced for. The request takes at most one scope key, and both the scope key and `unit` are now optional given the addition below.
+- Added the `jkts` query (#per-key): the PS names the signing keys it wants figures for and the resource returns what each consumed. Allocations are ceilings, so a PS supervising several agents for one person could not previously learn how the spending divided among them without waiting for consumption records. Per-key figures carry no calendar periods — a key's spend is already bounded by tokens that live an hour — and a resource SHOULD retain one for 24 hours after that key's last metered request, leaving accumulation to the PS. An unrecognized or pruned key is omitted rather than reported as zero, which differs from the treatment of scope keys for a reason stated in place.
+- Required the usage response to be signed (#signed-response), bound to the request, using the key material the PS already fetched for resource tokens. The endpoint reports what a person owes for, and consumption records were already resource-signed by virtue of riding in a resource token; this was the only PS-facing consumption channel that a resource could disown. Reconciled (#header-trust), which had said a response-side profile was out of scope, and (#counters-trust), which now states what signing does and does not fix.
+- Stated in (#token-scope) that revoking an auth token revokes its budget, pointing at the base protocol's revocation endpoint. Committed consumption is unaffected and an in-flight request completes.
+- Stated in (#aggregation) that a per-agent ceiling is a PS sizing decision rather than a resource-side key, and noted in (#why-no-unit-registry) that no registry does not mean no constraint — a monetary unit SHOULD still be an ISO 4217 code.
+- Recorded known implementations (#implementation-status): tokenpony, which implements TPX [@?TPX] over the same metering core; Regent Protocol, implementing both the PS-side claim and resource-side metering middleware; and the editor's own services. The relationship between TPX and this document is stated there as a fact about deployments rather than as a positional claim in (#inference), which keeps one sentence.
+- Noted in (#cost-omitted) that recovering `cost` by subtraction is exact only for serial requests on one token; concurrent requests on one token recover the net of everything that settled between the two responses.
+- Rewrote the garbled `unit`/`decimals` sentence in (#aauth-budget-header).
+- Added The Billing Account (#billing-account): which account a metered resource charges. Most resources need nothing beyond the `(iss, sub)` lookup the base protocol already provides. Beyond that there are two questions, asked at different frequencies and answered by different mechanisms: which person this is, answered once by an interaction the person completes at the resource (three-party) or at the AS (four-party); and which of their accounts an authorization is for, answered on every authorization by the `account` parameter and claim. No new mechanism; the document was silent on a question every metered resource meets on its first request.
+
+- Replaced the header's cumulative `consumed` member with `cost`, what **this request** cost. The agent's question per response is the price of the call it just made and whether it can afford another; cumulative spend answered neither, was derivable as `granted - remaining`, and collided with the `consumed` of a consumption record, which is a per-token total. See (#why-no-cumulative).
+- Added the OPTIONAL `reserved` member, what the resource holds for a request whose cost it cannot yet state. It is a fact about the request and is never revised.
+- Permitted `AAuth-Budget` as a trailer, carrying `cost` for a streamed response. A trailer MUST NOT restate a member the header carried, which makes the field correct whether a recipient merges trailers or discards them, without mandating either. Reverses this document's earlier position that trailers are not used; see (#why-trailer-adds).
+- Added Ambiguous Failures (#ambiguous-failure): an agent that never receives a response assumes the request cost what the resource had held for it, until a later `remaining` supersedes that.
+- Removed the `balance_endpoint` and its metadata field. It was OPTIONAL and existed for the ambiguous-failure case, which a local conservative rule now covers without a round trip.
 
 *Note: written against draft-hardt-oauth-aauth-protocol-11, which introduces the person token, replaces the `mission` object with `mission_s256`, and removes the agent identifier from auth tokens.*
 
 # Acknowledgments
 
-The author would like to thank reviewers for their feedback.
+The author thanks Abay Aubakirov, Alex Polvi, and Karl McGuinness for feedback on early drafts.
 
 {backmatter}
 
@@ -979,7 +1206,7 @@ The reasons are versioning and self-description:
 
 An earlier revision of this document carried a `consumed` member in the header, giving what had been consumed against the auth token to date, and a `balance_endpoint` where the agent could read the same figure on demand. Both are gone. The agent is told what a request cost and what is left; cumulative consumption is reported to the person server and not to the agent.
 
-Three reasons.
+Four reasons.
 
 The figure is redundant. `granted` is in the auth token the agent signed the request with, and `remaining` is in the response, so cumulative consumption is `granted - remaining` whenever nothing is reserved. Carrying a member the recipient can already compute is weight without information.
 
@@ -987,7 +1214,21 @@ The word is already spoken for. A consumption record is a `{jti, consumed}` pair
 
 Cumulative spend is the more revealing figure. It describes a pattern rather than a transaction, and `AAuth-Budget` travels unsigned past every intermediary on the path (#privacy-considerations). What the agent genuinely needs per response is the price of the call it just made and whether it can afford another. Both are per-request facts, and that is what the field now carries.
 
+There is a fourth reason that applies across tokens rather than within one. An agent holding its cumulative consumption over a series of allocations can watch the series and infer the ceiling behind it — how much the PS is willing to release, and how fast. The ceiling is deliberately not disclosed (#why-not-the-ceiling), and a per-token figure that reconstructs it by subtraction discloses it anyway.
+
 The `balance_endpoint` went with it. It was OPTIONAL, existed for one case — an ambiguous failure, where the agent cannot say whether a request was metered — and cost a resource an endpoint to implement and this document a section to specify. That case is now answered by a rule the agent applies locally (#ambiguous-failure): assume the maximum until a later `remaining` says otherwise. A conservative default that every agent applies is better than an optional round trip that some resources offer.
+
+## Why the Granted Budget Is Not the Person's Ceiling {#why-not-the-ceiling}
+
+A person server could authorize the whole of a person's intended spend at a resource in one auth token and let the agent draw it down. TPX [@?TPX] does the OAuth equivalent: the budget sits on a durable grant, the app spends against it unsupervised, and the person hears about it when the grant runs dry. This document does not, and the difference is not a missing feature.
+
+**The figure is not knowable when it would have to be fixed.** A mission is approved before the work is done, and the work is what determines the cost. A person asked at approval for a number is guessing. Too low and the agent stops mid-task and the person is interrupted anyway. Too high and the number is not a control, because the agent will never reach it and nothing is checked before it does. An allocation sized against what the work has actually cost so far does not require the guess to be right.
+
+**A ceiling the agent can read is a ceiling the agent plans against.** An agent that knows it has been authorized for a pool treats the pool as available. An agent that knows only its current allocation asks when the allocation runs out, and asking is what puts the PS back in the decision. The `justification` accompanying that request, and the consumption records arriving with it, are the person server's evidence — and neither exists if the agent never has to come back.
+
+**The check-in is the point, not a cost of it.** Re-authorization is where the PS reads what the last allocation bought (#ps-inputs), compares it against the mission, and chooses among its six responses (#ps-responses) — including the two that are not a number at all: asking the agent to account for the spend, and ending the work. A single up-front grant has no such moment. It has one, at approval, when the least is known.
+
+This is why the ceiling appears nowhere on the wire. There is no claim for it, it may not be shared with the agent, and cumulative consumption that would reveal it by subtraction is withheld as well (#why-no-cumulative). What the resource enforces is the allocation in the token in front of it. What the person authorized is a matter between the person and their PS.
 
 ## Why a Trailer Only Adds a Member {#why-trailer-adds}
 
@@ -1023,6 +1264,8 @@ More fundamentally, the enforcement point is wrong. The party that can enforce a
 RateLimit establishes an IANA registry of quota units because its units — `request`, `content-bytes`, `concurrent-requests` — are protocol-generic and every server means the same thing by them.
 
 Budget units are not generic. A unit is meaningful only against a resource's own pricing, and the parties that need to interpret it are the resource that declared it and the PS that fetched the resource's metadata. This is the same situation as scope values, which the base protocol leaves to each resource's `scope_descriptions` rather than registering. Registering `USD` would add nothing that ISO 4217 does not already provide, and registering `tokens` would suggest an interoperable meaning that does not exist.
+
+No registry does not mean no constraint. A monetary unit SHOULD be an ISO 4217 alphabetic code (#budget-object), which is what keeps a consent screen able to render "$5.00" rather than a resource-invented string the person has to interpret. What is left unregistered is the non-monetary case, where no external register exists to point at.
 
 # Prior Art {#prior-art}
 
