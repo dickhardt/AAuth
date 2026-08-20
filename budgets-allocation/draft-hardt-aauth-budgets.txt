@@ -872,12 +872,11 @@ Table of Contents
       request needed, not what the resource is asking the PS to grant
       next; see Section 13.2.
    *  *unit* (OPTIONAL): A String naming the unit. *decimals*
-      (OPTIONAL): an Integer giving its scale.  Informational, and a
-      pair: a sender MUST include both or neither.  The readers these
-      two members exist for are the ones that never parse a JWT —
-      proxies, logs, dashboards — and those are exactly the readers that
-      would misinterpret an amount carrying a unit with no scale, by a
-      factor of 10^decimals.
+      (OPTIONAL): an Integer giving its scale.  Both are informational,
+      and they are a pair: a sender MUST include both or neither.  They
+      exist for readers that never parse a JWT — proxies, logs,
+      dashboards.  Those are the same readers that would misinterpret an
+      amount carrying a unit with no scale, by a factor of 10^decimals.
 
    Recipients MUST ignore members they do not recognize.
 
@@ -1310,17 +1309,17 @@ Table of Contents
    the account claim of the resource token and copied into the auth
    token.
 
-   This applies in both access modes.  In four-party access the AS
-   copies account from the resource token, which is how it learns which
-   of the person's accounts to bill for this authorization — the binding
-   told it who, and account tells it which.  A metered resource or AS
-   that bills per account SHOULD require account where a person may hold
-   more than one, because a budget enforced against the wrong account is
-   charged to the wrong payer.
+   This applies in both access modes; how account reaches the issuer,
+   and what each party does with it, is specified there and not restated
+   here.  In four-party access it reaches the AS in the resource token,
+   so the binding tells the AS who the person is and account tells it
+   which of their accounts this authorization bills.
 
-   A resource holding one balance per person needs none of this.
-   Binding on (iss, sub) is the whole mechanism, and account never
-   appears in its tokens.
+   A metered resource should ask for account where a person may hold
+   more than one, because a budget enforced against the wrong account is
+   charged to the wrong payer.  A resource holding one balance per
+   person needs none of it: binding is the whole mechanism, and account
+   never appears in its tokens.
 
    None of this is specific to budgets, and this document defines no new
    mechanism for it.  It is stated here because a metered resource meets
@@ -1684,19 +1683,9 @@ Table of Contents
    authorization envelopes over one metering core.  Deployed this way,
    this extension is the AAuth binding of TPX.
 
-   *Neither displaces the other.* TPX is a complete deployment on its
-   own.  It requires no person server, no agent signing keys, and
-   nothing from this document: an app holding an OAuth grant reaches a
-   TPX provider over the profile TPX defines, and that path is
-   unaffected by whether the provider also serves agents.  The two
-   specifications share no wire surface — TPX carries its budget in an
-   RFC 9396 authorization_details object on a refresh-token grant, this
-   document carries one in a JWT claim and an HTTP response header — and
-   a provider implementing both has one meter and one balance underneath
-   two independent front doors.  A person driving an app and an agent
-   acting for that person are different situations, and the choice
-   between the envelopes follows from which one is happening rather than
-   from either specification succeeding the other.
+   Neither envelope displaces the other.  A person driving an app and an
+   agent acting for that person are different situations, and a provider
+   serving both has one meter under two front doors Section 22.
 
 19.  Security Considerations
 
@@ -1855,7 +1844,25 @@ Table of Contents
    assist the IETF in its decision processes in progressing drafts to
    RFCs.
 
-   There are currently no known implementations.
+   *tokenpony* (Infinite Logic PBC) meters LLM inference and implements
+   TPX [TPX], an OAuth 2.0 profile carrying the same grant for human-
+   driven apps.  It is adding this extension over the same metering
+   core, with AuthGravity as the person server and Harness News as the
+   agent, in four-party access.  TPX is a complete deployment on its
+   own: it needs no person server and nothing from this document, and
+   the two specifications share no wire surface — one meter, two
+   independent authorization envelopes.
+
+   *Regent Protocol* is implementing both sides: the budget claim in
+   auth tokens issued by its gate, with allocation and lifetime derived
+   from the owner's mandate, and resource-side metering middleware in
+   regent-httpsig performing atomic reserve-commit-release and emitting
+   AAuth-Budget.
+
+   The editor is implementing this extension in several services.
+
+   An implementation report and test vectors are expected from these
+   efforts and will be recorded here.
 
 23.  Document History
 
@@ -1911,11 +1918,13 @@ Table of Contents
          keyed on the person: mission_s256 is optional and Section 18
          requires mission-less tokens, so a mission-keyed ledger has no
          bucket for them.
-      -  Stated in Section 18 that TPX and this document do not displace
-         each other: TPX is a complete deployment needing no person
-         server, the two share no wire surface, and a provider
-         implementing both has one meter under two independent front
-         doors.
+      -  Recorded known implementations Section 22: tokenpony, which
+         implements TPX [TPX] over the same metering core; Regent
+         Protocol, implementing both the PS-side claim and resource-side
+         metering middleware; and the editor's own services.  The
+         relationship between TPX and this document is stated there as a
+         fact about deployments rather than as a positional claim in
+         Section 18, which keeps one sentence.
       -  Noted in Section 12.1 that recovering cost by subtraction is
          exact only for serial requests on one token; concurrent
          requests on one token recover the net of everything that
