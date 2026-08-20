@@ -1369,10 +1369,7 @@ svg {
             <p id="section-toc.1-1.22.1"><a href="#section-22" class="auto internal xref">22</a>. <a href="#name-implementation-status" class="internal xref">Implementation Status</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.22.2.1">
-                <p id="section-toc.1-1.22.2.1.1"><a href="#section-22.1" class="auto internal xref">22.1</a>.  <a href="#name-implementations" class="internal xref">Implementations</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.22.2.2">
-                <p id="section-toc.1-1.22.2.2.1"><a href="#section-22.2" class="auto internal xref">22.2</a>.  <a href="#name-implementations-in-progress" class="internal xref">Implementations in Progress</a></p>
+                <p id="section-toc.1-1.22.2.1.1"><a href="#section-22.1" class="auto internal xref">22.1</a>.  <a href="#name-implementations-in-progress" class="internal xref">Implementations in Progress</a></p>
 </li>
             </ul>
 </li>
@@ -2814,23 +2811,15 @@ Signature-Key: sig=jwks_uri;
       </h2>
 <p id="section-22-1"><em>Note: This section is to be removed before publishing as an RFC.</em><a href="#section-22-1" class="pilcrow">¶</a></p>
 <p id="section-22-2">This section records the status of known implementations of the protocol defined by this specification at the time of posting of this Internet-Draft, and is based on a proposal described in <span>[<a href="#RFC7942" class="cite xref">RFC7942</a>]</span>. The description of implementations in this section is intended to assist the IETF in its decision processes in progressing drafts to RFCs.<a href="#section-22-2" class="pilcrow">¶</a></p>
-<div id="implementations">
-<section id="section-22.1">
-        <h3 id="name-implementations">
-<a href="#section-22.1" class="section-number selfRef">22.1. </a><a href="#name-implementations" class="section-name selfRef">Implementations</a>
-        </h3>
-<p id="section-22.1-1">No implementation of this extension is complete.<a href="#section-22.1-1" class="pilcrow">¶</a></p>
-</section>
-</div>
 <div id="implementations-in-progress">
-<section id="section-22.2">
+<section id="section-22.1">
         <h3 id="name-implementations-in-progress">
-<a href="#section-22.2" class="section-number selfRef">22.2. </a><a href="#name-implementations-in-progress" class="section-name selfRef">Implementations in Progress</a>
+<a href="#section-22.1" class="section-number selfRef">22.1. </a><a href="#name-implementations-in-progress" class="section-name selfRef">Implementations in Progress</a>
         </h3>
-<p id="section-22.2-1"><strong>tokenpony</strong> (Infinite Logic PBC) meters LLM inference and implements TPX <span>[<a href="#TPX" class="cite xref">TPX</a>]</span>, an OAuth 2.0 profile carrying the same grant for human-driven apps. That deployment is live, and this extension is being added over the same metering core, with AuthGravity as the person server and Harness News as the agent, in four-party access. TPX is a complete deployment on its own: it needs no person server and nothing from this document, and the two specifications share no wire surface — one meter, two independent authorization envelopes.<a href="#section-22.2-1" class="pilcrow">¶</a></p>
-<p id="section-22.2-2"><strong>Regent Protocol</strong> is implementing both sides: the <code>budget</code> claim in auth tokens issued by its gate, with allocation and lifetime derived from the owner's mandate, and resource-side metering middleware in <code>regent-httpsig</code> performing atomic reserve-commit-release and emitting <code>AAuth-Budget</code>.<a href="#section-22.2-2" class="pilcrow">¶</a></p>
-<p id="section-22.2-3"><strong>The editor</strong> is implementing this extension in several services.<a href="#section-22.2-3" class="pilcrow">¶</a></p>
-<p id="section-22.2-4">Implementation reports and test vectors are expected from these efforts and will be recorded here.<a href="#section-22.2-4" class="pilcrow">¶</a></p>
+<p id="section-22.1-1"><strong>tokenpony</strong> (Infinite Logic PBC) meters LLM inference and implements TPX <span>[<a href="#TPX" class="cite xref">TPX</a>]</span>, an OAuth 2.0 profile carrying the same grant for human-driven apps. That deployment is live, and this extension is being added over the same metering core, with AuthGravity as the person server and Harness News as the agent, in four-party access. TPX is a complete deployment on its own: it needs no person server and nothing from this document, and the two specifications share no wire surface — one meter, two independent authorization envelopes.<a href="#section-22.1-1" class="pilcrow">¶</a></p>
+<p id="section-22.1-2"><strong>Regent Protocol</strong> is implementing both sides: the <code>budget</code> claim in auth tokens issued by its gate, with allocation and lifetime derived from the owner's mandate, and resource-side metering middleware in <code>regent-httpsig</code> performing atomic reserve-commit-release and emitting <code>AAuth-Budget</code>.<a href="#section-22.1-2" class="pilcrow">¶</a></p>
+<p id="section-22.1-3"><strong>The editor</strong> is implementing this extension in several services.<a href="#section-22.1-3" class="pilcrow">¶</a></p>
+<p id="section-22.1-4">Implementation reports and test vectors are expected from these efforts and will be recorded here.<a href="#section-22.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2911,7 +2900,7 @@ Signature-Key: sig=jwks_uri;
       <h2 id="name-acknowledgments">
 <a href="#section-24" class="section-number selfRef">24. </a><a href="#name-acknowledgments" class="section-name selfRef">Acknowledgments</a>
       </h2>
-<p id="section-24-1">The author thanks Alex Polvi, Karl McGuinness, and Abay Aubakirov for feedback on early drafts.<a href="#section-24-1" class="pilcrow">¶</a></p>
+<p id="section-24-1">The author thanks Abay Aubakirov, Alex Polvi, and Karl McGuinness for feedback on early drafts.<a href="#section-24-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <section id="section-25">

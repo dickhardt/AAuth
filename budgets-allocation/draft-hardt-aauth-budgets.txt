@@ -136,8 +136,7 @@ Table of Contents
      21.3.  AAuth Capability Value Registry
      21.4.  No Budget Unit Registry
    22. Implementation Status
-     22.1.  Implementations
-     22.2.  Implementations in Progress
+     22.1.  Implementations in Progress
    23. Document History
      23.1.  Exploratory Changes
    24. Acknowledgments
@@ -2015,11 +2014,7 @@ Table of Contents
    assist the IETF in its decision processes in progressing drafts to
    RFCs.
 
-22.1.  Implementations
-
-   No implementation of this extension is complete.
-
-22.2.  Implementations in Progress
+22.1.  Implementations in Progress
 
    *tokenpony* (Infinite Logic PBC) meters LLM inference and implements
    TPX [TPX], an OAuth 2.0 profile carrying the same grant for human-
@@ -2220,7 +2215,7 @@ Table of Contents
 
 24.  Acknowledgments
 
-   The author thanks Alex Polvi, Karl McGuinness, and Abay Aubakirov for
+   The author thanks Abay Aubakirov, Alex Polvi, and Karl McGuinness for
    feedback on early drafts.
 
 25.  References
