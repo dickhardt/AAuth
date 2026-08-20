@@ -1128,10 +1128,6 @@ This document deliberately establishes no registry of unit values. Units are dec
 
 This section records the status of known implementations of the protocol defined by this specification at the time of posting of this Internet-Draft, and is based on a proposal described in [@RFC7942]. The description of implementations in this section is intended to assist the IETF in its decision processes in progressing drafts to RFCs.
 
-## Implementations
-
-No implementation of this extension is complete.
-
 ## Implementations in Progress {#implementations-in-progress}
 
 **tokenpony** (Infinite Logic PBC) meters LLM inference and implements TPX [@?TPX], an OAuth 2.0 profile carrying the same grant for human-driven apps. That deployment is live, and this extension is being added over the same metering core, with AuthGravity as the person server and Harness News as the agent, in four-party access. TPX is a complete deployment on its own: it needs no person server and nothing from this document, and the two specifications share no wire surface — one meter, two independent authorization envelopes.
@@ -1179,7 +1175,7 @@ This document has not been submitted to the datatracker. Everything below is a c
 
 # Acknowledgments
 
-The author thanks Alex Polvi, Karl McGuinness, and Abay Aubakirov for feedback on early drafts.
+The author thanks Abay Aubakirov, Alex Polvi, and Karl McGuinness for feedback on early drafts.
 
 {backmatter}
 
