@@ -908,15 +908,15 @@ Signature-Key: sig=jwks_uri;
   "decimals": 6,
   "sub": "8f14e45fceea167a5a36dedd4bea2543",
   "usage": {
-    "day": 12400000,
-    "week": 31200000,
-    "month": 84300000,
-    "year": 412000000,
-    "all_time": 989200000
+    "day": 1243180,
+    "week": 3118400,
+    "month": 8432650,
+    "year": 39847220,
+    "all_time": 61438050
   },
   "jkts": {
-    "NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs": 612000000,
-    "0ZcOCORZNYy-DWpqq30BbmLzO1Yw3ZQhIgnHZQKxNVE": 377200000
+    "NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs": 38215600,
+    "0ZcOCORZNYy-DWpqq30BbmLzO1Yw3ZQhIgnHZQKxNVE": 23222450
   }
 }
 ```
@@ -997,7 +997,7 @@ A resource MAY rate-limit the endpoint, using the `RateLimit` fields ([@?I-D.iet
 
 ## Division of Labor {#usage-division}
 
-The two PS-facing channels answer different questions at different moments. The consumption records (#budget-consumed) serve the re-authorization decision: they arrive in-band, resource-signed, at no round-trip cost, exactly when the PS is deciding. The usage counters serve everything else: supervision between re-authorizations, mission totals past the 20-record window, tenant-level exposure, and the person's dashboard. A metered resource SHOULD implement both; the narrowing chain (#narrowing-chain) functions with records alone. The agent's own view is neither of these: it is the `AAuth-Budget` header (#aauth-budget-header), scoped to the token it holds and to the request it just made.
+The two PS-facing channels answer different questions at different moments. The consumption records (#budget-consumed) serve the re-authorization decision: they arrive in-band, resource-signed, at no round-trip cost, exactly when the PS is deciding. The usage counters serve everything else: supervision between re-authorizations, mission totals past the 20-record window, tenant-level exposure, how a person's spending divides among their agents (#per-key), and the person's dashboard. A metered resource SHOULD implement both; the narrowing chain (#narrowing-chain) functions with records alone. The agent's own view is neither of these: it is the `AAuth-Budget` header (#aauth-budget-header), scoped to the token it holds and to the request it just made.
 
 # Capability Negotiation {#capability}
 
@@ -1021,7 +1021,7 @@ Errors are reserved for statements that cannot be reconciled:
 |-------|--------|----------|---------|
 | `invalid_budget` | 400 | Authorization endpoint | The `budget` object is malformed, or names a `unit` the resource has not declared in `budget_units` |
 | `invalid_budget` | 400 | PS and AS auth token endpoints | The resource token's `budget.decimals` disagrees with the value declared for that unit in the resource's `budget_units` metadata, or the object is otherwise malformed |
-| `invalid_request` | 400 | Usage endpoint | Zero or several query keys, or a malformed value (#usage-authorization) |
+| `invalid_request` | 400 | Usage endpoint | More than one scope key, neither a scope key nor `jkts`, a `unit` the resource has not declared, or a malformed value (#usage-authorization) |
 
 Error responses use the error response format defined in AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]).
 
