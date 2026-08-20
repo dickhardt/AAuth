@@ -137,6 +137,7 @@ Table of Contents
      21.4.  No Budget Unit Registry
    22. Implementation Status
    23. Document History
+     23.1.  Exploratory Changes
    24. Acknowledgments
    25. References
      25.1.  Normative References
@@ -1611,12 +1612,13 @@ Table of Contents
 
 15.2.4.  The Signed Response
 
-   A resource MUST sign the usage response with an HTTP Sig, using a key
-   from the jwks_uri in its resource metadata Section 5 — the same key
-   material the PS already fetched to verify resource tokens.  The
-   signature MUST cover @status, content-type, and content-digest, and
-   MUST be bound to the request by covering the request's @authority and
-   @path with the req parameter ([RFC9421]).
+   Signing the usage response is RECOMMENDED.  A resource that signs
+   uses an HTTP Sig with a key from the jwks_uri in its resource
+   metadata Section 5 — the same key material the PS already fetched to
+   verify resource tokens.  The signature MUST cover @status, content-
+   type, and content-digest, and MUST be bound to the request by
+   covering the request's @authority and @path with the req parameter
+   ([RFC9421]).
 
    HTTP/1.1 200 OK
    Content-Type: application/json
@@ -1635,10 +1637,20 @@ Table of Contents
    honest — the resource is the counterparty as well as the signer — and
    Section 19.4 covers what remains.
 
-   This also closes an asymmetry.  Consumption records Section 7.1 are
+   It also closes an asymmetry.  Consumption records Section 7.1 are
    already resource-signed, because they ride inside a resource token.
-   Until now the usage endpoint was the only PS-facing consumption
-   channel that was not.
+   The usage endpoint is the only PS-facing consumption channel that is
+   not.
+
+   It is RECOMMENDED rather than REQUIRED because the figures are
+   decision context rather than authorization, and because this would be
+   the first response-side signature in the AAuth family — the signature
+   profile is request-side throughout Section 19.1.  A person server
+   receiving an unsigned response is not in a position to do anything
+   but read it: refusing it leaves the PS with no figures rather than
+   unattributable ones, which is the worse of the two.  What signing
+   changes is whether the resource can later disown what it said, and
+   that is worth having wherever both ends will implement it.
 
    aud is what keeps the signed response non-transferable.  Without it a
    resource-signed statement of consumption could be handed to a third
@@ -1848,15 +1860,15 @@ Table of Contents
 
    An implementation that needs the balance to be trustworthy rather
    than merely harmless can cover AAuth-Budget with an HTTP Message
-   Signature on the response ([RFC9421]), as the usage endpoint requires
-   for its own responses Section 15.2.4.  It is not required here, and
-   the difference is what each response is for.  A usage response is a
-   statement of what a person owes for, read by a party that may later
-   have to hold the resource to it.  A balance on a request response is
-   a pacing signal the agent acts on immediately and re-reads on the
-   next call, and signing every metered response to protect a figure
-   that is superseded seconds later buys little for what it costs at
-   inference volumes.
+   Signature on the response ([RFC9421]), as the usage endpoint
+   recommends for its own responses Section 15.2.4.  It is not required
+   here, and the difference is what each response is for.  A usage
+   response is a statement of what a person owes for, read by a party
+   that may later have to hold the resource to it.  A balance on a
+   request response is a pacing signal the agent acts on immediately and
+   re-reads on the next call, and signing every metered response to
+   protect a figure that is superseded seconds later buys little for
+   what it costs at inference volumes.
 
 19.2.  Budget Is Not a Substitute for Scope
 
@@ -1878,13 +1890,14 @@ Table of Contents
 19.4.  Consumption Reports as Attack Surface
 
    budget_consumed records are resource-signed and usage counters are
-   served from the resource's authenticated endpoint; both are the
-   resource's own account of what it metered.  A resource that inflates
-   them can induce a PS to authorize more than the person intended, or
-   to refuse further authorization.  A PS SHOULD reconcile them against
-   the person's billing relationship with the resource where one exists,
-   and SHOULD NOT treat them as authoritative for anything other than
-   its own next decision.
+   served from the resource's authenticated endpoint, signed where the
+   resource follows Section 15.2.4; both are the resource's own account
+   of what it metered.  A resource that inflates them can induce a PS to
+   authorize more than the person intended, or to refuse further
+   authorization.  A PS SHOULD reconcile them against the person's
+   billing relationship with the resource where one exists, and SHOULD
+   NOT treat them as authoritative for anything other than its own next
+   decision.
 
    Signing the usage response Section 15.2.4 does not change this.  It
    makes the resource committed to a figure rather than able to disown
@@ -2029,146 +2042,168 @@ Table of Contents
 
    _Note: This section is to be removed before publishing as an RFC._
 
-   *  draft-hardt-aauth-budgets-02
+   This document has not been submitted to the datatracker.  Everything
+   below is a change to the editor's copy, made while the design was
+   being explored against implementations in progress.  The log is reset
+   at first submission, which becomes draft-hardt-aauth-budgets-00;
+   readers wanting the detail behind any entry will find it in the
+   repository's history and pull requests.
 
-      -  Stated that the granted budget is an allocation drawn against a
-         ceiling the PS holds and may not share with the agent, rather
-         than the person's whole authorization.  This was the design
-         throughout and was nowhere written down; a reviewer read the
-         document end to end and concluded a durable grant was missing.
-         See the Introduction and Appendix A.5.
-      -  Expanded Section 8 with what the PS is deciding Section 8.1,
-         the four inputs it reads Section 8.2, and its six responses
-         Section 8.3.  Named requirement=clarification as the response
-         for an escalation the PS is not ready to refuse or approve —
-         the channel that lets a PS tell an agent it is overspending,
-         which narrowing an amount cannot do.
-      -  Rewrote Section 14.3 from a disclaimer about the absent grant
-         identifier into a statement of the mechanism, including that
-         expiry is proportional to time and exhaustion to spend, so the
-         supervision interval tracks whichever moves faster.
-      -  Added a fourth reason to Appendix A.4: cumulative consumption
-         across a series of allocations lets an agent infer the ceiling
-         by subtraction.
-      -  Permitted a resource to omit cost entirely Section 12.1.  The
-         member previously had two carriers, header and trailer, and a
-         resource that meters a streamed response on a runtime with no
-         trailer support could use neither — making every such response
-         non-conformant. reserved becomes REQUIRED in that case, and the
-         agent recovers the exact figure from the following response's
-         remaining.  Removed the sentence in Section 12.3 stating that a
-         resource emitting usage in its stream is not excused from the
-         trailer.
-      -  Added the required member of AAuth-Budget Section 13.2, the
-         maximum cost a resource computed for a request it refused under
-         reason=insufficient-budget.  The figure was previously
-         available only in the enclosed resource token, whose aud is the
-         PS, which left the agent unable to size the shrink-and-retry
-         that Section 13 offers it.  It is deliberately distinct from
-         the resource token's budget, which is a re-authorization offer
-         rather than a fact about the refused request.
-      -  Separated the two things a resource counts Section 14.4.  The
-         enforced cap is the presented auth token's own budget; the
-         (iss, sub, aud) aggregate is a ledger for the records and
-         counters and is not a second ceiling the resource may refuse
-         against.  Concurrency Section 14.6 said "aggregate atomically
-         across all live auth tokens", which read as a cross-token cap;
-         the atomicity requirements are now stated separately for the
-         per-token invariant and for the ledger.  Holding the cross-
-         token total is the PS's job.  Also stated why the ledger is
-         keyed on the person: mission_s256 is optional and Section 18
-         requires mission-less tokens, so a mission-keyed ledger has no
-         bucket for them.
-      -  Reshaped the usage endpoint Section 15. unit and decimals are
-         stated once at the top of the response rather than repeated per
-         entry, since budget_units fixes the scale for a unit and a
-         response reports in one unit Section 15.2.3; usage is
-         consequently a counter object rather than an array.  The
-         response echoes the scope key and carries aud naming the person
-         server it was produced for.  The request takes at most one
-         scope key, and both the scope key and unit are now optional
-         given the addition below.
-      -  Added the jkts query Section 15.2.2: the PS names the signing
-         keys it wants figures for and the resource returns what each
-         consumed.  Allocations are ceilings, so a PS supervising
-         several agents for one person could not previously learn how
-         the spending divided among them without waiting for consumption
-         records.  Per-key figures carry no calendar periods — a key's
-         spend is already bounded by tokens that live an hour — and a
-         resource SHOULD retain one for 24 hours after that key's last
-         metered request, leaving accumulation to the PS.  An
-         unrecognized or pruned key is omitted rather than reported as
-         zero, which differs from the treatment of scope keys for a
-         reason stated in place.
-      -  Required the usage response to be signed Section 15.2.4, bound
-         to the request, using the key material the PS already fetched
-         for resource tokens.  The endpoint reports what a person owes
-         for, and consumption records were already resource-signed by
-         virtue of riding in a resource token; this was the only PS-
-         facing consumption channel that a resource could disown.
-         Reconciled Section 19.1, which had said a response-side profile
-         was out of scope, and Section 19.4, which now states what
-         signing does and does not fix.
-      -  Stated in Section 14.3 that revoking an auth token revokes its
-         budget, pointing at the base protocol's revocation endpoint.
-         Committed consumption is unaffected and an in-flight request
-         completes.
-      -  Stated in Section 14.4 that a per-agent ceiling is a PS sizing
-         decision rather than a resource-side key, and noted in
-         Appendix A.9 that no registry does not mean no constraint — a
-         monetary unit SHOULD still be an ISO 4217 code.
-      -  Recorded known implementations Section 22: tokenpony, which
-         implements TPX [TPX] over the same metering core; Regent
-         Protocol, implementing both the PS-side claim and resource-side
-         metering middleware; and the editor's own services.  The
-         relationship between TPX and this document is stated there as a
-         fact about deployments rather than as a positional claim in
-         Section 18, which keeps one sentence.
-      -  Noted in Section 12.1 that recovering cost by subtraction is
-         exact only for serial requests on one token; concurrent
-         requests on one token recover the net of everything that
-         settled between the two responses.
-      -  Rewrote the garbled unit/decimals sentence in Section 11.
-      -  Added The Billing Account Section 14.5: which account a metered
-         resource charges.  Most resources need nothing beyond the (iss,
-         sub) lookup the base protocol already provides.  Beyond that
-         there are two questions, asked at different frequencies and
-         answered by different mechanisms: which person this is,
-         answered once by an interaction the person completes at the
-         resource (three-party) or at the AS (four-party); and which of
-         their accounts an authorization is for, answered on every
-         authorization by the account parameter and claim.  No new
-         mechanism; the document was silent on a question every metered
-         resource meets on its first request.
+23.1.  Exploratory Changes
 
-   *  draft-hardt-aauth-budgets-01
+   *  Made signing the usage response RECOMMENDED rather than REQUIRED
+      Section 15.2.4.  It would be the first response-side signature in
+      the family, the figures are decision context rather than
+      authorization, and a person server refusing an unsigned response
+      is left with no figures rather than unattributable ones.
 
-      -  Replaced the header's cumulative consumed member with cost,
-         what *this request* cost.  The agent's question per response is
-         the price of the call it just made and whether it can afford
-         another; cumulative spend answered neither, was derivable as
-         granted - remaining, and collided with the consumed of a
-         consumption record, which is a per-token total.  See
-         Appendix A.4.
-      -  Added the OPTIONAL reserved member, what the resource holds for
-         a request whose cost it cannot yet state.  It is a fact about
-         the request and is never revised.
-      -  Permitted AAuth-Budget as a trailer, carrying cost for a
-         streamed response.  A trailer MUST NOT restate a member the
-         header carried, which makes the field correct whether a
-         recipient merges trailers or discards them, without mandating
-         either.  Reverses this document's earlier position that
-         trailers are not used; see Appendix A.6.
-      -  Added Ambiguous Failures Section 12.3: an agent that never
-         receives a response assumes the request cost what the resource
-         had held for it, until a later remaining supersedes that.
-      -  Removed the balance_endpoint and its metadata field.  It was
-         OPTIONAL and existed for the ambiguous-failure case, which a
-         local conservative rule now covers without a round trip.
+   *  Stated that the granted budget is an allocation drawn against a
+      ceiling the PS holds and may not share with the agent, rather than
+      the person's whole authorization.  This was the design throughout
+      and was nowhere written down; a reviewer read the document end to
+      end and concluded a durable grant was missing.  See the
+      Introduction and Appendix A.5.
 
-   *  draft-hardt-aauth-budgets-00
+   *  Expanded Section 8 with what the PS is deciding Section 8.1, the
+      four inputs it reads Section 8.2, and its six responses
+      Section 8.3.  Named requirement=clarification as the response for
+      an escalation the PS is not ready to refuse or approve — the
+      channel that lets a PS tell an agent it is overspending, which
+      narrowing an amount cannot do.
 
-      -  Initial submission
+   *  Rewrote Section 14.3 from a disclaimer about the absent grant
+      identifier into a statement of the mechanism, including that
+      expiry is proportional to time and exhaustion to spend, so the
+      supervision interval tracks whichever moves faster.
+
+   *  Added a fourth reason to Appendix A.4: cumulative consumption
+      across a series of allocations lets an agent infer the ceiling by
+      subtraction.
+
+   *  Permitted a resource to omit cost entirely Section 12.1.  The
+      member previously had two carriers, header and trailer, and a
+      resource that meters a streamed response on a runtime with no
+      trailer support could use neither — making every such response
+      non-conformant. reserved becomes REQUIRED in that case, and the
+      agent recovers the exact figure from the following response's
+      remaining.  Removed the sentence in Section 12.3 stating that a
+      resource emitting usage in its stream is not excused from the
+      trailer.
+
+   *  Added the required member of AAuth-Budget Section 13.2, the
+      maximum cost a resource computed for a request it refused under
+      reason=insufficient-budget.  The figure was previously available
+      only in the enclosed resource token, whose aud is the PS, which
+      left the agent unable to size the shrink-and-retry that Section 13
+      offers it.  It is deliberately distinct from the resource token's
+      budget, which is a re-authorization offer rather than a fact about
+      the refused request.
+
+   *  Separated the two things a resource counts Section 14.4.  The
+      enforced cap is the presented auth token's own budget; the (iss,
+      sub, aud) aggregate is a ledger for the records and counters and
+      is not a second ceiling the resource may refuse against.
+      Concurrency Section 14.6 said "aggregate atomically across all
+      live auth tokens", which read as a cross-token cap; the atomicity
+      requirements are now stated separately for the per-token invariant
+      and for the ledger.  Holding the cross-token total is the PS's
+      job.  Also stated why the ledger is keyed on the person:
+      mission_s256 is optional and Section 18 requires mission-less
+      tokens, so a mission-keyed ledger has no bucket for them.
+
+   *  Reshaped the usage endpoint Section 15. unit and decimals are
+      stated once at the top of the response rather than repeated per
+      entry, since budget_units fixes the scale for a unit and a
+      response reports in one unit Section 15.2.3; usage is consequently
+      a counter object rather than an array.  The response echoes the
+      scope key and carries aud naming the person server it was produced
+      for.  The request takes at most one scope key, and both the scope
+      key and unit are now optional given the addition below.
+
+   *  Added the jkts query Section 15.2.2: the PS names the signing keys
+      it wants figures for and the resource returns what each consumed.
+      Allocations are ceilings, so a PS supervising several agents for
+      one person could not previously learn how the spending divided
+      among them without waiting for consumption records.  Per-key
+      figures carry no calendar periods — a key's spend is already
+      bounded by tokens that live an hour — and a resource SHOULD retain
+      one for 24 hours after that key's last metered request, leaving
+      accumulation to the PS.  An unrecognized or pruned key is omitted
+      rather than reported as zero, which differs from the treatment of
+      scope keys for a reason stated in place.
+
+   *  Required the usage response to be signed Section 15.2.4, bound to
+      the request, using the key material the PS already fetched for
+      resource tokens.  The endpoint reports what a person owes for, and
+      consumption records were already resource-signed by virtue of
+      riding in a resource token; this was the only PS-facing
+      consumption channel that a resource could disown.  Reconciled
+      Section 19.1, which had said a response-side profile was out of
+      scope, and Section 19.4, which now states what signing does and
+      does not fix.
+
+   *  Stated in Section 14.3 that revoking an auth token revokes its
+      budget, pointing at the base protocol's revocation endpoint.
+      Committed consumption is unaffected and an in-flight request
+      completes.
+
+   *  Stated in Section 14.4 that a per-agent ceiling is a PS sizing
+      decision rather than a resource-side key, and noted in
+      Appendix A.9 that no registry does not mean no constraint — a
+      monetary unit SHOULD still be an ISO 4217 code.
+
+   *  Recorded known implementations Section 22: tokenpony, which
+      implements TPX [TPX] over the same metering core; Regent Protocol,
+      implementing both the PS-side claim and resource-side metering
+      middleware; and the editor's own services.  The relationship
+      between TPX and this document is stated there as a fact about
+      deployments rather than as a positional claim in Section 18, which
+      keeps one sentence.
+
+   *  Noted in Section 12.1 that recovering cost by subtraction is exact
+      only for serial requests on one token; concurrent requests on one
+      token recover the net of everything that settled between the two
+      responses.
+
+   *  Rewrote the garbled unit/decimals sentence in Section 11.
+
+   *  Added The Billing Account Section 14.5: which account a metered
+      resource charges.  Most resources need nothing beyond the (iss,
+      sub) lookup the base protocol already provides.  Beyond that there
+      are two questions, asked at different frequencies and answered by
+      different mechanisms: which person this is, answered once by an
+      interaction the person completes at the resource (three-party) or
+      at the AS (four-party); and which of their accounts an
+      authorization is for, answered on every authorization by the
+      account parameter and claim.  No new mechanism; the document was
+      silent on a question every metered resource meets on its first
+      request.
+
+   *  Replaced the header's cumulative consumed member with cost, what
+      *this request* cost.  The agent's question per response is the
+      price of the call it just made and whether it can afford another;
+      cumulative spend answered neither, was derivable as granted -
+      remaining, and collided with the consumed of a consumption record,
+      which is a per-token total.  See Appendix A.4.
+
+   *  Added the OPTIONAL reserved member, what the resource holds for a
+      request whose cost it cannot yet state.  It is a fact about the
+      request and is never revised.
+
+   *  Permitted AAuth-Budget as a trailer, carrying cost for a streamed
+      response.  A trailer MUST NOT restate a member the header carried,
+      which makes the field correct whether a recipient merges trailers
+      or discards them, without mandating either.  Reverses this
+      document's earlier position that trailers are not used; see
+      Appendix A.6.
+
+   *  Added Ambiguous Failures Section 12.3: an agent that never
+      receives a response assumes the request cost what the resource had
+      held for it, until a later remaining supersedes that.
+
+   *  Removed the balance_endpoint and its metadata field.  It was
+      OPTIONAL and existed for the ambiguous-failure case, which a local
+      conservative rule now covers without a round trip.
 
    _Note: written against draft-hardt-oauth-aauth-protocol-11, which
    introduces the person token, replaces the mission object with
