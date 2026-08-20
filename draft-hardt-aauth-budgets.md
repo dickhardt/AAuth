@@ -614,7 +614,7 @@ Members:
 - **`cost`** (OPTIONAL): A non-negative Integer, in the granted scale, giving what **this request** cost. A resource sends it in the header when it knows the figure as it writes the response, in a trailer when it learns the figure after (#streaming), and not at all when it will not learn it in time to do either. The third case is bounded by (#cost-omitted).
 - **`reserved`** (OPTIONAL): A non-negative Integer, in the granted scale, giving what the resource has held against the grant for this request and not yet committed (#overshoot). Meaningful only where `cost` is not yet known, so in practice it accompanies a streamed response. It is a statement about this request, not a running total, and is never revised. REQUIRED where `cost` is omitted (#cost-omitted).
 - **`required`** (OPTIONAL): A non-negative Integer, in the granted scale, giving the maximum cost the resource computed for a request it refused under `reason=insufficient-budget` (#reason-parameter). Sent only with that refusal, where it is RECOMMENDED. It is what the request needed, not what the resource is asking the PS to grant next; see (#required-member).
-- **`unit`** (OPTIONAL): A String naming the unit. **`decimals`** (OPTIONAL): an Integer giving its scale. Informational, and a pair: a sender MUST include both or neither. The readers these two members exist for are the ones that never parse a JWT — proxies, logs, dashboards — and those are exactly the readers that would misinterpret an amount carrying a unit with no scale, by a factor of 10^decimals.
+- **`unit`** (OPTIONAL): A String naming the unit. **`decimals`** (OPTIONAL): an Integer giving its scale. Both are informational, and they are a pair: a sender MUST include both or neither. They exist for readers that never parse a JWT — proxies, logs, dashboards. Those are the same readers that would misinterpret an amount carrying a unit with no scale, by a factor of 10^decimals.
 
 Recipients MUST ignore members they do not recognize.
 
@@ -814,9 +814,9 @@ Because `sub` is directed per person server, a person reaching the same resource
 
 **Which of their accounts?** Binding establishes who the person is. It does not say which of several accounts an authorization is for, and a person who holds more than one at the resource has to say. Account Binding (([@!I-D.hardt-oauth-aauth-protocol]), Account Binding) carries the answer: an OPTIONAL `account` parameter on the authorization endpoint request, named from the resource's own namespace, echoed as the `account` claim of the resource token and copied into the auth token.
 
-This applies in both access modes. In four-party access the AS copies `account` from the resource token, which is how it learns which of the person's accounts to bill for this authorization — the binding told it who, and `account` tells it which. A metered resource or AS that bills per account SHOULD require `account` where a person may hold more than one, because a budget enforced against the wrong account is charged to the wrong payer.
+This applies in both access modes; how `account` reaches the issuer, and what each party does with it, is specified there and not restated here. In four-party access it reaches the AS in the resource token, so the binding tells the AS who the person is and `account` tells it which of their accounts this authorization bills.
 
-A resource holding one balance per person needs none of this. Binding on `(iss, sub)` is the whole mechanism, and `account` never appears in its tokens.
+A metered resource should ask for `account` where a person may hold more than one, because a budget enforced against the wrong account is charged to the wrong payer. A resource holding one balance per person needs none of it: binding is the whole mechanism, and `account` never appears in its tokens.
 
 None of this is specific to budgets, and this document defines no new mechanism for it. It is stated here because a metered resource meets these cases on its first request and the rest of this document is silent on them.
 
@@ -986,7 +986,7 @@ Metered inference is the initiating use case for this extension and has a proper
 
 **A TPX provider adds agent support without touching its meter.** A TPX [@?TPX] provider already prices per token, reports cost in each response's `usage`, and enforces a person-granted budget as a hard cap — for human-driven apps holding OAuth grants. Serving agents means accepting AAuth auth tokens carrying `budget` beside those grants: two authorization envelopes over one metering core. Deployed this way, this extension is the AAuth binding of TPX.
 
-**Neither displaces the other.** TPX is a complete deployment on its own. It requires no person server, no agent signing keys, and nothing from this document: an app holding an OAuth grant reaches a TPX provider over the profile TPX defines, and that path is unaffected by whether the provider also serves agents. The two specifications share no wire surface — TPX carries its budget in an RFC 9396 `authorization_details` object on a refresh-token grant, this document carries one in a JWT claim and an HTTP response header — and a provider implementing both has one meter and one balance underneath two independent front doors. A person driving an app and an agent acting for that person are different situations, and the choice between the envelopes follows from which one is happening rather than from either specification succeeding the other.
+Neither envelope displaces the other. A person driving an app and an agent acting for that person are different situations, and a provider serving both has one meter under two front doors (#implementation-status).
 
 # Security Considerations {#security-considerations}
 
@@ -1054,13 +1054,19 @@ This document requests registration of the following value in the AAuth Capabili
 
 This document deliberately establishes no registry of unit values. Units are declared by each resource in its `budget_units` metadata, exactly as scope values are declared in `scope_descriptions`. See (#why-no-unit-registry).
 
-# Implementation Status
+# Implementation Status {#implementation-status}
 
 *Note: This section is to be removed before publishing as an RFC.*
 
 This section records the status of known implementations of the protocol defined by this specification at the time of posting of this Internet-Draft, and is based on a proposal described in [@RFC7942]. The description of implementations in this section is intended to assist the IETF in its decision processes in progressing drafts to RFCs.
 
-There are currently no known implementations.
+**tokenpony** (Infinite Logic PBC) meters LLM inference and implements TPX [@?TPX], an OAuth 2.0 profile carrying the same grant for human-driven apps. It is adding this extension over the same metering core, with AuthGravity as the person server and Harness News as the agent, in four-party access. TPX is a complete deployment on its own: it needs no person server and nothing from this document, and the two specifications share no wire surface — one meter, two independent authorization envelopes.
+
+**Regent Protocol** is implementing both sides: the `budget` claim in auth tokens issued by its gate, with allocation and lifetime derived from the owner's mandate, and resource-side metering middleware in `regent-httpsig` performing atomic reserve-commit-release and emitting `AAuth-Budget`.
+
+The editor is implementing this extension in several services.
+
+An implementation report and test vectors are expected from these efforts and will be recorded here.
 
 # Document History
 
@@ -1074,7 +1080,7 @@ There are currently no known implementations.
   - Permitted a resource to omit `cost` entirely (#cost-omitted). The member previously had two carriers, header and trailer, and a resource that meters a streamed response on a runtime with no trailer support could use neither — making every such response non-conformant. `reserved` becomes REQUIRED in that case, and the agent recovers the exact figure from the following response's `remaining`. Removed the sentence in (#ambiguous-failure) stating that a resource emitting usage in its stream is not excused from the trailer.
   - Added the `required` member of `AAuth-Budget` (#required-member), the maximum cost a resource computed for a request it refused under `reason=insufficient-budget`. The figure was previously available only in the enclosed resource token, whose `aud` is the PS, which left the agent unable to size the shrink-and-retry that (#exhaustion) offers it. It is deliberately distinct from the resource token's `budget`, which is a re-authorization offer rather than a fact about the refused request.
   - Separated the two things a resource counts (#aggregation). The enforced cap is the presented auth token's own `budget`; the `(iss, sub, aud)` aggregate is a ledger for the records and counters and is not a second ceiling the resource may refuse against. Concurrency (#concurrency) said "aggregate atomically across all live auth tokens", which read as a cross-token cap; the atomicity requirements are now stated separately for the per-token invariant and for the ledger. Holding the cross-token total is the PS's job. Also stated why the ledger is keyed on the person: `mission_s256` is optional and (#inference) requires mission-less tokens, so a mission-keyed ledger has no bucket for them.
-  - Stated in (#inference) that TPX and this document do not displace each other: TPX is a complete deployment needing no person server, the two share no wire surface, and a provider implementing both has one meter under two independent front doors.
+  - Recorded known implementations (#implementation-status): tokenpony, which implements TPX [@?TPX] over the same metering core; Regent Protocol, implementing both the PS-side claim and resource-side metering middleware; and the editor's own services. The relationship between TPX and this document is stated there as a fact about deployments rather than as a positional claim in (#inference), which keeps one sentence.
   - Noted in (#cost-omitted) that recovering `cost` by subtraction is exact only for serial requests on one token; concurrent requests on one token recover the net of everything that settled between the two responses.
   - Rewrote the garbled `unit`/`decimals` sentence in (#aauth-budget-header).
   - Added The Billing Account (#billing-account): which account a metered resource charges. Most resources need nothing beyond the `(iss, sub)` lookup the base protocol already provides. Beyond that there are two questions, asked at different frequencies and answered by different mechanisms: which person this is, answered once by an interaction the person completes at the resource (three-party) or at the AS (four-party); and which of their accounts an authorization is for, answered on every authorization by the `account` parameter and claim. No new mechanism; the document was silent on a question every metered resource meets on its first request.
