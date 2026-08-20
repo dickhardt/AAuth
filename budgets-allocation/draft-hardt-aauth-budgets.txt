@@ -1465,18 +1465,15 @@ Table of Contents
       its people.
    *  *mission_s256*: A mission identifier.  Scope: one mission.
 
-   and two OPTIONAL members:
+   and one OPTIONAL member:
 
    *  *jkts*: An array of JWK Thumbprints ([RFC7638]), each naming a
       signing key the resource has seen present an auth token.  Asks for
       what each of those keys consumed Section 15.2.2.
-   *  *unit*: The unit to report in.  Omitted means the resource's sole
-      unit, or its primary one where it meters in several
-      Section 15.2.3.
 
-   A request MUST carry a scope key, jkts, or both.  A request carrying
-   more than one scope key, or none of the three members, is an error
-   Section 15.3.
+   A request MUST carry a scope key or jkts, and MAY carry both.  At
+   most one scope key may appear.  A request with more than one scope
+   key, or with neither a scope key nor jkts, is an error Section 15.3.
 
    POST /usage HTTP/1.1
    Host: inference.example
@@ -1599,16 +1596,17 @@ Table of Contents
 15.2.3.  One Unit Per Response
 
    Every figure in a response is in one unit, named once at the top
-   level.  A resource declaring several units in budget_units Section 5
-   and metering a person in more than one answers for the unit named in
-   the request, or for its primary unit when the request named none.  A
-   PS wanting the other asks again.
+   level, and it is the unit the resource meters in.  There is no
+   request parameter selecting it.
 
    The alternative is a per-unit array at every level, which costs every
-   response the shape needed by the deployments that meter in one unit —
+   response the shape needed by deployments that meter in one unit —
    which is nearly all of them, since a resource that meters several
    quantities collapses them to one billing unit before denominating a
-   budget Section 1.1.
+   budget Section 1.1.  A resource may still declare several units in
+   budget_units Section 5, because that is what an agent may ask a
+   budget to be denominated in; what this endpoint reports is what the
+   resource actually metered, and the response says which unit that was.
 
 15.2.4.  The Signed Response
 
@@ -1681,9 +1679,8 @@ Table of Contents
 
    invalid_request, using the error response format of
    ([I-D.hardt-oauth-aauth-protocol]), is returned for a body carrying
-   more than one scope key, carrying neither a scope key nor jkts,
-   naming a unit the resource has not declared, or carrying a malformed
-   value.
+   more than one scope key, carrying neither a scope key nor jkts, or
+   carrying a malformed value.
 
    A resource MAY rate-limit the endpoint, using the RateLimit fields
    ([I-D.ietf-httpapi-ratelimit-headers]) as on any endpoint.  A PS
@@ -1754,9 +1751,7 @@ Table of Contents
    +-----------------+--------+---------------+------------------------+
    | invalid_request | 400    | Usage         | More than one scope    |
    |                 |        | endpoint      | key, neither a scope   |
-   |                 |        |               | key nor jkts, a unit   |
-   |                 |        |               | the resource has not   |
-   |                 |        |               | declared, or a         |
+   |                 |        |               | key nor jkts, or a     |
    |                 |        |               | malformed value        |
    |                 |        |               | Section 15.3           |
    +-----------------+--------+---------------+------------------------+
@@ -2050,6 +2045,12 @@ Table of Contents
    repository's history and pull requests.
 
 23.1.  Exploratory Changes
+
+   *  Dropped the unit request parameter from the usage endpoint.  It
+      existed for a resource metering one person in more than one unit,
+      which Section 1.1 already discourages, and it bought an error
+      condition and an arbitrary notion of a primary unit.  The response
+      reports in the unit the resource meters in and says which that is.
 
    *  Made signing the usage response RECOMMENDED rather than REQUIRED
       Section 15.2.4.  It would be the first response-side signature in
