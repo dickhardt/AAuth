@@ -1050,7 +1050,7 @@ svg {
 </tr></thead>
 <tfoot><tr>
 <td class="left">Hardt</td>
-<td class="center">Expires 20 February 2027</td>
+<td class="center">Expires 21 February 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1063,12 +1063,12 @@ svg {
 <dd class="internet-draft">draft-hardt-aauth-budgets-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-08-19" class="published">19 August 2026</time>
+<time datetime="2026-08-20" class="published">20 August 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Standards Track</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-02-20">20 February 2027</time></dd>
+<dd class="expires"><time datetime="2027-02-21">21 February 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1109,7 +1109,7 @@ svg {
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 20 February 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 21 February 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -2046,7 +2046,7 @@ Signature-Key: sig=jwks_uri;
           <strong><code>required</code></strong> (OPTIONAL): A non-negative Integer, in the granted scale, giving the maximum cost the resource computed for a request it refused under <code>reason=insufficient-budget</code> <a href="#reason-parameter" class="auto internal xref">Section 13.1</a>. Sent only with that refusal, where it is RECOMMENDED. It is what the request needed, not what the resource is asking the PS to grant next; see <a href="#required-member" class="auto internal xref">Section 13.2</a>.<a href="#section-11-4.4" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-11-4.5">
-          <strong><code>unit</code></strong> (OPTIONAL): A String naming the unit. <strong><code>decimals</code></strong> (OPTIONAL): an Integer giving its scale. Informational, and a pair: a sender MUST include both or neither, because an amount carrying a unit but no scale misreads by a factor of 10^decimals to exactly the readers self-description serves.<a href="#section-11-4.5" class="pilcrow">¶</a>
+          <strong><code>unit</code></strong> (OPTIONAL): A String naming the unit. <strong><code>decimals</code></strong> (OPTIONAL): an Integer giving its scale. Informational, and a pair: a sender MUST include both or neither. The readers these two members exist for are the ones that never parse a JWT — proxies, logs, dashboards — and those are exactly the readers that would misinterpret an amount carrying a unit with no scale, by a factor of 10^decimals.<a href="#section-11-4.5" class="pilcrow">¶</a>
 </li>
       </ul>
 <p id="section-11-5">Recipients MUST ignore members they do not recognize.<a href="#section-11-5" class="pilcrow">¶</a></p>
@@ -2113,8 +2113,9 @@ AAuth-Budget: cost=221200
 <p id="section-12.1-2">Such a resource omits <code>cost</code> and MUST send <code>reserved</code> in the header. The agent recovers the figure from the following response:<a href="#section-12.1-2" class="pilcrow">¶</a></p>
 <p id="section-12.1-3"><code>cost</code> = previous <code>remaining</code> + <code>reserved</code> - current <code>remaining</code><a href="#section-12.1-3" class="pilcrow">¶</a></p>
 <p id="section-12.1-4">The subtraction works because <code>remaining</code> is already net of reservations <a href="#aauth-budget-header" class="auto internal xref">Section 11</a>: the earlier figure is net of the hold, the later one reflects the commit and the release of the unspent remainder. <code>reserved</code> is the term that connects them, which is why it stops being optional here.<a href="#section-12.1-4" class="pilcrow">¶</a></p>
-<p id="section-12.1-5">Until that next response arrives the agent applies <a href="#ambiguous-failure" class="auto internal xref">Section 12.3</a> and treats the request as having cost the full <code>reserved</code> amount. That is the conservative direction, and it is the same rule the agent already applies to a response it never received.<a href="#section-12.1-5" class="pilcrow">¶</a></p>
-<p id="section-12.1-6">A resource MUST NOT omit both <code>cost</code> and <code>reserved</code>. That combination reports that a metered request happened and gives the agent no figure for it, neither exact nor conservative.<a href="#section-12.1-6" class="pilcrow">¶</a></p>
+<p id="section-12.1-5">It recovers one request's cost only where requests on that token are serial. An agent with several requests in flight on one token recovers the net of everything that settled between the two responses, not the cost of any single one, because every concurrent request moves the same <code>remaining</code>. An agent that wants per-request figures from a resource that omits <code>cost</code> serializes its requests on that token; an agent that only needs the balance does not have to.<a href="#section-12.1-5" class="pilcrow">¶</a></p>
+<p id="section-12.1-6">Until that next response arrives the agent applies <a href="#ambiguous-failure" class="auto internal xref">Section 12.3</a> and treats the request as having cost the full <code>reserved</code> amount. That is the conservative direction, and it is the same rule the agent already applies to a response it never received.<a href="#section-12.1-6" class="pilcrow">¶</a></p>
+<p id="section-12.1-7">A resource MUST NOT omit both <code>cost</code> and <code>reserved</code>. That combination reports that a metered request happened and gives the agent no figure for it, neither exact nor conservative.<a href="#section-12.1-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="trailer-rules">
@@ -2275,8 +2276,9 @@ AAuth-Budget: remaining=150000; required=400000;
 <p id="section-14.5-6">In four-party access the AS asks, returning <code>202</code> with <code>requirement=interaction</code> to the person server's token request ((<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>), Access Server Federation). This is the same one-time binding the AS already performs to establish trust with a person server, answering a second question at the moment it is already asking the person who they are.<a href="#section-14.5-6" class="pilcrow">¶</a></p>
 <p id="section-14.5-7">Because <code>sub</code> is directed per person server, a person reaching the same resource through two person servers presents two identifiers. The binding interaction is what attaches both to one account, and a resource that skips it sees two people and bills two ledgers.<a href="#section-14.5-7" class="pilcrow">¶</a></p>
 <p id="section-14.5-8"><strong>Which of their accounts?</strong> Binding establishes who the person is. It does not say which of several accounts an authorization is for, and a person who holds more than one at the resource has to say. Account Binding ((<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>), Account Binding) carries the answer: an OPTIONAL <code>account</code> parameter on the authorization endpoint request, named from the resource's own namespace, echoed as the <code>account</code> claim of the resource token and copied into the auth token.<a href="#section-14.5-8" class="pilcrow">¶</a></p>
-<p id="section-14.5-9">This applies in both access modes. In four-party access the AS reads <code>account</code> from the resource token, which is how it learns which of the person's accounts to bill for this authorization — the binding told it who, and <code>account</code> tells it which. A metered resource or AS that bills per account SHOULD require <code>account</code> where a person may hold more than one, because a budget enforced against the wrong account is charged to the wrong payer.<a href="#section-14.5-9" class="pilcrow">¶</a></p>
-<p id="section-14.5-10">None of this is specific to budgets, and this document defines no new mechanism for it. It is stated here because a metered resource meets these cases on its first request and the rest of this document is silent on them.<a href="#section-14.5-10" class="pilcrow">¶</a></p>
+<p id="section-14.5-9">This applies in both access modes. In four-party access the AS copies <code>account</code> from the resource token, which is how it learns which of the person's accounts to bill for this authorization — the binding told it who, and <code>account</code> tells it which. A metered resource or AS that bills per account SHOULD require <code>account</code> where a person may hold more than one, because a budget enforced against the wrong account is charged to the wrong payer.<a href="#section-14.5-9" class="pilcrow">¶</a></p>
+<p id="section-14.5-10">A resource holding one balance per person needs none of this. Binding on <code>(iss, sub)</code> is the whole mechanism, and <code>account</code> never appears in its tokens.<a href="#section-14.5-10" class="pilcrow">¶</a></p>
+<p id="section-14.5-11">None of this is specific to budgets, and this document defines no new mechanism for it. It is stated here because a metered resource meets these cases on its first request and the rest of this document is silent on them.<a href="#section-14.5-11" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="concurrency">
@@ -2536,6 +2538,7 @@ Signature-Key: sig=jwks_uri;
 <p id="section-18-5"><strong>Pre-mission inference runs on a mission-less auth token</strong> and lands in the person's usage with no mission attribution. Mission boundaries become natural auth token re-issuance points, which costs nothing: the agent is already talking to its PS to create the mission.<a href="#section-18-5" class="pilcrow">¶</a></p>
 <p id="section-18-6"><strong>AP-bundled inference is out of scope.</strong> Where the agent provider pays for the agent's inference, the agent token is the credential, the person server never appears, and nothing in this document applies. This is the common deployment today, and readers will otherwise assume the extension covers it. The case that does engage this extension is a harness written by the agent provider spending against the <em>person's</em> inference account — which is where a ceiling matters most, because the agent provider's software is deciding how much of the person's money to consume.<a href="#section-18-6" class="pilcrow">¶</a></p>
 <p id="section-18-7"><strong>A TPX provider adds agent support without touching its meter.</strong> A TPX <span>[<a href="#TPX" class="cite xref">TPX</a>]</span> provider already prices per token, reports cost in each response's <code>usage</code>, and enforces a person-granted budget as a hard cap — for human-driven apps holding OAuth grants. Serving agents means accepting AAuth auth tokens carrying <code>budget</code> beside those grants: two authorization envelopes over one metering core. Deployed this way, this extension is the AAuth binding of TPX.<a href="#section-18-7" class="pilcrow">¶</a></p>
+<p id="section-18-8"><strong>Neither displaces the other.</strong> TPX is a complete deployment on its own. It requires no person server, no agent signing keys, and nothing from this document: an app holding an OAuth grant reaches a TPX provider over the profile TPX defines, and that path is unaffected by whether the provider also serves agents. The two specifications share no wire surface — TPX carries its budget in an RFC 9396 <code>authorization_details</code> object on a refresh-token grant, this document carries one in a JWT claim and an HTTP response header — and a provider implementing both has one meter and one balance underneath two independent front doors. A person driving an app and an agent acting for that person are different situations, and the choice between the envelopes follows from which one is happening rather than from either specification succeeding the other.<a href="#section-18-8" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="security-considerations">
@@ -2729,7 +2732,13 @@ Signature-Key: sig=jwks_uri;
 </li>
             <li class="compact normal" id="section-23-2.1.2.7">Separated the two things a resource counts <a href="#aggregation" class="auto internal xref">Section 14.4</a>. The enforced cap is the presented auth token's own <code>budget</code>; the <code>(iss, sub, aud)</code> aggregate is a ledger for the records and counters and is not a second ceiling the resource may refuse against. Concurrency <a href="#concurrency" class="auto internal xref">Section 14.6</a> said "aggregate atomically across all live auth tokens", which read as a cross-token cap; the atomicity requirements are now stated separately for the per-token invariant and for the ledger. Holding the cross-token total is the PS's job. Also stated why the ledger is keyed on the person: <code>mission_s256</code> is optional and <a href="#inference" class="auto internal xref">Section 18</a> requires mission-less tokens, so a mission-keyed ledger has no bucket for them.<a href="#section-23-2.1.2.7" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-23-2.1.2.8">Added The Billing Account <a href="#billing-account" class="auto internal xref">Section 14.5</a>: which account a metered resource charges. Most resources need nothing beyond the <code>(iss, sub)</code> lookup the base protocol already provides. Beyond that there are two questions, asked at different frequencies and answered by different mechanisms: which person this is, answered once by an interaction the person completes at the resource (three-party) or at the AS (four-party); and which of their accounts an authorization is for, answered on every authorization by the <code>account</code> parameter and claim. No new mechanism; the document was silent on a question every metered resource meets on its first request.<a href="#section-23-2.1.2.8" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-23-2.1.2.8">Stated in <a href="#inference" class="auto internal xref">Section 18</a> that TPX and this document do not displace each other: TPX is a complete deployment needing no person server, the two share no wire surface, and a provider implementing both has one meter under two independent front doors.<a href="#section-23-2.1.2.8" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-23-2.1.2.9">Noted in <a href="#cost-omitted" class="auto internal xref">Section 12.1</a> that recovering <code>cost</code> by subtraction is exact only for serial requests on one token; concurrent requests on one token recover the net of everything that settled between the two responses.<a href="#section-23-2.1.2.9" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-23-2.1.2.10">Rewrote the garbled <code>unit</code>/<code>decimals</code> sentence in <a href="#aauth-budget-header" class="auto internal xref">Section 11</a>.<a href="#section-23-2.1.2.10" class="pilcrow">¶</a>
+</li>
+            <li class="compact normal" id="section-23-2.1.2.11">Added The Billing Account <a href="#billing-account" class="auto internal xref">Section 14.5</a>: which account a metered resource charges. Most resources need nothing beyond the <code>(iss, sub)</code> lookup the base protocol already provides. Beyond that there are two questions, asked at different frequencies and answered by different mechanisms: which person this is, answered once by an interaction the person completes at the resource (three-party) or at the AS (four-party); and which of their accounts an authorization is for, answered on every authorization by the <code>account</code> parameter and claim. No new mechanism; the document was silent on a question every metered resource meets on its first request.<a href="#section-23-2.1.2.11" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>

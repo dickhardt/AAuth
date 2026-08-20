@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                          19 August 2026
-Expires: 20 February 2027
+Intended status: Standards Track                          20 August 2026
+Expires: 21 February 2027
 
 
                              AAuth Budgets
@@ -50,7 +50,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 20 February 2027.
+   This Internet-Draft will expire on 21 February 2027.
 
 Copyright Notice
 
@@ -873,9 +873,11 @@ Table of Contents
       next; see Section 13.2.
    *  *unit* (OPTIONAL): A String naming the unit. *decimals*
       (OPTIONAL): an Integer giving its scale.  Informational, and a
-      pair: a sender MUST include both or neither, because an amount
-      carrying a unit but no scale misreads by a factor of 10^decimals
-      to exactly the readers self-description serves.
+      pair: a sender MUST include both or neither.  The readers these
+      two members exist for are the ones that never parse a JWT —
+      proxies, logs, dashboards — and those are exactly the readers that
+      would misinterpret an amount carrying a unit with no scale, by a
+      factor of 10^decimals.
 
    Recipients MUST ignore members they do not recognize.
 
@@ -981,6 +983,14 @@ Table of Contents
    later one reflects the commit and the release of the unspent
    remainder. reserved is the term that connects them, which is why it
    stops being optional here.
+
+   It recovers one request's cost only where requests on that token are
+   serial.  An agent with several requests in flight on one token
+   recovers the net of everything that settled between the two
+   responses, not the cost of any single one, because every concurrent
+   request moves the same remaining.  An agent that wants per-request
+   figures from a resource that omits cost serializes its requests on
+   that token; an agent that only needs the balance does not have to.
 
    Until that next response arrives the agent applies Section 12.3 and
    treats the request as having cost the full reserved amount.  That is
@@ -1300,13 +1310,17 @@ Table of Contents
    the account claim of the resource token and copied into the auth
    token.
 
-   This applies in both access modes.  In four-party access the AS reads
-   account from the resource token, which is how it learns which of the
-   person's accounts to bill for this authorization — the binding told
-   it who, and account tells it which.  A metered resource or AS that
-   bills per account SHOULD require account where a person may hold more
-   than one, because a budget enforced against the wrong account is
+   This applies in both access modes.  In four-party access the AS
+   copies account from the resource token, which is how it learns which
+   of the person's accounts to bill for this authorization — the binding
+   told it who, and account tells it which.  A metered resource or AS
+   that bills per account SHOULD require account where a person may hold
+   more than one, because a budget enforced against the wrong account is
    charged to the wrong payer.
+
+   A resource holding one balance per person needs none of this.
+   Binding on (iss, sub) is the whole mechanism, and account never
+   appears in its tokens.
 
    None of this is specific to budgets, and this document defines no new
    mechanism for it.  It is stated here because a metered resource meets
@@ -1670,6 +1684,20 @@ Table of Contents
    authorization envelopes over one metering core.  Deployed this way,
    this extension is the AAuth binding of TPX.
 
+   *Neither displaces the other.* TPX is a complete deployment on its
+   own.  It requires no person server, no agent signing keys, and
+   nothing from this document: an app holding an OAuth grant reaches a
+   TPX provider over the profile TPX defines, and that path is
+   unaffected by whether the provider also serves agents.  The two
+   specifications share no wire surface — TPX carries its budget in an
+   RFC 9396 authorization_details object on a refresh-token grant, this
+   document carries one in a JWT claim and an HTTP response header — and
+   a provider implementing both has one meter and one balance underneath
+   two independent front doors.  A person driving an app and an agent
+   acting for that person are different situations, and the choice
+   between the envelopes follows from which one is happening rather than
+   from either specification succeeding the other.
+
 19.  Security Considerations
 
 19.1.  The Header Is Unsigned
@@ -1883,6 +1911,16 @@ Table of Contents
          keyed on the person: mission_s256 is optional and Section 18
          requires mission-less tokens, so a mission-keyed ledger has no
          bucket for them.
+      -  Stated in Section 18 that TPX and this document do not displace
+         each other: TPX is a complete deployment needing no person
+         server, the two share no wire surface, and a provider
+         implementing both has one meter under two independent front
+         doors.
+      -  Noted in Section 12.1 that recovering cost by subtraction is
+         exact only for serial requests on one token; concurrent
+         requests on one token recover the net of everything that
+         settled between the two responses.
+      -  Rewrote the garbled unit/decimals sentence in Section 11.
       -  Added The Billing Account Section 14.5: which account a metered
          resource charges.  Most resources need nothing beyond the (iss,
          sub) lookup the base protocol already provides.  Beyond that
