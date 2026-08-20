@@ -1128,13 +1128,19 @@ This document deliberately establishes no registry of unit values. Units are dec
 
 This section records the status of known implementations of the protocol defined by this specification at the time of posting of this Internet-Draft, and is based on a proposal described in [@RFC7942]. The description of implementations in this section is intended to assist the IETF in its decision processes in progressing drafts to RFCs.
 
-**tokenpony** (Infinite Logic PBC) meters LLM inference and implements TPX [@?TPX], an OAuth 2.0 profile carrying the same grant for human-driven apps. It is adding this extension over the same metering core, with AuthGravity as the person server and Harness News as the agent, in four-party access. TPX is a complete deployment on its own: it needs no person server and nothing from this document, and the two specifications share no wire surface — one meter, two independent authorization envelopes.
+## Implementations
+
+No implementation of this extension is complete.
+
+## Implementations in Progress {#implementations-in-progress}
+
+**tokenpony** (Infinite Logic PBC) meters LLM inference and implements TPX [@?TPX], an OAuth 2.0 profile carrying the same grant for human-driven apps. That deployment is live, and this extension is being added over the same metering core, with AuthGravity as the person server and Harness News as the agent, in four-party access. TPX is a complete deployment on its own: it needs no person server and nothing from this document, and the two specifications share no wire surface — one meter, two independent authorization envelopes.
 
 **Regent Protocol** is implementing both sides: the `budget` claim in auth tokens issued by its gate, with allocation and lifetime derived from the owner's mandate, and resource-side metering middleware in `regent-httpsig` performing atomic reserve-commit-release and emitting `AAuth-Budget`.
 
-The editor is implementing this extension in several services.
+**The editor** is implementing this extension in several services.
 
-An implementation report and test vectors are expected from these efforts and will be recorded here.
+Implementation reports and test vectors are expected from these efforts and will be recorded here.
 
 # Document History
 
@@ -1173,7 +1179,7 @@ This document has not been submitted to the datatracker. Everything below is a c
 
 # Acknowledgments
 
-The author would like to thank reviewers for their feedback.
+The author thanks Alex Polvi, Karl McGuinness, and Abay Aubakirov for feedback on early drafts.
 
 {backmatter}
 
