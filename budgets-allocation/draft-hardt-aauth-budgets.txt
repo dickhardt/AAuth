@@ -1503,15 +1503,15 @@ Table of Contents
      "decimals": 6,
      "sub": "8f14e45fceea167a5a36dedd4bea2543",
      "usage": {
-       "day": 12400000,
-       "week": 31200000,
-       "month": 84300000,
-       "year": 412000000,
-       "all_time": 989200000
+       "day": 1243180,
+       "week": 3118400,
+       "month": 8432650,
+       "year": 39847220,
+       "all_time": 61438050
      },
      "jkts": {
-       "NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs": 612000000,
-       "0ZcOCORZNYy-DWpqq30BbmLzO1Yw3ZQhIgnHZQKxNVE": 377200000
+       "NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs": 38215600,
+       "0ZcOCORZNYy-DWpqq30BbmLzO1Yw3ZQhIgnHZQKxNVE": 23222450
      }
    }
 
@@ -1684,7 +1684,8 @@ Table of Contents
    authorization decision: they arrive in-band, resource-signed, at no
    round-trip cost, exactly when the PS is deciding.  The usage counters
    serve everything else: supervision between re-authorizations, mission
-   totals past the 20-record window, tenant-level exposure, and the
+   totals past the 20-record window, tenant-level exposure, how a
+   person's spending divides among their agents Section 15.2.2, and the
    person's dashboard.  A metered resource SHOULD implement both; the
    narrowing chain Section 4.2 functions with records alone.  The
    agent's own view is neither of these: it is the AAuth-Budget header
@@ -1739,8 +1740,11 @@ Table of Contents
    |                 |        |               | object is otherwise    |
    |                 |        |               | malformed              |
    +-----------------+--------+---------------+------------------------+
-   | invalid_request | 400    | Usage         | Zero or several        |
-   |                 |        | endpoint      | query keys, or a       |
+   | invalid_request | 400    | Usage         | More than one scope    |
+   |                 |        | endpoint      | key, neither a scope   |
+   |                 |        |               | key nor jkts, a unit   |
+   |                 |        |               | the resource has not   |
+   |                 |        |               | declared, or a         |
    |                 |        |               | malformed value        |
    |                 |        |               | Section 15.3           |
    +-----------------+--------+---------------+------------------------+

@@ -2421,15 +2421,15 @@ Signature-Key: sig=jwks_uri;
   "decimals": 6,
   "sub": "8f14e45fceea167a5a36dedd4bea2543",
   "usage": {
-    "day": 12400000,
-    "week": 31200000,
-    "month": 84300000,
-    "year": 412000000,
-    "all_time": 989200000
+    "day": 1243180,
+    "week": 3118400,
+    "month": 8432650,
+    "year": 39847220,
+    "all_time": 61438050
   },
   "jkts": {
-    "NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs": 612000000,
-    "0ZcOCORZNYy-DWpqq30BbmLzO1Yw3ZQhIgnHZQKxNVE": 377200000
+    "NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs": 38215600,
+    "0ZcOCORZNYy-DWpqq30BbmLzO1Yw3ZQhIgnHZQKxNVE": 23222450
   }
 }
 
@@ -2543,7 +2543,7 @@ Signature-Key: sig=jwks_uri;
         <h3 id="name-division-of-labor">
 <a href="#section-15.4" class="section-number selfRef">15.4. </a><a href="#name-division-of-labor" class="section-name selfRef">Division of Labor</a>
         </h3>
-<p id="section-15.4-1">The two PS-facing channels answer different questions at different moments. The consumption records <a href="#budget-consumed" class="auto internal xref">Section 7.1</a> serve the re-authorization decision: they arrive in-band, resource-signed, at no round-trip cost, exactly when the PS is deciding. The usage counters serve everything else: supervision between re-authorizations, mission totals past the 20-record window, tenant-level exposure, and the person's dashboard. A metered resource SHOULD implement both; the narrowing chain <a href="#narrowing-chain" class="auto internal xref">Section 4.2</a> functions with records alone. The agent's own view is neither of these: it is the <code>AAuth-Budget</code> header <a href="#aauth-budget-header" class="auto internal xref">Section 11</a>, scoped to the token it holds and to the request it just made.<a href="#section-15.4-1" class="pilcrow">¶</a></p>
+<p id="section-15.4-1">The two PS-facing channels answer different questions at different moments. The consumption records <a href="#budget-consumed" class="auto internal xref">Section 7.1</a> serve the re-authorization decision: they arrive in-band, resource-signed, at no round-trip cost, exactly when the PS is deciding. The usage counters serve everything else: supervision between re-authorizations, mission totals past the 20-record window, tenant-level exposure, how a person's spending divides among their agents <a href="#per-key" class="auto internal xref">Section 15.2.2</a>, and the person's dashboard. A metered resource SHOULD implement both; the narrowing chain <a href="#narrowing-chain" class="auto internal xref">Section 4.2</a> functions with records alone. The agent's own view is neither of these: it is the <code>AAuth-Budget</code> header <a href="#aauth-budget-header" class="auto internal xref">Section 11</a>, scoped to the token it holds and to the request it just made.<a href="#section-15.4-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2604,7 +2604,7 @@ Signature-Key: sig=jwks_uri;
 </td>
             <td class="text-left" rowspan="1" colspan="1">400</td>
             <td class="text-left" rowspan="1" colspan="1">Usage endpoint</td>
-            <td class="text-left" rowspan="1" colspan="1">Zero or several query keys, or a malformed value <a href="#usage-authorization" class="auto internal xref">Section 15.3</a>
+            <td class="text-left" rowspan="1" colspan="1">More than one scope key, neither a scope key nor <code>jkts</code>, a <code>unit</code> the resource has not declared, or a malformed value <a href="#usage-authorization" class="auto internal xref">Section 15.3</a>
 </td>
           </tr>
         </tbody>
