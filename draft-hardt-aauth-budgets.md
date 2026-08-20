@@ -872,12 +872,11 @@ The body carries at most one **scope key**, naming a claim value the resource ha
 - **`tenant`**: A tenant identifier. Scope: the organization, across its people.
 - **`mission_s256`**: A mission identifier. Scope: one mission.
 
-and two OPTIONAL members:
+and one OPTIONAL member:
 
 - **`jkts`**: An array of JWK Thumbprints ([@!RFC7638]), each naming a signing key the resource has seen present an auth token. Asks for what each of those keys consumed (#per-key).
-- **`unit`**: The unit to report in. Omitted means the resource's sole unit, or its primary one where it meters in several (#one-unit).
 
-A request MUST carry a scope key, `jkts`, or both. A request carrying more than one scope key, or none of the three members, is an error (#usage-authorization).
+A request MUST carry a scope key or `jkts`, and MAY carry both. At most one scope key may appear. A request with more than one scope key, or with neither a scope key nor `jkts`, is an error (#usage-authorization).
 
 ```http
 POST /usage HTTP/1.1
@@ -957,9 +956,9 @@ A resource MUST omit a thumbprint from `jkts` rather than report zero for it whe
 
 ### One Unit Per Response {#one-unit}
 
-Every figure in a response is in one unit, named once at the top level. A resource declaring several units in `budget_units` (#budget-units) and metering a person in more than one answers for the unit named in the request, or for its primary unit when the request named none. A PS wanting the other asks again.
+Every figure in a response is in one unit, named once at the top level, and it is the unit the resource meters in. There is no request parameter selecting it.
 
-The alternative is a per-unit array at every level, which costs every response the shape needed by the deployments that meter in one unit — which is nearly all of them, since a resource that meters several quantities collapses them to one billing unit before denominating a budget (#non-goals).
+The alternative is a per-unit array at every level, which costs every response the shape needed by deployments that meter in one unit — which is nearly all of them, since a resource that meters several quantities collapses them to one billing unit before denominating a budget (#non-goals). A resource may still declare several units in `budget_units` (#budget-units), because that is what an agent may ask a budget to be denominated in; what this endpoint reports is what the resource actually metered, and the response says which unit that was.
 
 ### The Signed Response {#signed-response}
 
@@ -993,7 +992,7 @@ The access server is not an entitled caller. The AS acts for the resource and si
 
 A query for a scope key the resource does not recognize returns `200` with `usage` omitted; "never seen" and "nothing consumed" are deliberately indistinguishable, so that a query cannot be used to discover whether a person holds an account. Unrecognized thumbprints are handled differently and for a stated reason (#per-key).
 
-`invalid_request`, using the error response format of ([@!I-D.hardt-oauth-aauth-protocol]), is returned for a body carrying more than one scope key, carrying neither a scope key nor `jkts`, naming a `unit` the resource has not declared, or carrying a malformed value.
+`invalid_request`, using the error response format of ([@!I-D.hardt-oauth-aauth-protocol]), is returned for a body carrying more than one scope key, carrying neither a scope key nor `jkts`, or carrying a malformed value.
 
 A resource MAY rate-limit the endpoint, using the `RateLimit` fields ([@?I-D.ietf-httpapi-ratelimit-headers]) as on any endpoint. A PS SHOULD poll no faster than its decisions require.
 
@@ -1023,7 +1022,7 @@ Errors are reserved for statements that cannot be reconciled:
 |-------|--------|----------|---------|
 | `invalid_budget` | 400 | Authorization endpoint | The `budget` object is malformed, or names a `unit` the resource has not declared in `budget_units` |
 | `invalid_budget` | 400 | PS and AS auth token endpoints | The resource token's `budget.decimals` disagrees with the value declared for that unit in the resource's `budget_units` metadata, or the object is otherwise malformed |
-| `invalid_request` | 400 | Usage endpoint | More than one scope key, neither a scope key nor `jkts`, a `unit` the resource has not declared, or a malformed value (#usage-authorization) |
+| `invalid_request` | 400 | Usage endpoint | More than one scope key, neither a scope key nor `jkts`, or a malformed value (#usage-authorization) |
 
 Error responses use the error response format defined in AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]).
 
@@ -1145,6 +1144,7 @@ This document has not been submitted to the datatracker. Everything below is a c
 
 ## Exploratory Changes {#exploratory-changes}
 
+- Dropped the `unit` request parameter from the usage endpoint. It existed for a resource metering one person in more than one unit, which (#non-goals) already discourages, and it bought an error condition and an arbitrary notion of a primary unit. The response reports in the unit the resource meters in and says which that is.
 - Made signing the usage response RECOMMENDED rather than REQUIRED (#signed-response). It would be the first response-side signature in the family, the figures are decision context rather than authorization, and a person server refusing an unsigned response is left with no figures rather than unattributable ones.
 - Stated that the granted budget is an allocation drawn against a ceiling the PS holds and may not share with the agent, rather than the person's whole authorization. This was the design throughout and was nowhere written down; a reviewer read the document end to end and concluded a durable grant was missing. See the Introduction and (#why-not-the-ceiling).
 - Expanded (#ps-token-endpoint) with what the PS is deciding (#ps-decision), the four inputs it reads (#ps-inputs), and its six responses (#ps-responses). Named `requirement=clarification` as the response for an escalation the PS is not ready to refuse or approve — the channel that lets a PS tell an agent it is overspending, which narrowing an amount cannot do.
