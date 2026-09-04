@@ -250,6 +250,8 @@ AAuth supports five resource access modes. They differ in what the resource ends
 
 Resource-managed and person-identity access reach the same destination by different routes: in the first the resource runs its own login, in the second it accepts one the person server ran. The rest of the ladder adds what the resource is told beyond who the person is.
 
+The agent identifier reaches a resource in the two-party modes only. In agent identity access the agent token signs every request; in resource-managed access it signs the request that produces the session token, and the session is bound to that agent. In person identity, PS authorization, and federated access no token the resource reads carries an agent identifier (#why-no-agent-identifier). A resource that keys an authorization decision on the agent identifier — an allowlist of agents, a per-agent label — has made a decision that holds in the two-party modes and nowhere else, and it is not re-expressed automatically when an endpoint moves to auth tokens. Durable per-operation policy is expressed as `scope` or as R3 operations ([@?I-D.hardt-aauth-r3]), which reach the resource in every mode.
+
 The following diagram shows all parties and their relationships. Not all parties or relationships are present in every mode.
 
 ~~~ ascii-art
@@ -3479,6 +3481,7 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-11
+  - Warned resource implementers that policy keyed on the agent identifier is local to the two-party modes. The identifier reaches a resource in agent identity and resource-managed access and in no other mode, so an allowlist or per-agent label designed there is silently unenforceable once an endpoint moves to auth tokens; durable per-operation policy is `scope` or R3 operations. A deployment walked into exactly this and neither of its own review passes caught it.
   - Policy Evaluation Points now says what this document does and does not define about the PS's decision: the wire artifacts that carry the outcome are here; the decision procedure, and delegation of it to a supervisor that may be a person or an agent, belong to a companion specification on AAuth supervision. `requirement=clarification` existed on the wire with no stated home for the procedure behind it.
   - Distinguished supervision from governance. Governance remains the name of the layer (missions plus permission, audit, and interaction relay). Supervision is the per-act evaluation the PS performs against the mission's intent and prior log entries, and now has a Terminology entry; a dozen occurrences that used governance in that sense were changed. The agent-provider rationale's fleet-level sense is reworded as control and enforcement. Aligns with AAuth Budgets, which already uses supervision as a term of art, and gives a companion specification for a delegated supervisor a term to define against.
   - Stated the conformance floor in Person Server Metadata: the four REQUIRED fields are the whole of a conformant PS. Consent needs no metadata field, because the interaction URL travels in the `AAuth-Requirement` header; `interaction_endpoint` is the agent's channel to the person, not a consent surface. Readers sizing an implementation were inferring the full endpoint surface was required.
@@ -3742,9 +3745,9 @@ A person's relationship with a resource survives their changing agents, but a mi
 
 The practical effect is that anything done under a mission identifier was done by the agent the mission names, which is what makes the mission log worth reading.
 
-### Why No Agent Identifier Reaches a Resource
+### Why No Agent Identifier Reaches a Resource {#why-no-agent-identifier}
 
-Naming the agent, or its provider, in a token the resource reads would restore exactly the coupling the person token exists to remove: a resource able to see either can pin policy to it, and the person's relationship stops surviving a change of agent. So neither the person token, the resource token, nor the auth token carries one. `agent_jkt` and `cnf` still bind every request to one key.
+Naming the agent, or its provider, in a token the resource reads would restore exactly the coupling the person token exists to remove: a resource able to see either can pin policy to it, and the person's relationship stops surviving a change of agent. So neither the person token, the resource token, nor the auth token carries one. `agent_jkt` and `cnf` still bind every request to one key. The consequence for resource policy is stated in (#resource-access-modes): a decision keyed on the agent identifier holds in the two-party modes and nowhere else.
 
 The agent token still reaches the AS, because a resource deploys an AS to have policy evaluated and an agent token MAY carry claims bearing on that — attestation, platform integrity, workload identity. The resource enforces; the AS evaluates; posture goes to the evaluator. The consequence is that agent-provider independence is complete in three-party and partial in four-party, where the resource has explicitly delegated policy to an AS.
 
