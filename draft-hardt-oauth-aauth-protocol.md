@@ -2956,6 +2956,8 @@ Fields:
 - `scopes_supported` (RECOMMENDED): Array of scope values the PS supports, including identity scopes (e.g., `openid`, `profile`, `email`) and enterprise scopes (e.g., `tenant`, `groups`, `roles`)
 - `claims_supported` (RECOMMENDED): Array of identity claim names the PS can provide (e.g., `sub`, `email`, `name`, `tenant`)
 
+The four REQUIRED fields — `issuer`, `auth_token_endpoint`, `person_token_endpoint`, and `jwks_uri` — are the whole of what a conformant PS publishes. A PS that issues person tokens and auth tokens, and runs whatever consent it needs at the `url` it returns in `requirement=interaction` (#requirement-responses), is conformant with those four. The OPTIONAL endpoints add missions, permission checks, audit, and the agent's relay channel to the person (#interaction-endpoint); they do not add conformance.
+
 ### Access Server Metadata {#access-server-metadata}
 
 Published at `/.well-known/aauth-access.json`:
@@ -3476,6 +3478,7 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-11
+  - Stated the conformance floor in Person Server Metadata: the four REQUIRED fields are the whole of a conformant PS. Consent needs no metadata field, because the interaction URL travels in the `AAuth-Requirement` header; `interaction_endpoint` is the agent's channel to the person, not a consent surface. Readers sizing an implementation were inferring the full endpoint surface was required.
   - Restated the person-token-before-resource-token prerequisite where readers of the `401` path meet it. The three-party and four-party figures now show the person token leg and carry a step list; the Resource Token section opens with the prerequisite; a resource MUST NOT challenge with `requirement=auth-token` on a request that carried neither a person token nor an auth token. A deployment that read the draft carefully built both its flow and its wire trace without a person token, because the figures went straight from the authorization endpoint to a resource token.
   - Derived the resource token's audience from the verified person token in the places that still routed on the agent token's `ps` claim: both `aud` bullet lists and the authorization endpoint responses intro. Dropped the sentence saying the `401` path is reached with an agent token, which contradicted the rule that a resource MUST NOT issue a resource token without a verified person token. Renamed the token-request subsection Auth Token Request, for the token it returns.
   - Added Consent Presentation, naming the two kinds of content a consent surface carries and what the PS MUST do with them. Resource-asserted content is the resource's metadata (`name`, `description`, `logo_uri`, `scope_descriptions`), the claims of the resource token, and an R3 `display` section; agent-asserted content is `justification`, `platform`, `device`, and clarification responses. A PS MUST visually distinguish the two and attribute the agent's, and MUST NOT decide on agent-asserted content alone where resource-asserted content covering the same operation is available. Nothing previously required the distinction, so a person reading a consent screen could not tell which party asserted what, and the agent controlled one of the two.
