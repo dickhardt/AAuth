@@ -1916,6 +1916,8 @@ When the AS issues an auth token (`200` response), the PS MUST verify the auth t
 
 After verification, the PS returns the auth token to the agent. The agent presents the auth token to the resource via the `Signature-Key` header (#auth-token-usage). The resource verifies the auth token against the AS's JWKS (#auth-token-verification).
 
+When the AS answers with a well-formed terminal error, the PS relays it: the response to the agent carries the AS's `error` value and status in the PS's own problem+json body (#error-response-format), so that an AS denial and a federation failure are distinguishable. When the PS cannot obtain a verifiable auth token at all — the AS is unreachable, times out, returns a malformed response, or returns an auth token that fails the verification above — the PS returns `as_unreachable` (#token-endpoint-error-codes). Either outcome reaches the agent on its pending request when the token request was deferred.
+
 The agent receives the auth token from its trusted PS, so signature verification is not strictly required. However, agents SHOULD verify the auth token's signature to detect errors early. Agents MUST verify that `aud` and `cnf` match their own values.
 
 ## Claims Required {#requirement-claims}
@@ -2556,6 +2558,7 @@ Initial request (with Prefer: wait=N)
     |           obtain auth token if resource challenge
     +-- 402 --> payment required (settle payment, poll Location)
     +-- 500 --> server error — start over
+    +-- 502 --> as_unreachable — fresh resource token, retry after backoff
     +-- 503 --> back off per Retry-After, retry
                |
                GET Location (with Prefer: wait=N)
@@ -2568,6 +2571,7 @@ Initial request (with Prefer: wait=N)
                +-- 410 --> gone — MUST NOT retry
                +-- 429 --> slow down — increase interval by 5s
                +-- 500 --> server error — start over
+               +-- 502 --> as_unreachable — fresh resource token, retry after backoff
                +-- 503 --> temporarily unavailable
                            back off per Retry-After
 ```
@@ -2601,6 +2605,7 @@ Other RFC 9457 members (`type`, `title`, `status`, `instance`) MAY be present wi
 | `expired_person_token` | 400 | The person token named by the resource token's `presented_jti` has expired. Returned by a PS that would otherwise present it to an AS, and by an AS (#ps-to-as-token-request). The agent obtains a fresh person token, then a fresh resource token. |
 | `unknown_person_token` | 400 | The person token named by the resource token's `presented_jti` is not among those the PS retains (#resource-token-verification) |
 | `user_unreachable` | 403 | Terminal. The PS has no channel to reach the user and the agent did not declare the `interaction` capability, so the user cannot be reached at all. The non-terminal "user action is needed" case uses a `202` with `requirement=interaction` (#requirement-responses), not this error. |
+| `as_unreachable` | 502 | PS token endpoint only. The PS could not obtain an auth token from the access server named by the resource token's `aud`: connection failure, timeout, a malformed response, or an auth token that fails delivery verification (#auth-token-delivery). The agent MAY retry with a fresh resource token after a backoff. Distinct from an AS denial, which the PS relays. |
 | `server_error` | 500 | Internal error |
 
 Example — the resource token presented to the token endpoint has expired:
@@ -3490,6 +3495,7 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-11
+  - Added `as_unreachable` (502) for a PS that cannot complete federation, and the rule that an AS's well-formed terminal error is relayed to the agent with the AS's `error` and status. Nothing normative covered the PS-to-agent leg of a failed federation; `invalid_resource_token` and `server_error` were both wrong for it. Found implementing federation in a PS against the reference AS.
   - The PS-to-AS token request gains `person_token`, REQUIRED: the person token named by the resource token's `presented_jti`, which the PS issued and retains. The AS verifies it against the resource token and caps the auth token it issues at its `exp`. This closes a rule the Resource and the AS could not satisfy: -11 required every token carrying `mission_s256` to expire no later than the mission's `expires_at`, and neither party holds the mission. A resource token's lifetime is now independent of the mission; the PS caps what it issues at `expires_at`, and the person token carries that bound to the AS. Added `expired_person_token`. Agents are advised to refresh the person token at least five minutes before expiry and to re-obtain resource and auth tokens against it, which also keeps the resource's `presented_jti` record current.
   - Warned resource implementers that policy keyed on the agent identifier is local to the two-party modes. The identifier reaches a resource in agent identity and resource-managed access and in no other mode, so an allowlist or per-agent label designed there is silently unenforceable once an endpoint moves to auth tokens; durable per-operation policy is `scope` or R3 operations. A deployment walked into exactly this and neither of its own review passes caught it.
   - Policy Evaluation Points now says what this document does and does not define about the PS's decision: the wire artifacts that carry the outcome are here; the decision procedure, and delegation of it to a supervisor that may be a person or an agent, belong to a companion specification on AAuth supervision. `requirement=clarification` existed on the wire with no stated home for the procedure behind it.
