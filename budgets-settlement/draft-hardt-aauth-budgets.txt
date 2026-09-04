@@ -901,10 +901,10 @@ Table of Contents
    figure, and no token reference.  The agent holds the auth token it
    signed the request with and reads granted from there; what it needs
    per response is what this call cost and what is left, which is what
-   the field carries.  Cumulative consumption is a PS-facing figure,
-   reported in the resource token Section 7.1 and at the usage endpoint
-   Section 15; see Appendix A.5 for why it is not also reported to the
-   agent.
+   the field carries.  Cumulative consumption is an issuer-facing
+   figure, reported in the resource token Section 7.1 and at the usage
+   endpoint Section 15; see Appendix A.5 for why it is not also reported
+   to the agent.
 
    The scope of the reported figures is this auth token's budget,
    because the budget expires with the token Section 14.
@@ -1494,7 +1494,7 @@ Table of Contents
 
    Whether a request that fails — a 5xx after input tokens were consumed
    — draws down the budget is the resource's metering policy.  Whatever
-   it meters, the records and counters MUST reflect, or the person's
+   it meters, the record and counters MUST reflect, or the person's
    numbers will not reconcile with the bill.
 
 14.10.  Delegation
