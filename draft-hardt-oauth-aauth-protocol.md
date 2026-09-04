@@ -426,6 +426,7 @@ Agent                                Resource   PS                    AS
   |                                     |       | POST                 |
   |                                     |       | auth_token_endpoint  |
   |                                     |       | w/ resource_token    |
+  |                                     |       | + person_token       |
   |                                     |       |--------------------->|
   |                                     |       |                      |
   |                                     |       | auth_token           |
@@ -722,7 +723,7 @@ The PS MAY require user interaction before issuing and return a `202 Accepted` d
 
 Errors use the token endpoint error codes (#token-endpoint-error-codes); `invalid_request` covers a missing or malformed `resource` or `mission_s256` value.
 
-Issuing a person token creates a retention obligation. A PS MUST retain a record of each person token it issues — `jti`, `ps`, `sub`, `mission_s256`, `tenant`, and `exp` — sufficient to answer resource token verification (#resource-token-verification). Because a resource token may name a person token that was valid when the resource token was issued, the record MUST be retained beyond the person token's `exp` by at least the longest resource token lifetime the PS accepts (#resource-tokens). A resource token naming a `jti` the PS has no record of is rejected with `unknown_person_token` (#token-endpoint-error-codes).
+Issuing a person token creates a retention obligation. A PS MUST retain each person token it issues — the token itself, so that it can be presented to an access server (#ps-to-as-token-request), and with it the `jti`, `ps`, `sub`, `mission_s256`, `tenant`, and `exp` that answer resource token verification (#resource-token-verification). Because a resource token may name a person token that was valid when the resource token was issued, the record MUST be retained beyond the person token's `exp` by at least the longest resource token lifetime the PS accepts (#resource-tokens). A resource token naming a `jti` the PS has no record of is rejected with `unknown_person_token` (#token-endpoint-error-codes).
 
 An agent SHOULD cache a person token for a resource until it expires rather than requesting one per call. A person token is scoped to one resource and, when it carries `mission_s256`, to one mission, so an agent working across several resources or several concurrent missions holds one per combination. All of them bind the same key through `cnf`, so an agent that rotates its signing key invalidates all of them at once; the agent SHOULD re-request lazily, on next use of each resource, rather than re-minting the whole set.
 
@@ -787,6 +788,8 @@ Signature-Key: sig=jwt;
 ```
 
 The person token's `cnf.jwk` is the same key that signed the request, so HTTP Message Signature verification proceeds identically to the agent-token case. Once an auth token has been issued for a resource, the agent presents the auth token on subsequent requests to that resource (#auth-token-usage).
+
+An agent SHOULD obtain a fresh person token at least five minutes before the current one expires, and SHOULD re-obtain resource tokens and auth tokens against it before they expire, so that no token in the chain lapses mid-task. The refresh runs through the resource's authorization endpoint (#authorization-endpoint-request) presenting the fresh person token; that presentation is also what keeps the resource's record of the person token behind `presented_jti` current (#resource-token-structure). This parallels the agent-token guidance in (#re-authorization).
 
 ## Person Token Verification {#person-token-verification}
 
@@ -1056,7 +1059,7 @@ Optional payload claims:
   - `url`: HTTPS URL of the resource's interaction endpoint
   - `code`: Interaction code to present at that URL
 
-Resource tokens SHOULD NOT have a lifetime exceeding 5 minutes, and when `mission_s256` is present MUST NOT expire later than that mission's `expires_at` (#mission-approval). The `jti` claim provides an audit trail for token requests; ASes are not required to enforce replay detection on resource tokens. If a resource token expires before the PS presents it to the AS (e.g., because user interaction was required), the agent MUST obtain a fresh resource token from the resource and submit a new token request to the PS. The PS SHOULD remember prior consent decisions within a mission so the user is not re-prompted when the agent resubmits a request for the same resource and scope.
+Resource tokens SHOULD NOT have a lifetime exceeding 5 minutes. A resource token's lifetime is independent of any mission it names: the PS verifies that the mission is active when it acts on the token (#resource-token-verification), and only the PS issues tokens bounded by the mission's `expires_at` (#mission-approval). The `jti` claim provides an audit trail for token requests; ASes are not required to enforce replay detection on resource tokens. If a resource token expires before the PS presents it to the AS (e.g., because user interaction was required), the agent MUST obtain a fresh resource token from the resource and submit a new token request to the PS. The PS SHOULD remember prior consent decisions within a mission so the user is not re-prompted when the agent resubmits a request for the same resource and scope.
 
 ### Resource Token Verification
 
@@ -1539,7 +1542,7 @@ Errors use the error response format (#error-response-format).
 |-------|--------|---------|
 | `interaction_unavailable` | 424 | The PS has no channel available to relay this `interaction` or `payment` to the user. Non-terminal: the agent falls back to directing the user to the `url`/`code` itself (#interaction-relay). Distinct from the terminal `user_unreachable` (#token-endpoint-error-codes). |
 
-## Re-authorization
+## Re-authorization {#re-authorization}
 
 AAuth does not have a separate refresh token or refresh flow. When an auth token expires, the agent obtains a fresh resource token from the resource's authorization endpoint and submits it to the PS's token endpoint — the same flow as the initial authorization. This gives the resource a voice in every re-authorization: the resource can adjust scope, require step-up authorization, or deny access based on current policy.
 
@@ -1829,7 +1832,7 @@ This section defines auth tokens and the mechanisms by which they are issued. Th
 
 The AS evaluates resource policy and issues auth tokens. It accepts JSON POST requests.
 
-### PS-to-AS Token Request
+### PS-to-AS Token Request {#ps-to-as-token-request}
 
 The PS MUST make a signed POST to the AS's `auth_token_endpoint`. The PS authenticates via an HTTP Sig (#http-message-signatures-profile).
 
@@ -1837,10 +1840,13 @@ The PS MUST make a signed POST to the AS's `auth_token_endpoint`. The PS authent
 
 - `resource_token` (REQUIRED): The resource token issued by the resource.
 - `agent_token` (REQUIRED): The agent's agent token. For a parent-mediated sub-agent authorization, this is the parent (top-level) agent's token.
+- `person_token` (REQUIRED): The person token named by the resource token's `presented_jti`, which the PS issued and retains (#person-token-endpoint). It carries the identity the resource saw — `sub`, `tenant`, and `mission_s256` when present — under the PS's own signature, and its `exp` bounds the auth token the AS issues (#auth-token-structure). A PS MUST NOT present an expired person token; it rejects the agent's token request with `expired_person_token` (#token-endpoint-error-codes), and the agent obtains a fresh person token and a fresh resource token.
 - `subagent_token` (OPTIONAL): A sub-agent's agent token, present when the PS federates a parent-mediated sub-agent authorization (#sub-agents). When present, the AS binds the issued auth token to the sub-agent, verifying `resource_token`'s `agent_jkt` against the `subagent_token`'s `cnf.jwk`.
 - `upstream_token` (OPTIONAL): An auth token from an upstream authorization, used in call chaining (#call-chaining).
 
-The resource token carries the person's identity as `ps` and `sub` (#resource-token-structure), so the AS needs no separate identity parameter and `requirement=claims` (#requirement-claims) is reserved for claims beyond it.
+The resource token carries the person's identity as `ps` and `sub` (#resource-token-structure), and the person token carries the same identity under the PS's signature, so the AS needs no separate identity parameter and `requirement=claims` (#requirement-claims) is reserved for claims beyond it.
+
+The AS MUST verify `person_token` per (#person-token-verification), with two substitutions: `aud` MUST equal the resource token's `iss` rather than the AS's own identifier, and `cnf.jwk` MUST match the resource token's `agent_jkt` rather than the key that signed this request, which is the PS's. The AS MUST further verify that the person token's `iss` is the PS that signed the request, that its `jti` equals the resource token's `presented_jti`, and that its `sub`, `mission_s256`, and `tenant` match the resource token's. A mismatch is rejected with `invalid_resource_token`; an expired person token with `expired_person_token`.
 
 `agent_token` remains REQUIRED even though the resource never sees an agent identifier. A resource deploys an AS because it wants policy evaluated, and an agent token MAY carry claims bearing on that decision — software attestation, platform integrity, secure enclave status, workload identity (#agent-token-structure). The resource enforces; the AS evaluates; posture goes to the evaluator.
 
@@ -1857,7 +1863,8 @@ Signature-Key: sig=jwks_uri;
 
 {
   "resource_token": "eyJhbGc...",
-  "agent_token": "eyJhbGc..."
+  "agent_token": "eyJhbGc...",
+  "person_token": "eyJhbGc..."
 }
 ```
 
@@ -1895,7 +1902,7 @@ The PS settles payment per the indicated protocol and polls the `Location` URL. 
 
 The PS caches the billing relationship per AS. Future token requests from the same PS to the same AS skip the billing step. The payment protocol, settlement mechanism, and billing terms are out of scope for this specification.
 
-### Auth Token Delivery
+### Auth Token Delivery {#auth-token-delivery}
 
 When the AS issues an auth token (`200` response), the PS MUST verify the auth token before returning it to the agent:
 
@@ -1905,6 +1912,7 @@ When the AS issues an auth token (`200` response), the PS MUST verify the auth t
 4. Verify `cnf.jwk` matches the agent's signing key.
 5. Verify `sub` matches the directed identifier the PS issues for this person at this resource.
 6. Verify `scope` is consistent with what was requested — not broader than the scope in the resource token.
+7. Verify `exp` does not exceed the `exp` of the `person_token` the PS presented (#ps-to-as-token-request).
 
 After verification, the PS returns the auth token to the agent. The agent presents the auth token to the resource via the `Signature-Key` header (#auth-token-usage). The resource verifies the auth token against the AS's JWKS (#auth-token-verification).
 
@@ -2037,7 +2045,7 @@ Required payload claims:
 - `sub`: Directed user identifier, copied from the resource token. An opaque string, unique within `iss`, that identifies the person. The PS SHOULD derive a pairwise pseudonymous value per resource (`aud`), so different resources see different values for the same person (#directed-identifiers).
 - `cnf`: Confirmation claim with `jwk` containing the agent's public key. The JWK MUST carry a fully-specified `alg` member (#signature-algorithms).
 - `iat`: Issued at timestamp
-- `exp`: Expiration timestamp. Auth tokens MUST NOT have a lifetime exceeding 1 hour, and when `mission_s256` is present MUST NOT be later than that mission's `expires_at` (#mission-approval).
+- `exp`: Expiration timestamp. Auth tokens MUST NOT have a lifetime exceeding 1 hour, and MUST NOT expire later than the agent token used to obtain them (#re-authorization). When `mission_s256` is present, a PS-issued auth token MUST NOT expire later than the mission's `expires_at` (#mission-approval); an AS-issued auth token MUST NOT expire later than the `exp` of the `person_token` the PS presented with the token request (#ps-to-as-token-request), which the PS capped at the same bound (#person-token-structure).
 
 An auth token carries no agent identifier and no delegation chain. `cnf` binds it to one key, and the resource enforces against `sub` and `scope`.
 
@@ -2590,6 +2598,7 @@ Other RFC 9457 members (`type`, `title`, `status`, `instance`) MAY be present wi
 | `expired_agent_token` | 400 | Agent token has expired |
 | `invalid_resource_token` | 400 | Resource token malformed or signature verification failed |
 | `expired_resource_token` | 400 | Resource token has expired |
+| `expired_person_token` | 400 | The person token named by the resource token's `presented_jti` has expired. Returned by a PS that would otherwise present it to an AS, and by an AS (#ps-to-as-token-request). The agent obtains a fresh person token, then a fresh resource token. |
 | `unknown_person_token` | 400 | The person token named by the resource token's `presented_jti` is not among those the PS retains (#resource-token-verification) |
 | `user_unreachable` | 403 | Terminal. The PS has no channel to reach the user and the agent did not declare the `interaction` capability, so the user cannot be reached at all. The non-terminal "user action is needed" case uses a `202` with `requirement=interaction` (#requirement-responses), not this error. |
 | `server_error` | 500 | Internal error |
@@ -3481,6 +3490,7 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-11
+  - The PS-to-AS token request gains `person_token`, REQUIRED: the person token named by the resource token's `presented_jti`, which the PS issued and retains. The AS verifies it against the resource token and caps the auth token it issues at its `exp`. This closes a rule the Resource and the AS could not satisfy: -11 required every token carrying `mission_s256` to expire no later than the mission's `expires_at`, and neither party holds the mission. A resource token's lifetime is now independent of the mission; the PS caps what it issues at `expires_at`, and the person token carries that bound to the AS. Added `expired_person_token`. Agents are advised to refresh the person token at least five minutes before expiry and to re-obtain resource and auth tokens against it, which also keeps the resource's `presented_jti` record current.
   - Warned resource implementers that policy keyed on the agent identifier is local to the two-party modes. The identifier reaches a resource in agent identity and resource-managed access and in no other mode, so an allowlist or per-agent label designed there is silently unenforceable once an endpoint moves to auth tokens; durable per-operation policy is `scope` or R3 operations. A deployment walked into exactly this and neither of its own review passes caught it.
   - Policy Evaluation Points now says what this document does and does not define about the PS's decision: the wire artifacts that carry the outcome are here; the decision procedure, and delegation of it to a supervisor that may be a person or an agent, belong to a companion specification on AAuth supervision. `requirement=clarification` existed on the wire with no stated home for the procedure behind it.
   - Distinguished supervision from governance. Governance remains the name of the layer (missions plus permission, audit, and interaction relay). Supervision is the per-act evaluation the PS performs against the mission's intent and prior log entries, and now has a Terminology entry; a dozen occurrences that used governance in that sense were changed. The agent-provider rationale's fleet-level sense is reworded as control and enforcement. Aligns with AAuth Budgets, which already uses supervision as a term of art, and gives a companion specification for a delegated supervisor a term to define against.
@@ -3504,7 +3514,7 @@ The following implementations are known:
   - Auth tokens carry `ps` and a REQUIRED `sub`, and no agent identifier. `act` and the delegation chain are removed.
   - Replaced the `mission` object with the `mission_s256` claim in person, resource, and auth tokens; `approver` is dropped everywhere but the mission blob.
   - Removed the `AAuth-Mission` header and its registration. A mission reaches a resource only inside a PS-issued token, so it is no longer agent-asserted. The approval response carries the mission blob base64url-encoded, with `s256` alongside it, so the digest covers an unambiguous byte sequence and the agent can verify it as it would a JWT payload.
-  - Mission blob gained `approved_resources` and MAY carry `expires_at`; no token carrying `mission_s256` may outlive it, and every PS decision path compares the current time to it. Added the `mission_expired` status.
+  - Mission blob gained `approved_resources` and MAY carry `expires_at`; the PS caps the person tokens and auth tokens it issues at it, and every PS decision path compares the current time to it. Added the `mission_expired` status.
   - Moved `capabilities` out of the mission blob to the approval response — it describes whether the PS can currently reach the person, which is not a term of the mission and should not perturb its digest.
   - A mission proposal MAY name the `resources` it expects to use; the approval response returns a person token for each.
   - Chain routing uses the auth token's `ps` claim. Removed the branch routing a downstream request to the upstream AS, which required the two resources to share an access server and was never stated as such.
