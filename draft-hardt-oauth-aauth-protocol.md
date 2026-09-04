@@ -548,7 +548,7 @@ Figure: Mission Completion {#fig-mission-completion}
 
 ### PS Governance Endpoints
 
-The PS provides three governance endpoints. The **permission** (#permission-endpoint) and **interaction** (#interaction-endpoint) endpoints work with or without a mission. The **audit** endpoint (#audit-endpoint) requires a mission.
+Of the endpoints a PS serves (#person-server), three are governance endpoints. The **permission** (#permission-endpoint) and **interaction** (#interaction-endpoint) endpoints work with or without a mission. The **audit** endpoint (#audit-endpoint) requires a mission.
 
 - **Permission endpoint**: Request permission for actions not governed by a remote resource — tool calls, file writes, sending messages.
 - **Audit endpoint**: Log actions performed, providing the PS with a complete record for the mission log.
@@ -676,56 +676,7 @@ A person token asserts that its issuer recognizes this person and that this agen
 
 The agent presents it via the `Signature-Key` header in place of its agent token (#keying-material). A resource MUST have verified a person token before it issues a resource token (#resource-tokens), so the identity and mission a resource records are PS-asserted rather than agent-asserted.
 
-## Person Token Endpoint {#person-token-endpoint}
-
-Every PS MUST publish a `person_token_endpoint` in its metadata (#ps-metadata) and MUST issue person tokens from it.
-
-The agent MUST make a signed POST with an HTTP Sig (#http-message-signatures-profile), presenting its agent token via the `Signature-Key` header using `scheme=jwt`.
-
-**Request parameters:**
-
-- `resource` (REQUIRED): The HTTPS URL of the resource the person token is for, conforming to the Server Identifier requirements (#server-identifiers). Becomes the `aud` of the issued token. The PS MUST validate it against those requirements.
-- `mission_s256` (OPTIONAL): The mission the agent is operating under (#missions). The PS MUST verify the mission exists, is active, and belongs to this agent, and MUST reject the request otherwise. When present, the PS includes it in the issued token.
-- `subagent_token` (OPTIONAL): A sub-agent's agent token, present when a parent agent obtains a person token on behalf of one of its sub-agents (#sub-agents). The signing agent MUST be named by the `subagent_token`'s `parent_agent`. The issued token's `cnf` is the sub-agent's key.
-- `upstream_token` (OPTIONAL): An auth token issued to the requester for an upstream resource, present when a resource acting as an agent needs a person token for a downstream resource (#call-chaining). The PS MUST verify it per (#upstream-token-verification).
-
-Without `upstream_token` the PS issues for the person bound to the requesting agent (#agent-person-binding). With it, the PS issues for the person the upstream token was issued for, determined from the upstream token's `sub`, which this PS MUST have issued. A PS that cannot determine the person MUST reject the request.
-
-A PS SHOULD rate-limit the number of distinct `resource` values it accepts from one agent; each obliges it to derive and retain a directed `sub` (#directed-identifiers).
-
-```http
-POST /person HTTP/1.1
-Host: ps.example
-Content-Type: application/json
-Content-Digest: sha-256=:...:
-Signature-Input: sig=("@method" "@authority" "@path"
-    "content-type" "content-digest"
-    "signature-key");created=1730217600
-Signature: sig=:...signature bytes...:
-Signature-Key: sig=jwt;jwt="eyJhbGc..."
-
-{
-  "resource": "https://resource.example",
-  "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
-}
-```
-
-**Response** (`200`):
-
-```json
-{
-  "person_token": "eyJhbGc...",
-  "expires_in": 3600
-}
-```
-
-The PS MAY require user interaction before issuing and return a `202 Accepted` deferred response with `requirement=interaction` (#requirement-responses). Because a resource MAY serve requests on identity alone, the question put to the person is whether this agent may act at the resource as them, not merely whether it may name them. A PS SHOULD fetch the resource's metadata (#resource-metadata) before issuing for a resource the person has not used, and present its `name`, `description`, and `access_mode` so that the person is answering the question the resource will actually apply.
-
-Errors use the token endpoint error codes (#token-endpoint-error-codes); `invalid_request` covers a missing or malformed `resource` or `mission_s256` value.
-
-Issuing a person token creates a retention obligation. A PS MUST retain each person token it issues — the token itself, so that it can be presented to an access server (#ps-to-as-token-request), and with it the `jti`, `ps`, `sub`, `mission_s256`, `tenant`, and `exp` that answer resource token verification (#resource-token-verification). Because a resource token may name a person token that was valid when the resource token was issued, the record MUST be retained beyond the person token's `exp` by at least the longest resource token lifetime the PS accepts (#resource-tokens). A resource token naming a `jti` the PS has no record of is rejected with `unknown_person_token` (#token-endpoint-error-codes).
-
-An agent SHOULD cache a person token for a resource until it expires rather than requesting one per call. A person token is scoped to one resource and, when it carries `mission_s256`, to one mission, so an agent working across several resources or several concurrent missions holds one per combination. All of them bind the same key through `cnf`, so an agent that rotates its signing key invalidates all of them at once; the agent SHOULD re-request lazily, on next use of each resource, rather than re-minting the whole set.
+An agent obtains a person token from its PS's person token endpoint (#person-token-endpoint), defined with the other PS endpoints in (#person-server). This section defines the token: its structure, how it is presented, and how a resource verifies it.
 
 ## Person Token Structure {#person-token-structure}
 
@@ -1089,7 +1040,69 @@ When an agent receives a `401` response with `AAuth-Requirement: requirement=aut
 
 # Person Server {#person-server}
 
-This section defines how agents obtain authorization from their person server. When accessing a remote resource, the agent sends a resource token to the PS's token endpoint. When performing local actions not governed by a remote resource, the agent requests permission from the PS's permission endpoint. In both cases, the PS evaluates the request against mission scope, handles user consent if needed, and uses the same requirement response patterns.
+This section defines what a person server serves to agents. Every PS endpoint is published in its metadata (#ps-metadata) and authenticates callers by HTTP Sig with an agent token (#http-message-signatures-profile); all use the same requirement response patterns (#requirement-responses).
+
+- **Person token endpoint** (`person_token_endpoint`, REQUIRED): issues a person token identifying the person to one resource (#person-token-endpoint).
+- **Auth token endpoint** (`auth_token_endpoint`, REQUIRED): takes a resource token and returns an auth token, directly or by federating with the resource's AS (#ps-token-endpoint).
+- **Mission endpoint** (`mission_endpoint`, OPTIONAL): where the agent proposes, updates, and completes its missions (#missions).
+- **Permission endpoint** (`permission_endpoint`, OPTIONAL): permission for actions not governed by a remote resource (#permission-endpoint).
+- **Audit endpoint** (`audit_endpoint`, OPTIONAL): a record of actions performed (#audit-endpoint).
+- **Interaction endpoint** (`interaction_endpoint`, OPTIONAL): the agent's channel to the person through the PS (#interaction-endpoint).
+- **Mission control endpoint** (`mission_control_endpoint`, OPTIONAL): the control plane for principals other than the owning agent; defined by a companion specification (#mission-management).
+- **Revocation endpoint** (`revocation_endpoint`, OPTIONAL): where authorized parties, including the agent provider, revoke tokens (#token-revocation).
+
+The two REQUIRED endpoints, with `issuer` and `jwks_uri`, are the whole of a conformant PS (#ps-metadata). The PS evaluates every request against the mission when one is in force, handles consent when it is needed, and issues tokens bounded by what it has verified.
+
+## Person Token Endpoint {#person-token-endpoint}
+
+Every PS MUST publish a `person_token_endpoint` in its metadata (#ps-metadata) and MUST issue person tokens from it.
+
+The agent MUST make a signed POST with an HTTP Sig (#http-message-signatures-profile), presenting its agent token via the `Signature-Key` header using `scheme=jwt`.
+
+**Request parameters:**
+
+- `resource` (REQUIRED): The HTTPS URL of the resource the person token is for, conforming to the Server Identifier requirements (#server-identifiers). Becomes the `aud` of the issued token. The PS MUST validate it against those requirements.
+- `mission_s256` (OPTIONAL): The mission the agent is operating under (#missions). The PS MUST verify the mission exists, is active, and belongs to this agent, and MUST reject the request otherwise. When present, the PS includes it in the issued token.
+- `subagent_token` (OPTIONAL): A sub-agent's agent token, present when a parent agent obtains a person token on behalf of one of its sub-agents (#sub-agents). The signing agent MUST be named by the `subagent_token`'s `parent_agent`. The issued token's `cnf` is the sub-agent's key.
+- `upstream_token` (OPTIONAL): An auth token issued to the requester for an upstream resource, present when a resource acting as an agent needs a person token for a downstream resource (#call-chaining). The PS MUST verify it per (#upstream-token-verification).
+
+Without `upstream_token` the PS issues for the person bound to the requesting agent (#agent-person-binding). With it, the PS issues for the person the upstream token was issued for, determined from the upstream token's `sub`, which this PS MUST have issued. A PS that cannot determine the person MUST reject the request.
+
+A PS SHOULD rate-limit the number of distinct `resource` values it accepts from one agent; each obliges it to derive and retain a directed `sub` (#directed-identifiers).
+
+```http
+POST /person HTTP/1.1
+Host: ps.example
+Content-Type: application/json
+Content-Digest: sha-256=:...:
+Signature-Input: sig=("@method" "@authority" "@path"
+    "content-type" "content-digest"
+    "signature-key");created=1730217600
+Signature: sig=:...signature bytes...:
+Signature-Key: sig=jwt;jwt="eyJhbGc..."
+
+{
+  "resource": "https://resource.example",
+  "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+}
+```
+
+**Response** (`200`):
+
+```json
+{
+  "person_token": "eyJhbGc...",
+  "expires_in": 3600
+}
+```
+
+The PS MAY require user interaction before issuing and return a `202 Accepted` deferred response with `requirement=interaction` (#requirement-responses). Because a resource MAY serve requests on identity alone, the question put to the person is whether this agent may act at the resource as them, not merely whether it may name them. A PS SHOULD fetch the resource's metadata (#resource-metadata) before issuing for a resource the person has not used, and present its `name`, `description`, and `access_mode` so that the person is answering the question the resource will actually apply.
+
+Errors use the token endpoint error codes (#token-endpoint-error-codes); `invalid_request` covers a missing or malformed `resource` or `mission_s256` value.
+
+Issuing a person token creates a retention obligation. A PS MUST retain each person token it issues — the token itself, so that it can be presented to an access server (#ps-to-as-token-request), and with it the `jti`, `ps`, `sub`, `mission_s256`, `tenant`, and `exp` that answer resource token verification (#resource-token-verification). Because a resource token may name a person token that was valid when the resource token was issued, the record MUST be retained beyond the person token's `exp` by at least the longest resource token lifetime the PS accepts (#resource-tokens). A resource token naming a `jti` the PS has no record of is rejected with `unknown_person_token` (#token-endpoint-error-codes).
+
+An agent SHOULD cache a person token for a resource until it expires rather than requesting one per call. A person token is scoped to one resource and, when it carries `mission_s256`, to one mission, so an agent working across several resources or several concurrent missions holds one per combination. All of them bind the same key through `cnf`, so an agent that rotates its signing key invalidates all of them at once; the agent SHOULD re-request lazily, on next use of each resource, rather than re-minting the whole set.
 
 ## PS Token Endpoint {#ps-token-endpoint}
 
@@ -3499,6 +3512,7 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-11
+  - Moved the Person Token Endpoint into the Person Server chapter beside the auth token endpoint, leaving the token's structure, usage, and verification in Person Token with a pointer. Every other PS endpoint was already defined in that chapter, and a PS implementer had to find this one under the token. The chapter now opens with the full list of endpoints a PS serves and their requirement levels.
   - Pointed verifiers that first see a signed artifact after a delay at the signed `created` parameter: the token is checked for validity at `created`, the accepted skew is the verifier's policy, and a replay cache there MUST span that skew. The profile already mandated `created`; nobody reading from the queued-consumption angle was directed to it.
   - Stated that the server hosting an interaction URL MAY complete the interaction over a channel it controls, without the person visiting `url` or presenting `code`, and what happens to the code: consumed at completion, `invalid_code` on later presentation, the pending URL returns the terminal response. The single-use rule was keyed on arrival at the URL, which did not describe a phone tap or a chat approval.
   - Added `as_unreachable` (502) for a PS that cannot complete federation, and the rule that an AS's well-formed terminal error is relayed to the agent with the AS's `error` and status. Nothing normative covered the PS-to-agent leg of a failed federation; `invalid_resource_token` and `server_error` were both wrong for it. Found implementing federation in a PS against the reference AS.
