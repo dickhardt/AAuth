@@ -2807,6 +2807,8 @@ The `created` parameter is the primary replay defense: the server rejects signat
 
 Within the validity window, a captured signature could in principle be replayed. For state-changing requests where this matters, a verifier MAY maintain a short-lived cache keyed by `(signing-key-thumbprint, created, @method, @authority, @path)` for the duration of the window, rejecting duplicate tuples. `@authority` is included because it is a mandated covered component (#covered-components) and distinguishes requests across virtual hosts or tenants sharing the same path. Resources are NOT required to maintain replay caches for resource tokens (#resource-tokens), which are consumed in a single PS call. This profile defines no nonce mechanism.
 
+The validity window governs online verification, where the verifier sees the request as it is made. A verifier that first sees a signed artifact after a delay — queued consumption, a batch pipeline, store-and-forward — uses the signed `created` as the signing-time anchor instead: it verifies that the presented token was valid at `created`, and applies its own policy for how much `created`-to-verification skew it accepts. A replay cache at such a verifier MUST span the skew it accepts, since the window that would otherwise bound replay no longer applies.
+
 ## JWKS Discovery and Caching {#jwks-discovery}
 
 All AAuth token verification — agent tokens, resource tokens, and auth tokens — requires discovering the issuer's signing keys via the `{iss}/.well-known/{dwk}` pattern defined in the HTTP Signature Keys specification ([@!I-D.hardt-httpbis-signature-key]).
@@ -3252,6 +3254,8 @@ This is partly by design — short-lived keys and directed identifiers (#directe
 
 These measures trade privacy for durability: archived signatures and keys are correlatable, so deployments MUST balance audit retention against the privacy-preserving properties of short-lived keys and directed identifiers (#privacy-considerations), and apply appropriate retention limits and access controls.
 
+A related case is the verifier that is the first to see the artifact, minutes or hours after it was signed. There the question is not whether evidence survives key rotation but whether the artifact was valid when it was signed, and the signed `created` parameter answers it (#freshness-and-replay).
+
 # Privacy Considerations
 
 ## Directed Identifiers
@@ -3495,6 +3499,7 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-11
+  - Pointed verifiers that first see a signed artifact after a delay at the signed `created` parameter: the token is checked for validity at `created`, the accepted skew is the verifier's policy, and a replay cache there MUST span that skew. The profile already mandated `created`; nobody reading from the queued-consumption angle was directed to it.
   - Stated that the server hosting an interaction URL MAY complete the interaction over a channel it controls, without the person visiting `url` or presenting `code`, and what happens to the code: consumed at completion, `invalid_code` on later presentation, the pending URL returns the terminal response. The single-use rule was keyed on arrival at the URL, which did not describe a phone tap or a chat approval.
   - Added `as_unreachable` (502) for a PS that cannot complete federation, and the rule that an AS's well-formed terminal error is relayed to the agent with the AS's `error` and status. Nothing normative covered the PS-to-agent leg of a failed federation; `invalid_resource_token` and `server_error` were both wrong for it. Found implementing federation in a PS against the reference AS.
   - The PS-to-AS token request gains `person_token`, REQUIRED: the person token named by the resource token's `presented_jti`, which the PS issued and retains. The AS verifies it against the resource token and caps the auth token it issues at its `exp`. This closes a rule the Resource and the AS could not satisfy: -11 required every token carrying `mission_s256` to expire no later than the mission's `expires_at`, and neither party holds the mission. A resource token's lifetime is now independent of the mission; the PS caps what it issues at `expires_at`, and the person token carries that bound to the AS. Added `expired_person_token`. Agents are advised to refresh the person token at least five minutes before expiry and to re-obtain resource and auth tokens against it, which also keeps the resource's `presented_jti` record current.
