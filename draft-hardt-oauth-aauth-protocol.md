@@ -792,8 +792,8 @@ A resource MUST have verified a person token (#person-tokens) before it issues a
 A resource token is a signed JWT that cryptographically binds the resource's identity, the person's identity, the agent's signing key, and the requested scope. The resource sets the token's audience based on its configuration:
 
 - If the resource has its own AS: `aud` = AS URL (four-party)
-- If the resource has no AS but the agent has a PS (`ps` claim in agent token): `aud` = PS URL (three-party)
-- If neither: the resource handles authorization itself — via an interaction response (#user-interaction) or internal policy — and MAY return an `AAuth-Access` header (#aauth-access)
+- If the resource has no AS: `aud` = the `iss` of the person token the resource verified (three-party)
+- A resource that issues no resource token handles authorization itself — via an interaction response (#user-interaction) or internal policy — and MAY return an `AAuth-Access` header (#aauth-access)
 
 A resource MAY always handle authorization itself, regardless of whether the agent has a PS.
 
@@ -803,7 +803,7 @@ A resource MAY publish an `authorization_endpoint` in its metadata. The agent se
 
 The agent MUST present a person token (#person-tokens) via the `Signature-Key` header on requests to the authorization endpoint, and the resource MUST verify it per (#person-token-verification). A resource that receives a request without one responds per (#requirement-person-token).
 
-An agent with no person server cannot obtain a person token and so cannot use the authorization endpoint. It calls the resource's endpoints directly and takes whatever the resource challenges with — identity-based access (#requirement-agent-token) or resource-managed authorization (#resource-managed-auth). The `401` path (#requirement-auth-token) is reached with an agent token as before.
+An agent with no person server cannot obtain a person token and so cannot use the authorization endpoint. It calls the resource's endpoints directly and takes whatever the resource challenges with — identity-based access (#requirement-agent-token) or resource-managed authorization (#resource-managed-auth). Those two modes are the whole of what is available to it: a resource MUST NOT issue a resource token without a verified person token, and an agent with no PS has nowhere to redeem one.
 
 **Request parameters:**
 
@@ -826,7 +826,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 ## Authorization Endpoint Responses
 
-The resource can handle authorization itself, or it can issue a resource token when the resource has an AS or the agent token includes a `ps` claim.
+The resource can handle authorization itself, or it can issue a resource token — to its AS, or to the PS that issued the person token it verified.
 
 ### Response without Resource Token
 
@@ -866,7 +866,7 @@ If the resource can authorize immediately (e.g., the agent's key is already auth
 Alternatively, the resource MAY return a resource token. The resource sets the `aud` claim based on its configuration:
 
 - If the resource has its own AS: `aud` = AS URL (four-party)
-- If the resource has no AS but the agent has a PS (`ps` claim): `aud` = PS URL (three-party)
+- If the resource has no AS: `aud` = the `iss` of the person token the resource verified (three-party)
 
 When the person token carries `mission_s256`, the resource copies it into the resource token.
 
@@ -1075,7 +1075,7 @@ The PS's `auth_token_endpoint` is where agents send token requests. The PS evalu
 
 An agent MAY have multiple token requests pending at the PS simultaneously — for example, when a mission requires access to several resources. Each request has its own pending URL and lifecycle. The PS MUST handle concurrent requests independently. Some requests may be resolved without user interaction (e.g., within existing mission scope), while others may require consent. The PS is responsible for managing concurrent user interactions — for example, by batching consent prompts or serializing them.
 
-### Agent Token Request
+### Auth Token Request
 
 The agent MUST make a signed POST to the PS's `auth_token_endpoint`. The request MUST include an HTTP Sig (#http-message-signatures-profile) and the agent MUST present its agent token via the `Signature-Key` header using `scheme=jwt`.
 
@@ -3450,6 +3450,7 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-11
+  - Derived the resource token's audience from the verified person token in the places that still routed on the agent token's `ps` claim: both `aud` bullet lists and the authorization endpoint responses intro. Dropped the sentence saying the `401` path is reached with an agent token, which contradicted the rule that a resource MUST NOT issue a resource token without a verified person token. Renamed the token-request subsection Auth Token Request, for the token it returns.
   - Added Consent Presentation, naming the two kinds of content a consent surface carries and what the PS MUST do with them. Resource-asserted content is the resource's metadata (`name`, `description`, `logo_uri`, `scope_descriptions`), the claims of the resource token, and an R3 `display` section; agent-asserted content is `justification`, `platform`, `device`, and clarification responses. A PS MUST visually distinguish the two and attribute the agent's, and MUST NOT decide on agent-asserted content alone where resource-asserted content covering the same operation is available. Nothing previously required the distinction, so a person reading a consent screen could not tell which party asserted what, and the agent controlled one of the two.
   - Added the Security Considerations subsection Agent Control of the Consent Surface. Sanitizing the `justification` prevents script injection and nothing else; the agent can still describe the access as something other than what the resource says it is. The mitigation is attribution, not filtering.
   - Resolved the `justification` TODO. No section structure is defined for the value: the justification says why the agent wants the access, the resource says what the access does, and the person weighs the one against the other. The parameter now points at Consent Presentation and at clarification chat.
