@@ -358,6 +358,13 @@ The resource has no separate access server — it accepts identity claims from w
 Agent                                 Resource       PS
   |                                      |            |
   | HTTPSig w/ agent_token               |            |
+  | POST person_token_endpoint           |            |
+  |-------------------------------------------------->|
+  |                                      |            |
+  | person_token (aud = resource)        |            |
+  |<--------------------------------------------------|
+  |                                      |            |
+  | HTTPSig w/ person_token              |            |
   | POST authorization_endpoint          |            |
   |------------------------------------->|            |
   |                                      |            |
@@ -381,6 +388,11 @@ Agent                                 Resource       PS
 ~~~
 Figure: PS Authorization Access (Three-Party) {#fig-ps-asserted}
 
+1. The agent obtains a person token for the resource from its PS (#person-token-endpoint).
+2. Presenting the person token, the agent requests access at the resource's authorization endpoint, or calls the resource and receives a `401` challenge. A resource issues a resource token only after verifying a person token (#resource-tokens).
+3. The agent sends the resource token to its PS, which returns an auth token.
+4. The agent presents the auth token to the resource.
+
 ### Federated Authorization Access (Four-Party)
 
 The resource has its own access server. The resource issues a resource token (#resource-tokens) with `aud` = AS URL — either via its `authorization_endpoint` or a `401` challenge (#requirement-auth-token). The PS federates with the AS (#ps-as-federation) to obtain the auth token (#auth-tokens).
@@ -389,6 +401,13 @@ The resource has its own access server. The resource issues a resource token (#r
 Agent                                Resource   PS                    AS
   |                                     |       |                      |
   | HTTPSig w/ agent_token              |       |                      |
+  | POST person_token_endpoint          |       |                      |
+  |-------------------------------------------->|                      |
+  |                                     |       |                      |
+  | person_token (aud = resource)       |       |                      |
+  |<--------------------------------------------|                      |
+  |                                     |       |                      |
+  | HTTPSig w/ person_token             |       |                      |
   | POST authorization_endpoint         |       |                      |
   |------------------------------------>|       |                      |
   |                                     |       |                      |
@@ -420,6 +439,11 @@ Agent                                Resource   PS                    AS
   |<------------------------------------|       |                      |
 ~~~
 Figure: Federated Access (Four-Party) {#fig-federated}
+
+1. The agent obtains a person token for the resource from its PS (#person-token-endpoint).
+2. Presenting the person token, the agent requests access at the resource's authorization endpoint, or calls the resource and receives a `401` challenge. A resource issues a resource token only after verifying a person token (#resource-tokens).
+3. The agent sends the resource token to its PS. The PS federates with the AS named by the resource token's `aud` (#ps-as-federation), which returns the auth token to the PS.
+4. The PS returns the auth token to the agent, which presents it to the resource.
 
 ## Roles {#roles}
 
@@ -960,7 +984,7 @@ A resource MAY also authorize the agent based solely on its identity (from the a
 
 ## Auth Token Required {#requirement-auth-token}
 
-A resource MUST use `requirement=auth-token` with a `401 Unauthorized` response when an auth token is required. The header MUST include a `resource-token` parameter containing a resource token JWT (#resource-token-structure).
+A resource MUST use `requirement=auth-token` with a `401 Unauthorized` response when an auth token is required. The header MUST include a `resource-token` parameter containing a resource token JWT (#resource-token-structure). A resource MUST NOT issue this challenge to a request that carried neither a person token nor an auth token: it has no verified person token to issue a resource token for, and challenges with `requirement=person-token` (#requirement-person-token) instead.
 
 ```http
 HTTP/1.1 401 Unauthorized
@@ -994,6 +1018,8 @@ Completion consumes the pending record. The resource MUST retain the record, wit
 Which delivery to use is the resource's choice, per invocation. The `401` is the baseline every resource can implement without holding state, and the only delivery that maps onto transports with no place to complete at a separate URL. The `202` suits a resource that can hold the invocation; a resource hosting its own interaction already returns this shape (#interaction-response-poll-authority). Agents MUST support both: the deferred-response handling agents already implement (#deferred-responses) applies unchanged, with `requirement=auth-token` in the pending response rather than `requirement=interaction`.
 
 ## Resource Token
+
+A resource issues a resource token only after verifying a person token (#person-token-verification): the token's `ps`, `sub`, and `presented_jti` are copied from that person token, and there is nothing to copy otherwise. A resource that has not verified one challenges with `requirement=person-token` (#requirement-person-token) rather than issuing a resource token.
 
 ### Resource Token Structure
 
@@ -3450,6 +3476,7 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-11
+  - Restated the person-token-before-resource-token prerequisite where readers of the `401` path meet it. The three-party and four-party figures now show the person token leg and carry a step list; the Resource Token section opens with the prerequisite; a resource MUST NOT challenge with `requirement=auth-token` on a request that carried neither a person token nor an auth token. A deployment that read the draft carefully built both its flow and its wire trace without a person token, because the figures went straight from the authorization endpoint to a resource token.
   - Derived the resource token's audience from the verified person token in the places that still routed on the agent token's `ps` claim: both `aud` bullet lists and the authorization endpoint responses intro. Dropped the sentence saying the `401` path is reached with an agent token, which contradicted the rule that a resource MUST NOT issue a resource token without a verified person token. Renamed the token-request subsection Auth Token Request, for the token it returns.
   - Added Consent Presentation, naming the two kinds of content a consent surface carries and what the PS MUST do with them. Resource-asserted content is the resource's metadata (`name`, `description`, `logo_uri`, `scope_descriptions`), the claims of the resource token, and an R3 `display` section; agent-asserted content is `justification`, `platform`, `device`, and clarification responses. A PS MUST visually distinguish the two and attribute the agent's, and MUST NOT decide on agent-asserted content alone where resource-asserted content covering the same operation is available. Nothing previously required the distinction, so a person reading a consent screen could not tell which party asserted what, and the agent controlled one of the two.
   - Added the Security Considerations subsection Agent Control of the Consent Surface. Sanitizing the `justification` prevents script injection and nothing else; the agent can still describe the access as something other than what the resource says it is. The mitigation is attribution, not filtering.
