@@ -252,34 +252,34 @@ Resource-managed and person-identity access reach the same destination by differ
 The following diagram shows all parties and their relationships. Not all parties or relationships are present in every mode.
 
 ~~~ ascii-art
-                     +--------------+
-                     |    Person    |
-                     +--------------+
+                    /---------------\
+                   |      Person     |
+                    \---------------/
                       ^           ^
               mission |           | consent
                       v           v
-                     +--------------+    federation    +--------------+
-                     |              |----------------->|              |
-                     |   Person     |                  |   Access     |
-                     |   Server     |<-----------------|   Server     |
-                     |              |    auth token    |              |
-                     +--------------+                  +--------------+
+                     +--------------+                   +--------------+
+                     |              |    federation     |              |
+                     |   Person     |------------------>|   Access     |
+                     |   Server     |<------------------|   Server     |
+                     |              |    auth token     |              |
+                     +--------------+                   +--------------+
                       ^          ^ |
-            mission   | resource | | auth
-                      |    token | | token
-                      |          | v
-              agent  +--------------+  signed request  +--------------+
-+-----------+ token  |              |----------------->|              |
-|  Agent    |------->|    Agent     |                  |   Resource   |
-|  Provider |        |              |<-----------------|              |
-+-----------+        +--------------+     resource     +--------------+
+            mission   |   signed | | person token
+                      |  request | | or auth token
+                      v          | v
+              agent  +--------------+  signed request   +--------------+
++-----------+ token  |              |------------------>|              |
+|  Agent    |------->|    Agent     |<------------------|   Resource   |
+|  Provider |        |              | resource response |              |
++-----------+        +--------------+ or resource token +--------------+
 
 ~~~
 Figure: Protocol Parties and Relationships {#fig-parties}
 
 - **Agent Provider → Agent**: Issues an agent token binding the agent's signing key to its identity.
-- **Agent ↔ Resource**: Agent sends signed requests; resource returns responses. In the authorization modes, the resource also returns resource tokens at its authorization endpoint.
-- **Agent ↔ PS**: Agent sends resource tokens to obtain auth tokens. With governance, agent also creates missions and requests permissions.
+- **Agent ↔ Resource**: Agent sends signed requests; the resource returns responses, or a resource token when authorization is needed (#resource-tokens).
+- **Agent ↔ PS**: Agent sends signed requests — for a person token, or carrying a resource token for an auth token; the PS returns person tokens and auth tokens. With governance, the agent also creates missions and requests permissions.
 - **PS ↔ AS**: Federation (four-party only). The PS sends the resource token to the AS; the AS returns an auth token.
 - **Person ↔ PS**: Mission approval and consent for resource access.
 
