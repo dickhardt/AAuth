@@ -612,7 +612,7 @@ Members:
 
 Recipients MUST ignore members they do not recognize.
 
-The header carries no `granted` member, no cumulative consumption figure, and no token reference. The agent holds the auth token it signed the request with and reads `granted` from there; what it needs per response is what this call cost and what is left, which is what the field carries. Cumulative consumption is a PS-facing figure, reported in the resource token (#budget-consumed) and at the usage endpoint (#usage-counters); see (#why-no-cumulative) for why it is not also reported to the agent.
+The header carries no `granted` member, no cumulative consumption figure, and no token reference. The agent holds the auth token it signed the request with and reads `granted` from there; what it needs per response is what this call cost and what is left, which is what the field carries. Cumulative consumption is an issuer-facing figure, reported in the resource token (#budget-consumed) and at the usage endpoint (#usage-counters); see (#why-no-cumulative) for why it is not also reported to the agent.
 
 The scope of the reported figures is this auth token's budget, because the budget expires with the token (#enforcement).
 
@@ -864,7 +864,7 @@ The honest cost of the invariant lands near exhaustion: a request bounded at mor
 
 ## Failed Calls {#failed-calls}
 
-Whether a request that fails — a `5xx` after input tokens were consumed — draws down the budget is the resource's metering policy. Whatever it meters, the records and counters MUST reflect, or the person's numbers will not reconcile with the bill.
+Whether a request that fails — a `5xx` after input tokens were consumed — draws down the budget is the resource's metering policy. Whatever it meters, the record and counters MUST reflect, or the person's numbers will not reconcile with the bill.
 
 ## Delegation {#delegation}
 
