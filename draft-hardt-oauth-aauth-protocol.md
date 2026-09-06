@@ -3277,6 +3277,7 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-11
+  - Added the informative appendix A Minimal Person Server: how a PS serving one person composes from the four REQUIRED metadata fields, out-of-band consent completion, retained person tokens, and the existing pending-request rules, with no new requirement. Readers sizing a self-hosted PS were inferring the full endpoint surface.
   - Named the Supervisor: the party the PS consults for a per-act decision, the Person by default, or a supervision server (SS) the PS delegates to under AAuth Supervision, a companion specification. Added to Terminology and Roles; Policy Evaluation Points, Consent Presentation, and Why Missions Are Not a Policy Language name it where they previously described an anonymous decision-maker. Nothing on the wire changes.
   - Editorial pass with no normative change. Gone or merged: the Introduction's feature list and its negation, the Overview's three mission diagrams and its Bootstrapping section, the signature-header boilerplate on fourteen examples, the per-role repetition of the common metadata fields, two duplicate `202` examples and two of the three clarification-response examples, three Design Rationale entries that restated body text and five one-sentence entries now in an In Brief list, and six Security Considerations subsections that restated normative text stated elsewhere. The three `401` requirement challenges are now adjacent. Every MUST, SHOULD, and MAY survives in the section that governs it.
   - Moved the Person Token Endpoint into the Person Server chapter beside the auth token endpoint, leaving the token's structure, usage, and verification in Person Token with a pointer. Every other PS endpoint was already defined in that chapter, and a PS implementer had to find this one under the token. The chapter now opens with the full list of endpoints a PS serves and their requirement levels.
@@ -3517,6 +3518,24 @@ User      Agent       Resource 1      Resource 2    PS
   |         | 200 OK       |               |          |
   |         |<-------------|               |          |
 ~~~
+
+# A Minimal Person Server {#minimal-ps}
+
+This appendix is informative. It describes how a person server serving one person — self-hosted, or a small service — composes from what this document already defines, and points at the sections that govern each step. It adds no requirement.
+
+**Metadata.** The floor is the four REQUIRED fields (#ps-metadata): `issuer`, `jwks_uri`, `person_token_endpoint`, and `auth_token_endpoint`. A minimal PS publishes those and nothing else. It has no `mission_endpoint`, so agents cannot propose missions to it and every request is evaluated on its own; no `permission_endpoint` or `audit_endpoint`; no `interaction_endpoint`, so an agent that would have relayed an interaction directs the person to it itself (#interaction-relay); and no `mission_control_endpoint`. A `revocation_endpoint` is OPTIONAL and worth having, since it is how the person's agent provider tells the PS to stop honoring an agent (#token-revocation).
+
+**One person.** Every agent that reaches the PS acts for the same person, so agent-person binding (#agent-person-binding) reduces to the first approval: the PS records the agent's `(iss, sub)` on the first token it issues for it, and thereafter recognizes it. The approving party still has to be authenticated (#ps-approval-endpoint-auth): a loopback-only PS relies on the operating system, and one reachable from a network authenticates the person before acting on a tap or a reply.
+
+**Person tokens.** The person token endpoint (#person-token-endpoint) derives one directed `sub` per resource (#directed-identifiers) — a keyed hash of the resource identifier is enough, provided the key is kept — issues the token bound to the agent's key, and retains it, with its `jti`, for as long as a resource token may name it (#person-token-endpoint). The first token for a resource the person has not used is the moment to ask them (#person-token-exposure); later ones for the same resource need not be.
+
+**Auth tokens.** At the auth token endpoint (#ps-token-endpoint), a resource token whose `aud` is the PS is answered directly: the PS decides on consent and issues the auth token itself. One whose `aud` is an access server is federated (#ps-as-federation), presenting the resource token, the agent token, and the retained person token (#ps-to-as-token-request). A minimal PS that never expects four-party access can decline the second case; one that supports it needs nothing beyond an HTTP client and its own signing key.
+
+**Consent without a consent page.** The PS answers any request that needs the person with a `202` deferred response carrying `requirement=interaction`, a `url`, and a `code` (#requirement-responses, #deferred-responses). The `url` can be a page the PS serves, but it need not be visited: the PS MAY complete the interaction over a channel it already has — a notification the person taps, a message they reply to — and the code is consumed at that completion (#user-interaction). The pending URL then returns the terminal response on the agent's next poll. A queue of pending decisions, each resolved by one tap, is the whole of the consent surface; the Consent Presentation rules (#consent-presentation) apply to what the tap shows.
+
+**Long waits.** The person may not answer for hours. The pending record lives as long as the PS chooses (#pending-url-security); the resource token the request carried will have expired by then, and the agent obtains a fresh one and resubmits (#resource-tokens). The PS remembers the decision it already has and applies it to the resubmission without asking again (#resource-tokens).
+
+**Supervision.** The person is the Supervisor (#roles). Every decision the PS cannot make from what it already recorded waits on them, which is the right default for one person and a handful of agents. A PS that wants to answer routine requests without waking the person applies a standing policy on their behalf; how it consults a supervision server for that is AAuth Supervision, and is the one thing a minimal PS grows into rather than starts with.
 
 # Design Rationale
 
