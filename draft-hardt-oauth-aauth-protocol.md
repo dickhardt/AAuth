@@ -183,7 +183,7 @@ Because agent identity is independent and self-contained, AAuth is designed for 
 
 {::boilerplate bcp14-tagged}
 
-In HTTP examples throughout this document, line breaks and indentation are added for readability. Actual HTTP messages do not contain these extra line breaks.
+In HTTP examples throughout this document, line breaks and indentation are added for readability. Actual HTTP messages do not contain these extra line breaks. Examples of signed requests show the `Signature-Key` header and omit the `Signature-Input`, `Signature`, and `Content-Digest` headers that every signed request carries; the fully bound form is shown once, in (#covered-components).
 
 # Terminology
 
@@ -693,9 +693,6 @@ An agent with no person server cannot obtain a person token and so cannot use th
 POST /authorize HTTP/1.1
 Host: resource.example
 Content-Type: application/json
-Signature-Input: sig=("@method" "@authority"
-    "@path" "signature-key");created=1730217600
-Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
@@ -956,11 +953,6 @@ A PS SHOULD rate-limit the number of distinct `resource` values it accepts from 
 POST /person HTTP/1.1
 Host: ps.example
 Content-Type: application/json
-Content-Digest: sha-256=:...:
-Signature-Input: sig=("@method" "@authority" "@path"
-    "content-type" "content-digest"
-    "signature-key");created=1730217600
-Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
@@ -1026,10 +1018,6 @@ POST /token HTTP/1.1
 Host: ps.example
 Content-Type: application/json
 Prefer: wait=45
-Signature-Input: sig=("@method" "@authority" "@path"
-    "content-type" "content-digest"
-    "signature-key");created=1730217600
-Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
@@ -1177,11 +1165,6 @@ The agent responds by POSTing JSON with an `action` of `clarification_response` 
 POST /pending/abc123 HTTP/1.1
 Host: ps.example
 Content-Type: application/json
-Content-Digest: sha-256=:...:
-Signature-Input: sig=("@method" "@authority" "@path"
-    "content-type" "content-digest"
-    "signature-key");created=1730217600
-Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
@@ -1202,11 +1185,6 @@ The agent MAY obtain a new resource token from the resource (e.g., with reduced 
 POST /pending/abc123 HTTP/1.1
 Host: ps.example
 Content-Type: application/json
-Content-Digest: sha-256=:...:
-Signature-Input: sig=("@method" "@authority" "@path"
-    "content-type" "content-digest"
-    "signature-key");created=1730217600
-Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
@@ -1225,9 +1203,6 @@ The agent MAY cancel the request by sending DELETE to the pending URL:
 ```http
 DELETE /pending/abc123 HTTP/1.1
 Host: ps.example
-Signature-Input: sig=("@method" "@authority"
-    "@path" "signature-key");created=1730217600
-Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 ```
 
@@ -1258,11 +1233,6 @@ The agent MUST make a signed POST to the PS's `permission_endpoint`. The request
 POST /permission HTTP/1.1
 Host: ps.example
 Content-Type: application/json
-Content-Digest: sha-256=:...:
-Signature-Input: sig=("@method" "@authority" "@path"
-    "content-type" "content-digest"
-    "signature-key");created=1730217600
-Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
@@ -1320,11 +1290,6 @@ The agent MUST make a signed POST to the PS's `audit_endpoint`. The request MUST
 POST /audit HTTP/1.1
 Host: ps.example
 Content-Type: application/json
-Content-Digest: sha-256=:...:
-Signature-Input: sig=("@method" "@authority" "@path"
-    "content-type" "content-digest"
-    "signature-key");created=1730217600
-Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
@@ -1377,11 +1342,6 @@ The agent MUST make a signed POST to the PS's `interaction_endpoint`. The reques
 POST /interaction HTTP/1.1
 Host: ps.example
 Content-Type: application/json
-Content-Digest: sha-256=:...:
-Signature-Input: sig=("@method" "@authority" "@path"
-    "content-type" "content-digest"
-    "signature-key");created=1730217600
-Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
@@ -1584,11 +1544,6 @@ Work changes. When what the agent is doing no longer matches the description the
 POST /mission/dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk HTTP/1.1
 Host: ps.example
 Content-Type: application/json
-Content-Digest: sha-256=:...:
-Signature-Input: sig=("@method" "@authority" "@path"
-    "content-type" "content-digest"
-    "signature-key");created=1730217600
-Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
@@ -1625,11 +1580,6 @@ When the agent believes the mission is complete, it proposes completion with a s
 POST /mission/dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk HTTP/1.1
 Host: ps.example
 Content-Type: application/json
-Content-Digest: sha-256=:...:
-Signature-Input: sig=("@method" "@authority" "@path"
-    "content-type" "content-digest"
-    "signature-key");created=1730217600
-Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
@@ -1737,9 +1687,6 @@ The AS MUST verify `person_token` per (#person-token-verification), with two sub
 POST /token HTTP/1.1
 Host: as.resource.example
 Content-Type: application/json
-Signature-Input: sig=("@method" "@authority"
-    "@path" "signature-key");created=1730217600
-Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwks_uri;
     jwks_uri="https://ps.example/.well-known/jwks.json"
 
@@ -2381,9 +2328,6 @@ POST /token HTTP/1.1
 Host: auth.example
 Content-Type: application/json
 Prefer: wait=45
-Signature-Input: sig=("@method" "@authority"
-    "@path" "signature-key");created=1730217600
-Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
@@ -2538,9 +2482,6 @@ A `jti` is unique only within the namespace of the issuer that minted it. A revo
 POST /revoke HTTP/1.1
 Host: ps.example
 Content-Type: application/json
-Signature-Input: sig=("@method" "@authority"
-    "@path" "signature-key");created=1730217600
-Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
