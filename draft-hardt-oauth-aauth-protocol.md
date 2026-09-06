@@ -165,22 +165,7 @@ Agents don't work this way. They discover resources at runtime. They execute lon
 
 ## What AAuth Provides
 
-- **Agent identity without pre-registration**: A domain, static metadata, and a JWKS establish identity with no portal, no bilateral agreement, no shared secret.
-- **Per-instance identity**: Each agent instance gets its own identifier (`aauth:local@domain`) and signing key.
-- **Proof-of-possession on every request**: HTTP Message Signatures ([@!RFC9421]) bind every request the agent makes to the agent's key — a stolen token is useless without the private key.
-- **Two-party mode with first-call registration**: An agent calls a resource it has never contacted before; the resource returns `AAuth-Requirement`; a browser interaction handles account creation, payment, and consent. The first API call is the registration.
-- **Tool-call governance**: A person server (PS) represents the user and manages what tools the agent can call, providing permission and audit for tool use — no resource involved.
-- **Missions**: Optional scoped authorization contexts that span multiple resources. The agent proposes what it intends to do in natural language; the person server provides full context — mission, history, justification — to the appropriate decision-maker (human or AI); every resource access is evaluated in context. Missions enable governance over decisions that cannot be reduced to predefined machine-evaluable rules.
-- **Cross-domain federation**: The PS federates with access servers (AS) — the policy engines that guard resources — to enable access across trust domains without the agent needing to know about each one.
-- **Clarification chat**: Users can ask questions during consent; agents can explain or adjust their requests.
-- **Progressive adoption**: Each party can adopt independently; modes build on each other.
-- **Asynchronous event delivery**: Agents receive events from resources through the AP, without requiring a public endpoint. Resources post event tokens to the AP's event endpoint; the AP routes them to the agent. Defined in AAuth Events ([@?I-D.hardt-aauth-events]).
-
-## What AAuth Does Not Do
-
-- Does not require centralized identity providers — agents publish their own identity
-- Does not use shared secrets or bearer tokens — every credential is bound to a signing key and useless without it
-- Does not require coordination to adopt — each party adds support independently
+Every agent instance has its own identifier and signing key, and every request it makes is bound to that key by an HTTP Message Signature ([@!RFC9421]): no credential is a bearer credential, and none needs pre-registration, so the first API call to a resource is the registration. A person server represents the person — asserting who the agent acts for, managing consent and missions, relaying interactions and payments, and recording what the agent did — and federates with the access servers that guard resources across trust domains. Each party adopts independently. Asynchronous event delivery to agents is defined in AAuth Events ([@?I-D.hardt-aauth-events]).
 
 ## Relationship to Existing Standards
 
