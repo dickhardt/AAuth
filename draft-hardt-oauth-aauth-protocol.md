@@ -1373,7 +1373,7 @@ Errors use the error response format (#error-response-format).
 
 ## Re-authorization {#re-authorization}
 
-AAuth does not have a separate refresh token or refresh flow. When an auth token expires, the agent obtains a fresh resource token from the resource's authorization endpoint and submits it to the PS's token endpoint — the same flow as the initial authorization. This gives the resource a voice in every re-authorization: the resource can adjust scope, require step-up authorization, or deny access based on current policy.
+AAuth does not have a separate refresh token or refresh flow. When an auth token expires, the agent obtains a fresh resource token from the resource's authorization endpoint and submits it to the PS's token endpoint — the same flow as the initial authorization. This gives the resource a voice in every re-authorization: the resource can adjust scope, require step-up authorization, or deny access based on current policy. A separate refresh token would bypass the resource, and is unnecessary when the standard flow is a single additional request.
 
 When an agent rotates its signing key, all existing auth tokens are bound to the old key and can no longer be used. The agent MUST re-authorize by obtaining fresh resource tokens and submitting them to the PS.
 
@@ -1509,7 +1509,7 @@ The member lists above are a floor, not a closed set. A PS MAY include additiona
 
 `s256` identifies the mission everywhere it appears — as the `mission_s256` claim of person, resource, and auth tokens, and as the `mission_s256` parameter of PS requests.
 
-It is a hash rather than an opaque identifier so that it is provable. An opaque identifier would name the mission but leave the PS free to attach it to any text afterwards. A digest binds every token carrying `mission_s256` to one specific mission, so the mission in the PS's log and the mission those tokens authorized are demonstrably the same.
+It is a hash rather than an opaque identifier so that it is provable. An opaque identifier would name the mission but leave the PS free to attach it to any text afterwards. A digest binds every token carrying `mission_s256` to one specific mission, so the mission in the PS's log and the mission those tokens authorized are demonstrably the same. Verification is available to the agent at approval and to anyone holding the blob later.
 
 The PS MUST compute `s256` over the exact bytes it persists as the mission blob, MUST return those same bytes as `mission`, and MUST serve them wherever it later exposes the mission for audit.
 
@@ -1953,7 +1953,7 @@ Because the intermediary obtains a person token for the downstream resource befo
 
 Copying instead would fail in both directions at once. The value would be meaningless under the new issuer, so the downstream resource would either misidentify the person or key state to an identifier no one can resolve; and the same string appearing at two resources is exactly the correlation handle pairwise identifiers exist to prevent, handed to a party the user never consented to share it with.
 
-Note that downstream authorization is not required to be a subset of the upstream scopes. A downstream resource may have capabilities that are orthogonal to the upstream resource — for example, a flight booking API that calls a payment processor needs the payment processor to charge a card, an operation the user and original agent could never perform directly. The downstream resource's scope is constrained by its own AS policy and the PS's evaluation of the mission context, not by the upstream token's scope. The PS provides the supervision constraint — it evaluates each hop independently and can deny requests that fall outside the mission or the user's intent.
+Note that downstream authorization is not required to be a subset of the upstream scopes. A downstream resource may have capabilities that are orthogonal to the upstream resource — for example, a flight booking API that calls a payment processor needs the payment processor to charge a card, an operation the user and original agent could never perform directly. The downstream resource's scope is constrained by its own AS policy and the PS's evaluation of the mission context, not by the upstream token's scope. The PS provides the supervision constraint — it evaluates each hop independently and can deny requests that fall outside the mission or the user's intent — where a formal subset rule would prevent legitimate delegation chains.
 
 Because the resource acts as an agent, it MUST have its own agent identity — it MUST publish agent metadata at `/.well-known/aauth-agent.json` so that downstream resources and ASes can verify its identity.
 
@@ -3562,10 +3562,6 @@ User      Agent       Resource 1      Resource 2    PS
 
 ## Identity and Foundation
 
-### Why HTTPS-Based Agent Identity
-
-HTTPS URLs as agent identifiers enable dynamic ecosystems without pre-registration.
-
 ### Why Per-Instance Agent Identity
 
 OAuth's `client_id` identifies an application — every instance of the same app shares a single identifier and typically a single set of credentials. AAuth's `aauth:local@domain` agent identifier identifies a specific instance with its own signing key. This enables per-instance authorization (grant access to this specific agent process, not all instances of the app), per-instance revocation (revoke one compromised instance without affecting others), and per-instance audit (trace every action to the specific instance that performed it). The agent provider controls which instances receive agent tokens, providing centralized control over a distributed agent fleet.
@@ -3608,10 +3604,6 @@ The approval response carries the mission blob base64url-encoded rather than as 
 
 An earlier revision avoided the problem by making the response body the mission and putting `s256` in a header, which worked but left no room in the response for anything else. The encoded member restores that room without giving up verifiability.
 
-### Why the Mission Identifier Is a Hash
-
-An opaque identifier would name the mission but leave the person server free to attach it to different text afterwards. A digest binds every token carrying `mission_s256` to one specific mission, so the mission in the log and the mission those tokens authorized are demonstrably the same. Verification is available to the agent at approval and to anyone holding the blob later.
-
 ### Why a Resource Token Names the Person Token {#why-presented-jti}
 
 Binding by `presented_jti` rather than by comparing claims is what makes mission stripping detectable. A resource cannot drop `mission_s256` and present the result as an unscoped request, because the person server resolves the person token it actually issued and compares. Comparing claims alone cannot work: an agent running concurrent missions holds several person tokens for the same resource, so "the person token issued for this agent and resource" does not identify one, and a resource that omitted `mission_s256` could not be caught. Naming the token resolves it exactly, and the person server compares everything it issued in one lookup.
@@ -3638,29 +3630,17 @@ A resource learns the agent's PS from the person token it verifies, but it needs
 
 AAuth well-known metadata URIs use the `.json` extension (e.g., `/.well-known/aauth-agent.json`) rather than the extensionless convention used by OAuth and OpenID Connect. The `.json` extension makes the content type immediately obvious — no content negotiation is needed. More importantly, it enables static file hosting: a `.json` file served from GitHub Pages, S3, or a CDN works without server-side configuration. This aligns with AAuth's self-hosted agent model (see [@?I-D.hardt-aauth-bootstrap]), where an agent's metadata can be published as static files with no active server.
 
-### Why Standard HTTP Async Pattern
-
-AAuth uses standard HTTP async semantics (`202 Accepted`, `Location`, `Prefer: wait`, `Retry-After`). This applies uniformly to all endpoints, aligns with RFC 7240, replaces OAuth device flow, supports headless agents, and enables clarification chat.
-
-### Why JSON Instead of Form-Encoded
-
-JSON is the standard format for modern APIs. AAuth uses JSON for both request and response bodies.
-
 ### Why No Authorization Code
 
 AAuth eliminates authorization codes entirely. OAuth authorization codes require PKCE ([@RFC7636]) to prevent interception attacks, adding complexity for both clients and servers. AAuth avoids the problem: the user redirect carries only the callback URL, which has no security value to an attacker. The auth token is delivered exclusively via polling, authenticated by the agent's HTTP Message Signature.
 
-### Why Callback URL Has No Security Role
+### In Brief
 
-Tokens never pass through the user's browser. The callback URL is purely a UX optimization.
-
-### Why No Refresh Token
-
-AAuth has no refresh tokens. When an auth token expires, the agent obtains a fresh resource token and submits it through the standard authorization flow. This gives the resource a voice in every re-authorization — the resource can adjust scope, require step-up authorization, or deny access based on current policy. A separate refresh token would bypass the resource entirely, and is unnecessary given that the standard flow is a single additional request.
-
-### Why Reuse OpenID Connect Vocabulary
-
-AAuth reuses OpenID Connect scope values, identity claims, and enterprise parameters. This lowers the adoption barrier.
+- **HTTPS-based agent identity**: HTTPS URLs as agent identifiers enable dynamic ecosystems without pre-registration.
+- **Standard HTTP async pattern**: `202 Accepted`, `Location`, `Prefer: wait`, and `Retry-After` apply uniformly to every endpoint, align with RFC 7240, replace the OAuth device flow, support headless agents, and carry clarification chat.
+- **JSON rather than form encoding**: JSON is the standard format for modern APIs, for request and response bodies alike.
+- **The callback URL has no security role**: tokens never pass through the user's browser; the callback is a UX optimization.
+- **OpenID Connect vocabulary**: reusing its scope values, identity claims, and enterprise parameters lowers the adoption barrier.
 
 ## Architecture
 
@@ -3676,7 +3656,7 @@ Resource-managed and person-identity access are kept separate because the differ
 
 Agent governance (missions plus permission, audit, and interaction relay) works independently of all five.
 
-### Why Resource Tokens
+### Why Resource Tokens {#why-resource-tokens}
 
 In GNAP and OAuth, the resource server is a passive consumer of tokens — it verifies them but never produces signed artifacts. AAuth inverts this: the resource cryptographically asserts what is being requested by issuing a resource token that binds the resource's own identity, the agent's key thumbprint, the requested scope, and the mission context into a single signed JWT. This prevents confused deputy attacks — an attacker cannot substitute a different resource in the authorization flow because the resource token is signed by the resource. It also gives the resource a voice in every authorization and re-authorization, and provides a complete audit artifact linking the request to a specific resource, agent, scope, and mission.
 
@@ -3704,10 +3684,6 @@ The mission's `description` is Markdown because it represents human intent, not 
 
 Missions are either **active** or **terminated**. There is no suspended state. An `expires_at` in the mission blob does not add a state — it declares in advance when the PS will treat the mission as terminated, which the person can see at approval time. A suspended state would require the agent to learn that the mission has resumed, but AAuth has no push channel from the PS to the agent — the agent can only poll. For short pauses (minutes), the deferred response mechanism already provides natural waiting via `202` polling. For long pauses (hours or more), the agent would need to poll indefinitely with no indication of when to stop, making suspension operationally equivalent to termination. Terminating the mission and creating a new one is cleaner — the PS retains the old mission's log for audit, and the new mission can be scoped appropriately for the changed circumstances that prompted the pause. This keeps mission lifecycle simple: a mission is alive until it is done.
 
-### Why Downstream Scope Is Not Constrained by Upstream Scope
-
-In multi-hop scenarios, downstream authorization is intentionally not required to be a subset of upstream scopes. A flight booking API that calls a payment processor needs the payment processor to charge a card — an operation orthogonal to the upstream scope. Formal subset rules would prevent legitimate delegation chains. Instead, the PS evaluates each hop against the mission context, providing governance-based constraints that are more flexible than algebraic attenuation rules while maintaining a complete audit trail.
-
 ## Comparisons with Alternatives
 
 ### Why Not mTLS?
@@ -3722,7 +3698,7 @@ DPoP ([@RFC9449]) binds an existing OAuth access token to a key, preventing toke
 
 GNAP ([@RFC9635]) shares several motivations with AAuth — proof-of-possession by default, client identity without pre-registration, and async authorization. A natural question is whether AAuth's capabilities could be achieved as GNAP extensions rather than a new protocol. There are several reasons they cannot.
 
-**Resource tokens require an architectural change, not an extension.** In GNAP, as in OAuth, the resource server is a passive consumer of tokens — it verifies them but never produces signed artifacts that the access server consumes. AAuth's resource tokens invert this: the resource cryptographically asserts what is being requested, binding its own identity, the agent's key thumbprint, and the requested scope into a signed JWT. Adding this to GNAP would require changing its core architectural assumption about the role of the resource server.
+**Resource tokens require an architectural change, not an extension.** In GNAP, as in OAuth, the resource server is a passive consumer of tokens; a resource that signs what is being requested (#why-resource-tokens) changes that core assumption rather than extending it.
 
 **Interaction chaining requires a different continuation model.** GNAP's continuation mechanism operates between a single client and a single access server. When a resource needs to access a downstream resource that requires user consent, GNAP has no mechanism for that consent requirement to propagate back through the call chain to the original user. Supporting this would require rethinking GNAP's continuation model to support multi-party propagation through intermediaries.
 
