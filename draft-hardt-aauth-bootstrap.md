@@ -121,6 +121,8 @@ After bootstrap the agent can participate in AAuth: it can sign HTTP messages pe
 - **Optional platform attestation** — when and why to require WebAuthn, App Attest, or Play Integrity (#optional-attestation).
 - **Agent identifier strategies** — how to construct the `sub` claim's local part (#identifier-strategies).
 - **Refresh patterns** — issuing fresh agent tokens for renewal (#refresh-patterns).
+- **Many agents, one operator** — the key layout and custody for a self-hosted domain running several agents (#many-agents-one-operator).
+- **Sub-agent tokens** — how a sub-agent comes to hold its token, self-hosted and under a hosted AP (#sub-agent-tokens).
 
 Throughout, when this document refers to "the durable key" and "the ephemeral key" it means the keys defined in (#per-platform-keys). The ephemeral key's public part appears in `agent_token.cnf.jwk` and signs HTTP messages from the agent per [@!I-D.hardt-httpbis-signature-key]; the durable key serves as the AP's stable enrollment anchor and signs only at refresh. APs that use a single durable key for all signatures (#per-platform-keys) can read references to "the ephemeral key" as referring to that same durable key.
 
@@ -150,7 +152,7 @@ On web, mobile, and desktop, APs should use a two-key pattern: a **durable key**
 
 This pattern bounds the blast radius of an ephemeral-key leak to one agent token's lifetime, narrows the durable key's attack surface to the AP refresh path (it never signs requests to PSes, resources, or ASes), and accommodates hardware-backed durable keys on platforms that have them today and on platforms that may expose them in the future without protocol change. APs may use a single durable key for all signatures where simplicity outweighs these properties — receivers cannot distinguish the two patterns, since they only verify `cnf.jwk` against the HTTP signature.
 
-Self-hosted agents (#self-hosted-agents) use a single key — the JWKS-published key serves as both the AP signing key and the agent's signing key, since there is no separate AP to refresh against.
+A self-hosted deployment running one agent uses a single key — the JWKS-published key serves as both the AP signing key and the agent's signing key, since there is no separate AP to refresh against (#self-hosted-agents). One running several agents keeps the JWKS-published key as the AP key and gives each agent a key of its own (#many-agents-one-operator).
 
 ## Web Apps
 
@@ -181,6 +183,18 @@ The AP typically also requires an attestation ceremony at enrollment to confirm 
 A self-hosted agent runs under a domain the user controls. The agent publishes its AP metadata document at `/.well-known/aauth-agent.json` per [@!I-D.hardt-oauth-aauth-protocol]; the JWKS itself is hosted at any HTTPS URL referenced by the metadata's `jwks_uri`. The corresponding private key should be hardware-bound where the platform supports it: macOS Keychain (Secure Enclave on supported hardware), Windows TPM, or Linux Secret Service.
 
 Self-hosted agents act as their own AP — they self-issue agent tokens signed by the JWKS-published key. There is no separate AP to refresh against, so the two-key pattern does not apply: the JWKS-published key serves both as the AP signing key (signing self-issued agent tokens) and as the key whose public part appears in `agent_token.cnf.jwk` (signing HTTP messages). Because the trust anchor is a key the user controls and publishes, no platform attestation step exists. Other parties verify the agent token signature against the published JWKS, exactly as they would for any other AP.
+
+### Many Agents, One Operator {#many-agents-one-operator}
+
+The single-key description above assumes one agent per domain. The common self-hosted shape is one operator running several distinct agents under one domain — a planner, a researcher, one agent per lane of work — each with its own identity and its own signing key. The layout is:
+
+- **One AP key, published.** The JWKS at `jwks_uri` holds the AP signing key, and only it. It signs every agent token the domain issues.
+- **One agent token per agent, each with its own `sub` and its own `cnf` key.** The AP self-issues a token for each agent, naming it `aauth:planner@ops.example`, `aauth:research@ops.example`, and so on, and binding each to a key generated where that agent runs.
+- **Agent keys are not published.** An agent's key appears in exactly one place: the `cnf.jwk` of its agent token. Nothing about an agent key goes in the JWKS, and no party ever fetches an agent key; verifiers take it from the token, as they do for every AP. A reading of "each agent holds a signing key published at a well-known URL" is the one-agent case misapplied.
+
+This is the two-key pattern of (#per-platform-keys) in another shape. The AP key is the domain's durable key: it never signs an HTTP message to a PS, resource, or AS, only agent tokens. Each agent key is that agent's ephemeral key, and it can be rotated as often as the operator likes, because rotating it costs one self-issued token.
+
+Custody follows the blast radius. The AP key belongs in hardware (Secure Enclave, TPM, StrongBox) or a keystore that only the token-issuing process can reach; compromise of it mints identities for the whole domain. An agent key belongs with the agent — in a per-lane signing proxy that signs on the agent process's behalf, in a per-process keystore, or in the process's own memory when the token is short-lived — and compromise of it is contained to that one `sub` for the token's lifetime. An operator that keeps every agent key in one place has collapsed the layout back to a single key and should treat that place as it would treat the AP key.
 
 ## Desktop Apps
 
@@ -311,11 +325,54 @@ APs that required platform attestation at enrollment typically do not re-attest 
 
 ## Self-Hosted Refresh
 
-Self-hosted agents self-issue agent tokens. There is no separate refresh ceremony — the agent generates a new agent token signed by its JWKS-published key whenever needed. The two-key pattern does not apply (#self-hosted-agents).
+Self-hosted agents self-issue agent tokens. There is no separate refresh ceremony — the agent generates a new agent token signed by its JWKS-published key whenever needed. The two-key pattern does not apply (#self-hosted-agents). Where one operator runs several agents (#many-agents-one-operator), the token-issuing process re-issues each agent's token against that agent's current key; an agent key can change at every issuance without any ceremony, because the AP key that signs the token is the only key anyone verifies against a published document.
 
 ## Key Rotation vs Token Refresh
 
 Refresh issues a new agent token bound to a fresh ephemeral key (or, in the single-key pattern, to the same durable key). **Durable key rotation** generates a new durable key and is a separate, rare event. Under the per-install identity model (#per-install-identity), a new durable key is a new agent — the PS treats it as new on first interaction, and any cross-device or cross-rotation continuity is handled at the PS by the user.
+
+# Sub-Agent Tokens {#sub-agent-tokens}
+
+The AAuth Protocol represents a sub-agent as an agent whose token carries a `parent_agent` claim naming its parent, with a `local` part formed from the parent's followed by `+` and a discriminator, its own `cnf` key, and no sub-agents of its own; a PS rejects token requests signed by a sub-agent, and the parent obtains person tokens and auth tokens on its behalf ([@!I-D.hardt-oauth-aauth-protocol], Sub-Agents). The protocol leaves how a sub-agent comes to hold that token to this document. Two cases.
+
+## Self-Hosted Sub-Agents
+
+The operator's self-hosted AP is the parent's AP, and it issues the sub-agent token exactly as it issues the parent's: the sub-agent generates a key where it runs, and the token-issuing process self-issues a token signed by the JWKS-published key. The only differences are in the claims.
+
+```json
+{
+  "iss":  "https://ops.example",
+  "dwk":  "aauth-agent.json",
+  "sub":  "aauth:planner+search1@ops.example",
+  "parent_agent": "aauth:planner@ops.example",
+  "ps":   "https://ps.example",
+  "cnf":  { "jwk": { "kty": "OKP", "crv": "Ed25519",
+                     "x": "...", "alg": "Ed25519" } },
+  "iat":  1746316800,
+  "exp":  1746320400,
+  "jti":  "..."
+}
+```
+
+- `sub` is the parent's `local` part, `+`, and a discriminator the operator chooses — a lane name, a spawn counter, a short random string. It must be unique among that parent's sub-agents for as long as any party might hold a token naming it.
+- `parent_agent` is the parent's identifier. The protocol requires that it name a top-level agent; the issuing process checks that the parent's own token carries no `parent_agent`.
+- `ps` is copied from the parent's token. A sub-agent's person is its parent's person.
+- `exp` should not exceed the parent's current agent token `exp`. A sub-agent that outlives its parent's token has nothing to be a sub-agent of; issue for the task's expected duration, and re-issue through the same process if the task runs longer.
+
+The parent plays no protocol role in issuance here. The operator spawns the sub-agent, and the process that holds the AP key mints its token. What the parent does afterwards — obtain a person token for the sub-agent with `subagent_token`, pass it to the sub-agent, and later present the sub-agent's resource token with its own — is defined by the protocol.
+
+## Sub-Agents Under a Hosted AP
+
+When the parent's tokens come from an AP the operator does not run, the parent requests the sub-agent's token from that AP. This document defines no endpoint for it; the shape below is what any AP offering sub-agent issuance needs to cover, and an AP publishes how it does so in its own documentation.
+
+1. The sub-agent generates its key pair where it will run, and gives its public key to the parent. Where the parent spawns the sub-agent in a runtime it controls, it may generate the pair on the sub-agent's behalf and hand over the private key at spawn; the point is that the private key ends up with the sub-agent and nowhere else.
+2. The parent sends a signed request to the AP, signing with its own ephemeral key and presenting its own agent token under `scheme=jwt` ([@!I-D.hardt-httpbis-signature-key]). The body carries the sub-agent's public key and, if the parent wants to name it, a discriminator.
+3. The AP verifies the parent's signature and token, checks that the token carries no `parent_agent` (a sub-agent may not have sub-agents), and applies its policy: how many sub-agents this parent may have live, what lifetime they get, whether this parent may spawn at all.
+4. The AP issues the sub-agent token: `sub` formed from the parent's `local` part and the discriminator (its own if the parent offered none, or if the parent's collides), `parent_agent` naming the parent, `ps` copied from the parent's token, `cnf.jwk` the sub-agent's public key, `exp` no later than the parent's token. The AP returns it to the parent, which passes it to the sub-agent.
+
+The parent's durable key is not involved. Sub-agent issuance is a request the parent makes with its current ephemeral key and token, the same credentials it uses for every other signed request, and it needs nothing from the enrollment ceremony. Sub-agent tokens are not refreshed by the sub-agent: a sub-agent has no enrollment with the AP and no durable key. A sub-agent that needs a fresh token gets one through the parent, by the same request.
+
+Two things the AP should record. Which parent requested each sub-agent token, since the `parent_agent` claim is the AP's assertion and a PS relies on it. And how many sub-agent tokens are live per parent, because a parent that spawns without bound is either misbehaving or compromised, and the AP is the only party positioned to notice before the PS does.
 
 # Per-Platform Enrollment Sketches
 
@@ -348,6 +405,8 @@ This section sketches a typical end-to-end enrollment for each platform. The ske
 
 There is no separate enrollment step — publication of the JWKS is the enrollment.
 
+With several agents under the domain (#many-agents-one-operator), step 1 produces the AP key, and each agent additionally generates a key where it runs; step 3 issues one token per agent, binding each to its own key. Sub-agents are issued the same way (#sub-agent-tokens).
+
 # Security Considerations
 
 ## Trust in the AP
@@ -371,6 +430,8 @@ Platform attestation results (App Attest, Play Integrity, WebAuthn ceremonies) s
 ## Self-Hosted JWKS Key Compromise
 
 Compromise of the self-hosted JWKS key allows the attacker to mint agent tokens for that user's domain. Users running self-hosted agents should use hardware-backed keys (Secure Enclave / TPM / StrongBox) and rotate the published JWKS if compromise is suspected.
+
+Where the domain runs several agents (#many-agents-one-operator), the two kinds of key have different blast radii. Compromise of one agent's key lets the attacker sign as that one `sub` until its token expires, and nothing else: the key appears in no published document and cannot mint tokens. Compromise of the AP key mints identities for every agent the domain runs, and for agents it does not run. The layout is only as strong as that separation; an operator who stores agent keys where the AP key lives has given each of them the AP key's reach.
 
 # Privacy Considerations
 
@@ -399,6 +460,8 @@ TBD
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-aauth-bootstrap-02
+  - Added Many Agents, One Operator under Self-Hosted Agents: one published AP key, one self-issued token per agent with its own `sub` and `cnf` key, agent keys never published, custody by blast radius. The single-key description assumed one agent per domain, and a deployment read it as "each agent holds a key published at a well-known URL". Refresh, enrollment, and Security Considerations gained the several-agent case.
+  - Added Sub-Agent Tokens: the self-hosted case, where the operator's AP self-issues the sub-agent token with `parent_agent`, a `+` discriminator, the parent's `ps`, and a fresh `cnf` key; and the hosted-AP case, where the parent requests it with its own ephemeral key and token, and the AP checks the parent is top-level, applies policy, and returns the token. The protocol deferred acquisition here and nothing covered it.
   - Referenced the AAuth Protocol by its datatracker document URL, which tracks the latest revision.
   - Algorithm identifiers: `Ed25519` rather than the deprecated polymorphic `EdDSA`; the `cnf.jwk` example carries the `alg` member now required of every conveyed key.
 
