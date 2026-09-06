@@ -1179,14 +1179,9 @@ The `clarification_response` value is a Markdown string. **TODO:** Define recomm
 
 #### Updated Request
 
-The agent MAY obtain a new resource token from the resource (e.g., with reduced scope) and POST it to the pending URL:
+The agent MAY obtain a new resource token from the resource (e.g., with reduced scope) and POST it to the pending URL, with the same headers as a clarification response:
 
-```http
-POST /pending/abc123 HTTP/1.1
-Host: ps.example
-Content-Type: application/json
-Signature-Key: sig=jwt;jwt="eyJhbGc..."
-
+```json
 {
   "action": "updated_request",
   "resource_token": "eyJ...",
@@ -1198,15 +1193,7 @@ The new resource token MUST have the same `iss`, `agent`, and `agent_jkt` as the
 
 #### Cancel Request
 
-The agent MAY cancel the request by sending DELETE to the pending URL:
-
-```http
-DELETE /pending/abc123 HTTP/1.1
-Host: ps.example
-Signature-Key: sig=jwt;jwt="eyJhbGc..."
-```
-
-The PS terminates the consent session and informs the user that the agent withdrew its request. Subsequent requests to the pending URL return `410 Gone`.
+The agent MAY cancel the request by sending a signed `DELETE` to the pending URL. The PS terminates the consent session and informs the user that the agent withdrew its request. Subsequent requests to the pending URL return `410 Gone`.
 
 ### Clarification Limits
 
