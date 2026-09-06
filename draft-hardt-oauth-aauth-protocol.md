@@ -723,12 +723,7 @@ If the resource can authorize immediately (e.g., the agent's key is already auth
 
 ### Response with Resource Token
 
-Alternatively, the resource MAY return a resource token. The resource sets the `aud` claim based on its configuration:
-
-- If the resource has its own AS: `aud` = AS URL (four-party)
-- If the resource has no AS: `aud` = the `iss` of the person token the resource verified (three-party)
-
-When the person token carries `mission_s256`, the resource copies it into the resource token.
+Alternatively, the resource MAY return a resource token, with `aud` set per (#resource-tokens) and `mission_s256` copied from the person token when it carried one.
 
 ```json
 {
@@ -776,6 +771,41 @@ AAuth-Requirement: requirement=person-token
 
 The header carries no additional parameters. The agent obtains a person token for this resource from its PS's person token endpoint (#person-token-endpoint) and retries. An agent with no person server cannot satisfy this requirement and surfaces it as an error per (#requirement-values).
 
+## Auth Token Required {#requirement-auth-token}
+
+A resource MUST use `requirement=auth-token` with a `401 Unauthorized` response when an auth token is required. The header MUST include a `resource-token` parameter containing a resource token JWT (#resource-token-structure). A resource MUST NOT issue this challenge to a request that carried neither a person token nor an auth token: it has no verified person token to issue a resource token for, and challenges with `requirement=person-token` (#requirement-person-token) instead.
+
+```http
+HTTP/1.1 401 Unauthorized
+AAuth-Requirement: requirement=auth-token; resource-token="eyJ..."
+```
+
+The agent MUST extract the `resource-token` parameter, verify the resource token (#resource-challenge-verification), and present it to its PS's token endpoint to obtain an auth token (#ps-token-endpoint). A resource MAY also use `402 Payment Required` with the same `AAuth-Requirement` header when payment is additionally required (#requirement-responses).
+
+A resource MAY return `requirement=auth-token` with a new resource token to a request that already includes an auth token — for example, when the request requires a higher level of authorization than the current token provides. Agents MUST be prepared for this step-up authorization at any time.
+
+### Deferred Delivery {#deferred-auth-token}
+
+A resource MAY instead deliver the same requirement as a `202 Accepted` deferred response (#deferred-responses), holding the invocation rather than requiring the agent to retry it:
+
+```http
+HTTP/1.1 202 Accepted
+Location: /pending/f7a3b9c
+Retry-After: 5
+Cache-Control: no-store
+AAuth-Requirement: requirement=auth-token; resource-token="eyJ..."
+
+{
+  "status": "pending"
+}
+```
+
+The agent verifies the resource token and obtains an auth token exactly as in the `401` case, then completes at the pending URL: it polls with signed `GET` requests per (#deferred-responses), presenting the auth token via `Signature-Key` once it holds one. The resource executes the held invocation on the first poll that presents a valid auth token, and answers with the invocation's response.
+
+Completion consumes the pending record. The resource MUST retain the record, with the invocation's result, at least until the auth token's `exp`, and MUST answer a repeated presentation of the same auth token at the pending URL from that result rather than executing again — a response can be lost in transit, and the agent cannot otherwise distinguish "not executed" from "executed, response lost". If the resource token expires before the agent obtains an auth token, the resource MAY include a fresh resource token in the `AAuth-Requirement` header of a subsequent poll response; it still holds the invocation, so nothing is re-sent.
+
+Which delivery to use is the resource's choice, per invocation. The `401` is the baseline every resource can implement without holding state, and the only delivery that maps onto transports with no place to complete at a separate URL. The `202` suits a resource that can hold the invocation; a resource hosting its own interaction already returns this shape (#interaction-response-poll-authority). Agents MUST support both: the deferred-response handling agents already implement (#deferred-responses) applies unchanged, with `requirement=auth-token` in the pending response rather than `requirement=interaction`.
+
 ## AAuth-Access Response Header {#aauth-access}
 
 The `AAuth-Access` response header carries a **session token** from a resource to an agent. The token is opaque to the agent — the resource wraps its internal authorization state (which MAY be an existing OAuth access token or other credential). It is the one AAuth credential a resource issues for its own consumption, and it names the continuing relationship the resource has established with this agent for this person. The agent passes the token back to the resource via the `Authorization` header on subsequent requests:
@@ -817,41 +847,6 @@ Content-Type: application/json
 The agent directs the user to the interaction URL (#user-interaction) and polls the `Location` URL per the deferred response pattern (#deferred-responses). When the interaction completes, the resource returns `200 OK` and MAY include an `AAuth-Access` header (#aauth-access) with a session token for subsequent calls.
 
 A resource MAY also authorize the agent based solely on its identity (from the agent token) without any interaction — for example, when the agent's key is already known or the agent's domain is trusted.
-
-## Auth Token Required {#requirement-auth-token}
-
-A resource MUST use `requirement=auth-token` with a `401 Unauthorized` response when an auth token is required. The header MUST include a `resource-token` parameter containing a resource token JWT (#resource-token-structure). A resource MUST NOT issue this challenge to a request that carried neither a person token nor an auth token: it has no verified person token to issue a resource token for, and challenges with `requirement=person-token` (#requirement-person-token) instead.
-
-```http
-HTTP/1.1 401 Unauthorized
-AAuth-Requirement: requirement=auth-token; resource-token="eyJ..."
-```
-
-The agent MUST extract the `resource-token` parameter, verify the resource token (#resource-challenge-verification), and present it to its PS's token endpoint to obtain an auth token (#ps-token-endpoint). A resource MAY also use `402 Payment Required` with the same `AAuth-Requirement` header when payment is additionally required (#requirement-responses).
-
-A resource MAY return `requirement=auth-token` with a new resource token to a request that already includes an auth token — for example, when the request requires a higher level of authorization than the current token provides. Agents MUST be prepared for this step-up authorization at any time.
-
-### Deferred Delivery {#deferred-auth-token}
-
-A resource MAY instead deliver the same requirement as a `202 Accepted` deferred response (#deferred-responses), holding the invocation rather than requiring the agent to retry it:
-
-```http
-HTTP/1.1 202 Accepted
-Location: /pending/f7a3b9c
-Retry-After: 5
-Cache-Control: no-store
-AAuth-Requirement: requirement=auth-token; resource-token="eyJ..."
-
-{
-  "status": "pending"
-}
-```
-
-The agent verifies the resource token and obtains an auth token exactly as in the `401` case, then completes at the pending URL: it polls with signed `GET` requests per (#deferred-responses), presenting the auth token via `Signature-Key` once it holds one. The resource executes the held invocation on the first poll that presents a valid auth token, and answers with the invocation's response.
-
-Completion consumes the pending record. The resource MUST retain the record, with the invocation's result, at least until the auth token's `exp`, and MUST answer a repeated presentation of the same auth token at the pending URL from that result rather than executing again — a response can be lost in transit, and the agent cannot otherwise distinguish "not executed" from "executed, response lost". If the resource token expires before the agent obtains an auth token, the resource MAY include a fresh resource token in the `AAuth-Requirement` header of a subsequent poll response; it still holds the invocation, so nothing is re-sent.
-
-Which delivery to use is the resource's choice, per invocation. The `401` is the baseline every resource can implement without holding state, and the only delivery that maps onto transports with no place to complete at a separate URL. The `202` suits a resource that can hold the invocation; a resource hosting its own interaction already returns this shape (#interaction-response-poll-authority). Agents MUST support both: the deferred-response handling agents already implement (#deferred-responses) applies unchanged, with `requirement=auth-token` in the pending response rather than `requirement=interaction`.
 
 ## Resource Token
 
@@ -1830,10 +1825,6 @@ The following is a non-normative description of how an AS might evaluate a token
 
 The AS is not required to follow this order. The decision logic is entirely at the AS's discretion based on resource policy.
 
-### Organization Visibility
-
-Organizations benefit from the trust model: an organization's agents share a single PS, and internal resources may share a single AS. The PS provides centralized audit across all agents and missions. Federation is only incurred at the boundary, when an internal agent accesses an external resource. When the same server fills both the PS and AS roles, federation collapses to a single internal evaluation — see (#ps-as-collapse).
-
 ### PS-AS Collapse {#ps-as-collapse}
 
 When the agent's PS and the resource's chosen AS are the same server (an instance of role collocation, see (#roles)), federation collapses to a single internal evaluation. This is operationally similar to three-party access — no cross-server hop — but structurally different:
@@ -1841,7 +1832,7 @@ When the agent's PS and the resource's chosen AS are the same server (an instanc
 - **Three-party (PS authorization)**: the resource has no AS; the resource token's `aud` is the PS, and the auth token has `dwk: aauth-person.json`. The resource trusts identity claims and applies its own policy.
 - **PS-AS collapse**: the resource has chosen an AS that also operates as the agent's PS; the resource token's `aud` is the AS, and the auth token has `dwk: aauth-access.json`. The resource trusts the AS's policy verdict.
 
-The server applies user consent (its PS responsibility) and resource policy (its AS responsibility) in a single evaluation. Trust between PS and AS is implicit because they are the same entity.
+The server applies user consent (its PS responsibility) and resource policy (its AS responsibility) in a single evaluation. Trust between PS and AS is implicit because they are the same entity. This is the common shape for an organization: its agents share one PS and its internal resources one AS, the PS gives centralized audit across every agent and mission, and federation is incurred only at the boundary, when an internal agent reaches an external resource.
 
 ## Auth Token {#auth-tokens}
 
@@ -2658,19 +2649,11 @@ Invalid identifiers:
 
 Implementations MUST perform exact string comparison on server identifiers.
 
-### Endpoint URLs
+### Endpoint and Other URLs
 
-The `auth_token_endpoint`, `person_token_endpoint`, `authorization_endpoint`, `mission_endpoint`, and `callback_endpoint` values MUST conform to the following:
-
-- MUST use the `https` scheme
-- MUST NOT contain a fragment
-- MUST NOT contain a query string
+The `auth_token_endpoint`, `person_token_endpoint`, `authorization_endpoint`, `mission_endpoint`, and `callback_endpoint` values MUST use the `https` scheme and MUST NOT contain a query string or a fragment. The `jwks_uri`, `tos_uri`, `policy_uri`, `logo_uri`, and `logo_dark_uri` values MUST use the `https` scheme.
 
 When `localhost_callback_allowed` is `true` in the agent's metadata, the agent MAY use a localhost callback URL as the `callback` parameter to the interaction endpoint.
-
-### Other URLs
-
-The `jwks_uri`, `tos_uri`, `policy_uri`, `logo_uri`, and `logo_dark_uri` values MUST use the `https` scheme.
 
 ## Metadata Documents {#metadata-documents}
 
