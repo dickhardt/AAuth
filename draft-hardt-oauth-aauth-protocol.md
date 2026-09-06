@@ -1184,7 +1184,7 @@ The agent MAY obtain a new resource token from the resource (e.g., with reduced 
 }
 ```
 
-The new resource token MUST have the same `iss`, `agent`, and `agent_jkt` as the original. The PS presents the updated request to the user. A `justification` is OPTIONAL but RECOMMENDED to explain the change to the user.
+The new resource token MUST have the same `iss`, `ps`, `sub`, and `agent_jkt` as the original. The PS presents the updated request to the user. A `justification` is OPTIONAL but RECOMMENDED to explain the change to the user.
 
 #### Cancel Request
 
@@ -1494,7 +1494,7 @@ The mission blob MUST include:
 
 The mission blob MAY include:
 
-- `expires_at`: ISO 8601 timestamp after which the PS treats the mission as terminated. When absent, the mission runs until it is completed or revoked. Every PS decision path that acts on a mission MUST compare the current time to `expires_at` and MUST treat a mission past it as terminated (#mission-status-errors). No token carrying `mission_s256` — person, resource, or auth — may have an `exp` later than `expires_at`; an issuer MUST shorten the token's lifetime to fit.
+- `expires_at`: ISO 8601 timestamp after which the PS treats the mission as terminated. When absent, the mission runs until it is completed or revoked. Every PS decision path that acts on a mission MUST compare the current time to `expires_at` and MUST treat a mission past it as terminated (#mission-status-errors). The PS caps the person tokens and auth tokens it issues at `expires_at` (#person-token-structure, #auth-token-structure), and the person token carries that bound to an AS (#ps-to-as-token-request); a resource token's lifetime is independent of it (#resource-token-structure).
 - `approved_tools`: Array of tool objects (each with `name` and `description`) that the agent may use without per-call permission at the PS's permission endpoint (#permission-endpoint). Nothing in the protocol enforces this list; see (#why-tools-are-not-enforced).
 - `approved_resources`: Array of resource identifiers the person approved for this mission, drawn from the `resources` the proposal named. It records which resources were pre-approved, so an audit of the mission shows what the person agreed to before the agent began. It is not a limit: the agent MAY obtain person tokens for other resources during the mission, subject to the PS's policy, and those accesses appear in the mission log rather than in the blob.
 
@@ -2888,7 +2888,7 @@ Each step builds on the previous one. A resource that adopts any step works with
 
 1. **Recognize AAuth signatures**: Verify HTTP Message Signatures and respond with `Accept-Signature` headers ([@!I-D.hardt-httpbis-signature-key]). Resources that don't recognize AAuth ignore the signature headers — existing auth mechanisms continue to work. This is identity-based access.
 2. **Manage authorization**: Handle authorization with interaction, consent, or existing infrastructure — via `401` responses, an authorization endpoint, or both. Return `AAuth-Access` headers (#aauth-access) for subsequent calls. This is resource-managed access (two-party).
-3. **Accept identity claims from any PS**: Read the `ps` claim from the agent token and issue resource tokens with `aud` = PS URL. The agent's PS returns an auth token asserting identity claims about the user and consent for the requested scope; the resource applies its own policy. This is PS-asserted access (three-party).
+3. **Accept identity claims from any PS**: Verify person tokens and issue resource tokens with `aud` = the `iss` of the person token verified. The agent's PS returns an auth token asserting identity claims about the user and consent for the requested scope; the resource applies its own policy. This is PS-asserted access (three-party).
 4. **Deploy an access server**: Issue resource tokens with `aud` = AS URL. The PS federates with the AS. This is federated access (four-party).
 
 ## Adoption Matrix
@@ -3010,7 +3010,7 @@ All HTTPS connections MUST use TLS 1.2 or later, following the recommendations i
 
 ## Non-Repudiation and Audit After Key Rotation
 
-AAuth signatures prove authenticity at request time: a valid HTTP Message Signature shows that the signer held the private key bound to the presented identity when the request was made (proof-of-possession). This is request-time authentication, not long-term non-repudiation. Agent keys are short-lived and agent providers rotate their JWKS; once a key is removed from the issuer's JWKS, a signature made with it can no longer be verified by re-fetching the JWKS later. The persistent identifiers (`agent`, `sub`) do not by themselves cryptographically prove that a specific key signed a specific request at a specific time once that key is gone.
+AAuth signatures prove authenticity at request time: a valid HTTP Message Signature shows that the signer held the private key bound to the presented identity when the request was made (proof-of-possession). This is request-time authentication, not long-term non-repudiation. Agent keys are short-lived and agent providers rotate their JWKS; once a key is removed from the issuer's JWKS, a signature made with it can no longer be verified by re-fetching the JWKS later. The persistent identifiers — the agent token's `sub` and the person's directed `sub` — do not by themselves cryptographically prove that a specific key signed a specific request at a specific time once that key is gone.
 
 This is partly by design — short-lived keys and directed identifiers (#directed-identifiers) limit long-term linkability. Deployments that require durable audit or non-repudiation beyond a key's lifetime SHOULD capture the evidence at verification time, while the key is still discoverable, rather than relying on re-verification later:
 
@@ -3325,6 +3325,7 @@ The following implementations are known:
   - A resource MAY deliver `requirement=auth-token` as a `202 Accepted` deferred response that holds the invocation; the agent completes at the pending URL with the auth token, and completion consumes the pending record. The `401` remains the baseline delivery; agents MUST support both. Addresses issue #92.
 
   - Added the `aauth-resource` link relation, as a `Link` header field or an HTML `link` element, so that a developer portal or an API served from a host other than the resource identifier can point an agent at the resource metadata document. The target is constrained to the well-known URL and the document is verified as any metadata document is, so the link is a pointer and not an authority; verifiers never use it. Registered with IANA; Link Relation Discovery added to Security Considerations. Requested by a developer-portal operator whose agents reach the portal before the resource.
+  - Corrected four recitals that earlier -11 changes left behind: the mission blob's `expires_at` text no longer says a resource token may not outlive it; Updated Request and Non-Repudiation no longer name the removed `agent` claim; Resource Adoption Path step 3 routes on the verified person token rather than the agent token's `ps`.
 - draft-hardt-oauth-aauth-protocol-10
   - Adopted the fully-specified `Ed25519` of [@!RFC9864] in place of the `EdDSA` it deprecates. `alg` is REQUIRED and MUST be fully specified; `EdDSA`, `none`, and symmetric algorithms MUST NOT be used; a verifier MUST reject a key whose `kty` or `crv` disagrees with its `alg`. Addresses issue #57.
   - A `cnf` JWK MUST carry a fully-specified `alg`, as MUST every key at an AAuth server's `jwks_uri`. A verifier MUST select the key matching `kid` without requiring the other JWKS members to be usable.
