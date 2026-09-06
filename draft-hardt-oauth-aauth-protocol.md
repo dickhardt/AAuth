@@ -3008,6 +3008,30 @@ Fields:
 - `additional_signature_components` (OPTIONAL): Array of HTTP message component identifiers ([@!RFC9421]) that agents MUST include in the `Signature-Input` covered components when signing requests to this resource, in addition to the base components required by the HTTP Message Signatures profile ([@!I-D.hardt-httpbis-signature-key])
 - `revocation_endpoint` (OPTIONAL): URL where authorized parties can revoke auth tokens for this resource (#token-revocation)
 
+### Resource Metadata Link Relation {#resource-metadata-link}
+
+Well-known discovery starts from a resource identifier. An agent that does not have one yet — it has landed on a developer portal, or on an API served from a host other than the resource identifier — has nothing to append `/.well-known/aauth-resource.json` to. The `aauth-resource` link relation ([@!RFC8288]) closes that gap: it lets any HTTP response, and any HTML page, name the resource metadata document that governs what the response describes.
+
+A server MAY include a `Link` header field in any response:
+
+```http
+Link: <https://api.example/.well-known/aauth-resource.json>;
+    rel="aauth-resource"
+```
+
+An HTML document MAY carry the same relation as a `link` element in its `head`:
+
+```html
+<link rel="aauth-resource"
+      href="https://api.example/.well-known/aauth-resource.json">
+```
+
+The target MUST be the resource's well-known metadata URL: a server identifier (#server-identifiers) followed by `/.well-known/aauth-resource.json`. An agent MUST NOT fetch a target of any other form. Having fetched it, the agent verifies the document as it verifies any metadata document (#metadata-documents): its `issuer` MUST equal the target minus the well-known suffix. The link is a pointer, not a source of authority. It can direct an agent to a resource's own statement about itself and to nothing else.
+
+A resource SHOULD include the relation on the page at its `documentation_uri`, which is where an agent sent to read about the resource arrives first. A response MAY carry more than one `aauth-resource` link when it describes several resources. The relation says nothing about the response that carries it beyond which resource it belongs to: a `401` from a resource endpoint still carries its requirement in `AAuth-Requirement` (#requirement-responses), and an agent MUST NOT treat the link as a substitute for it.
+
+Verifiers do not use this relation. A party verifying a token or a signature discovers keys from the signer's `iss` and `dwk` ([@!I-D.hardt-httpbis-signature-key]), never from a link in content (#link-relation-security).
+
 # Incremental Adoption {#incremental-adoption}
 
 AAuth is designed for incremental adoption. Each party — agent, resource, PS, AS — can independently add support. The system works at every partial adoption state. No coordination is required between parties.
@@ -3030,7 +3054,7 @@ A resource that wants agents to discover and use it with no prior integration pu
 
 An agent onboards as follows:
 
-1. Fetch `aauth-resource.json`; read `access_mode` and the advertised vocabulary.
+1. Fetch `aauth-resource.json` — from the resource identifier's well-known URL, or from an `aauth-resource` link on the page the agent reached first (#resource-metadata-link); read `access_mode` and the advertised vocabulary.
 2. Fetch the vocabulary to learn the resource's operations, then construct calls.
 3. If `access_mode` is `auth-token` and the agent has no PS, it cannot complete that flow and SHOULD skip the resource.
 4. Make the call and satisfy whatever the resource requires, bringing the user in only where the mode calls for it:
@@ -3092,7 +3116,7 @@ All AAuth tokens are proof-of-possession tokens. The holder must prove possessio
 - PSes MUST enforce a maximum number of clarification rounds
 - Clarification responses from agents are untrusted input and MUST be sanitized before display
 
-## Untrusted Input
+## Untrusted Input {#untrusted-input}
 
 All protocol inputs — JSON request bodies, clarification responses, justification strings, mission descriptions, and token claims — are untrusted input from potentially adversarial parties. This is consistent with standard web security practice where HTTP request bodies, headers, and query parameters are always treated as untrusted. Implementations MUST sanitize all values before rendering to users and MUST validate all values before processing. Markdown fields MUST be sanitized before rendering to prevent script injection.
 
@@ -3111,6 +3135,12 @@ The reverse threat — an attacker who knows a pending request's interaction URL
 ## Token Issuer Discovery
 
 The recipient of the resource token — and thus the issuer of the auth token — is identified by the `aud` claim. In three-party mode, `aud` identifies the agent's PS, which asserts identity and consent. In four-party mode, `aud` identifies the resource's AS, which evaluates resource policy. Federation mechanics for four-party are described in (#ps-as-federation).
+
+## Link Relation Discovery {#link-relation-security}
+
+An `aauth-resource` link (#resource-metadata-link) is a statement by whoever controls the response that carries it, not by the resource it names. Two limits keep that harmless. The target is constrained to a well-known URL and the fetched document is verified against the URL it came from, so a link cannot cause an agent to accept metadata the resource did not publish; and the relation plays no part in key discovery, so it cannot affect what any verifier trusts.
+
+What a link can do is steer. A page an attacker controls can point an agent at a resource the person did not intend, and the agent will then request a person token naming that resource and present it there. The answer is the one the protocol already gives for any resource an agent meets for the first time: the person token endpoint puts the question to the person, presenting the resource's own `name` and `description` (#person-token-endpoint), and a person token carries no authorization (#person-token-not-authorization). An agent SHOULD record where it found a link, so that a resource introduced by a third-party page is distinguishable from one the person named. An agent that parses HTML to find the relation is reading untrusted input (#untrusted-input).
 
 ## AAuth-Access Security
 
@@ -3267,6 +3297,15 @@ This specification registers the following well-known URIs per [@!RFC8615]:
 | `aauth-person.json` | IETF | This document, (#ps-metadata) |
 | `aauth-access.json` | IETF | This document, (#access-server-metadata) |
 | `aauth-resource.json` | IETF | This document, (#resource-metadata) |
+
+## Link Relation Type Registration
+
+This specification registers the following link relation type in the IANA Link Relation Types registry per [@!RFC8288], Section 4.2:
+
+- Relation Name: `aauth-resource`
+- Description: Refers to the AAuth resource metadata document for the resource that the link context belongs to or describes.
+- Reference: This document, (#resource-metadata-link)
+- Notes: The target MUST be a server identifier followed by `/.well-known/aauth-resource.json`; recipients verify the document against the URL it was fetched from and do not use the relation for key discovery.
 
 ## Media Type Registrations
 
@@ -3488,6 +3527,7 @@ The following implementations are known:
   - Added the OPTIONAL common metadata field `accept_signature_algs`, the out-of-band twin of the `Accept-Signature-Alg` response header: exactly the set of fully-specified algorithms the server's verifier accepts, one list per server. Addresses issue #94.
   - A resource MAY deliver `requirement=auth-token` as a `202 Accepted` deferred response that holds the invocation; the agent completes at the pending URL with the auth token, and completion consumes the pending record. The `401` remains the baseline delivery; agents MUST support both. Addresses issue #92.
 
+  - Added the `aauth-resource` link relation, as a `Link` header field or an HTML `link` element, so that a developer portal or an API served from a host other than the resource identifier can point an agent at the resource metadata document. The target is constrained to the well-known URL and the document is verified as any metadata document is, so the link is a pointer and not an authority; verifiers never use it. Registered with IANA; Link Relation Discovery added to Security Considerations. Requested by a developer-portal operator whose agents reach the portal before the resource.
 - draft-hardt-oauth-aauth-protocol-10
   - Adopted the fully-specified `Ed25519` of [@!RFC9864] in place of the `EdDSA` it deprecates. `alg` is REQUIRED and MUST be fully specified; `EdDSA`, `none`, and symmetric algorithms MUST NOT be used; a verifier MUST reject a key whose `kty` or `crv` disagrees with its `alg`. Addresses issue #57.
   - A `cnf` JWK MUST carry a fully-specified `alg`, as MUST every key at an AAuth server's `jwks_uri`. A verifier MUST select the key matching `kid` without requiring the other JWKS members to be usable.
