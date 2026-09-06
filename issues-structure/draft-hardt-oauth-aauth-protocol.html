@@ -1049,7 +1049,7 @@ svg {
 </tr></thead>
 <tfoot><tr>
 <td class="left">Hardt</td>
-<td class="center">Expires 8 March 2027</td>
+<td class="center">Expires 10 March 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1062,12 +1062,12 @@ svg {
 <dd class="internet-draft">draft-hardt-oauth-aauth-protocol-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-09-04" class="published">4 September 2026</time>
+<time datetime="2026-09-06" class="published">6 September 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Standards Track</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-03-08">8 March 2027</time></dd>
+<dd class="expires"><time datetime="2027-03-10">10 March 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1110,7 +1110,7 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 8 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 10 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -2545,7 +2545,7 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
             <strong>Agent Provider</strong> decides whether to continue treating the agent as authorized — based on device posture, attestation freshness, network location, account status, or any other AP-internal criteria — and enforces that decision by issuing or refusing fresh agent tokens.<a href="#section-4.3-2.1" class="pilcrow">¶</a>
 </li>
           <li class="compact" id="section-4.3-2.2">
-            <strong>Person Server</strong> decides whether to issue an auth token for a given resource and scope — based on user consent and, when the agent is operating under a mission, the mission's intent and prior log entries against the PS's supervision policy. This document defines the artifacts that carry the outcome — an auth token, a denial, <code>requirement=clarification</code> to the agent, <code>requirement=interaction</code> to the person — and not the policy. How a PS reaches allow, deny, clarify, or escalate, and how it delegates that evaluation to a supervisor that may be a person or an agent, is the subject of a companion specification on AAuth supervision.<a href="#section-4.3-2.2" class="pilcrow">¶</a>
+            <strong>Person Server</strong> decides whether to issue an auth token for a given resource and scope — based on user consent and, when the agent is operating under a mission, the mission's intent and prior log entries against the PS's supervision policy. How that policy is evaluated, and by whom, is the subject of a companion specification on AAuth supervision.<a href="#section-4.3-2.2" class="pilcrow">¶</a>
 </li>
           <li class="compact" id="section-4.3-2.3">
             <strong>Access Server</strong> decides whether to issue an auth token on behalf of the resource — based on resource policy, the claims the PS has provided, and any further requirements (interaction, payment, claims) gathered via deferred responses.<a href="#section-4.3-2.3" class="pilcrow">¶</a>
@@ -7895,7 +7895,7 @@ Accept-Signature-Scheme: jwt
 </li>
             <li class="compact normal" id="section-19-2.1.2.6">Warned resource implementers that policy keyed on the agent identifier is local to the two-party modes. The identifier reaches a resource in agent identity and resource-managed access and in no other mode, so an allowlist or per-agent label designed there is silently unenforceable once an endpoint moves to auth tokens; durable per-operation policy is <code>scope</code> or R3 operations. A deployment walked into exactly this and neither of its own review passes caught it.<a href="#section-19-2.1.2.6" class="pilcrow">¶</a>
 </li>
-            <li class="compact normal" id="section-19-2.1.2.7">Policy Evaluation Points now says what this document does and does not define about the PS's decision: the wire artifacts that carry the outcome are here; the decision procedure, and delegation of it to a supervisor that may be a person or an agent, belong to a companion specification on AAuth supervision. <code>requirement=clarification</code> existed on the wire with no stated home for the procedure behind it.<a href="#section-19-2.1.2.7" class="pilcrow">¶</a>
+            <li class="compact normal" id="section-19-2.1.2.7">Policy Evaluation Points points the PS's supervision policy at a companion specification on AAuth supervision, which will define how the policy is evaluated and by whom. This document defines only the artifacts that carry the outcome.<a href="#section-19-2.1.2.7" class="pilcrow">¶</a>
 </li>
             <li class="compact normal" id="section-19-2.1.2.8">Distinguished supervision from governance. Governance remains the name of the layer (missions plus permission, audit, and interaction relay). Supervision is the per-act evaluation the PS performs against the mission's intent and prior log entries, and now has a Terminology entry; a dozen occurrences that used governance in that sense were changed. The agent-provider rationale's fleet-level sense is reworded as control and enforcement. Aligns with AAuth Budgets, which already uses supervision as a term of art, and gives a companion specification for a delegated supervisor a term to define against.<a href="#section-19-2.1.2.8" class="pilcrow">¶</a>
 </li>

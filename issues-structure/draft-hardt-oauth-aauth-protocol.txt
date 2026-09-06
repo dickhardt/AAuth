@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                        4 September 2026
-Expires: 8 March 2027
+Intended status: Standards Track                        6 September 2026
+Expires: 10 March 2027
 
 
                              AAuth Protocol
@@ -50,7 +50,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 8 March 2027.
+   This Internet-Draft will expire on 10 March 2027.
 
 Copyright Notice
 
@@ -936,13 +936,9 @@ Table of Contents
    *  *Person Server* decides whether to issue an auth token for a given
       resource and scope — based on user consent and, when the agent is
       operating under a mission, the mission's intent and prior log
-      entries against the PS's supervision policy.  This document
-      defines the artifacts that carry the outcome — an auth token, a
-      denial, requirement=clarification to the agent,
-      requirement=interaction to the person — and not the policy.  How a
-      PS reaches allow, deny, clarify, or escalate, and how it delegates
-      that evaluation to a supervisor that may be a person or an agent,
-      is the subject of a companion specification on AAuth supervision.
+      entries against the PS's supervision policy.  How that policy is
+      evaluated, and by whom, is the subject of a companion
+      specification on AAuth supervision.
    *  *Access Server* decides whether to issue an auth token on behalf
       of the resource — based on resource policy, the claims the PS has
       provided, and any further requirements (interaction, payment,
@@ -6595,13 +6591,10 @@ Initial request (with Prefer: wait=N)
          to auth tokens; durable per-operation policy is scope or R3
          operations.  A deployment walked into exactly this and neither
          of its own review passes caught it.
-      -  Policy Evaluation Points now says what this document does and
-         does not define about the PS's decision: the wire artifacts
-         that carry the outcome are here; the decision procedure, and
-         delegation of it to a supervisor that may be a person or an
-         agent, belong to a companion specification on AAuth
-         supervision. requirement=clarification existed on the wire with
-         no stated home for the procedure behind it.
+      -  Policy Evaluation Points points the PS's supervision policy at
+         a companion specification on AAuth supervision, which will
+         define how the policy is evaluated and by whom.  This document
+         defines only the artifacts that carry the outcome.
       -  Distinguished supervision from governance.  Governance remains
          the name of the layer (missions plus permission, audit, and
          interaction relay).  Supervision is the per-act evaluation the
