@@ -444,9 +444,9 @@ Table of Contents
       requests, applies resource policy, and issues auth tokens on
       behalf of a resource.  Identified by an HTTPS URL Section 13.10.1
       and publishes metadata at /.well-known/aauth-access.json.
-   *  *Supervisor*: The party the PS consults for a per-act decision
-      within a mission — the Person by default, or a supervision server
-      (SS) the PS delegates to Section 4.2.  Not visible on the wire.
+   *  *Supervisor*: The party that performs supervision — the Person by
+      default, or a supervision server (SS) the PS delegates to
+      Section 4.2.
 
    Tokens:
 
@@ -863,20 +863,12 @@ Table of Contents
    receiver verifies each role's tokens and metadata identically whether
    the role is on its own server or collocated with others.
 
-   One further role does not appear on the wire.  The *Supervisor* is
-   the party the PS consults for a per-act decision Section 4.3: whether
-   this token request, permission request, or mission update is
-   consistent with the mission's intent and with what the agent has
-   already done under it.  The Person is the Supervisor by default — a
-   consent screen is the Person supervising — and consent remains the
-   Person's word for approving a mission, or an access, directly.  A PS
-   MAY delegate supervision to a *supervision server (SS)*: a service
-   that represents the Supervisor to the PS as the PS represents the
-   Person to everyone else, so that routine decisions are answered
-   without waking the Person and the Person's standing policy is applied
-   consistently.  The protocol between a PS and an SS is AAuth
-   Supervision, a companion specification.  Nothing an agent, resource,
-   or AS sees changes with who supervises.
+   One further role does not appear on the wire.  The *Supervisor*
+   performs supervision Section 4.3: the Person by default, since a
+   consent screen is the Person supervising, or a *supervision server
+   (SS)* that a PS MAY delegate to.  How a PS consults an SS is defined
+   by the AAuth Supervision Protocol, a companion specification.
+   Nothing an agent, resource, or AS sees changes with who supervises.
 
 4.3.  Policy Evaluation Points
 
@@ -895,9 +887,9 @@ Table of Contents
    *  *Person Server* decides whether to issue an auth token for a given
       resource and scope — based on user consent and, when the agent is
       operating under a mission, the mission's intent and prior log
-      entries against the PS's supervision policy.  The party that
-      evaluates it is the Supervisor Section 4.2; how a PS consults a
-      supervision server is the subject of AAuth Supervision, a
+      entries against the PS's supervision policy.  The Supervisor
+      Section 4.2 performs that evaluation; how a PS consults a
+      supervision server is defined by the AAuth Supervision Protocol, a
       companion specification.
    *  *Access Server* decides whether to issue an auth token on behalf
       of the resource — based on resource policy, the claims the PS has
@@ -6283,11 +6275,12 @@ Initial request (with Prefer: wait=N)
 
       -  Named the Supervisor: the party the PS consults for a per-act
          decision, the Person by default, or a supervision server (SS)
-         the PS delegates to under AAuth Supervision, a companion
-         specification.  Added to Terminology and Roles; Policy
-         Evaluation Points, Consent Presentation, and Why Missions Are
-         Not a Policy Language name it where they previously described
-         an anonymous decision-maker.  Nothing on the wire changes.
+         the PS delegates to under the AAuth Supervision Protocol, a
+         companion specification.  Added to Terminology and Roles;
+         Policy Evaluation Points, Consent Presentation, and Why
+         Missions Are Not a Policy Language name it where they
+         previously described an anonymous decision-maker.  Nothing on
+         the wire changes.
 
       -  Editorial pass with no normative change.  Gone or merged: the
          Introduction's feature list and its negation, the Overview's
@@ -7254,8 +7247,8 @@ Appendix B.  A Minimal Person Server
    them, which is the right default for one person and a handful of
    agents.  A PS that wants to answer routine requests without waking
    the person applies a standing policy on their behalf; how it consults
-   a supervision server for that is AAuth Supervision, and is the one
-   thing a minimal PS grows into rather than starts with.
+   a supervision server for that is the AAuth Supervision Protocol, and
+   is the one thing a minimal PS grows into rather than starts with.
 
 Appendix C.  Design Rationale
 
