@@ -195,6 +195,7 @@ Parties:
 - **Resource**: A server that requires authentication and/or authorization to protect access to its APIs and data. A resource MAY enforce access policy itself or delegate policy evaluation to an access server. Identified by an HTTPS URL (#server-identifiers) and publishes metadata at `/.well-known/aauth-resource.json`.
 - **Person Server (PS)**: A server that represents the person to the rest of the protocol. The person chooses their PS; it is not imposed by any other party. The PS manages missions, handles consent, asserts user identity, and brokers authorization on behalf of agents. Identified by an HTTPS URL (#server-identifiers) and publishes metadata at `/.well-known/aauth-person.json`.
 - **Access Server (AS)**: A policy engine that evaluates token requests, applies resource policy, and issues auth tokens on behalf of a resource. Identified by an HTTPS URL (#server-identifiers) and publishes metadata at `/.well-known/aauth-access.json`.
+- **Supervisor**: The party that performs supervision — the Person by default, or a supervision server (SS) the PS delegates to (#roles).
 
 Tokens:
 
@@ -208,7 +209,7 @@ Protocol concepts:
 
 - **Mission**: A scoped authorization context for agent governance (#missions). Required when the person's PS requires governance over the agent's actions. A mission is a JSON object containing structured fields (approver, agent, approved_at, approved tools) and a Markdown description. Identified by the PS and SHA-256 hash of the mission JSON (`s256`). Missions are proposed by agents and approved by the PS and person.
 - **Mission Log**: The ordered record of all agent↔PS interactions within a mission — token requests, permission requests, audit records, interaction requests, and clarification chats. The PS maintains the log and uses it to evaluate whether each new request is consistent with the mission's intent (#mission-log).
-- **Supervision**: The evaluation of one act — a token request, a permission request, a mission update — against the mission's intent, the prior log entries, and the person's policy (#policy-evaluation-points). Governance names the layer: missions plus permission, audit, and interaction relay. Supervision names the decision made within it.
+- **Supervision**: The evaluation of one act — a token request, a permission request, a mission update — against the mission's intent, the prior log entries, and the person's policy (#policy-evaluation-points). Governance names the layer: missions plus permission, audit, and interaction relay. Supervision names the decision made within it, and the Supervisor makes it.
 - **HTTP Sig**: An HTTP Message Signature ([@!RFC9421]) created per the AAuth HTTP Message Signatures profile defined in this specification (#http-message-signatures-profile), using a key conveyed via the `Signature-Key` header ([@!I-D.hardt-httpbis-signature-key]).
 - **Markdown**: AAuth uses Markdown ([@CommonMark]) as the human-readable content format for mission descriptions, justifications, clarifications, and scope descriptions. Implementations MUST sanitize Markdown before rendering to users.
 - **Interaction**: User authentication, consent, or other action at an interaction endpoint (#user-interaction). Triggered when a server returns `202 Accepted` with `requirement=interaction`.
@@ -450,12 +451,14 @@ An AP that supports AAuth Events ([@?I-D.hardt-aauth-events]) additionally acts 
 
 These are deployment choices that do not change the wire protocol. A receiver verifies each role's tokens and metadata identically whether the role is on its own server or collocated with others.
 
+One further role does not appear on the wire. The **Supervisor** performs supervision (#policy-evaluation-points): the Person by default, since a consent screen is the Person supervising, or a **supervision server (SS)** that a PS MAY delegate to. How a PS consults an SS is defined by the AAuth Supervision Protocol, a companion specification. Nothing an agent, resource, or AS sees changes with who supervises.
+
 ## Policy Evaluation Points {#policy-evaluation-points}
 
 Policy decisions in AAuth evaluate what the agent is doing. The Agent is the subject of every decision; the four server roles (AP, PS, AS, Resource) each evaluate the agent's activity from their own vantage point, in their own scope. No single party is the policy decision point — and token lifetimes give every server role a natural re-evaluation cadence.
 
 - **Agent Provider** decides whether to continue treating the agent as authorized — based on device posture, attestation freshness, network location, account status, or any other AP-internal criteria — and enforces that decision by issuing or refusing fresh agent tokens.
-- **Person Server** decides whether to issue an auth token for a given resource and scope — based on user consent and, when the agent is operating under a mission, the mission's intent and prior log entries against the PS's supervision policy. How that policy is evaluated, and by whom, is the subject of a companion specification on AAuth supervision.
+- **Person Server** decides whether to issue an auth token for a given resource and scope — based on user consent and, when the agent is operating under a mission, the mission's intent and prior log entries against the PS's supervision policy. The Supervisor (#roles) performs that evaluation; how a PS consults a supervision server is defined by the AAuth Supervision Protocol, a companion specification.
 - **Access Server** decides whether to issue an auth token on behalf of the resource — based on resource policy, the claims the PS has provided, and any further requirements (interaction, payment, claims) gathered via deferred responses.
 - **Resource** plays two roles in policy: it *decides what is required* to access the resource at the moment it issues a resource token (audience, scope, mission requirement), and it *enforces* the resulting auth token at the moment of access (signature verification, proof-of-possession, access rules).
 
@@ -1107,7 +1110,7 @@ A PS MUST NOT base an authorization decision solely on agent-asserted content wh
 
 Neither requirement suppresses the justification. It is what the person asks clarification questions about (#clarification-chat) and what the PS evaluates against the mission (#missions-overview); it is presented, and presented as the agent's claim.
 
-Where the decision-maker is not a person reading a screen — an organizational policy engine, or an AI evaluating on the person's behalf — the PS MUST convey the same distinction in whatever form that context takes.
+Where the Supervisor (#roles) is not the Person reading a screen — a supervision server evaluating on their behalf — the PS MUST convey the same distinction in whatever form that context takes.
 
 ## Clarification Chat
 
@@ -3274,6 +3277,8 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-11
+  - Added the informative appendix A Minimal Person Server: how a PS serving one person composes from the four REQUIRED metadata fields, out-of-band consent completion, retained person tokens, and the existing pending-request rules, with no new requirement. Readers sizing a self-hosted PS were inferring the full endpoint surface.
+  - Named the Supervisor: the party the PS consults for a per-act decision, the Person by default, or a supervision server (SS) the PS delegates to under the AAuth Supervision Protocol, a companion specification. Added to Terminology and Roles; Policy Evaluation Points, Consent Presentation, and Why Missions Are Not a Policy Language name it where they previously described an anonymous decision-maker. Nothing on the wire changes.
   - Editorial pass with no normative change. Gone or merged: the Introduction's feature list and its negation, the Overview's three mission diagrams and its Bootstrapping section, the signature-header boilerplate on fourteen examples, the per-role repetition of the common metadata fields, two duplicate `202` examples and two of the three clarification-response examples, three Design Rationale entries that restated body text and five one-sentence entries now in an In Brief list, and six Security Considerations subsections that restated normative text stated elsewhere. The three `401` requirement challenges are now adjacent. Every MUST, SHOULD, and MAY survives in the section that governs it.
   - Moved the Person Token Endpoint into the Person Server chapter beside the auth token endpoint, leaving the token's structure, usage, and verification in Person Token with a pointer. Every other PS endpoint was already defined in that chapter, and a PS implementer had to find this one under the token. The chapter now opens with the full list of endpoints a PS serves and their requirement levels.
   - Pointed verifiers that first see a signed artifact after a delay at the signed `created` parameter: the token is checked for validity at `created`, the accepted skew is the verifier's policy, and a replay cache there MUST span that skew. The profile already mandated `created`; nobody reading from the queued-consumption angle was directed to it.
@@ -3514,6 +3519,24 @@ User      Agent       Resource 1      Resource 2    PS
   |         |<-------------|               |          |
 ~~~
 
+# A Minimal Person Server {#minimal-ps}
+
+This appendix is informative. It describes how a person server serving one person — self-hosted, or a small service — composes from what this document already defines, and points at the sections that govern each step. It adds no requirement.
+
+**Metadata.** The floor is the four REQUIRED fields (#ps-metadata): `issuer`, `jwks_uri`, `person_token_endpoint`, and `auth_token_endpoint`. A minimal PS publishes those and nothing else. It has no `mission_endpoint`, so agents cannot propose missions to it and every request is evaluated on its own; no `permission_endpoint` or `audit_endpoint`; no `interaction_endpoint`, so an agent that would have relayed an interaction directs the person to it itself (#interaction-relay); and no `mission_control_endpoint`. A `revocation_endpoint` is OPTIONAL and worth having, since it is how the person's agent provider tells the PS to stop honoring an agent (#token-revocation).
+
+**One person.** Every agent that reaches the PS acts for the same person, so agent-person binding (#agent-person-binding) reduces to the first approval: the PS records the agent's `(iss, sub)` on the first token it issues for it, and thereafter recognizes it. The approving party still has to be authenticated (#ps-approval-endpoint-auth): a loopback-only PS relies on the operating system, and one reachable from a network authenticates the person before acting on a tap or a reply.
+
+**Person tokens.** The person token endpoint (#person-token-endpoint) derives one directed `sub` per resource (#directed-identifiers) — a keyed hash of the resource identifier is enough, provided the key is kept — issues the token bound to the agent's key, and retains it, with its `jti`, for as long as a resource token may name it (#person-token-endpoint). The first token for a resource the person has not used is the moment to ask them (#person-token-exposure); later ones for the same resource need not be.
+
+**Auth tokens.** At the auth token endpoint (#ps-token-endpoint), a resource token whose `aud` is the PS is answered directly: the PS decides on consent and issues the auth token itself. One whose `aud` is an access server is federated (#ps-as-federation), presenting the resource token, the agent token, and the retained person token (#ps-to-as-token-request). A minimal PS that never expects four-party access can decline the second case; one that supports it needs nothing beyond an HTTP client and its own signing key.
+
+**Consent without a consent page.** The PS answers any request that needs the person with a `202` deferred response carrying `requirement=interaction`, a `url`, and a `code` (#requirement-responses, #deferred-responses). The `url` can be a page the PS serves, but it need not be visited: the PS MAY complete the interaction over a channel it already has — a notification the person taps, a message they reply to — and the code is consumed at that completion (#user-interaction). The pending URL then returns the terminal response on the agent's next poll. A queue of pending decisions, each resolved by one tap, is the whole of the consent surface; the Consent Presentation rules (#consent-presentation) apply to what the tap shows.
+
+**Long waits.** The person may not answer for hours. The pending record lives as long as the PS chooses (#pending-url-security); the resource token the request carried will have expired by then, and the agent obtains a fresh one and resubmits (#resource-tokens). The PS remembers the decision it already has and applies it to the resubmission without asking again (#resource-tokens).
+
+**Supervision.** The person is the Supervisor (#roles). Every decision the PS cannot make from what it already recorded waits on them, which is the right default for one person and a handful of agents. A PS that wants to answer routine requests without waking the person applies a standing policy on their behalf; how it consults a supervision server for that is the AAuth Supervision Protocol, and is the one thing a minimal PS grows into rather than starts with.
+
 # Design Rationale
 
 ## Identity and Foundation
@@ -3632,7 +3655,7 @@ Prior attempts to make authorization semantics machine-evaluable across domains 
 
 Missions solve this differently. Rather than requiring all parties to agree on machine-evaluable semantics, AAuth concentrates supervision at the PS — the only party with full context. The PS has the mission description, the user's identity and organizational context, the agent's justification for each request, the history of what the agent has done so far, and a channel to the user for clarification. No other party in the protocol has this context, and no predefined policy language can substitute for it.
 
-This context can be presented to humans or to agents acting as decision-makers. The PS does not need to evaluate missions deterministically — it presents the mission context, the justification, and the resource request to whatever decision-maker is appropriate: a human reviewing a consent screen, an AI agent evaluating policy on behalf of an organization, or an automated system applying heuristics. As AI decision-making matures, supervision can shift from human review to agent evaluation — without changing the protocol. AAuth standardizes how context is conveyed to the decision-maker; it does not prescribe how the decision is made.
+This context can be presented to humans or to agents acting as decision-makers. The PS does not need to evaluate missions deterministically — it presents the mission context, the justification, and the resource request to the Supervisor (#roles): the person at a consent screen, or a supervision server deciding on their behalf — an AI agent applying an organization's policy, or an automated system applying heuristics. As AI decision-making matures, supervision can shift from human review to agent evaluation — without changing the protocol. AAuth standardizes how context is conveyed to the decision-maker; it does not prescribe how the decision is made.
 
 The mission's `description` is Markdown because it represents human intent, not machine policy. The `approved_tools` array provides structured machine-evaluable elements where appropriate. Resources and access servers do not need the mission content — they enforce their own deterministic policies independently. The mission is a further restriction applied by the PS, and only the PS has sufficient context to evaluate it. Distributing mission semantics to other parties would be both a privacy leak and a false promise of enforcement, since those parties lack the context to evaluate the mission meaningfully.
 
