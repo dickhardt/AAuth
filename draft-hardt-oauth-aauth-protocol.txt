@@ -226,7 +226,7 @@ Table of Contents
      15.3.  Untrusted Input
      15.4.  Agent Control of the Consent Surface
      15.5.  Interaction Code Misdirection
-     15.6.  Link Relation Discovery
+     15.6.  Link Relation Security
      15.7.  Trust Posture in PS-Asserted Access
      15.8.  Person Token Exposure
      15.9.  Continuity, Not Identity Proofing
@@ -5137,9 +5137,10 @@ Initial request (with Prefer: wait=N)
 13.11.4.  Resource Metadata
 
    Published at /.well-known/aauth-resource.json.  A resource MAY
-   publish this document to be discoverable; one that does not can still
-   verify identity-based access, and issue resource tokens and
-   interaction requirements via 401 responses.
+   publish this document to be discoverable, and SHOULD point agents at
+   it from pages they reach first Section 13.11.5; one that publishes
+   none can still verify identity-based access, and issue resource
+   tokens and interaction requirements via 401 responses.
 
    {
      "issuer": "https://resource.example",
@@ -5253,7 +5254,10 @@ Initial request (with Prefer: wait=N)
    A resource SHOULD include the relation on the page at its
    documentation_uri, which is where an agent sent to read about the
    resource arrives first.  A response MAY carry more than one aauth-
-   resource link when it describes several resources.  The relation says
+   resource link when it describes several resources — a developer
+   portal for a service with sandbox, staging, and production
+   deployments names all three, each a resource identifier of its own,
+   as an OpenAPI document lists them under servers.  The relation says
    nothing about the response that carries it beyond which resource it
    belongs to: a 401 from a resource endpoint still carries its
    requirement in AAuth-Requirement Section 13.4, and an agent MUST NOT
@@ -5525,7 +5529,7 @@ Initial request (with Prefer: wait=N)
    which address misdirection of a legitimate code rather than recovery
    of an unknown one.
 
-15.6.  Link Relation Discovery
+15.6.  Link Relation Security
 
    An aauth-resource link Section 13.11.5 is a statement by whoever
    controls the response that carries it, not by the resource it names.

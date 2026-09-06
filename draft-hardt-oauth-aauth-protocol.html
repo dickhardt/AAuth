@@ -1688,7 +1688,7 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
                 <p id="section-toc.1-1.15.2.5.1"><a href="#section-15.5" class="auto internal xref">15.5</a>.  <a href="#name-interaction-code-misdirecti" class="internal xref">Interaction Code Misdirection</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15.2.6">
-                <p id="section-toc.1-1.15.2.6.1"><a href="#section-15.6" class="auto internal xref">15.6</a>.  <a href="#name-link-relation-discovery" class="internal xref">Link Relation Discovery</a></p>
+                <p id="section-toc.1-1.15.2.6.1"><a href="#section-15.6" class="auto internal xref">15.6</a>.  <a href="#name-link-relation-security" class="internal xref">Link Relation Security</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15.2.7">
                 <p id="section-toc.1-1.15.2.7.1"><a href="#section-15.7" class="auto internal xref">15.7</a>.  <a href="#name-trust-posture-in-ps-asserte" class="internal xref">Trust Posture in PS-Asserted Access</a></p>
@@ -6257,7 +6257,7 @@ Accept-Signature-Scheme: jwt
           <h4 id="name-resource-metadata">
 <a href="#section-13.11.4" class="section-number selfRef">13.11.4. </a><a href="#name-resource-metadata" class="section-name selfRef">Resource Metadata</a>
           </h4>
-<p id="section-13.11.4-1">Published at <code>/.well-known/aauth-resource.json</code>. A resource MAY publish this document to be discoverable; one that does not can still verify identity-based access, and issue resource tokens and interaction requirements via <code>401</code> responses.<a href="#section-13.11.4-1" class="pilcrow">¶</a></p>
+<p id="section-13.11.4-1">Published at <code>/.well-known/aauth-resource.json</code>. A resource MAY publish this document to be discoverable, and SHOULD point agents at it from pages they reach first <a href="#resource-metadata-link" class="auto internal xref">Section 13.11.5</a>; one that publishes none can still verify identity-based access, and issue resource tokens and interaction requirements via <code>401</code> responses.<a href="#section-13.11.4-1" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="section-13.11.4-2">
 <pre>{
   "issuer": "https://resource.example",
@@ -6334,7 +6334,7 @@ Accept-Signature-Scheme: jwt
 </pre><a href="#section-13.11.5-5" class="pilcrow">¶</a>
 </div>
 <p id="section-13.11.5-6">The target MUST be the resource's well-known metadata URL: a server identifier <a href="#server-identifiers" class="auto internal xref">Section 13.10.1</a> followed by <code>/.well-known/aauth-resource.json</code>. An agent MUST NOT fetch a target of any other form. Having fetched it, the agent verifies the document as it verifies any metadata document <a href="#metadata-documents" class="auto internal xref">Section 13.11</a>: its <code>issuer</code> MUST equal the target minus the well-known suffix. The link is a pointer, not a source of authority. It can direct an agent to a resource's own statement about itself and to nothing else.<a href="#section-13.11.5-6" class="pilcrow">¶</a></p>
-<p id="section-13.11.5-7">A resource SHOULD include the relation on the page at its <code>documentation_uri</code>, which is where an agent sent to read about the resource arrives first. A response MAY carry more than one <code>aauth-resource</code> link when it describes several resources. The relation says nothing about the response that carries it beyond which resource it belongs to: a <code>401</code> from a resource endpoint still carries its requirement in <code>AAuth-Requirement</code> <a href="#requirement-responses" class="auto internal xref">Section 13.4</a>, and an agent MUST NOT treat the link as a substitute for it.<a href="#section-13.11.5-7" class="pilcrow">¶</a></p>
+<p id="section-13.11.5-7">A resource SHOULD include the relation on the page at its <code>documentation_uri</code>, which is where an agent sent to read about the resource arrives first. A response MAY carry more than one <code>aauth-resource</code> link when it describes several resources — a developer portal for a service with sandbox, staging, and production deployments names all three, each a resource identifier of its own, as an OpenAPI document lists them under <code>servers</code>. The relation says nothing about the response that carries it beyond which resource it belongs to: a <code>401</code> from a resource endpoint still carries its requirement in <code>AAuth-Requirement</code> <a href="#requirement-responses" class="auto internal xref">Section 13.4</a>, and an agent MUST NOT treat the link as a substitute for it.<a href="#section-13.11.5-7" class="pilcrow">¶</a></p>
 <p id="section-13.11.5-8">Verifiers do not use this relation. A party verifying a token or a signature discovers keys from the signer's <code>iss</code> and <code>dwk</code> (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>), never from a link in content <a href="#link-relation-security" class="auto internal xref">Section 15.6</a>.<a href="#section-13.11.5-8" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -6563,8 +6563,8 @@ Accept-Signature-Scheme: jwt
 </div>
 <div id="link-relation-security">
 <section id="section-15.6">
-        <h3 id="name-link-relation-discovery">
-<a href="#section-15.6" class="section-number selfRef">15.6. </a><a href="#name-link-relation-discovery" class="section-name selfRef">Link Relation Discovery</a>
+        <h3 id="name-link-relation-security">
+<a href="#section-15.6" class="section-number selfRef">15.6. </a><a href="#name-link-relation-security" class="section-name selfRef">Link Relation Security</a>
         </h3>
 <p id="section-15.6-1">An <code>aauth-resource</code> link <a href="#resource-metadata-link" class="auto internal xref">Section 13.11.5</a> is a statement by whoever controls the response that carries it, not by the resource it names. Two limits keep that harmless. The target is constrained to a well-known URL and the fetched document is verified against the URL it came from, so a link cannot cause an agent to accept metadata the resource did not publish; and the relation plays no part in key discovery, so it cannot affect what any verifier trusts.<a href="#section-15.6-1" class="pilcrow">¶</a></p>
 <p id="section-15.6-2">What a link can do is steer. A page an attacker controls can point an agent at a resource the person did not intend, and the agent will then request a person token naming that resource and present it there. The answer is the one the protocol already gives for any resource an agent meets for the first time: the person token endpoint puts the question to the person, presenting the resource's own <code>name</code> and <code>description</code> <a href="#person-token-endpoint" class="auto internal xref">Section 8.1</a>, and a person token carries no authorization <a href="#person-token-not-authorization" class="auto internal xref">Section 15.11</a>. An agent SHOULD record where it found a link, so that a resource introduced by a third-party page is distinguishable from one the person named. An agent that parses HTML to find the relation is reading untrusted input <a href="#untrusted-input" class="auto internal xref">Section 15.3</a>.<a href="#section-15.6-2" class="pilcrow">¶</a></p>
