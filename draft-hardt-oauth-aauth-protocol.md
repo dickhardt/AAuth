@@ -2782,7 +2782,7 @@ Role-specific fields, after the common fields of (#metadata-documents):
 
 ### Resource Metadata {#resource-metadata}
 
-Published at `/.well-known/aauth-resource.json`. A resource MAY publish this document to be discoverable; one that does not can still verify identity-based access, and issue resource tokens and interaction requirements via `401` responses.
+Published at `/.well-known/aauth-resource.json`. A resource MAY publish this document to be discoverable, and SHOULD point agents at it from pages they reach first (#resource-metadata-link); one that publishes none can still verify identity-based access, and issue resource tokens and interaction requirements via `401` responses.
 
 ```json
 {
@@ -2838,7 +2838,7 @@ An HTML document MAY carry the same relation as a `link` element in its `head`:
 
 The target MUST be the resource's well-known metadata URL: a server identifier (#server-identifiers) followed by `/.well-known/aauth-resource.json`. An agent MUST NOT fetch a target of any other form. Having fetched it, the agent verifies the document as it verifies any metadata document (#metadata-documents): its `issuer` MUST equal the target minus the well-known suffix. The link is a pointer, not a source of authority. It can direct an agent to a resource's own statement about itself and to nothing else.
 
-A resource SHOULD include the relation on the page at its `documentation_uri`, which is where an agent sent to read about the resource arrives first. A response MAY carry more than one `aauth-resource` link when it describes several resources. The relation says nothing about the response that carries it beyond which resource it belongs to: a `401` from a resource endpoint still carries its requirement in `AAuth-Requirement` (#requirement-responses), and an agent MUST NOT treat the link as a substitute for it.
+A resource SHOULD include the relation on the page at its `documentation_uri`, which is where an agent sent to read about the resource arrives first. A response MAY carry more than one `aauth-resource` link when it describes several resources — a developer portal for a service with sandbox, staging, and production deployments names all three, each a resource identifier of its own, as an OpenAPI document lists them under `servers`. The relation says nothing about the response that carries it beyond which resource it belongs to: a `401` from a resource endpoint still carries its requirement in `AAuth-Requirement` (#requirement-responses), and an agent MUST NOT treat the link as a substitute for it.
 
 Verifiers do not use this relation. A party verifying a token or a signature discovers keys from the signer's `iss` and `dwk` ([@!I-D.hardt-httpbis-signature-key]), never from a link in content (#link-relation-security).
 
@@ -2931,7 +2931,7 @@ An attacker could attempt to trick a user into approving an authorization reques
 
 The reverse threat — an attacker who knows a pending request's interaction URL but not its `code` and tries to guess it to drive the interaction — is bounded by the code-format rules in (#interaction-code-format). The minimum 40 bits of entropy make a single guess overwhelmingly likely to fail, and the mandatory rate-limit terminates the pending interaction after a few failed attempts, capping total guesses far below the entropy bound. These entropy and rate-limit requirements are the brute-force defense; they complement the user-recognition and pre-established-channel defenses above, which address misdirection of a legitimate code rather than recovery of an unknown one.
 
-## Link Relation Discovery {#link-relation-security}
+## Link Relation Security {#link-relation-security}
 
 An `aauth-resource` link (#resource-metadata-link) is a statement by whoever controls the response that carries it, not by the resource it names. Two limits keep that harmless. The target is constrained to a well-known URL and the fetched document is verified against the URL it came from, so a link cannot cause an agent to accept metadata the resource did not publish; and the relation plays no part in key discovery, so it cannot affect what any verifier trusts.
 
