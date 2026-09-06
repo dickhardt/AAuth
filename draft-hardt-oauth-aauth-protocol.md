@@ -2782,7 +2782,7 @@ Role-specific fields, after the common fields of (#metadata-documents):
 
 ### Resource Metadata {#resource-metadata}
 
-Published at `/.well-known/aauth-resource.json`:
+Published at `/.well-known/aauth-resource.json`. A resource MAY publish this document to be discoverable; one that does not can still verify identity-based access, and issue resource tokens and interaction requirements via `401` responses.
 
 ```json
 {
