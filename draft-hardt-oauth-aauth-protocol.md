@@ -340,7 +340,7 @@ A resource that needs more than identity for a particular operation challenges f
 
 ### PS Authorization Access (Three-Party)
 
-The resource has no separate access server — it accepts identity claims from whichever PS the agent declares, and applies its own policy on the resulting claims. The `ps` claim in the agent token tells the resource that the agent has a person server and which one, which is how the resource knows to challenge for a person token at all. The PS the resource then acts on is the `iss` of the person token it verifies (#person-tokens); the resource copies that value into the `ps` claim of the resource token (#resource-tokens) it issues with `aud` = PS URL. The agent obtains the resource token either by calling the resource's `authorization_endpoint` (if published in resource metadata) or by receiving a `401` challenge with `requirement=auth-token` when calling the resource directly (#requirement-auth-token). The agent sends the resource token to the PS's token endpoint (#ps-token-endpoint), and the PS returns an auth token (#auth-tokens) asserting identity claims about the user (`sub`, optionally `email`, `tenant`, `groups`, `roles`) and confirming user consent for the scope the resource requested. The resource applies its own access policy on the resulting claims. Any agent's PS can assert identity claims to any resource without bilateral setup; the resource namespaces those claims by the asserting PS — the same `sub` value from a different PS is a different subject. As in many OIDC deployments, registration and login share a single flow (see (#trust-posture-in-ps-asserted-access) for how the resource matches or creates a user record from `(iss, sub)`).
+The resource has no access server. It accepts identity and consent asserted by whichever PS the person uses — the `iss` of the person token it verified, which it copies into the resource token's `ps` and `aud` (#resource-tokens) — and applies its own policy to the claims in the auth token the PS returns (#auth-tokens). Any PS can assert to any resource without bilateral setup; the resource namespaces the claims by issuer, so the same `sub` from a different PS is a different subject (#trust-posture-in-ps-asserted-access).
 
 ~~~ ascii-art
 Agent                                 Resource       PS
@@ -463,73 +463,13 @@ All AAuth tokens have limited lifetimes, so each issuance is a natural re-evalua
 
 ## Agent Governance {#agent-governance}
 
-Agent governance is orthogonal to resource access modes. Any agent with a person server (`ps` claim in agent token) can use the PS for governance, regardless of which access modes the resources it accesses support.
+Agent governance is orthogonal to resource access modes. Any agent with a person server can use the PS for governance, regardless of which access modes the resources it accesses support. An agent that has a person server MUST carry the `ps` claim in its agent token (#agent-token-structure): it is how a resource learns, before it has verified anything else, that a person token can be asked for.
 
 ### Missions {#missions-overview}
 
 When the person's PS requires governance over the agent's actions, the agent creates a mission — a Markdown description of what it intends to accomplish. The PS and user review, clarify, and approve the mission. The approved mission is immutable — bound by its `s256` hash. Missions evolve through the **mission log** (#mission-log): the ordered record of all agent↔PS interactions within the mission. Missions are not required for all PS interactions — an agent can get auth tokens without a mission. See (#missions) for normative requirements.
 
-#### Mission Creation {#mission-creation-overview}
-
-The agent proposes a mission at the PS. The PS and user may clarify and refine before approving.
-
-~~~ ascii-art
-Agent                                     PS                        User
-  |                                        |                          |
-  | HTTPSig w/ agent_token                 |                          |
-  | POST mission_endpoint                  |                          |
-  | proposal                               |                          |
-  |--------------------------------------->|                          |
-  |                                        |                          |
-  | [clarification chat]                   | review, clarify, approve |
-  |<-------------------------------------->|<------------------------>|
-  |                                        |                          |
-  | 200 OK                                 |                          |
-  | {s256, mission, person_tokens}         |                          |
-  |<---------------------------------------|                          |
-~~~
-Figure: Mission Creation and Approval {#fig-mission}
-
-#### Mission Context at Resources
-
-The agent names the mission when it obtains a person token for the resource. The resource copies `mission_s256` from that token into the resource token it issues:
-
-~~~ ascii-art
-Agent                                        Resource
-  |                                             |
-  | HTTPSig w/ person_token (mission_s256)      |
-  | POST authorization_endpoint                 |
-  |-------------------------------------------->|
-  |                                             |
-  | resource_token                              |
-  | (mission_s256 included)                     |
-  |<--------------------------------------------|
-~~~
-Figure: Mission Context at Resource {#fig-mission-context}
-
-#### Mission Completion {#mission-completion-overview}
-
-When the agent believes the mission is complete, it proposes completion at the mission's own URL with a summary. The PS presents the summary to the user. The user either accepts (mission terminates) or responds with follow-up questions (mission continues).
-
-~~~ ascii-art
-Agent                                     PS                        User
-  |                                        |                          |
-  | HTTPSig w/ agent_token                 |                          |
-  | POST mission_endpoint/{s256}           |                          |
-  | action=completion, summary             |                          |
-  |--------------------------------------->|                          |
-  |                                        |                          |
-  |                                        | present summary          |
-  |                                        |------------------------->|
-  |                                        |                          |
-  |                                        | accept / follow-up       |
-  |                                        |<-------------------------|
-  |                                        |                          |
-  | 200 OK (terminated)                    |                          |
-  | or clarification (continues)           |                          |
-  |<---------------------------------------|                          |
-~~~
-Figure: Mission Completion {#fig-mission-completion}
+The agent proposes the mission at the PS's mission endpoint, and the PS and person clarify and approve it (#mission-creation). The agent names the approved mission when it obtains a person token for a resource; the resource copies `mission_s256` from that token into the resource token it issues, from where it reaches the auth token (#mission-log). When the work is done the agent proposes completion with a summary, and the mission ends when the person accepts (#mission-completion).
 
 ### PS Governance Endpoints
 
@@ -537,40 +477,13 @@ Of the endpoints a PS serves (#person-server), three are governance endpoints. T
 
 - **Permission endpoint**: Request permission for actions not governed by a remote resource — tool calls, file writes, sending messages.
 - **Audit endpoint**: Log actions performed, providing the PS with a complete record for the mission log.
-- **Interaction endpoint**: Reach the user through the PS — relay interactions, ask questions, forward payment approvals, or propose mission completion.
+- **Interaction endpoint**: Reach the user through the PS — relay interactions, ask questions, forward payment approvals.
+
+A PS MAY also maintain a direct channel to the person — email, push notification, messaging — for out-of-band approvals, notifications, and revocation alerts.
 
 ## Obtaining an Agent Token
 
 The agent obtains an agent token from its agent provider. The agent generates a signing key pair, proves its identity to the agent provider through a platform-specific mechanism, and receives an agent token binding the signing key to the agent's identifier. The agent token MAY include a `ps` claim identifying the agent's person server. Agent token structure and normative requirements are defined in (#agent-tokens). Acquisition is platform-dependent; see [@?I-D.hardt-aauth-bootstrap] for common patterns.
-
-## Bootstrapping
-
-Before protocol flows begin, each entity must be established with its identity, keys, and relationships. The requirements build incrementally.
-
-Acquiring the agent token — the AP-side enrollment ceremony, including per-platform key handling, optional platform attestation, and token refresh — is informational and described in [@?I-D.hardt-aauth-bootstrap]. This section lists the cross-mode setup each party completes before protocol flows begin.
-
-**All modes:**
-
-- Agent obtains an agent token from its agent provider, binding its signing key to its identifier (`aauth:local@domain`). See [@?I-D.hardt-aauth-bootstrap].
-- Agent providers publish metadata at `/.well-known/aauth-agent.json` (#agent-provider-metadata).
-
-**Agent identity access and above:**
-
-- Resources MAY publish metadata at `/.well-known/aauth-resource.json` (#resource-metadata) to be discoverable. The metadata SHOULD declare `access_mode` (the credential flow agents should expect) and SHOULD advertise an R3 vocabulary (`r3_vocabularies`, [@?I-D.hardt-aauth-r3]) describing the resource's operations, so that an agent that knows only the resource's hostname can learn the API and begin using it (#consuming-a-resource). Resources that do not publish metadata can still verify identity-based access, and issue resource tokens and interaction requirements via `401` responses.
-
-**PS authorization access (three-party) and above:**
-
-- The agent's agent token MUST include the `ps` claim identifying its person server. This is configured during agent setup (e.g., set by the agent provider or chosen by the person deploying the agent).
-- The PS maintains the association between an agent and its person. This association is typically established when the person first authorizes the agent at the PS via the interaction flow. An organization administrator may also pre-authorize agents for the organization.
-- The PS MAY establish a direct communication channel with the user (e.g., email, push notification, or messaging) to support out-of-band authorization, approval notifications, and revocation alerts.
-- Person servers publish metadata at `/.well-known/aauth-person.json` (#ps-metadata).
-- The `ps` claim in the agent token tells the resource the agent has a person server, before the resource has anything else to go on. The PS a resource acts on is the `iss` of the person token it verifies (#person-tokens); the resource copies that value into the resource token's `ps` claim and issues with `aud` = PS URL.
-
-**Federated authorization access (four-party):**
-
-- Access servers publish metadata at `/.well-known/aauth-access.json` (#access-server-metadata).
-- The resource issues resource tokens with `aud` = AS URL.
-- The PS and the resource's AS must have a trust relationship before the AS will issue auth tokens. This trust may be pre-established (through a business relationship) or established dynamically through the AS's token endpoint responses — interaction, payment, or claims. When an organization controls both the PS and AS, trust is implicit. See (#ps-as-federation) for details.
 
 # Agent Identity {#agent-identity}
 
@@ -3092,7 +3005,7 @@ Both modes are complete and useful on their own. Adding a PS (PS authorization, 
 
 ### Consuming a Resource End to End {#consuming-a-resource}
 
-A resource that wants agents to discover and use it with no prior integration publishes two things in its `aauth-resource.json` (#resource-metadata):
+A resource that wants agents to discover and use it with no prior integration SHOULD publish two things in its `aauth-resource.json` (#resource-metadata):
 
 - **`access_mode`** — the credential flow the agent should expect: `agent-token`, `person-token`, `session-token`, or `auth-token`.
 - **An R3 vocabulary.** Resources SHOULD advertise an R3 vocabulary (`r3_vocabularies`, [@?I-D.hardt-aauth-r3]) describing their operations, so that an agent that knows only the resource's hostname can learn the API and begin using it. The R3 document itself is fetched only by the AS and PS, not the agent; the vocabulary (an OpenAPI, MCP, gRPC, or similar API description) is the agent-facing surface.
