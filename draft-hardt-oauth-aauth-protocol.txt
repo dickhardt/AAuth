@@ -841,6 +841,7 @@ Table of Contents
      |                                     |       | POST                 |
      |                                     |       | auth_token_endpoint  |
      |                                     |       | w/ resource_token    |
+     |                                     |       | + person_token       |
      |                                     |       |--------------------->|
      |                                     |       |                      |
      |                                     |       | auth_token           |
@@ -1369,8 +1370,9 @@ Table of Contents
    mission_s256 value.
 
    Issuing a person token creates a retention obligation.  A PS MUST
-   retain a record of each person token it issues — jti, ps, sub,
-   mission_s256, tenant, and exp — sufficient to answer resource token
+   retain each person token it issues — the token itself, so that it can
+   be presented to an access server Section 10.1.1, and with it the jti,
+   ps, sub, mission_s256, tenant, and exp that answer resource token
    verification Section 7.8.2.  Because a resource token may name a
    person token that was valid when the resource token was issued, the
    record MUST be retained beyond the person token's exp by at least the
@@ -1464,6 +1466,15 @@ Table of Contents
    agent-token case.  Once an auth token has been issued for a resource,
    the agent presents the auth token on subsequent requests to that
    resource Section 10.4.2.
+
+   An agent SHOULD obtain a fresh person token at least five minutes
+   before the current one expires, and SHOULD re-obtain resource tokens
+   and auth tokens against it before they expire, so that no token in
+   the chain lapses mid-task.  The refresh runs through the resource's
+   authorization endpoint Section 7.1 presenting the fresh person token;
+   that presentation is also what keeps the resource's record of the
+   person token behind presented_jti current Section 7.8.1.  This
+   parallels the agent-token guidance in Section 8.8.
 
 6.4.  Person Token Verification
 
@@ -1892,17 +1903,18 @@ Table of Contents
    HTTPS URL of the resource's interaction endpoint - code: Interaction
    code to present at that URL
 
-   Resource tokens SHOULD NOT have a lifetime exceeding 5 minutes, and
-   when mission_s256 is present MUST NOT expire later than that
-   mission's expires_at Section 9.2.  The jti claim provides an audit
-   trail for token requests; ASes are not required to enforce replay
-   detection on resource tokens.  If a resource token expires before the
-   PS presents it to the AS (e.g., because user interaction was
-   required), the agent MUST obtain a fresh resource token from the
-   resource and submit a new token request to the PS.  The PS SHOULD
-   remember prior consent decisions within a mission so the user is not
-   re-prompted when the agent resubmits a request for the same resource
-   and scope.
+   Resource tokens SHOULD NOT have a lifetime exceeding 5 minutes.  A
+   resource token's lifetime is independent of any mission it names: the
+   PS verifies that the mission is active when it acts on the token
+   Section 7.8.2, and only the PS issues tokens bounded by the mission's
+   expires_at Section 9.2.  The jti claim provides an audit trail for
+   token requests; ASes are not required to enforce replay detection on
+   resource tokens.  If a resource token expires before the PS presents
+   it to the AS (e.g., because user interaction was required), the agent
+   MUST obtain a fresh resource token from the resource and submit a new
+   token request to the PS.  The PS SHOULD remember prior consent
+   decisions within a mission so the user is not re-prompted when the
+   agent resubmits a request for the same resource and scope.
 
 7.8.2.  Resource Token Verification
 
@@ -2177,7 +2189,14 @@ Table of Contents
    agent relies on polling to detect completion.
 
    The code parameter is single-use: once the user arrives at the URL
-   with a valid code, the code is consumed and cannot be reused.
+   with a valid code, the code is consumed and cannot be reused.  The
+   server hosting the interaction URL MAY instead complete the
+   interaction over a channel it already controls — a notification the
+   person taps, a message they approve — without the person visiting url
+   or presenting code; the code is consumed at that completion, and the
+   pending URL returns the terminal response Section 13.5.  Only the
+   host of url can complete an interaction this way: a resource-hosted
+   interaction is not completable by the PS.
 
    When the interaction completes with an error, the server redirects to
    the callback URL with an error query parameter instead of signaling
@@ -3196,6 +3215,15 @@ Table of Contents
    *  agent_token (REQUIRED): The agent's agent token.  For a parent-
       mediated sub-agent authorization, this is the parent (top-level)
       agent's token.
+   *  person_token (REQUIRED): The person token named by the resource
+      token's presented_jti, which the PS issued and retains
+      Section 6.1.  It carries the identity the resource saw — sub,
+      tenant, and mission_s256 when present — under the PS's own
+      signature, and its exp bounds the auth token the AS issues
+      Section 10.4.1.  A PS MUST NOT present an expired person token; it
+      rejects the agent's token request with expired_person_token
+      Section 13.6.3, and the agent obtains a fresh person token and a
+      fresh resource token.
    *  subagent_token (OPTIONAL): A sub-agent's agent token, present when
       the PS federates a parent-mediated sub-agent authorization
       Section 11.2.  When present, the AS binds the issued auth token to
@@ -3205,8 +3233,20 @@ Table of Contents
       authorization, used in call chaining Section 11.1.1.
 
    The resource token carries the person's identity as ps and sub
-   Section 7.8.1, so the AS needs no separate identity parameter and
-   requirement=claims Section 10.2 is reserved for claims beyond it.
+   Section 7.8.1, and the person token carries the same identity under
+   the PS's signature, so the AS needs no separate identity parameter
+   and requirement=claims Section 10.2 is reserved for claims beyond it.
+
+   The AS MUST verify person_token per Section 6.4, with two
+   substitutions: aud MUST equal the resource token's iss rather than
+   the AS's own identifier, and cnf.jwk MUST match the resource token's
+   agent_jkt rather than the key that signed this request, which is the
+   PS's.  The AS MUST further verify that the person token's iss is the
+   PS that signed the request, that its jti equals the resource token's
+   presented_jti, and that its sub, mission_s256, and tenant match the
+   resource token's.  A mismatch is rejected with
+   invalid_resource_token; an expired person token with
+   expired_person_token.
 
    agent_token remains REQUIRED even though the resource never sees an
    agent identifier.  A resource deploys an AS because it wants policy
@@ -3228,7 +3268,8 @@ Table of Contents
 
    {
      "resource_token": "eyJhbGc...",
-     "agent_token": "eyJhbGc..."
+     "agent_token": "eyJhbGc...",
+     "person_token": "eyJhbGc..."
    }
 
 10.1.2.  AS Response
@@ -3304,11 +3345,23 @@ Table of Contents
        person at this resource.
    6.  Verify scope is consistent with what was requested — not broader
        than the scope in the resource token.
+   7.  Verify exp does not exceed the exp of the person_token the PS
+       presented Section 10.1.1.
 
    After verification, the PS returns the auth token to the agent.  The
    agent presents the auth token to the resource via the Signature-Key
    header Section 10.4.2.  The resource verifies the auth token against
    the AS's JWKS Section 10.4.3.
+
+   When the AS answers with a well-formed terminal error, the PS relays
+   it: the response to the agent carries the AS's error value and status
+   in the PS's own problem+json body Section 13.6.2, so that an AS
+   denial and a federation failure are distinguishable.  When the PS
+   cannot obtain a verifiable auth token at all — the AS is unreachable,
+   times out, returns a malformed response, or returns an auth token
+   that fails the verification above — the PS returns as_unreachable
+   Section 13.6.3.  Either outcome reaches the agent on its pending
+   request when the token request was deferred.
 
    The agent receives the auth token from its trusted PS, so signature
    verification is not strictly required.  However, agents SHOULD verify
@@ -3509,8 +3562,13 @@ Table of Contents
    cnf: Confirmation claim with jwk containing the agent's public key.
    The JWK MUST carry a fully-specified alg member Section 13.8.1. -
    iat: Issued at timestamp - exp: Expiration timestamp.  Auth tokens
-   MUST NOT have a lifetime exceeding 1 hour, and when mission_s256 is
-   present MUST NOT be later than that mission's expires_at Section 9.2.
+   MUST NOT have a lifetime exceeding 1 hour, and MUST NOT expire later
+   than the agent token used to obtain them Section 8.8.  When
+   mission_s256 is present, a PS-issued auth token MUST NOT expire later
+   than the mission's expires_at Section 9.2; an AS-issued auth token
+   MUST NOT expire later than the exp of the person_token the PS
+   presented with the token request Section 10.1.1, which the PS capped
+   at the same bound Section 6.2.
 
    An auth token carries no agent identifier and no delegation chain.
    cnf binds it to one key, and the resource enforces against sub and
@@ -4262,7 +4320,8 @@ Table of Contents
    *Single use.* A code MUST be single-use.  Once the user arrives at
    the interaction URL with a valid code and the code is consumed, the
    server MUST reject any later presentation of the same code, returning
-   invalid_code Section 13.6.4.
+   invalid_code Section 13.6.4.  A code consumed by out-of-band
+   completion Section 8.2 is rejected the same way.
 
    *Rate-limiting.* Because the code guards access to the interaction
    page, the server MUST rate-limit code-validation attempts at the
@@ -4457,6 +4516,7 @@ Initial request (with Prefer: wait=N)
     |           obtain auth token if resource challenge
     +-- 402 --> payment required (settle payment, poll Location)
     +-- 500 --> server error — start over
+    +-- 502 --> as_unreachable — fresh resource token, retry after backoff
     +-- 503 --> back off per Retry-After, retry
                |
                GET Location (with Prefer: wait=N)
@@ -4469,6 +4529,7 @@ Initial request (with Prefer: wait=N)
                +-- 410 --> gone — MUST NOT retry
                +-- 429 --> slow down — increase interval by 5s
                +-- 500 --> server error — start over
+               +-- 502 --> as_unreachable — fresh resource token, retry after backoff
                +-- 503 --> temporarily unavailable
                            back off per Retry-After
 
@@ -4509,41 +4570,67 @@ Initial request (with Prefer: wait=N)
 
 13.6.3.  Token Endpoint Error Codes
 
-   +========================+========+================================+
-   | Error                  | Status | Meaning                        |
-   +========================+========+================================+
-   | invalid_request        | 400    | Malformed JSON, missing        |
-   |                        |        | required fields                |
-   +------------------------+--------+--------------------------------+
-   | invalid_agent_token    | 400    | Agent token malformed or       |
-   |                        |        | signature verification failed  |
-   +------------------------+--------+--------------------------------+
-   | expired_agent_token    | 400    | Agent token has expired        |
-   +------------------------+--------+--------------------------------+
-   | invalid_resource_token | 400    | Resource token malformed or    |
-   |                        |        | signature verification failed  |
-   +------------------------+--------+--------------------------------+
-   | expired_resource_token | 400    | Resource token has expired     |
-   +------------------------+--------+--------------------------------+
-   | unknown_person_token   | 400    | The person token named by the  |
-   |                        |        | resource token's presented_jti |
-   |                        |        | is not among those the PS      |
-   |                        |        | retains Section 7.8.2          |
-   +------------------------+--------+--------------------------------+
-   | user_unreachable       | 403    | Terminal.  The PS has no       |
-   |                        |        | channel to reach the user and  |
-   |                        |        | the agent did not declare the  |
-   |                        |        | interaction capability, so the |
-   |                        |        | user cannot be reached at all. |
-   |                        |        | The non-terminal "user action  |
-   |                        |        | is needed" case uses a 202     |
-   |                        |        | with requirement=interaction   |
-   |                        |        | Section 13.4, not this error.  |
-   +------------------------+--------+--------------------------------+
-   | server_error           | 500    | Internal error                 |
-   +------------------------+--------+--------------------------------+
+   +========================+========+=================================+
+   | Error                  | Status | Meaning                         |
+   +========================+========+=================================+
+   | invalid_request        | 400    | Malformed JSON, missing         |
+   |                        |        | required fields                 |
+   +------------------------+--------+---------------------------------+
+   | invalid_agent_token    | 400    | Agent token malformed or        |
+   |                        |        | signature verification failed   |
+   +------------------------+--------+---------------------------------+
+   | expired_agent_token    | 400    | Agent token has expired         |
+   +------------------------+--------+---------------------------------+
+   | invalid_resource_token | 400    | Resource token malformed or     |
+   |                        |        | signature verification failed   |
+   +------------------------+--------+---------------------------------+
+   | expired_resource_token | 400    | Resource token has expired      |
+   +------------------------+--------+---------------------------------+
+   | expired_person_token   | 400    | The person token named by the   |
+   |                        |        | resource token's                |
+   |                        |        | presented_jti has expired.      |
+   |                        |        | Returned by a PS that would     |
+   |                        |        | otherwise present it to an      |
+   |                        |        | AS, and by an AS                |
+   |                        |        | Section 10.1.1.  The agent      |
+   |                        |        | obtains a fresh person token,   |
+   |                        |        | then a fresh resource token.    |
+   +------------------------+--------+---------------------------------+
+   | unknown_person_token   | 400    | The person token named by the   |
+   |                        |        | resource token's                |
+   |                        |        | presented_jti is not among      |
+   |                        |        | those the PS retains            |
+   |                        |        | Section 7.8.2                   |
+   +------------------------+--------+---------------------------------+
+   | user_unreachable       | 403    | Terminal.  The PS has no        |
+   |                        |        | channel to reach the user and   |
+   |                        |        | the agent did not declare the   |
+   |                        |        | interaction capability, so      |
+   |                        |        | the user cannot be reached at   |
+   |                        |        | all.  The non-terminal "user    |
+   |                        |        | action is needed" case uses a   |
+   |                        |        | 202 with                        |
+   |                        |        | requirement=interaction         |
+   |                        |        | Section 13.4, not this error.   |
+   +------------------------+--------+---------------------------------+
+   | as_unreachable         | 502    | PS token endpoint only.  The    |
+   |                        |        | PS could not obtain an auth     |
+   |                        |        | token from the access server    |
+   |                        |        | named by the resource token's   |
+   |                        |        | aud: connection failure,        |
+   |                        |        | timeout, a malformed            |
+   |                        |        | response, or an auth token      |
+   |                        |        | that fails delivery             |
+   |                        |        | verification Section 10.1.3.    |
+   |                        |        | The agent MAY retry with a      |
+   |                        |        | fresh resource token after a    |
+   |                        |        | backoff.  Distinct from an AS   |
+   |                        |        | denial, which the PS relays.    |
+   +------------------------+--------+---------------------------------+
+   | server_error           | 500    | Internal error                  |
+   +------------------------+--------+---------------------------------+
 
-                                 Table 12
+                                  Table 12
 
    Example — the resource token presented to the token endpoint has
    expired:
@@ -4971,6 +5058,16 @@ Initial request (with Prefer: wait=N)
    same path.  Resources are NOT required to maintain replay caches for
    resource tokens Section 7, which are consumed in a single PS call.
    This profile defines no nonce mechanism.
+
+   The validity window governs online verification, where the verifier
+   sees the request as it is made.  A verifier that first sees a signed
+   artifact after a delay — queued consumption, a batch pipeline, store-
+   and-forward — uses the signed created as the signing-time anchor
+   instead: it verifies that the presented token was valid at created,
+   and applies its own policy for how much created-to-verification skew
+   it accepts.  A replay cache at such a verifier MUST span the skew it
+   accepts, since the window that would otherwise bound replay no longer
+   applies.
 
 13.9.  JWKS Discovery and Caching
 
@@ -5944,6 +6041,12 @@ Initial request (with Prefer: wait=N)
    directed identifiers Section 16, and apply appropriate retention
    limits and access controls.
 
+   A related case is the verifier that is the first to see the artifact,
+   minutes or hours after it was signed.  There the question is not
+   whether evidence survives key rotation but whether the artifact was
+   valid when it was signed, and the signed created parameter answers it
+   Section 13.8.4.2.
+
 16.  Privacy Considerations
 
 16.1.  Directed Identifiers
@@ -6412,6 +6515,40 @@ Initial request (with Prefer: wait=N)
 
    *  draft-hardt-oauth-aauth-protocol-11
 
+      -  Pointed verifiers that first see a signed artifact after a
+         delay at the signed created parameter: the token is checked for
+         validity at created, the accepted skew is the verifier's
+         policy, and a replay cache there MUST span that skew.  The
+         profile already mandated created; nobody reading from the
+         queued-consumption angle was directed to it.
+      -  Stated that the server hosting an interaction URL MAY complete
+         the interaction over a channel it controls, without the person
+         visiting url or presenting code, and what happens to the code:
+         consumed at completion, invalid_code on later presentation, the
+         pending URL returns the terminal response.  The single-use rule
+         was keyed on arrival at the URL, which did not describe a phone
+         tap or a chat approval.
+      -  Added as_unreachable (502) for a PS that cannot complete
+         federation, and the rule that an AS's well-formed terminal
+         error is relayed to the agent with the AS's error and status.
+         Nothing normative covered the PS-to-agent leg of a failed
+         federation; invalid_resource_token and server_error were both
+         wrong for it.  Found implementing federation in a PS against
+         the reference AS.
+      -  The PS-to-AS token request gains person_token, REQUIRED: the
+         person token named by the resource token's presented_jti, which
+         the PS issued and retains.  The AS verifies it against the
+         resource token and caps the auth token it issues at its exp.
+         This closes a rule the Resource and the AS could not satisfy:
+         -11 required every token carrying mission_s256 to expire no
+         later than the mission's expires_at, and neither party holds
+         the mission.  A resource token's lifetime is now independent of
+         the mission; the PS caps what it issues at expires_at, and the
+         person token carries that bound to the AS.  Added
+         expired_person_token.  Agents are advised to refresh the person
+         token at least five minutes before expiry and to re-obtain
+         resource and auth tokens against it, which also keeps the
+         resource's presented_jti record current.
       -  Warned resource implementers that policy keyed on the agent
          identifier is local to the two-party modes.  The identifier
          reaches a resource in agent identity and resource-managed
@@ -6546,9 +6683,9 @@ Initial request (with Prefer: wait=N)
          digest covers an unambiguous byte sequence and the agent can
          verify it as it would a JWT payload.
       -  Mission blob gained approved_resources and MAY carry
-         expires_at; no token carrying mission_s256 may outlive it, and
-         every PS decision path compares the current time to it.  Added
-         the mission_expired status.
+         expires_at; the PS caps the person tokens and auth tokens it
+         issues at it, and every PS decision path compares the current
+         time to it.  Added the mission_expired status.
       -  Moved capabilities out of the mission blob to the approval
          response — it describes whether the PS can currently reach the
          person, which is not a term of the mission and should not
