@@ -3852,7 +3852,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 </pre><a href="#section-8.5.2.1-2" class="pilcrow">¶</a>
 </div>
-<p id="section-8.5.2.1-3">The <code>clarification_response</code> value is a Markdown string; this document defines no section structure for it, as for <code>justification</code> <a href="#ps-token-endpoint" class="auto internal xref">Section 8.2</a>. After posting, the agent resumes polling with <code>GET</code>.<a href="#section-8.5.2.1-3" class="pilcrow">¶</a></p>
+<p id="section-8.5.2.1-3">The <code>clarification_response</code> value is a Markdown string. <strong>TODO:</strong> Define recommended sections. After posting, the agent resumes polling with <code>GET</code>.<a href="#section-8.5.2.1-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="updated-request">
@@ -8047,7 +8047,7 @@ Accept-Signature-Scheme: jwt
               <p id="section-19-2.1.2.49.1">Added the <code>aauth-resource</code> link relation, as a <code>Link</code> header field or an HTML <code>link</code> element, so that a developer portal or an API served from a host other than the resource identifier can point an agent at the resource metadata document. The target is constrained to the well-known URL and the document is verified as any metadata document is, so the link is a pointer and not an authority; verifiers never use it. Registered with IANA; Link Relation Discovery added to Security Considerations. Requested by a developer-portal operator whose agents reach the portal before the resource.<a href="#section-19-2.1.2.49.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-19-2.1.2.50">
-              <p id="section-19-2.1.2.50.1">Corrected five recitals that earlier -11 changes left behind: the mission blob's <code>expires_at</code> text no longer says a resource token may not outlive it; Updated Request and Non-Repudiation no longer name the removed <code>agent</code> claim; Resource Adoption Path step 3 routes on the verified person token rather than the agent token's <code>ps</code>; the <code>clarification_response</code> TODO is resolved the way <code>justification</code>'s was, with no section structure defined.<a href="#section-19-2.1.2.50.1" class="pilcrow">¶</a></p>
+              <p id="section-19-2.1.2.50.1">Corrected four recitals that earlier -11 changes left behind: the mission blob's <code>expires_at</code> text no longer says a resource token may not outlive it; Updated Request and Non-Repudiation no longer name the removed <code>agent</code> claim; Resource Adoption Path step 3 routes on the verified person token rather than the agent token's <code>ps</code>.<a href="#section-19-2.1.2.50.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
 </li>

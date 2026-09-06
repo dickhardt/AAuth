@@ -2399,9 +2399,9 @@ Table of Contents
         for the participants you listed."
    }
 
-   The clarification_response value is a Markdown string; this document
-   defines no section structure for it, as for justification
-   Section 8.2.  After posting, the agent resumes polling with GET.
+   The clarification_response value is a Markdown string. *TODO:* Define
+   recommended sections.  After posting, the agent resumes polling with
+   GET.
 
 8.5.2.2.  Updated Request
 
@@ -6962,13 +6962,12 @@ Initial request (with Prefer: wait=N)
          Requested by a developer-portal operator whose agents reach the
          portal before the resource.
 
-      -  Corrected five recitals that earlier -11 changes left behind:
+      -  Corrected four recitals that earlier -11 changes left behind:
          the mission blob's expires_at text no longer says a resource
          token may not outlive it; Updated Request and Non-Repudiation
          no longer name the removed agent claim; Resource Adoption Path
          step 3 routes on the verified person token rather than the
-         agent token's ps; the clarification_response TODO is resolved
-         the way justification's was, with no section structure defined.
+         agent token's ps.
 
    *  draft-hardt-oauth-aauth-protocol-10
 
