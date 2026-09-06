@@ -790,7 +790,7 @@ Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 ```
 
-The agent MUST include `authorization` in the covered components of its HTTP signature, binding the session token to the signed request. This prevents the token from being stolen and replayed as a standalone bearer token — the token is useless without a valid AAuth signature from the agent.
+The agent MUST include `authorization` in the covered components of its HTTP signature, binding the session token to the signed request. The token MUST NOT be usable as a standalone bearer token: the resource wraps its internal authorization state so that the value is meaningless without a valid AAuth signature from the agent.
 
 A resource MAY return a new `AAuth-Access` header on any response, replacing the agent's current session token. This enables rolling refresh without an explicit refresh flow. When the agent receives a new `AAuth-Access` value, it MUST use the new value on subsequent requests.
 
@@ -1197,7 +1197,7 @@ The agent MAY cancel the request by sending a signed `DELETE` to the pending URL
 
 ### Clarification Limits
 
-PSes SHOULD enforce limits on clarification rounds (recommended: 5 rounds maximum). Clarification responses from agents are untrusted input and MUST be sanitized before display to the user.
+PSes MUST enforce a maximum number of clarification rounds; five is RECOMMENDED. Clarification responses from agents are untrusted input and MUST be sanitized before display to the user.
 
 ## Permission Endpoint {#permission-endpoint}
 
@@ -2492,8 +2492,6 @@ Revocation endpoints are advertised in server metadata as `revocation_endpoint`.
 
 Verifying an auth token does not ask the issuer about that token. A resource fetches the issuer's JWKS to obtain the verification key and caches it across many tokens, then checks the signature and claims locally; nothing in that path reports that a particular token has been revoked. A resource therefore learns of a revocation only when one reaches its revocation endpoint, and a party that no revocation request reaches is bounded by token lifetime alone — at most one hour for an auth token (#auth-tokens), five minutes for a resource token (#resource-tokens). Revocation shortens exposure; it does not eliminate it, and deployments requiring immediate termination should issue shorter-lived tokens rather than relying on revocation reaching every holder.
 
-Auth tokens are short-lived (maximum 1 hour) and proof-of-possession (useless without the bound signing key). All AAuth tokens have limited lifetimes — agent tokens, resource tokens, and auth tokens all expire and require re-issuance. Each re-issuance is a policy evaluation point where the issuer can deny renewal. This natural expiration cycle, combined with real-time revocation, provides layered access control.
-
 ## HTTP Message Signatures Profile {#http-message-signatures-profile}
 
 This section profiles HTTP Message Signatures ([@!RFC9421]) for use with AAuth. Signing requirements (what the agent does) and verification requirements (what the server does) are specified separately.
@@ -2925,13 +2923,7 @@ Each step builds on the previous one. A resource that adopts any step works with
 
 ## Proof-of-Possession
 
-All AAuth tokens are proof-of-possession tokens. The holder must prove possession of the private key corresponding to the public key in the token's `cnf` claim.
-
-## Token Security
-
-- Agent tokens bind agent keys to agent identity
-- Resource tokens bind access requests to resource identity, preventing confused deputy attacks
-- Auth tokens bind authorization grants to agent keys
+All AAuth tokens are proof-of-possession tokens: the holder must prove possession of the private key corresponding to the public key in the token's `cnf` claim. Agent tokens bind that key to an agent identity and auth tokens bind an authorization grant to it; resource tokens bind the request to the resource's own identity, which is what prevents one resource being substituted for another in the authorization flow.
 
 ## Pending URL Security
 
@@ -2939,11 +2931,6 @@ All AAuth tokens are proof-of-possession tokens. The holder must prove possessio
 - Pending URLs MUST be on the same origin as the server that issued them
 - Servers MUST verify the agent's identity on every poll
 - Once a terminal response is returned, the pending URL MUST return `410 Gone`
-
-## Clarification Chat Security
-
-- PSes MUST enforce a maximum number of clarification rounds
-- Clarification responses from agents are untrusted input and MUST be sanitized before display
 
 ## Untrusted Input {#untrusted-input}
 
@@ -2961,19 +2948,11 @@ An attacker could attempt to trick a user into approving an authorization reques
 
 The reverse threat — an attacker who knows a pending request's interaction URL but not its `code` and tries to guess it to drive the interaction — is bounded by the code-format rules in (#interaction-code-format). The minimum 40 bits of entropy make a single guess overwhelmingly likely to fail, and the mandatory rate-limit terminates the pending interaction after a few failed attempts, capping total guesses far below the entropy bound. These entropy and rate-limit requirements are the brute-force defense; they complement the user-recognition and pre-established-channel defenses above, which address misdirection of a legitimate code rather than recovery of an unknown one.
 
-## Token Issuer Discovery
-
-The recipient of the resource token — and thus the issuer of the auth token — is identified by the `aud` claim. In three-party mode, `aud` identifies the agent's PS, which asserts identity and consent. In four-party mode, `aud` identifies the resource's AS, which evaluates resource policy. Federation mechanics for four-party are described in (#ps-as-federation).
-
 ## Link Relation Discovery {#link-relation-security}
 
 An `aauth-resource` link (#resource-metadata-link) is a statement by whoever controls the response that carries it, not by the resource it names. Two limits keep that harmless. The target is constrained to a well-known URL and the fetched document is verified against the URL it came from, so a link cannot cause an agent to accept metadata the resource did not publish; and the relation plays no part in key discovery, so it cannot affect what any verifier trusts.
 
 What a link can do is steer. A page an attacker controls can point an agent at a resource the person did not intend, and the agent will then request a person token naming that resource and present it there. The answer is the one the protocol already gives for any resource an agent meets for the first time: the person token endpoint puts the question to the person, presenting the resource's own `name` and `description` (#person-token-endpoint), and a person token carries no authorization (#person-token-not-authorization). An agent SHOULD record where it found a link, so that a resource introduced by a third-party page is distinguishable from one the person named. An agent that parses HTML to find the relation is reading untrusted input (#untrusted-input).
-
-## AAuth-Access Security
-
-The `AAuth-Access` header carries an opaque wrapped token that is meaningful only to the issuing resource. The token MUST NOT be usable as a standalone bearer token — the resource wraps its internal authorization state so that the token is meaningless without a valid AAuth signature from the agent. The agent MUST include `authorization` in the signed components when presenting the token, binding it to the signed request.
 
 ## Trust Posture in PS-Asserted Access
 
@@ -3041,14 +3020,6 @@ This invariant enables:
 The PS is a centralized authority that sees every authorization in a mission. PS implementations MUST apply appropriate security controls including access control, audit logging, and monitoring. Compromise of a PS could affect all agents and missions it manages.
 
 Several architectural properties mitigate this centralization risk. The person chooses their PS — no other party in the protocol imposes a PS, and the person can migrate to a different PS at any time. The PS MAY delegate authentication to an identity provider chosen by the person or organization (e.g., an enterprise IdP via OIDC federation), reducing the PS's role in credential management. The PS MAY also delegate policy evaluation to external services selected by the person, so that consent and authorization decisions are not solely determined by the PS operator. To the rest of the protocol, the PS presents a single interface regardless of how it is composed internally.
-
-## Call Chaining Identity
-
-When a resource acts as an agent in call chaining, it uses its own signing key and presents its own credentials. The resource MUST publish agent metadata so downstream parties can verify its identity.
-
-## Token Revocation and Lifecycle
-
-Real-time revocation (#token-revocation) and short token lifetimes provide layered access control. Organizations have multiple control points — agent provider, PS, and AS — each of which can deny renewal or revoke tokens independently. Shorter auth token lifetimes reduce the window between a control action and natural expiration.
 
 ## TLS Requirements
 
