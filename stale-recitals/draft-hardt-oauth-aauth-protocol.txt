@@ -72,8 +72,7 @@ Table of Contents
      1.1.  HTTP Clients Need Their Own Identity
      1.2.  Agents Are Different
      1.3.  What AAuth Provides
-     1.4.  What AAuth Does Not Do
-     1.5.  Relationship to Existing Standards
+     1.4.  Relationship to Existing Standards
    2.  Conventions and Definitions
    3.  Terminology
    4.  Protocol Overview
@@ -89,7 +88,6 @@ Table of Contents
        4.4.1.  Missions
        4.4.2.  PS Governance Endpoints
      4.5.  Obtaining an Agent Token
-     4.6.  Bootstrapping
    5.  Agent Identity
      5.1.  Agent Identifiers
      5.2.  Agent Token
@@ -109,10 +107,10 @@ Table of Contents
        7.2.3.  Authorization Endpoint Error Responses
      7.3.  Agent Token Required
      7.4.  Person Token Required
-     7.5.  AAuth-Access Response Header
-     7.6.  Resource-Managed Authorization
-     7.7.  Auth Token Required
-       7.7.1.  Deferred Delivery
+     7.5.  Auth Token Required
+       7.5.1.  Deferred Delivery
+     7.6.  AAuth-Access Response Header
+     7.7.  Resource-Managed Authorization
      7.8.  Resource Token
        7.8.1.  Resource Token Structure
        7.8.2.  Resource Token Verification
@@ -162,8 +160,7 @@ Table of Contents
      10.3.  PS-AS Federation
        10.3.1.  PS-AS Trust Establishment
        10.3.2.  AS Decision Logic (Non-Normative)
-       10.3.3.  Organization Visibility
-       10.3.4.  PS-AS Collapse
+       10.3.3.  PS-AS Collapse
      10.4.  Auth Token
        10.4.1.  Auth Token Structure
        10.4.2.  Auth Token Usage
@@ -210,8 +207,7 @@ Table of Contents
      13.9.  JWKS Discovery and Caching
      13.10. Identifiers
        13.10.1.  Server Identifiers
-       13.10.2.  Endpoint URLs
-       13.10.3.  Other URLs
+       13.10.2.  Endpoint and Other URLs
      13.11. Metadata Documents
        13.11.1.  Agent Provider Metadata
        13.11.2.  Person Server Metadata
@@ -226,28 +222,22 @@ Table of Contents
      14.4.  Adoption Matrix
    15. Security Considerations
      15.1.  Proof-of-Possession
-     15.2.  Token Security
-     15.3.  Pending URL Security
-     15.4.  Clarification Chat Security
-     15.5.  Untrusted Input
-     15.6.  Agent Control of the Consent Surface
-     15.7.  Interaction Code Misdirection
-     15.8.  Token Issuer Discovery
-     15.9.  Link Relation Discovery
-     15.10. AAuth-Access Security
-     15.11. Trust Posture in PS-Asserted Access
-     15.12. Person Token Exposure
-     15.13. Continuity, Not Identity Proofing
-     15.14. Organization Identification
-     15.15. Person Token Is Not Authorization
-     15.16. Incremental Consent
-     15.17. PS Approval Endpoint Authentication
-     15.18. Agent-Person Binding
-     15.19. PS as High-Value Target
-     15.20. Call Chaining Identity
-     15.21. Token Revocation and Lifecycle
-     15.22. TLS Requirements
-     15.23. Non-Repudiation and Audit After Key Rotation
+     15.2.  Pending URL Security
+     15.3.  Untrusted Input
+     15.4.  Agent Control of the Consent Surface
+     15.5.  Interaction Code Misdirection
+     15.6.  Link Relation Discovery
+     15.7.  Trust Posture in PS-Asserted Access
+     15.8.  Person Token Exposure
+     15.9.  Continuity, Not Identity Proofing
+     15.10. Organization Identification
+     15.11. Person Token Is Not Authorization
+     15.12. Incremental Consent
+     15.13. PS Approval Endpoint Authentication
+     15.14. Agent-Person Binding
+     15.15. PS as High-Value Target
+     15.16. TLS Requirements
+     15.17. Non-Repudiation and Audit After Key Rotation
    16. Privacy Considerations
      16.1.  Directed Identifiers
      16.2.  PS Visibility
@@ -281,28 +271,22 @@ Table of Contents
      A.2.  Interaction Chaining
    Appendix B.  Design Rationale
      B.1.  Identity and Foundation
-       B.1.1.  Why HTTPS-Based Agent Identity
-       B.1.2.  Why Per-Instance Agent Identity
-       B.1.3.  Why Agents Are Under an Agent Provider
-       B.1.4.  Why Every Agent Has a Person
-       B.1.5.  Why Person Tokens
-       B.1.6.  Why a Mission Belongs to an Agent
-       B.1.7.  Why No Agent Identifier Reaches a Resource
-       B.1.8.  Why Identity Alone Can Authorize
-       B.1.9.  Why the Mission Is Encoded Rather Than Nested
-       B.1.10. Why the Mission Identifier Is a Hash
-       B.1.11. Why a Resource Token Names the Person Token
-       B.1.12. Why Tool Pre-Approval Is Not Enforced
-       B.1.13. Why There Is No Delegation Chain Claim
-       B.1.14. Why the ps Claim in Agent Tokens
+       B.1.1.  Why Per-Instance Agent Identity
+       B.1.2.  Why Agents Are Under an Agent Provider
+       B.1.3.  Why Every Agent Has a Person
+       B.1.4.  Why Person Tokens
+       B.1.5.  Why a Mission Belongs to an Agent
+       B.1.6.  Why No Agent Identifier Reaches a Resource
+       B.1.7.  Why Identity Alone Can Authorize
+       B.1.8.  Why the Mission Is Encoded Rather Than Nested
+       B.1.9.  Why a Resource Token Names the Person Token
+       B.1.10. Why Tool Pre-Approval Is Not Enforced
+       B.1.11. Why There Is No Delegation Chain Claim
+       B.1.12. Why the ps Claim in Agent Tokens
      B.2.  Protocol Mechanics
        B.2.1.  Why .json in Well-Known URIs
-       B.2.2.  Why Standard HTTP Async Pattern
-       B.2.3.  Why JSON Instead of Form-Encoded
-       B.2.4.  Why No Authorization Code
-       B.2.5.  Why Callback URL Has No Security Role
-       B.2.6.  Why No Refresh Token
-       B.2.7.  Why Reuse OpenID Connect Vocabulary
+       B.2.2.  Why No Authorization Code
+       B.2.3.  In Brief
      B.3.  Architecture
        B.3.1.  Why a Separate Person Server
        B.3.2.  Why Five Resource Access Modes
@@ -310,8 +294,6 @@ Table of Contents
        B.3.4.  Why Session Tokens Are Opaque
        B.3.5.  Why Missions Are Not a Policy Language
        B.3.6.  Why Missions Have Only Two States
-       B.3.7.  Why Downstream Scope Is Not Constrained by Upstream
-               Scope
      B.4.  Comparisons with Alternatives
        B.4.1.  Why Not mTLS?
        B.4.2.  Why Not DPoP?
@@ -370,52 +352,19 @@ Table of Contents
 
 1.3.  What AAuth Provides
 
-   *  *Agent identity without pre-registration*: A domain, static
-      metadata, and a JWKS establish identity with no portal, no
-      bilateral agreement, no shared secret.
-   *  *Per-instance identity*: Each agent instance gets its own
-      identifier (aauth:local@domain) and signing key.
-   *  *Proof-of-possession on every request*: HTTP Message Signatures
-      ([RFC9421]) bind every request the agent makes to the agent's key
-      — a stolen token is useless without the private key.
-   *  *Two-party mode with first-call registration*: An agent calls a
-      resource it has never contacted before; the resource returns
-      AAuth-Requirement; a browser interaction handles account creation,
-      payment, and consent.  The first API call is the registration.
-   *  *Tool-call governance*: A person server (PS) represents the user
-      and manages what tools the agent can call, providing permission
-      and audit for tool use — no resource involved.
-   *  *Missions*: Optional scoped authorization contexts that span
-      multiple resources.  The agent proposes what it intends to do in
-      natural language; the person server provides full context —
-      mission, history, justification — to the appropriate decision-
-      maker (human or AI); every resource access is evaluated in
-      context.  Missions enable governance over decisions that cannot be
-      reduced to predefined machine-evaluable rules.
-   *  *Cross-domain federation*: The PS federates with access servers
-      (AS) — the policy engines that guard resources — to enable access
-      across trust domains without the agent needing to know about each
-      one.
-   *  *Clarification chat*: Users can ask questions during consent;
-      agents can explain or adjust their requests.
-   *  *Progressive adoption*: Each party can adopt independently; modes
-      build on each other.
-   *  *Asynchronous event delivery*: Agents receive events from
-      resources through the AP, without requiring a public endpoint.
-      Resources post event tokens to the AP's event endpoint; the AP
-      routes them to the agent.  Defined in AAuth Events
-      ([I-D.hardt-aauth-events]).
+   Every agent instance has its own identifier and signing key, and
+   every request it makes is bound to that key by an HTTP Message
+   Signature ([RFC9421]): no credential is a bearer credential, and none
+   needs pre-registration, so the first API call to a resource is the
+   registration.  A person server represents the person — asserting who
+   the agent acts for, managing consent and missions, relaying
+   interactions and payments, and recording what the agent did — and
+   federates with the access servers that guard resources across trust
+   domains.  Each party adopts independently.  Asynchronous event
+   delivery to agents is defined in AAuth Events
+   ([I-D.hardt-aauth-events]).
 
-1.4.  What AAuth Does Not Do
-
-   *  Does not require centralized identity providers — agents publish
-      their own identity
-   *  Does not use shared secrets or bearer tokens — every credential is
-      bound to a signing key and useless without it
-   *  Does not require coordination to adopt — each party adds support
-      independently
-
-1.5.  Relationship to Existing Standards
+1.4.  Relationship to Existing Standards
 
    AAuth builds on existing standards and design patterns:
 
@@ -457,7 +406,10 @@ Table of Contents
 
    In HTTP examples throughout this document, line breaks and
    indentation are added for readability.  Actual HTTP messages do not
-   contain these extra line breaks.
+   contain these extra line breaks.  Examples of signed requests show
+   the Signature-Key header and omit the Signature-Input, Signature, and
+   Content-Digest headers that every signed request carries; the fully
+   bound form is shown once, in Section 13.8.3.1.
 
 3.  Terminology
 
@@ -508,7 +460,7 @@ Table of Contents
    *  *Session Token*: Issued by a resource to an agent when the
       resource manages authorization itself.  Opaque to the agent,
       carried in the AAuth-Access header and presented back via
-      Authorization: AAuth Section 7.5.
+      Authorization: AAuth Section 7.6.
 
    Protocol concepts:
 
@@ -609,7 +561,7 @@ Table of Contents
    resource-managed access it signs the request that produces the
    session token, and the session is bound to that agent.  In person
    identity, PS authorization, and federated access no token the
-   resource reads carries an agent identifier Appendix B.1.7.  A
+   resource reads carries an agent identifier Appendix B.1.6.  A
    resource that keys an authorization decision on the agent identifier
    — an allowlist of agents, a per-agent label — has made a decision
    that holds in the two-party modes and nowhere else, and it is not re-
@@ -684,7 +636,7 @@ Table of Contents
    The resource handles authorization itself — via interaction
    Section 8.3, existing OAuth/OIDC infrastructure, or internal policy.
    After authorization, the resource MAY return an AAuth-Access header
-   Section 7.5 with a session token for subsequent calls.
+   Section 7.6 with a session token for subsequent calls.
 
    Agent                                        Resource
      |                                             |
@@ -737,36 +689,21 @@ Table of Contents
                       Figure 4: Person Identity Access
 
    A resource that needs more than identity for a particular operation
-   challenges for it there, with requirement=auth-token Section 7.7,
+   challenges for it there, with requirement=auth-token Section 7.5,
    while continuing to serve the rest on the person token.  Most calls
    needing only identity and a few sensitive operations needing an
    authorization decision is the expected shape.
 
 4.1.4.  PS Authorization Access (Three-Party)
 
-   The resource has no separate access server — it accepts identity
-   claims from whichever PS the agent declares, and applies its own
-   policy on the resulting claims.  The ps claim in the agent token
-   tells the resource that the agent has a person server and which one,
-   which is how the resource knows to challenge for a person token at
-   all.  The PS the resource then acts on is the iss of the person token
-   it verifies Section 6; the resource copies that value into the ps
-   claim of the resource token Section 7 it issues with aud = PS URL.
-   The agent obtains the resource token either by calling the resource's
-   authorization_endpoint (if published in resource metadata) or by
-   receiving a 401 challenge with requirement=auth-token when calling
-   the resource directly Section 7.7.  The agent sends the resource
-   token to the PS's token endpoint Section 8.2, and the PS returns an
-   auth token Section 10.4 asserting identity claims about the user
-   (sub, optionally email, tenant, groups, roles) and confirming user
-   consent for the scope the resource requested.  The resource applies
-   its own access policy on the resulting claims.  Any agent's PS can
-   assert identity claims to any resource without bilateral setup; the
-   resource namespaces those claims by the asserting PS — the same sub
-   value from a different PS is a different subject.  As in many OIDC
-   deployments, registration and login share a single flow (see
-   Section 15.11 for how the resource matches or creates a user record
-   from (iss, sub)).
+   The resource has no access server.  It accepts identity and consent
+   asserted by whichever PS the person uses — the iss of the person
+   token it verified, which it copies into the resource token's ps and
+   aud Section 7 — and applies its own policy to the claims in the auth
+   token the PS returns Section 10.4.  Any PS can assert to any resource
+   without bilateral setup; the resource namespaces the claims by
+   issuer, so the same sub from a different PS is a different subject
+   Section 15.7.
 
    Agent                                 Resource       PS
      |                                      |            |
@@ -815,7 +752,7 @@ Table of Contents
 
    The resource has its own access server.  The resource issues a
    resource token Section 7 with aud = AS URL — either via its
-   authorization_endpoint or a 401 challenge Section 7.7.  The PS
+   authorization_endpoint or a 401 challenge Section 7.5.  The PS
    federates with the AS Section 10.3 to obtain the auth token
    Section 10.4.
 
@@ -891,7 +828,7 @@ Table of Contents
 
    *  *PS + AS*: One server brokers user consent and evaluates resource
       policy.  Federation collapses to a single internal evaluation.
-      See Section 10.3.4.
+      See Section 10.3.3.
    *  *Resource + Agent*: A resource acts as an agent for downstream
       calls, publishing agent metadata at /.well-known/aauth-agent.json
       so downstream parties can verify its identity.  See
@@ -962,9 +899,11 @@ Table of Contents
 4.4.  Agent Governance
 
    Agent governance is orthogonal to resource access modes.  Any agent
-   with a person server (ps claim in agent token) can use the PS for
-   governance, regardless of which access modes the resources it
-   accesses support.
+   with a person server can use the PS for governance, regardless of
+   which access modes the resources it accesses support.  An agent that
+   has a person server MUST carry the ps claim in its agent token
+   Section 5.2.2: it is how a resource learns, before it has verified
+   anything else, that a person token can be asked for.
 
 4.4.1.  Missions
 
@@ -978,70 +917,13 @@ Table of Contents
    auth tokens without a mission.  See Section 9 for normative
    requirements.
 
-4.4.1.1.  Mission Creation
-
-   The agent proposes a mission at the PS.  The PS and user may clarify
-   and refine before approving.
-
-   Agent                                     PS                        User
-     |                                        |                          |
-     | HTTPSig w/ agent_token                 |                          |
-     | POST mission_endpoint                  |                          |
-     | proposal                               |                          |
-     |--------------------------------------->|                          |
-     |                                        |                          |
-     | [clarification chat]                   | review, clarify, approve |
-     |<-------------------------------------->|<------------------------>|
-     |                                        |                          |
-     | 200 OK                                 |                          |
-     | {s256, mission, person_tokens}         |                          |
-     |<---------------------------------------|                          |
-
-                  Figure 7: Mission Creation and Approval
-
-4.4.1.2.  Mission Context at Resources
-
-   The agent names the mission when it obtains a person token for the
-   resource.  The resource copies mission_s256 from that token into the
-   resource token it issues:
-
-   Agent                                        Resource
-     |                                             |
-     | HTTPSig w/ person_token (mission_s256)      |
-     | POST authorization_endpoint                 |
-     |-------------------------------------------->|
-     |                                             |
-     | resource_token                              |
-     | (mission_s256 included)                     |
-     |<--------------------------------------------|
-
-                   Figure 8: Mission Context at Resource
-
-4.4.1.3.  Mission Completion
-
-   When the agent believes the mission is complete, it proposes
-   completion at the mission's own URL with a summary.  The PS presents
-   the summary to the user.  The user either accepts (mission
-   terminates) or responds with follow-up questions (mission continues).
-
-   Agent                                     PS                        User
-     |                                        |                          |
-     | HTTPSig w/ agent_token                 |                          |
-     | POST mission_endpoint/{s256}           |                          |
-     | action=completion, summary             |                          |
-     |--------------------------------------->|                          |
-     |                                        |                          |
-     |                                        | present summary          |
-     |                                        |------------------------->|
-     |                                        |                          |
-     |                                        | accept / follow-up       |
-     |                                        |<-------------------------|
-     |                                        |                          |
-     | 200 OK (terminated)                    |                          |
-     | or clarification (continues)           |                          |
-     |<---------------------------------------|                          |
-
-                        Figure 9: Mission Completion
+   The agent proposes the mission at the PS's mission endpoint, and the
+   PS and person clarify and approve it Section 9.1.  The agent names
+   the approved mission when it obtains a person token for a resource;
+   the resource copies mission_s256 from that token into the resource
+   token it issues, from where it reaches the auth token Section 9.3.
+   When the work is done the agent proposes completion with a summary,
+   and the mission ends when the person accepts Section 9.5.
 
 4.4.2.  PS Governance Endpoints
 
@@ -1055,8 +937,11 @@ Table of Contents
    *  *Audit endpoint*: Log actions performed, providing the PS with a
       complete record for the mission log.
    *  *Interaction endpoint*: Reach the user through the PS — relay
-      interactions, ask questions, forward payment approvals, or propose
-      mission completion.
+      interactions, ask questions, forward payment approvals.
+
+   A PS MAY also maintain a direct channel to the person — email, push
+   notification, messaging — for out-of-band approvals, notifications,
+   and revocation alerts.
 
 4.5.  Obtaining an Agent Token
 
@@ -1068,72 +953,6 @@ Table of Contents
    Agent token structure and normative requirements are defined in
    Section 5.2.  Acquisition is platform-dependent; see
    [I-D.hardt-aauth-bootstrap] for common patterns.
-
-4.6.  Bootstrapping
-
-   Before protocol flows begin, each entity must be established with its
-   identity, keys, and relationships.  The requirements build
-   incrementally.
-
-   Acquiring the agent token — the AP-side enrollment ceremony,
-   including per-platform key handling, optional platform attestation,
-   and token refresh — is informational and described in
-   [I-D.hardt-aauth-bootstrap].  This section lists the cross-mode setup
-   each party completes before protocol flows begin.
-
-   *All modes:*
-
-   *  Agent obtains an agent token from its agent provider, binding its
-      signing key to its identifier (aauth:local@domain).  See
-      [I-D.hardt-aauth-bootstrap].
-   *  Agent providers publish metadata at /.well-known/aauth-agent.json
-      Section 13.11.1.
-
-   *Agent identity access and above:*
-
-   *  Resources MAY publish metadata at /.well-known/aauth-resource.json
-      Section 13.11.4 to be discoverable.  The metadata SHOULD declare
-      access_mode (the credential flow agents should expect) and SHOULD
-      advertise an R3 vocabulary (r3_vocabularies, [I-D.hardt-aauth-r3])
-      describing the resource's operations, so that an agent that knows
-      only the resource's hostname can learn the API and begin using it
-      Section 14.1.1.  Resources that do not publish metadata can still
-      verify identity-based access, and issue resource tokens and
-      interaction requirements via 401 responses.
-
-   *PS authorization access (three-party) and above:*
-
-   *  The agent's agent token MUST include the ps claim identifying its
-      person server.  This is configured during agent setup (e.g., set
-      by the agent provider or chosen by the person deploying the
-      agent).
-   *  The PS maintains the association between an agent and its person.
-      This association is typically established when the person first
-      authorizes the agent at the PS via the interaction flow.  An
-      organization administrator may also pre-authorize agents for the
-      organization.
-   *  The PS MAY establish a direct communication channel with the user
-      (e.g., email, push notification, or messaging) to support out-of-
-      band authorization, approval notifications, and revocation alerts.
-   *  Person servers publish metadata at /.well-known/aauth-person.json
-      Section 13.11.2.
-   *  The ps claim in the agent token tells the resource the agent has a
-      person server, before the resource has anything else to go on.
-      The PS a resource acts on is the iss of the person token it
-      verifies Section 6; the resource copies that value into the
-      resource token's ps claim and issues with aud = PS URL.
-
-   *Federated authorization access (four-party):*
-
-   *  Access servers publish metadata at /.well-known/aauth-access.json
-      Section 13.11.3.
-   *  The resource issues resource tokens with aud = AS URL.
-   *  The PS and the resource's AS must have a trust relationship before
-      the AS will issue auth tokens.  This trust may be pre-established
-      (through a business relationship) or established dynamically
-      through the AS's token endpoint responses — interaction, payment,
-      or claims.  When an organization controls both the PS and AS,
-      trust is implicit.  See Section 10.3 for details.
 
 5.  Agent Identity
 
@@ -1281,7 +1100,7 @@ Table of Contents
    resource that decides it is Section 4.1.3 serves whatever it serves
    on identity — so holding a person token is, at such a resource,
    effectively access.  What a person token MUST NOT do is stand in for
-   an auth token where one is required Section 15.15.
+   an auth token where one is required Section 15.11.
 
    A person token asserts that its issuer recognizes this person and
    that this agent acts for them.  It carries no statement about how the
@@ -1289,7 +1108,7 @@ Table of Contents
    NOT treat it as evidence of identity proofing, of legal identity, or
    of any assurance level.  What it guarantees is continuity: the same
    (iss, sub) is the same person at this resource over time
-   Section 15.13.
+   Section 15.9.
 
    The agent presents it via the Signature-Key header in place of its
    agent token Section 13.8.2.  A resource MUST have verified a person
@@ -1341,7 +1160,7 @@ Table of Contents
    *  tenant: Tenant identifier per OpenID Connect Enterprise Extensions
       1.0 [OpenID.Enterprise], declaring the organization the person
       belongs to.  It lets a resource apply organizational policy before
-      it issues anything Section 15.14.  It is not part of the
+      it issues anything Section 15.10.  It is not part of the
       identifier; see Section 16.1.
 
    {
@@ -1407,7 +1226,7 @@ Table of Contents
        verification Section 10.4.3.2.
 
    A recipient MUST reject an aa-person+jwt wherever an auth token is
-   required.  Only typ distinguishes the two Section 15.15.
+   required.  Only typ distinguishes the two Section 15.11.
 
    sub is unique within the issuer, not globally.  A resource MUST treat
    (iss, sub) as the identifier, MUST treat the value as opaque, and
@@ -1427,7 +1246,7 @@ Table of Contents
    2.  *AAuth-Requirement challenge*: The agent calls a resource
        endpoint directly.  If the agent lacks sufficient authorization,
        the resource returns 401 with an AAuth-Requirement header
-       containing a resource token Section 7.7.
+       containing a resource token Section 7.5.
 
    A resource MAY return a 401 with AAuth-Requirement even when the
    agent presents a valid auth token — for example, when the endpoint
@@ -1452,7 +1271,7 @@ Table of Contents
       resource verified (three-party)
    *  A resource that issues no resource token handles authorization
       itself — via an interaction response Section 8.3 or internal
-      policy — and MAY return an AAuth-Access header Section 7.5
+      policy — and MAY return an AAuth-Access header Section 7.6
 
    A resource MAY always handle authorization itself, regardless of
    whether the agent has a PS.
@@ -1474,7 +1293,7 @@ Table of Contents
    cannot use the authorization endpoint.  It calls the resource's
    endpoints directly and takes whatever the resource challenges with —
    identity-based access Section 7.3 or resource-managed authorization
-   Section 7.6.  Those two modes are the whole of what is available to
+   Section 7.7.  Those two modes are the whole of what is available to
    it: a resource MUST NOT issue a resource token without a verified
    person token, and an agent with no PS has nowhere to redeem one.
 
@@ -1489,9 +1308,6 @@ Table of Contents
    POST /authorize HTTP/1.1
    Host: resource.example
    Content-Type: application/json
-   Signature-Input: sig=("@method" "@authority"
-       "@path" "signature-key");created=1730217600
-   Signature: sig=:...signature bytes...:
    Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
    {
@@ -1506,25 +1322,13 @@ Table of Contents
 
 7.2.1.  Response without Resource Token
 
-   The resource handles authorization itself.  It evaluates the request
-   and returns a deferred response if user interaction is needed:
-
-   HTTP/1.1 202 Accepted
-   Location: https://resource.example/authorize/pending/abc123
-   Retry-After: 0
-   Cache-Control: no-store
-   AAuth-Requirement: requirement=interaction;
-       url="https://resource.example/interaction"; code="A1B2-C3D4"
-   Content-Type: application/json
-
-   {
-     "status": "pending"
-   }
-
-   The user completes interaction at the resource's own consent page.
-   The agent polls the Location URL.  When authorization is complete,
-   the resource returns 200 OK and MAY include an AAuth-Access header
-   Section 7.5 containing a session token for subsequent calls.
+   The resource handles authorization itself.  If user interaction is
+   needed it returns a 202 Accepted deferred response with
+   requirement=interaction Section 7.7; the user completes the
+   interaction at the resource's own consent page and the agent polls
+   the Location URL.  When authorization is complete, the resource
+   returns 200 OK and MAY include an AAuth-Access header Section 7.6
+   containing a session token for subsequent calls.
 
    HTTP/1.1 200 OK
    AAuth-Access: wrapped-session-token-value
@@ -1541,15 +1345,9 @@ Table of Contents
 
 7.2.2.  Response with Resource Token
 
-   Alternatively, the resource MAY return a resource token.  The
-   resource sets the aud claim based on its configuration:
-
-   *  If the resource has its own AS: aud = AS URL (four-party)
-   *  If the resource has no AS: aud = the iss of the person token the
-      resource verified (three-party)
-
-   When the person token carries mission_s256, the resource copies it
-   into the resource token.
+   Alternatively, the resource MAY return a resource token, with aud set
+   per Section 7 and mission_s256 copied from the person token when it
+   carried one.
 
    {
      "resource_token": "eyJhbGc..."
@@ -1628,71 +1426,7 @@ Table of Contents
    satisfy this requirement and surfaces it as an error per
    Section 13.4.2.
 
-7.5.  AAuth-Access Response Header
-
-   The AAuth-Access response header carries a *session token* from a
-   resource to an agent.  The token is opaque to the agent — the
-   resource wraps its internal authorization state (which MAY be an
-   existing OAuth access token or other credential).  It is the one
-   AAuth credential a resource issues for its own consumption, and it
-   names the continuing relationship the resource has established with
-   this agent for this person.  The agent passes the token back to the
-   resource via the Authorization header on subsequent requests:
-
-   GET /api/data HTTP/1.1
-   Host: resource.example
-   Authorization: AAuth wrapped-session-token-value
-   Signature-Input: sig=("@method" "@authority" "@path" \
-       "authorization" "signature-key");created=1730217600
-   Signature: sig=:...signature bytes...:
-   Signature-Key: sig=jwt;jwt="eyJhbGc..."
-
-   The agent MUST include authorization in the covered components of its
-   HTTP signature, binding the session token to the signed request.
-   This prevents the token from being stolen and replayed as a
-   standalone bearer token — the token is useless without a valid AAuth
-   signature from the agent.
-
-   A resource MAY return a new AAuth-Access header on any response,
-   replacing the agent's current session token.  This enables rolling
-   refresh without an explicit refresh flow.  When the agent receives a
-   new AAuth-Access value, it MUST use the new value on subsequent
-   requests.
-
-   The AAuth-Access value, and the credential carried in Authorization:
-   AAuth, is a token68 ([RFC9110], Section 11.2).  Recipients MUST
-   reject empty values, values containing embedded whitespace or control
-   characters, and responses carrying more than one credential.
-
-7.6.  Resource-Managed Authorization
-
-   When a resource manages authorization itself and requires user
-   interaction, it returns a 202 Accepted response with an interaction
-   requirement:
-
-   HTTP/1.1 202 Accepted
-   Location: https://resource.example/pending/abc123
-   Retry-After: 0
-   Cache-Control: no-store
-   AAuth-Requirement: requirement=interaction;
-       url="https://resource.example/interaction"; code="A1B2-C3D4"
-   Content-Type: application/json
-
-   {
-     "status": "pending"
-   }
-
-   The agent directs the user to the interaction URL Section 8.3 and
-   polls the Location URL per the deferred response pattern
-   Section 13.5.  When the interaction completes, the resource returns
-   200 OK and MAY include an AAuth-Access header Section 7.5 with a
-   session token for subsequent calls.
-
-   A resource MAY also authorize the agent based solely on its identity
-   (from the agent token) without any interaction — for example, when
-   the agent's key is already known or the agent's domain is trusted.
-
-7.7.  Auth Token Required
+7.5.  Auth Token Required
 
    A resource MUST use requirement=auth-token with a 401 Unauthorized
    response when an auth token is required.  The header MUST include a
@@ -1717,7 +1451,7 @@ Table of Contents
    current token provides.  Agents MUST be prepared for this step-up
    authorization at any time.
 
-7.7.1.  Deferred Delivery
+7.5.1.  Deferred Delivery
 
    A resource MAY instead deliver the same requirement as a 202 Accepted
    deferred response Section 13.5, holding the invocation rather than
@@ -1761,6 +1495,70 @@ Table of Contents
    applies unchanged, with requirement=auth-token in the pending
    response rather than requirement=interaction.
 
+7.6.  AAuth-Access Response Header
+
+   The AAuth-Access response header carries a *session token* from a
+   resource to an agent.  The token is opaque to the agent — the
+   resource wraps its internal authorization state (which MAY be an
+   existing OAuth access token or other credential).  It is the one
+   AAuth credential a resource issues for its own consumption, and it
+   names the continuing relationship the resource has established with
+   this agent for this person.  The agent passes the token back to the
+   resource via the Authorization header on subsequent requests:
+
+   GET /api/data HTTP/1.1
+   Host: resource.example
+   Authorization: AAuth wrapped-session-token-value
+   Signature-Input: sig=("@method" "@authority" "@path" \
+       "authorization" "signature-key");created=1730217600
+   Signature: sig=:...signature bytes...:
+   Signature-Key: sig=jwt;jwt="eyJhbGc..."
+
+   The agent MUST include authorization in the covered components of its
+   HTTP signature, binding the session token to the signed request.  The
+   token MUST NOT be usable as a standalone bearer token: the resource
+   wraps its internal authorization state so that the value is
+   meaningless without a valid AAuth signature from the agent.
+
+   A resource MAY return a new AAuth-Access header on any response,
+   replacing the agent's current session token.  This enables rolling
+   refresh without an explicit refresh flow.  When the agent receives a
+   new AAuth-Access value, it MUST use the new value on subsequent
+   requests.
+
+   The AAuth-Access value, and the credential carried in Authorization:
+   AAuth, is a token68 ([RFC9110], Section 11.2).  Recipients MUST
+   reject empty values, values containing embedded whitespace or control
+   characters, and responses carrying more than one credential.
+
+7.7.  Resource-Managed Authorization
+
+   When a resource manages authorization itself and requires user
+   interaction, it returns a 202 Accepted response with an interaction
+   requirement:
+
+   HTTP/1.1 202 Accepted
+   Location: https://resource.example/pending/abc123
+   Retry-After: 0
+   Cache-Control: no-store
+   AAuth-Requirement: requirement=interaction;
+       url="https://resource.example/interaction"; code="A1B2-C3D4"
+   Content-Type: application/json
+
+   {
+     "status": "pending"
+   }
+
+   The agent directs the user to the interaction URL Section 8.3 and
+   polls the Location URL per the deferred response pattern
+   Section 13.5.  When the interaction completes, the resource returns
+   200 OK and MAY include an AAuth-Access header Section 7.6 with a
+   session token for subsequent calls.
+
+   A resource MAY also authorize the agent based solely on its identity
+   (from the agent token) without any interaction — for example, when
+   the agent's key is already known or the agent's domain is trusted.
+
 7.8.  Resource Token
 
    A resource issues a resource token only after verifying a person
@@ -1794,7 +1592,7 @@ Table of Contents
    the request carries an auth token, and the resource supplies the
    value from its record of the person token it verified earlier.
    Binding the resource token to one person token by jti is what makes
-   mission stripping detectable Appendix B.1.11 - agent_jkt: JWK
+   mission stripping detectable Appendix B.1.9 - agent_jkt: JWK
    Thumbprint ([RFC7638]) of the agent's current signing key - iat:
    Issued at timestamp - exp: Expiration timestamp - scope: Requested
    scopes, as a space-separated string of scope values.  Companion
@@ -1940,7 +1738,7 @@ Table of Contents
       Section 11.1.1.  The PS MUST verify it per Section 10.4.5.
 
    Without upstream_token the PS issues for the person bound to the
-   requesting agent Section 15.18.  With it, the PS issues for the
+   requesting agent Section 15.14.  With it, the PS issues for the
    person the upstream token was issued for, determined from the
    upstream token's sub, which this PS MUST have issued.  A PS that
    cannot determine the person MUST reject the request.
@@ -1952,11 +1750,6 @@ Table of Contents
    POST /person HTTP/1.1
    Host: ps.example
    Content-Type: application/json
-   Content-Digest: sha-256=:...:
-   Signature-Input: sig=("@method" "@authority" "@path"
-       "content-type" "content-digest"
-       "signature-key");created=1730217600
-   Signature: sig=:...signature bytes...:
    Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
    {
@@ -2110,10 +1903,6 @@ Table of Contents
    Host: ps.example
    Content-Type: application/json
    Prefer: wait=45
-   Signature-Input: sig=("@method" "@authority" "@path"
-       "content-type" "content-digest"
-       "signature-key");created=1730217600
-   Signature: sig=:...signature bytes...:
    Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
    {
@@ -2139,19 +1928,9 @@ Table of Contents
      "expires_in": 3600
    }
 
-   *User interaction required response* (202):
-
-   HTTP/1.1 202 Accepted
-   Location: /pending/abc123
-   Retry-After: 0
-   Cache-Control: no-store
-   AAuth-Requirement: requirement=interaction;
-       url="https://ps.example/interaction"; code="A1B2-C3D4"
-   Content-Type: application/json
-
-   {
-     "status": "pending"
-   }
+   *User interaction required response* (202): a deferred response with
+   requirement=interaction Section 13.4.3, of the same shape as
+   Section 7.7.
 
    In four-party mode, the PS may also pass through a clarification from
    the AS to the agent via the 202 response Section 10.1.
@@ -2385,11 +2164,6 @@ Table of Contents
    POST /pending/abc123 HTTP/1.1
    Host: ps.example
    Content-Type: application/json
-   Content-Digest: sha-256=:...:
-   Signature-Input: sig=("@method" "@authority" "@path"
-       "content-type" "content-digest"
-       "signature-key");created=1730217600
-   Signature: sig=:...signature bytes...:
    Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
    {
@@ -2406,17 +2180,8 @@ Table of Contents
 8.5.2.2.  Updated Request
 
    The agent MAY obtain a new resource token from the resource (e.g.,
-   with reduced scope) and POST it to the pending URL:
-
-   POST /pending/abc123 HTTP/1.1
-   Host: ps.example
-   Content-Type: application/json
-   Content-Digest: sha-256=:...:
-   Signature-Input: sig=("@method" "@authority" "@path"
-       "content-type" "content-digest"
-       "signature-key");created=1730217600
-   Signature: sig=:...signature bytes...:
-   Signature-Key: sig=jwt;jwt="eyJhbGc..."
+   with reduced scope) and POST it to the pending URL, with the same
+   headers as a clarification response:
 
    {
      "action": "updated_request",
@@ -2431,25 +2196,16 @@ Table of Contents
 
 8.5.2.3.  Cancel Request
 
-   The agent MAY cancel the request by sending DELETE to the pending
-   URL:
-
-   DELETE /pending/abc123 HTTP/1.1
-   Host: ps.example
-   Signature-Input: sig=("@method" "@authority"
-       "@path" "signature-key");created=1730217600
-   Signature: sig=:...signature bytes...:
-   Signature-Key: sig=jwt;jwt="eyJhbGc..."
-
-   The PS terminates the consent session and informs the user that the
-   agent withdrew its request.  Subsequent requests to the pending URL
-   return 410 Gone.
+   The agent MAY cancel the request by sending a signed DELETE to the
+   pending URL.  The PS terminates the consent session and informs the
+   user that the agent withdrew its request.  Subsequent requests to the
+   pending URL return 410 Gone.
 
 8.5.3.  Clarification Limits
 
-   PSes SHOULD enforce limits on clarification rounds (recommended: 5
-   rounds maximum).  Clarification responses from agents are untrusted
-   input and MUST be sanitized before display to the user.
+   PSes MUST enforce a maximum number of clarification rounds; five is
+   RECOMMENDED.  Clarification responses from agents are untrusted input
+   and MUST be sanitized before display to the user.
 
 8.6.  Permission Endpoint
 
@@ -2486,11 +2242,6 @@ Table of Contents
    POST /permission HTTP/1.1
    Host: ps.example
    Content-Type: application/json
-   Content-Digest: sha-256=:...:
-   Signature-Input: sig=("@method" "@authority" "@path"
-       "content-type" "content-digest"
-       "signature-key");created=1730217600
-   Signature: sig=:...signature bytes...:
    Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
    {
@@ -2560,11 +2311,6 @@ Table of Contents
    POST /audit HTTP/1.1
    Host: ps.example
    Content-Type: application/json
-   Content-Digest: sha-256=:...:
-   Signature-Input: sig=("@method" "@authority" "@path"
-       "content-type" "content-digest"
-       "signature-key");created=1730217600
-   Signature: sig=:...signature bytes...:
    Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
    {
@@ -2640,11 +2386,6 @@ Table of Contents
    POST /interaction HTTP/1.1
    Host: ps.example
    Content-Type: application/json
-   Content-Digest: sha-256=:...:
-   Signature-Input: sig=("@method" "@authority" "@path"
-       "content-type" "content-digest"
-       "signature-key");created=1730217600
-   Signature: sig=:...signature bytes...:
    Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
    {
@@ -2735,7 +2476,9 @@ Table of Contents
    token endpoint — the same flow as the initial authorization.  This
    gives the resource a voice in every re-authorization: the resource
    can adjust scope, require step-up authorization, or deny access based
-   on current policy.
+   on current policy.  A separate refresh token would bypass the
+   resource, and is unnecessary when the standard flow is a single
+   additional request.
 
    When an agent rotates its signing key, all existing auth tokens are
    bound to the old key and can no longer be used.  The agent MUST re-
@@ -2946,7 +2689,7 @@ Table of Contents
    *  approved_tools: Array of tool objects (each with name and
       description) that the agent may use without per-call permission at
       the PS's permission endpoint Section 8.6.  Nothing in the protocol
-      enforces this list; see Appendix B.1.12.
+      enforces this list; see Appendix B.1.10.
    *  approved_resources: Array of resource identifiers the person
       approved for this mission, drawn from the resources the proposal
       named.  It records which resources were pre-approved, so an audit
@@ -2977,7 +2720,8 @@ Table of Contents
    attach it to any text afterwards.  A digest binds every token
    carrying mission_s256 to one specific mission, so the mission in the
    PS's log and the mission those tokens authorized are demonstrably the
-   same.
+   same.  Verification is available to the agent at approval and to
+   anyone holding the blob later.
 
    The PS MUST compute s256 over the exact bytes it persists as the
    mission blob, MUST return those same bytes as mission, and MUST serve
@@ -3019,11 +2763,6 @@ Table of Contents
    POST /mission/dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk HTTP/1.1
    Host: ps.example
    Content-Type: application/json
-   Content-Digest: sha-256=:...:
-   Signature-Input: sig=("@method" "@authority" "@path"
-       "content-type" "content-digest"
-       "signature-key");created=1730217600
-   Signature: sig=:...signature bytes...:
    Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
    {
@@ -3074,11 +2813,6 @@ Table of Contents
    POST /mission/dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk HTTP/1.1
    Host: ps.example
    Content-Type: application/json
-   Content-Digest: sha-256=:...:
-   Signature-Input: sig=("@method" "@authority" "@path"
-       "content-type" "content-digest"
-       "signature-key");created=1730217600
-   Signature: sig=:...signature bytes...:
    Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
    {
@@ -3291,9 +3025,6 @@ Table of Contents
    POST /token HTTP/1.1
    Host: as.resource.example
    Content-Type: application/json
-   Signature-Input: sig=("@method" "@authority"
-       "@path" "signature-key");created=1730217600
-   Signature: sig=:...signature bytes...:
    Signature-Key: sig=jwks_uri;
        jwks_uri="https://ps.example/.well-known/jwks.json"
 
@@ -3517,7 +3248,7 @@ Table of Contents
    evaluate a token request:
 
    1.  *PS = AS (same entity)*: Grant directly.  The federation call is
-       internal and trust is implicit.  See Section 10.3.4.
+       internal and trust is implicit.  See Section 10.3.3.
    2.  *User has bound this PS at the AS*: Apply the user's configured
        policy for this PS.
    3.  *PS is pre-established (enterprise agreement)*: Apply the
@@ -3534,17 +3265,7 @@ Table of Contents
    The AS is not required to follow this order.  The decision logic is
    entirely at the AS's discretion based on resource policy.
 
-10.3.3.  Organization Visibility
-
-   Organizations benefit from the trust model: an organization's agents
-   share a single PS, and internal resources may share a single AS.  The
-   PS provides centralized audit across all agents and missions.
-   Federation is only incurred at the boundary, when an internal agent
-   accesses an external resource.  When the same server fills both the
-   PS and AS roles, federation collapses to a single internal evaluation
-   — see Section 10.3.4.
-
-10.3.4.  PS-AS Collapse
+10.3.3.  PS-AS Collapse
 
    When the agent's PS and the resource's chosen AS are the same server
    (an instance of role collocation, see Section 4.2), federation
@@ -3563,7 +3284,11 @@ Table of Contents
 
    The server applies user consent (its PS responsibility) and resource
    policy (its AS responsibility) in a single evaluation.  Trust between
-   PS and AS is implicit because they are the same entity.
+   PS and AS is implicit because they are the same entity.  This is the
+   common shape for an organization: its agents share one PS and its
+   internal resources one AS, the PS gives centralized audit across
+   every agent and mission, and federation is incurred only at the
+   boundary, when an internal agent reaches an external resource.
 
 10.4.  Auth Token
 
@@ -3664,7 +3389,7 @@ Table of Contents
        key, reject it as invalid key material.  Otherwise verify cnf.jwk
        matches the key used to sign the HTTP request.
    7.  Verify sub is present, and that (iss, sub) matches or establishes
-       the resource's record for this person Section 15.11.
+       the resource's record for this person Section 15.7.
 
 10.4.4.  Auth Token Response Verification
 
@@ -3787,7 +3512,9 @@ Table of Contents
    constrained by its own AS policy and the PS's evaluation of the
    mission context, not by the upstream token's scope.  The PS provides
    the supervision constraint — it evaluates each hop independently and
-   can deny requests that fall outside the mission or the user's intent.
+   can deny requests that fall outside the mission or the user's intent
+   — where a formal subset rule would prevent legitimate delegation
+   chains.
 
    Because the resource acts as an agent, it MUST have its own agent
    identity — it MUST publish agent metadata at /.well-known/aauth-
@@ -4018,7 +3745,7 @@ Table of Contents
      |  redirect to start_path       |                           |
      |<------------------------------|                           |
 
-                     Figure 10: Third-Party Login Flow
+                      Figure 7: Third-Party Login Flow
 
    The third party does not need to be the PS.  Any party that knows the
    agent's or resource's login_endpoint (from metadata) can initiate the
@@ -4267,7 +3994,7 @@ Table of Contents
 
    The agent-token requirement is defined in Section 7.3; the person-
    token requirement in Section 7.4; the auth-token requirement in
-   Section 7.7; the interaction and approval requirements are defined in
+   Section 7.5; the interaction and approval requirements are defined in
    this section; clarification in Section 8.5.1; and claims in
    Section 10.2.
 
@@ -4468,9 +4195,6 @@ Table of Contents
    Host: auth.example
    Content-Type: application/json
    Prefer: wait=45
-   Signature-Input: sig=("@method" "@authority"
-       "@path" "signature-key");created=1730217600
-   Signature: sig=:...signature bytes...:
    Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
    {
@@ -4730,9 +4454,6 @@ Initial request (with Prefer: wait=N)
    POST /revoke HTTP/1.1
    Host: ps.example
    Content-Type: application/json
-   Signature-Input: sig=("@method" "@authority"
-       "@path" "signature-key");created=1730217600
-   Signature: sig=:...signature bytes...:
    Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
    {
@@ -4795,14 +4516,6 @@ Initial request (with Prefer: wait=N)
    Section 7.  Revocation shortens exposure; it does not eliminate it,
    and deployments requiring immediate termination should issue shorter-
    lived tokens rather than relying on revocation reaching every holder.
-
-   Auth tokens are short-lived (maximum 1 hour) and proof-of-possession
-   (useless without the bound signing key).  All AAuth tokens have
-   limited lifetimes — agent tokens, resource tokens, and auth tokens
-   all expire and require re-issuance.  Each re-issuance is a policy
-   evaluation point where the issuer can deny renewal.  This natural
-   expiration cycle, combined with real-time revocation, provides
-   layered access control.
 
 13.8.  HTTP Message Signatures Profile
 
@@ -5180,24 +4893,17 @@ Initial request (with Prefer: wait=N)
    Implementations MUST perform exact string comparison on server
    identifiers.
 
-13.10.2.  Endpoint URLs
+13.10.2.  Endpoint and Other URLs
 
    The auth_token_endpoint, person_token_endpoint,
    authorization_endpoint, mission_endpoint, and callback_endpoint
-   values MUST conform to the following:
-
-   *  MUST use the https scheme
-   *  MUST NOT contain a fragment
-   *  MUST NOT contain a query string
+   values MUST use the https scheme and MUST NOT contain a query string
+   or a fragment.  The jwks_uri, tos_uri, policy_uri, logo_uri, and
+   logo_dark_uri values MUST use the https scheme.
 
    When localhost_callback_allowed is true in the agent's metadata, the
    agent MAY use a localhost callback URL as the callback parameter to
    the interaction endpoint.
-
-13.10.3.  Other URLs
-
-   The jwks_uri, tos_uri, policy_uri, logo_uri, and logo_dark_uri values
-   MUST use the https scheme.
 
 13.11.  Metadata Documents
 
@@ -5290,10 +4996,10 @@ Initial request (with Prefer: wait=N)
    policy_uri, documentation_uri) rather than the resource_-prefixed
    forms in RFC 9728, for consistency across all four roles.
 
-   Per-role sections below list these common fields in their examples
-   and note any role-specific REQUIRED/conditional differences (e.g.,
-   jwks_uri is conditionally REQUIRED for resources).  Role-specific
-   fields are listed after the common fields.
+   The per-role sections below show the common fields in their examples
+   and list only role-specific fields and role-specific requirement
+   differences (for example, jwks_uri is conditionally REQUIRED for
+   resources).
 
 13.11.1.  Agent Provider Metadata
 
@@ -5314,21 +5020,12 @@ Initial request (with Prefer: wait=N)
      "policy_uri": "https://agent.example/privacy"
    }
 
-   Fields:
+   Role-specific fields, after the common fields of Section 13.11:
 
    *  issuer (REQUIRED): The agent provider's HTTPS URL (the domain in
       agent identifiers it issues).  This is the value placed in the iss
       claim of agent tokens.
    *  jwks_uri (REQUIRED): URL to the agent provider's JSON Web Key Set
-   *  name (OPTIONAL): Human-readable agent name
-   *  description (OPTIONAL): A Markdown string describing the agent or
-      its provider, for display to users (for example, at a PS consent
-      screen or connected-agents dashboard).  Implementations MUST
-      sanitize the Markdown before rendering to users.
-   *  logo_uri (OPTIONAL): URL to agent logo (per [RFC7591])
-   *  logo_dark_uri (OPTIONAL): URL to agent logo for dark backgrounds
-   *  documentation_uri (OPTIONAL): URL with developer documentation for
-      the agent provider
    *  callback_endpoint (OPTIONAL): The agent's HTTPS callback endpoint
       URL
    *  event_endpoint (OPTIONAL): HTTPS URL at which the AP receives
@@ -5337,8 +5034,6 @@ Initial request (with Prefer: wait=N)
    *  login_endpoint (OPTIONAL): URL where third parties can direct
       users to initiate authentication Section 12
    *  localhost_callback_allowed (OPTIONAL): Boolean.  Default: false.
-   *  tos_uri (OPTIONAL): URL to terms of service (per [RFC7591])
-   *  policy_uri (OPTIONAL): URL to privacy policy (per [RFC7591])
 
 13.11.2.  Person Server Metadata
 
@@ -5363,22 +5058,11 @@ Initial request (with Prefer: wait=N)
      "jwks_uri": "https://ps.example/.well-known/jwks.json"
    }
 
-   Fields:
+   Role-specific fields, after the common fields of Section 13.11:
 
    *  issuer (REQUIRED): The PS's HTTPS URL.  MUST match the URL used to
       fetch the metadata document.  This is the value placed in the iss
       claim of JWTs issued by the PS.
-   *  name (OPTIONAL): Human-readable person server name
-   *  description (OPTIONAL): A Markdown string describing the person
-      server, for display to users.  Implementations MUST sanitize the
-      Markdown before rendering to users.
-   *  logo_uri (OPTIONAL): URL to person server logo
-   *  logo_dark_uri (OPTIONAL): URL to person server logo for dark
-      backgrounds
-   *  documentation_uri (OPTIONAL): URL with developer documentation for
-      the person server
-   *  tos_uri (OPTIONAL): URL to terms of service
-   *  policy_uri (OPTIONAL): URL to privacy policy
    *  auth_token_endpoint (REQUIRED): URL where agents send token
       requests
    *  person_token_endpoint (REQUIRED): URL where agents request a
@@ -5440,22 +5124,11 @@ Initial request (with Prefer: wait=N)
      "jwks_uri": "https://as.resource.example/.well-known/jwks.json"
    }
 
-   Fields:
+   Role-specific fields, after the common fields of Section 13.11:
 
    *  issuer (REQUIRED): The AS's HTTPS URL.  MUST match the URL used to
       fetch the metadata document.  This is the value placed in the iss
       claim of auth tokens.
-   *  name (OPTIONAL): Human-readable access server name
-   *  description (OPTIONAL): A Markdown string describing the access
-      server, for display to users.  Implementations MUST sanitize the
-      Markdown before rendering to users.
-   *  logo_uri (OPTIONAL): URL to access server logo
-   *  logo_dark_uri (OPTIONAL): URL to access server logo for dark
-      backgrounds
-   *  documentation_uri (OPTIONAL): URL with developer documentation for
-      the access server
-   *  tos_uri (OPTIONAL): URL to terms of service
-   *  policy_uri (OPTIONAL): URL to privacy policy
    *  auth_token_endpoint (REQUIRED): URL where PSes send token requests
    *  revocation_endpoint (OPTIONAL): URL where authorized parties can
       revoke tokens Section 13.7
@@ -5463,7 +5136,10 @@ Initial request (with Prefer: wait=N)
 
 13.11.4.  Resource Metadata
 
-   Published at /.well-known/aauth-resource.json:
+   Published at /.well-known/aauth-resource.json.  A resource MAY
+   publish this document to be discoverable; one that does not can still
+   verify identity-based access, and issue resource tokens and
+   interaction requirements via 401 responses.
 
    {
      "issuer": "https://resource.example",
@@ -5485,7 +5161,7 @@ Initial request (with Prefer: wait=N)
      "additional_signature_components": ["content-type", "content-digest"]
    }
 
-   Fields:
+   Role-specific fields, after the common fields of Section 13.11:
 
    *  issuer (REQUIRED): The resource's HTTPS URL.  This is the value
       placed in the iss claim of resource tokens.
@@ -5520,18 +5196,6 @@ Initial request (with Prefer: wait=N)
       agent MAY use access_mode to skip resources its setup cannot
       satisfy — for example, a PS-less agent (no ps claim in its agent
       token) cannot complete the auth-token flow.
-   *  name (OPTIONAL): Human-readable resource name
-   *  description (OPTIONAL): A Markdown string describing the resource,
-      for display to users (for example, at a consent screen).
-      Implementations MUST sanitize the Markdown before rendering to
-      users.
-   *  logo_uri (OPTIONAL): URL to resource logo
-   *  logo_dark_uri (OPTIONAL): URL to resource logo for dark
-      backgrounds
-   *  documentation_uri (OPTIONAL): URL with developer documentation for
-      the resource
-   *  tos_uri (OPTIONAL): URL to terms of service
-   *  policy_uri (OPTIONAL): URL to privacy policy
    *  authorization_endpoint (OPTIONAL): URL where agents request
       authorization Section 7.1.  When absent, the resource issues
       resource tokens and interaction requirements via 401 responses
@@ -5598,7 +5262,7 @@ Initial request (with Prefer: wait=N)
    Verifiers do not use this relation.  A party verifying a token or a
    signature discovers keys from the signer's iss and dwk
    ([I-D.hardt-httpbis-signature-key]), never from a link in content
-   Section 15.9.
+   Section 15.6.
 
 14.  Incremental Adoption
 
@@ -5623,7 +5287,7 @@ Initial request (with Prefer: wait=N)
    *  *Resource-managed access drops in where you use OAuth.* A resource
       keeps its existing authorization — consent screens, OAuth access
       tokens, or session tokens — and wraps it: it returns its existing
-      token opaquely via the AAuth-Access header Section 7.5, bound to
+      token opaquely via the AAuth-Access header Section 7.6, bound to
       the agent's signature so it cannot be stolen and replayed as a
       standalone bearer token.  The resource talks directly to the
       agent.  This is resource-managed (two-party) access Section 4.1.2;
@@ -5638,7 +5302,7 @@ Initial request (with Prefer: wait=N)
 14.1.1.  Consuming a Resource End to End
 
    A resource that wants agents to discover and use it with no prior
-   integration publishes two things in its aauth-resource.json
+   integration SHOULD publish two things in its aauth-resource.json
    Section 13.11.4:
 
    *  *access_mode* — the credential flow the agent should expect:
@@ -5678,10 +5342,10 @@ Initial request (with Prefer: wait=N)
           requirement=interaction pointing at the resource's existing
           consent or login flow.  After the user completes it, the
           resource returns an opaque token via the AAuth-Access header
-          Section 7.5; the agent presents that token in Authorization:
+          Section 7.6; the agent presents that token in Authorization:
           AAuth ..., bound to its signature, on subsequent calls.
        *  *auth-token* — the resource issues a resource token via the
-          authorization_endpoint or a 401 Section 7.7.  The agent sends
+          authorization_endpoint or a 401 Section 7.5.  The agent sends
           it to its PS, which runs consent — bringing the user in at the
           PS, not the resource — and returns an auth token the agent
           signs with.  Whether the PS asserts identity directly (three-
@@ -5733,7 +5397,7 @@ Initial request (with Prefer: wait=N)
    2.  *Manage authorization*: Handle authorization with interaction,
        consent, or existing infrastructure — via 401 responses, an
        authorization endpoint, or both.  Return AAuth-Access headers
-       Section 7.5 for subsequent calls.  This is resource-managed
+       Section 7.6 for subsequent calls.  This is resource-managed
        access (two-party).
    3.  *Accept identity claims from any PS*: Verify person tokens and
        issue resource tokens with aud = the iss of the person token
@@ -5788,18 +5452,15 @@ Initial request (with Prefer: wait=N)
 
 15.1.  Proof-of-Possession
 
-   All AAuth tokens are proof-of-possession tokens.  The holder must
+   All AAuth tokens are proof-of-possession tokens: the holder must
    prove possession of the private key corresponding to the public key
-   in the token's cnf claim.
+   in the token's cnf claim.  Agent tokens bind that key to an agent
+   identity and auth tokens bind an authorization grant to it; resource
+   tokens bind the request to the resource's own identity, which is what
+   prevents one resource being substituted for another in the
+   authorization flow.
 
-15.2.  Token Security
-
-   *  Agent tokens bind agent keys to agent identity
-   *  Resource tokens bind access requests to resource identity,
-      preventing confused deputy attacks
-   *  Auth tokens bind authorization grants to agent keys
-
-15.3.  Pending URL Security
+15.2.  Pending URL Security
 
    *  Pending URLs MUST be unguessable and SHOULD have limited lifetime
    *  Pending URLs MUST be on the same origin as the server that issued
@@ -5808,13 +5469,7 @@ Initial request (with Prefer: wait=N)
    *  Once a terminal response is returned, the pending URL MUST return
       410 Gone
 
-15.4.  Clarification Chat Security
-
-   *  PSes MUST enforce a maximum number of clarification rounds
-   *  Clarification responses from agents are untrusted input and MUST
-      be sanitized before display
-
-15.5.  Untrusted Input
+15.3.  Untrusted Input
 
    All protocol inputs — JSON request bodies, clarification responses,
    justification strings, mission descriptions, and token claims — are
@@ -5826,7 +5481,7 @@ Initial request (with Prefer: wait=N)
    fields MUST be sanitized before rendering to prevent script
    injection.
 
-15.6.  Agent Control of the Consent Surface
+15.4.  Agent Control of the Consent Surface
 
    The justification is written by the party requesting the access and
    rendered on the surface where the person decides whether to grant it.
@@ -5845,7 +5500,7 @@ Initial request (with Prefer: wait=N)
    weight has given the agent an equal voice in describing its own
    request.
 
-15.7.  Interaction Code Misdirection
+15.5.  Interaction Code Misdirection
 
    An attacker could attempt to trick a user into approving an
    authorization request by directing them to an interaction URL with
@@ -5870,16 +5525,7 @@ Initial request (with Prefer: wait=N)
    which address misdirection of a legitimate code rather than recovery
    of an unknown one.
 
-15.8.  Token Issuer Discovery
-
-   The recipient of the resource token — and thus the issuer of the auth
-   token — is identified by the aud claim.  In three-party mode, aud
-   identifies the agent's PS, which asserts identity and consent.  In
-   four-party mode, aud identifies the resource's AS, which evaluates
-   resource policy.  Federation mechanics for four-party are described
-   in Section 10.3.
-
-15.9.  Link Relation Discovery
+15.6.  Link Relation Discovery
 
    An aauth-resource link Section 13.11.5 is a statement by whoever
    controls the response that carries it, not by the resource it names.
@@ -5896,22 +5542,12 @@ Initial request (with Prefer: wait=N)
    resource an agent meets for the first time: the person token endpoint
    puts the question to the person, presenting the resource's own name
    and description Section 8.1, and a person token carries no
-   authorization Section 15.15.  An agent SHOULD record where it found a
+   authorization Section 15.11.  An agent SHOULD record where it found a
    link, so that a resource introduced by a third-party page is
    distinguishable from one the person named.  An agent that parses HTML
-   to find the relation is reading untrusted input Section 15.5.
+   to find the relation is reading untrusted input Section 15.3.
 
-15.10.  AAuth-Access Security
-
-   The AAuth-Access header carries an opaque wrapped token that is
-   meaningful only to the issuing resource.  The token MUST NOT be
-   usable as a standalone bearer token — the resource wraps its internal
-   authorization state so that the token is meaningless without a valid
-   AAuth signature from the agent.  The agent MUST include authorization
-   in the signed components when presenting the token, binding it to the
-   signed request.
-
-15.11.  Trust Posture in PS-Asserted Access
+15.7.  Trust Posture in PS-Asserted Access
 
    In three-party mode, the resource has no AS of its own — it accepts
    identity claims and consent from whichever PS the agent declares.
@@ -5940,7 +5576,7 @@ Initial request (with Prefer: wait=N)
    compromise of a PS's signing key allows forgery of identity claims
    for every resource that accepts that PS.
 
-15.12.  Person Token Exposure
+15.8.  Person Token Exposure
 
    A person token identifies the person to a resource before any
    authorization decision, on every request that carries one including
@@ -5956,7 +5592,7 @@ Initial request (with Prefer: wait=N)
    leaks an identifier and no access, and cnf prevents another party
    from presenting it.
 
-15.13.  Continuity, Not Identity Proofing
+15.9.  Continuity, Not Identity Proofing
 
    A person token proves "the same entity again", not a verified legal
    identity.  The protocol does not state what standard, if any, a PS
@@ -5967,7 +5603,7 @@ Initial request (with Prefer: wait=N)
    age check, a residency check, regulated onboarding — obtains it out
    of band or through claims a person server explicitly asserts.
 
-15.14.  Organization Identification
+15.10.  Organization Identification
 
    The OPTIONAL tenant claim declares the organization the person
    belongs to, and unlike sub it is not directed — the same value
@@ -5984,7 +5620,7 @@ Initial request (with Prefer: wait=N)
    tenant is organizational context and MUST NOT be treated as part of
    the person's identifier, which is (iss, sub) Section 16.1.
 
-15.15.  Person Token Is Not Authorization
+15.11.  Person Token Is Not Authorization
 
    A PS-issued auth token and a person token carry the same iss, dwk,
    aud, sub, and cnf.  Only typ distinguishes them.  A resource that
@@ -5996,7 +5632,7 @@ Initial request (with Prefer: wait=N)
    Section 6.3.  Deployments SHOULD test this case explicitly; it fails
    open.
 
-15.16.  Incremental Consent
+15.12.  Incremental Consent
 
    A mission can be updated Section 9.4, and an update may broaden the
    work as well as narrow it.  An agent could therefore propose a modest
@@ -6015,7 +5651,7 @@ Initial request (with Prefer: wait=N)
    update mechanism.  It is stated here because the update mechanism
    makes it cheap.
 
-15.17.  PS Approval Endpoint Authentication
+15.13.  PS Approval Endpoint Authentication
 
    When the PS approval/consent endpoint is reachable beyond a single-
    user local deployment, the PS MUST authenticate the approving party
@@ -6025,12 +5661,12 @@ Initial request (with Prefer: wait=N)
 
    An unauthenticated approval endpoint allows a remote party to consent
    on the user's behalf — a privilege escalation that breaks the agent-
-   person binding invariant Section 15.18.  A locally-trusted PS
+   person binding invariant Section 15.14.  A locally-trusted PS
    (loopback only, no external network reachability) is exempt from this
    requirement provided it enforces OS-level access controls on the
    loopback interface.
 
-15.18.  Agent-Person Binding
+15.14.  Agent-Person Binding
 
    The PS MUST ensure that each agent is associated with exactly one
    person.  This one-to-one binding is a trust invariant — it ensures
@@ -6062,7 +5698,7 @@ Initial request (with Prefer: wait=N)
    *  *Revocation*: Revoking an agent's association with its person
       immediately prevents the agent from obtaining new auth tokens.
 
-15.19.  PS as High-Value Target
+15.15.  PS as High-Value Target
 
    The PS is a centralized authority that sees every authorization in a
    mission.  PS implementations MUST apply appropriate security controls
@@ -6081,26 +5717,12 @@ Initial request (with Prefer: wait=N)
    presents a single interface regardless of how it is composed
    internally.
 
-15.20.  Call Chaining Identity
-
-   When a resource acts as an agent in call chaining, it uses its own
-   signing key and presents its own credentials.  The resource MUST
-   publish agent metadata so downstream parties can verify its identity.
-
-15.21.  Token Revocation and Lifecycle
-
-   Real-time revocation Section 13.7 and short token lifetimes provide
-   layered access control.  Organizations have multiple control points —
-   agent provider, PS, and AS — each of which can deny renewal or revoke
-   tokens independently.  Shorter auth token lifetimes reduce the window
-   between a control action and natural expiration.
-
-15.22.  TLS Requirements
+15.16.  TLS Requirements
 
    All HTTPS connections MUST use TLS 1.2 or later, following the
    recommendations in BCP 195 [RFC9325].
 
-15.23.  Non-Repudiation and Audit After Key Rotation
+15.17.  Non-Repudiation and Audit After Key Rotation
 
    AAuth signatures prove authenticity at request time: a valid HTTP
    Message Signature shows that the signer held the private key bound to
@@ -6173,7 +5795,7 @@ Initial request (with Prefer: wait=N)
    rather than increasing it.  Presenting an agent token discloses the
    agent provider's domain and an agent identifier that is the same at
    every resource the agent visits — and because each agent belongs to
-   exactly one person Section 15.18, that identifier is a globally
+   exactly one person Section 15.14, that identifier is a globally
    correlatable pseudonym for the person.  A person token replaces both
    with an identifier scoped to the one resource receiving it.
 
@@ -6220,7 +5842,7 @@ Initial request (with Prefer: wait=N)
 
    *  Status: permanent
 
-   *  Reference: This document, Section 7.5
+   *  Reference: This document, Section 7.6
 
    *  Header Field Name: AAuth-Capabilities
 
@@ -6237,7 +5859,7 @@ Initial request (with Prefer: wait=N)
    Registry" established by [RFC9110]:
 
    *  Authentication Scheme Name: AAuth
-   *  Reference: This document, Section 7.5
+   *  Reference: This document, Section 7.6
    *  Notes: Used with session tokens returned via the AAuth-Access
       header.  The token MUST be bound to an HTTP Message Signature —
       the authorization field MUST be included in the signature's
@@ -6628,6 +6250,19 @@ Initial request (with Prefer: wait=N)
    _Note: This section is to be removed before publishing as an RFC._
 
    *  draft-hardt-oauth-aauth-protocol-11
+
+      -  Editorial pass with no normative change.  Gone or merged: the
+         Introduction's feature list and its negation, the Overview's
+         three mission diagrams and its Bootstrapping section, the
+         signature-header boilerplate on fourteen examples, the per-role
+         repetition of the common metadata fields, two duplicate 202
+         examples and two of the three clarification-response examples,
+         three Design Rationale entries that restated body text and five
+         one-sentence entries now in an In Brief list, and six Security
+         Considerations subsections that restated normative text stated
+         elsewhere.  The three 401 requirement challenges are now
+         adjacent.  Every MUST, SHOULD, and MAY survives in the section
+         that governs it.
 
       -  Moved the Person Token Endpoint into the Person Server chapter
          beside the auth token endpoint, leaving the token's structure,
@@ -7517,12 +7152,7 @@ Appendix B.  Design Rationale
 
 B.1.  Identity and Foundation
 
-B.1.1.  Why HTTPS-Based Agent Identity
-
-   HTTPS URLs as agent identifiers enable dynamic ecosystems without
-   pre-registration.
-
-B.1.2.  Why Per-Instance Agent Identity
+B.1.1.  Why Per-Instance Agent Identity
 
    OAuth's client_id identifies an application — every instance of the
    same app shares a single identifier and typically a single set of
@@ -7535,7 +7165,7 @@ B.1.2.  Why Per-Instance Agent Identity
    it).  The agent provider controls which instances receive agent
    tokens, providing centralized control over a distributed agent fleet.
 
-B.1.3.  Why Agents Are Under an Agent Provider
+B.1.2.  Why Agents Are Under an Agent Provider
 
    Placing agents under an agent provider rather than allowing each
    agent to self-certify its own identity serves two purposes.  First,
@@ -7552,7 +7182,7 @@ B.1.3.  Why Agents Are Under an Agent Provider
    security properties weaken.  AAuth therefore requires every agent to
    hold a token issued by a distinct AP, not self-signed.
 
-B.1.4.  Why Every Agent Has a Person
+B.1.3.  Why Every Agent Has a Person
 
    Every agent acts on behalf of a person — the entity accountable for
    the agent's actions.  AAuth enables a person server to maintain this
@@ -7560,7 +7190,7 @@ B.1.4.  Why Every Agent Has a Person
    present, the PS ensures there is always an accountable party for
    authorization decisions, audit, and liability.
 
-B.1.5.  Why Person Tokens
+B.1.4.  Why Person Tokens
 
    An agent identifier embeds its agent provider's domain, so a person
    moving to another provider necessarily arrives at a resource as
@@ -7578,7 +7208,7 @@ B.1.5.  Why Person Tokens
    any per-person limit are all evaluable when the request arrives,
    instead of after a resource token has been issued and taken to a PS.
 
-B.1.6.  Why a Mission Belongs to an Agent
+B.1.5.  Why a Mission Belongs to an Agent
 
    A person's relationship with a resource survives their changing
    agents, but a mission does not: it names one agent, and moving to
@@ -7594,7 +7224,7 @@ B.1.6.  Why a Mission Belongs to an Agent
    was done by the agent the mission names, which is what makes the
    mission log worth reading.
 
-B.1.7.  Why No Agent Identifier Reaches a Resource
+B.1.6.  Why No Agent Identifier Reaches a Resource
 
    Naming the agent, or its provider, in a token the resource reads
    would restore exactly the coupling the person token exists to remove:
@@ -7614,7 +7244,7 @@ B.1.7.  Why No Agent Identifier Reaches a Resource
    complete in three-party and partial in four-party, where the resource
    has explicitly delegated policy to an AS.
 
-B.1.8.  Why Identity Alone Can Authorize
+B.1.7.  Why Identity Alone Can Authorize
 
    A person token carries no authorization, yet a resource in person-
    identity mode Section 4.1.3 serves requests on it.  That is not a
@@ -7633,7 +7263,7 @@ B.1.8.  Why Identity Alone Can Authorize
    person server should know what the resource does with identity before
    it asks.
 
-B.1.9.  Why the Mission Is Encoded Rather Than Nested
+B.1.8.  Why the Mission Is Encoded Rather Than Nested
 
    The approval response carries the mission blob base64url-encoded
    rather than as a JSON object so that s256 has an unambiguous byte
@@ -7649,16 +7279,7 @@ B.1.9.  Why the Mission Is Encoded Rather Than Nested
    room in the response for anything else.  The encoded member restores
    that room without giving up verifiability.
 
-B.1.10.  Why the Mission Identifier Is a Hash
-
-   An opaque identifier would name the mission but leave the person
-   server free to attach it to different text afterwards.  A digest
-   binds every token carrying mission_s256 to one specific mission, so
-   the mission in the log and the mission those tokens authorized are
-   demonstrably the same.  Verification is available to the agent at
-   approval and to anyone holding the blob later.
-
-B.1.11.  Why a Resource Token Names the Person Token
+B.1.9.  Why a Resource Token Names the Person Token
 
    Binding by presented_jti rather than by comparing claims is what
    makes mission stripping detectable.  A resource cannot drop
@@ -7671,7 +7292,7 @@ B.1.11.  Why a Resource Token Names the Person Token
    not be caught.  Naming the token resolves it exactly, and the person
    server compares everything it issued in one lookup.
 
-B.1.12.  Why Tool Pre-Approval Is Not Enforced
+B.1.10.  Why Tool Pre-Approval Is Not Enforced
 
    Tool use is local to the agent.  No party the protocol can hold to
    account observes it, so approved_tools is a record of what the person
@@ -7686,7 +7307,7 @@ B.1.12.  Why Tool Pre-Approval Is Not Enforced
    choice of agent provider, not the tool list.  The auth token is the
    only hard control AAuth offers, and it covers remote resources.
 
-B.1.13.  Why There Is No Delegation Chain Claim
+B.1.11.  Why There Is No Delegation Chain Claim
 
    Earlier revisions recorded the upstream chain in an act claim.  It
    served no reader.  The immediate caller in a chain signs the request
@@ -7701,7 +7322,7 @@ B.1.13.  Why There Is No Delegation Chain Claim
    stop attributing missions makes it stop recording delegation: the
    resource enforces, the person server attributes.
 
-B.1.14.  Why the ps Claim in Agent Tokens
+B.1.12.  Why the ps Claim in Agent Tokens
 
    A resource learns the agent's PS from the person token it verifies,
    but it needs to know the agent has one before that — to decide
@@ -7723,19 +7344,7 @@ B.2.1.  Why .json in Well-Known URIs
    [I-D.hardt-aauth-bootstrap]), where an agent's metadata can be
    published as static files with no active server.
 
-B.2.2.  Why Standard HTTP Async Pattern
-
-   AAuth uses standard HTTP async semantics (202 Accepted, Location,
-   Prefer: wait, Retry-After).  This applies uniformly to all endpoints,
-   aligns with RFC 7240, replaces OAuth device flow, supports headless
-   agents, and enables clarification chat.
-
-B.2.3.  Why JSON Instead of Form-Encoded
-
-   JSON is the standard format for modern APIs.  AAuth uses JSON for
-   both request and response bodies.
-
-B.2.4.  Why No Authorization Code
+B.2.2.  Why No Authorization Code
 
    AAuth eliminates authorization codes entirely.  OAuth authorization
    codes require PKCE ([RFC7636]) to prevent interception attacks,
@@ -7745,25 +7354,20 @@ B.2.4.  Why No Authorization Code
    exclusively via polling, authenticated by the agent's HTTP Message
    Signature.
 
-B.2.5.  Why Callback URL Has No Security Role
+B.2.3.  In Brief
 
-   Tokens never pass through the user's browser.  The callback URL is
-   purely a UX optimization.
-
-B.2.6.  Why No Refresh Token
-
-   AAuth has no refresh tokens.  When an auth token expires, the agent
-   obtains a fresh resource token and submits it through the standard
-   authorization flow.  This gives the resource a voice in every re-
-   authorization — the resource can adjust scope, require step-up
-   authorization, or deny access based on current policy.  A separate
-   refresh token would bypass the resource entirely, and is unnecessary
-   given that the standard flow is a single additional request.
-
-B.2.7.  Why Reuse OpenID Connect Vocabulary
-
-   AAuth reuses OpenID Connect scope values, identity claims, and
-   enterprise parameters.  This lowers the adoption barrier.
+   *  *HTTPS-based agent identity*: HTTPS URLs as agent identifiers
+      enable dynamic ecosystems without pre-registration.
+   *  *Standard HTTP async pattern*: 202 Accepted, Location, Prefer:
+      wait, and Retry-After apply uniformly to every endpoint, align
+      with RFC 7240, replace the OAuth device flow, support headless
+      agents, and carry clarification chat.
+   *  *JSON rather than form encoding*: JSON is the standard format for
+      modern APIs, for request and response bodies alike.
+   *  *The callback URL has no security role*: tokens never pass through
+      the user's browser; the callback is a UX optimization.
+   *  *OpenID Connect vocabulary*: reusing its scope values, identity
+      claims, and enterprise parameters lowers the adoption barrier.
 
 B.3.  Architecture
 
@@ -7911,17 +7515,6 @@ B.3.6.  Why Missions Have Only Two States
    circumstances that prompted the pause.  This keeps mission lifecycle
    simple: a mission is alive until it is done.
 
-B.3.7.  Why Downstream Scope Is Not Constrained by Upstream Scope
-
-   In multi-hop scenarios, downstream authorization is intentionally not
-   required to be a subset of upstream scopes.  A flight booking API
-   that calls a payment processor needs the payment processor to charge
-   a card — an operation orthogonal to the upstream scope.  Formal
-   subset rules would prevent legitimate delegation chains.  Instead,
-   the PS evaluates each hop against the mission context, providing
-   governance-based constraints that are more flexible than algebraic
-   attenuation rules while maintaining a complete audit trail.
-
 B.4.  Comparisons with Alternatives
 
 B.4.1.  Why Not mTLS?
@@ -7962,12 +7555,8 @@ B.4.3.  Why Not Extend GNAP
 
    *Resource tokens require an architectural change, not an extension.*
    In GNAP, as in OAuth, the resource server is a passive consumer of
-   tokens — it verifies them but never produces signed artifacts that
-   the access server consumes.  AAuth's resource tokens invert this: the
-   resource cryptographically asserts what is being requested, binding
-   its own identity, the agent's key thumbprint, and the requested scope
-   into a signed JWT.  Adding this to GNAP would require changing its
-   core architectural assumption about the role of the resource server.
+   tokens; a resource that signs what is being requested Appendix B.3.3
+   changes that core assumption rather than extending it.
 
    *Interaction chaining requires a different continuation model.*
    GNAP's continuation mechanism operates between a single client and a
