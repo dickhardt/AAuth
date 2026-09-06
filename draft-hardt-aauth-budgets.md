@@ -453,12 +453,14 @@ This document extends the resource token (a JWT with `typ: aa-resource+jwt`) wit
 
 `budget_consumed` is an array of consumption records, most recent first. Each record has two members, both REQUIRED:
 
-- **`jti`**: The `jti` claim of a prior auth token.
+- **`jti`**: The `jti` claim of an auth token — a prior grant, or the token presented on the request this resource token answers.
 - **`consumed`**: What the resource metered against that token's budget, a non-negative integer in the `unit` and `decimals` of the `budget` claim in the same resource token.
 
 A resource MUST NOT include `budget_consumed` unless `budget` is present in the same token, and MUST omit any record it cannot state in that budget's `unit` and `decimals` — a record carried in a stale scale is the thousandfold error (#errors) in miniature.
 
-Records cover prior auth tokens matching this token's context: the same `(iss, sub, aud)` the resource aggregates against (#aggregation), and, when this resource token carries `mission_s256`, the same `mission_s256`. A mission-context re-authorization thus reports that mission's grants; a mission-less one reports the person's most recent grants at this resource.
+Records cover auth tokens matching this token's context: the same `(iss, sub, aud)` the resource aggregates against (#aggregation), and, when this resource token carries `mission_s256`, the same `mission_s256`. A mission-context re-authorization thus reports that mission's grants; a mission-less one reports the person's most recent grants at this resource.
+
+The presented token is the record that matters most. A resource issuing a resource token on a challenge to a request that carried an auth token (#exhaustion) SHOULD include a record for that token, first in the array. It is the figure the issuer needs and cannot compute: `budget-exhausted` implies the whole grant was spent, but under `insufficient-budget` the token's spend to date is a number only the resource holds — and without it the issuer accounts for the allocation as fully consumed (#unreported-allocations) when most of it may remain. In four-party access the resource token travels to the AS inside the PS's token request, so the record reaches both issuers without a usage query. A record naming a token that has not expired reports what the resource has metered so far; a later record with the same `jti` supersedes it.
 
 A resource SHOULD NOT include more than 20 records. The practical bound is size: the resource token travels inside the `AAuth-Requirement` header on the `401` path, where header-field limits apply; twenty records cost roughly a kilobyte after base64 encoding.
 
@@ -604,8 +606,8 @@ Resource rules:
 `AAuth-Budget` is a response header carrying the remaining balance of the granted budget. It is a Dictionary ([@!RFC9651], Section 3.2), matching `AAuth-Requirement`.
 
 ```http
-AAuth-Budget: cost=221200; remaining=1568800;
-    unit="USD"; decimals=6
+AAuth-Budget: cost=221200, remaining=1568800,
+    unit="USD", decimals=6
 ```
 
 Members:
@@ -632,7 +634,7 @@ This is SHOULD rather than MUST because the failing layer may sit below the mete
 HTTP/1.1 401 Unauthorized
 AAuth-Requirement: requirement=auth-token;
     resource-token="eyJ..."; reason=budget-exhausted
-AAuth-Budget: remaining=0; unit="USD"; decimals=6
+AAuth-Budget: remaining=0, unit="USD", decimals=6
 ```
 
 That the field appears on every response regardless of status is the point of putting it in a header. The agent reads the same field whether the body is JSON, a server-sent event stream, a streamed completion, or a problem document [@RFC9457].
@@ -657,8 +659,8 @@ A resource serving a streamed response SHOULD send `reserved` in the header and 
 HTTP/1.1 200 OK
 Content-Type: text/event-stream
 Trailer: AAuth-Budget
-AAuth-Budget: remaining=1568800; reserved=431200;
-    unit="USD"; decimals=6
+AAuth-Budget: remaining=1568800, reserved=431200,
+    unit="USD", decimals=6
 
    ...stream...
 
@@ -715,7 +717,7 @@ Inference APIs commonly emit final usage in the stream's terminal event. That is
 
 A request refused under this section MUST NOT draw down the budget or appear in the records and counters. The resource declined to serve it; metering the refusal would make exhaustion self-perpetuating.
 
-The fresh resource token SHOULD carry updated `budget_consumed` records (#budget-consumed), which show the PS what the last several grants were actually consumed — the context for deciding whether to authorize more.
+The fresh resource token SHOULD carry updated `budget_consumed` records (#budget-consumed), first among them the presented token's own spend to date — the context for deciding whether to authorize more, and the figure that tells the issuer how much of the refused allocation was actually consumed.
 
 ## The `reason` Parameter {#reason-parameter}
 
@@ -725,8 +727,8 @@ A resource challenging because the budget is exhausted rather than because the t
 HTTP/1.1 401 Unauthorized
 AAuth-Requirement: requirement=auth-token;
     resource-token="eyJ..."; reason=budget-exhausted
-AAuth-Budget: cost=180000; remaining=0;
-    unit="USD"; decimals=6
+AAuth-Budget: cost=180000, remaining=0,
+    unit="USD", decimals=6
 ```
 
 `reason` is a Token. This document defines two values:
@@ -744,8 +746,8 @@ A resource refusing under `insufficient-budget` has computed the request's maxim
 HTTP/1.1 401 Unauthorized
 AAuth-Requirement: requirement=auth-token;
     resource-token="eyJ..."; reason=insufficient-budget
-AAuth-Budget: remaining=150000; required=400000;
-    unit="USD"; decimals=6
+AAuth-Budget: remaining=150000, required=400000,
+    unit="USD", decimals=6
 ```
 
 The agent now knows both halves of the refusal: it has 0.15, and the request needed 0.40. Without `required` it knows only the first, and the move (#exhaustion) offers it — lower the request's bound and retry on the token it already holds — becomes a search. It cannot compute the figure itself, because the bound is the resource's own calculation against its own pricing, and no part of this specification requires a resource to publish what an operation costs.
@@ -785,6 +787,16 @@ A budget is scoped to the auth token that carries it and expires with it. There 
 The budget is revoked with the token. Any AAuth server that issues tokens MAY provide a revocation endpoint, and revoking an auth token by `(iss, jti)` (([@!I-D.hardt-oauth-aauth-protocol]), Token Revocation) ends its budget along with the rest of its authorization. Consumption already committed is unaffected — a budget is a ceiling on spending, not a claim on what was spent — and a request already in flight completes, because revocation stops a token being used again rather than interrupting a call. This document adds nothing to that mechanism; it is named here because a person hitting stop expects the money to stop, and expiry alone bounds that at an hour.
 
 Two conditions return the agent to the PS, and either is sufficient. The auth token expires, which the base protocol caps at one hour. Or its budget is exhausted (#exhaustion), which happens after however much work it took to spend. Expiry is proportional to time and exhaustion is proportional to spend, so the supervision interval tracks whichever is moving faster: a mission running cheaply reports on the hour, one running expensively reports in minutes, and no party configures the difference.
+
+## Unreported Allocations {#unreported-allocations}
+
+An allocation can expire before its issuer sees a figure for it: the agent that would have carried consumption records back has crashed or been abandoned, and the next usage query has not happened. The issuer then knows a grant was live and nothing about what it consumed — the true figure is anywhere from zero to the full `amount`.
+
+Until a figure arrives, the issuer MUST account for the allocation as fully consumed. The error modes are not symmetric: an issuer that assumes less than was spent sizes the next allocation against headroom that may not exist and can overrun the ceiling it holds, while one that assumes the maximum is at worst temporarily conservative, which the next figure corrects. This is (#ambiguous-failure) applied to the other end of the grant — the party missing a figure assumes the maximum until a real one supersedes it.
+
+Reconciliation is idempotent where the channel names the token. A consumption record is a `{jti, consumed}` pair whose `consumed` is that token's total (#budget-consumed), so a record arriving late — or arriving again — replaces the assumption for that token rather than adding to it. Usage counters and per-key figures (#usage-counters) name no `jti`; they are aggregates the issuer reconciles against its own ledger of what it assumed.
+
+The rule falls on every party that sized the allocation against a ceiling it holds. In three-party access that is the PS (#ps-decision). In four-party access it is also the AS, which issues against the ceiling the PS stated (#as-token-endpoint) and may apply credit or risk limits of its own (#narrowing-chain). The AS is not a usage-endpoint caller (#usage-authorization) and takes its figures from the resource directly, outside this protocol; the channel differs, the rule does not.
 
 ## Aggregation {#aggregation}
 
@@ -1146,6 +1158,9 @@ This document has not been submitted to the datatracker. Everything below is a c
 
 ## Exploratory Changes {#exploratory-changes}
 
+- Stated that `budget_consumed` includes the presented token (#budget-consumed): a resource challenging a request that carried an auth token SHOULD report that token's spend to date, first in the array. The records previously named only "prior" tokens, which read as excluding the one figure the issuer cannot compute — under `insufficient-budget`, how much of the refused allocation was actually spent. A record for an unexpired token is a snapshot; a later record with the same `jti` supersedes it. In four-party access the resource token reaches the AS inside the PS's token request, so both issuers get the figure without a usage query.
+- Added Unreported Allocations (#unreported-allocations): an allocation that expires before its issuer sees a figure for it is accounted as fully consumed until one arrives, with reconciliation idempotent where the channel names the token. Stated for the issuer — the PS, and in four-party access also the AS, whose figures arrive from the resource directly. Raised from production, where a gate already applies the rule; the document's only conservative-direction rule was the agent-side one (#ambiguous-failure).
+- Corrected the `AAuth-Budget` examples to comma-separate Dictionary members. Five examples used semicolons — the parameter separator — which a Structured Field parser rejects. Caught in production by an implementation round-tripping the examples through an SFV parser. The `AAuth-Requirement` examples are unchanged; their semicolons delimit parameters on the `requirement` member, which is correct.
 - Dropped the `unit` request parameter from the usage endpoint. It existed for a resource metering one person in more than one unit, which (#non-goals) already discourages, and it bought an error condition and an arbitrary notion of a primary unit. The response reports in the unit the resource meters in and says which that is.
 - Made signing the usage response RECOMMENDED rather than REQUIRED (#signed-response). It would be the first response-side signature in the family, the figures are decision context rather than authorization, and a person server refusing an unsigned response is left with no figures rather than unattributable ones.
 - Stated that the granted budget is an allocation drawn against a ceiling the PS holds and may not share with the agent, rather than the person's whole authorization. This was the design throughout and was nowhere written down; a reviewer read the document end to end and concluded a durable grant was missing. See the Introduction and (#why-not-the-ceiling).

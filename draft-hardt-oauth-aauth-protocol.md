@@ -1084,7 +1084,7 @@ The agent MUST make a signed POST to the PS's `auth_token_endpoint`. The request
 - `resource_token` (REQUIRED): The resource token.
 - `upstream_token` (OPTIONAL): An auth token from an upstream authorization, used in call chaining (#call-chaining).
 - `subagent_token` (OPTIONAL): A sub-agent's agent token, present when a parent agent requests authorization on behalf of one of its sub-agents (#sub-agents). The signing agent (the parent) MUST be named by the `subagent_token`'s `parent_agent`.
-- `justification` (OPTIONAL): A Markdown string declaring why access is being requested. The PS SHOULD present this value to the user during consent. The PS MUST sanitize the Markdown before rendering to users. The PS MAY log the `justification` for audit and monitoring purposes. **TODO:** Define recommended sections.
+- `justification` (OPTIONAL): A Markdown string declaring why access is being requested. The PS SHOULD present this value to the user during consent, and MUST present it as agent-asserted content (#consent-presentation). The PS MUST sanitize the Markdown before rendering to users. The PS MAY log the `justification` for audit and monitoring purposes. This document defines no section structure for the value. The justification states why the agent wants the access; what the access does is stated by the resource, and the person weighs the one against the other. It is also the text the user's clarification questions are asked about (#clarification-chat).
 - `login_hint` (OPTIONAL): Hint about who to authorize, per [@!OpenID.Core] Section 3.1.2.1.
 - `tenant` (OPTIONAL): Tenant identifier, per OpenID Connect Enterprise Extensions 1.0 [@OpenID.Enterprise].
 - `domain_hint` (OPTIONAL): Domain hint, per OpenID Connect Enterprise Extensions 1.0 [@OpenID.Enterprise].
@@ -1193,6 +1193,24 @@ When an interaction cannot be completed successfully, the server MUST redirect t
 | `interaction_expired` | The interaction session expired before the user completed the flow. |
 
 Recipients of a callback with an `error` parameter MUST NOT treat the pending request as completable and MUST surface the error to the caller. In the resource-initiated interaction flow (#resource-initiated-interaction), the PS maps the received callback error to a polling error returned to the agent: `access_denied` maps to `denied`; `user_abandoned` maps to `abandoned`; `interaction_expired` maps to `expired`; `server_error` and `temporarily_unavailable` map to `server_error`.
+
+## Consent Presentation {#consent-presentation}
+
+A consent surface carries content from two sources, and the person deciding cannot weigh it without knowing which is which.
+
+**Resource-asserted** content comes from the party that will carry out the access: the `name`, `description`, `logo_uri`, and `scope_descriptions` in the resource's metadata (#resource-metadata), any claim in the resource token the agent presented (#resource-tokens), and the `display` section of an R3 document ([@?I-D.hardt-aauth-r3]).
+
+**Agent-asserted** content comes from the party asking for the access: the `justification`, `platform`, and `device` parameters of the token request (#ps-token-endpoint), and the agent's clarification responses (#clarification-chat).
+
+The two carry different weight. What the resource asserts describes what the access does, and reaches the PS either signed by the resource or fetched from it. What the agent asserts is the agent's account of why it wants the access: the agent chooses the words and gains from being believed. An agent writing into an undifferentiated consent screen can describe an operation as something other than what the resource says it is, and the person has no way to tell the two apart.
+
+A PS MUST visually distinguish resource-asserted content from agent-asserted content when rendering a consent surface, and MUST attribute agent-asserted content to the agent.
+
+A PS MUST NOT base an authorization decision solely on agent-asserted content where resource-asserted content covering the same operation is available.
+
+Neither requirement suppresses the justification. It is what the person asks clarification questions about (#clarification-chat) and what the PS evaluates against the mission (#missions-overview); it is presented, and presented as the agent's claim.
+
+Where the decision-maker is not a person reading a screen — an organizational policy engine, or an AI evaluating on the person's behalf — the PS MUST convey the same distinction in whatever form that context takes.
 
 ## Clarification Chat
 
@@ -3078,6 +3096,12 @@ All AAuth tokens are proof-of-possession tokens. The holder must prove possessio
 
 All protocol inputs — JSON request bodies, clarification responses, justification strings, mission descriptions, and token claims — are untrusted input from potentially adversarial parties. This is consistent with standard web security practice where HTTP request bodies, headers, and query parameters are always treated as untrusted. Implementations MUST sanitize all values before rendering to users and MUST validate all values before processing. Markdown fields MUST be sanitized before rendering to prevent script injection.
 
+## Agent Control of the Consent Surface {#agent-consent-surface-control}
+
+The `justification` is written by the party requesting the access and rendered on the surface where the person decides whether to grant it. Sanitizing it prevents script injection; it does not prevent the agent from describing the access as something other than what the resource says it is, understating what an operation touches, or asserting a purpose the resource's own `description` and `scope_descriptions` contradict. The same holds for `platform`, `device`, and clarification responses, all of which are agent-attested.
+
+The mitigation is attribution rather than filtering. A PS MUST distinguish resource-asserted from agent-asserted content, and MUST NOT decide on agent-asserted content alone where resource-asserted content covering the same operation is available (#consent-presentation). A PS that renders the agent's text and the resource's text with the same weight has given the agent an equal voice in describing its own request.
+
 ## Interaction Code Misdirection
 
 An attacker could attempt to trick a user into approving an authorization request by directing them to an interaction URL with the attacker's code. The PS mitigates this by displaying the full request context — the agent's identity, the resource being accessed, and the requested scope — so the user can recognize requests they did not initiate. A stronger mitigation is for the PS to interact directly with the user via a pre-established channel (push notification, email, or existing session) using `requirement=approval`, which eliminates the possibility of misdirection through attacker-supplied links entirely.
@@ -3426,6 +3450,9 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-11
+  - Added Consent Presentation, naming the two kinds of content a consent surface carries and what the PS MUST do with them. Resource-asserted content is the resource's metadata (`name`, `description`, `logo_uri`, `scope_descriptions`), the claims of the resource token, and an R3 `display` section; agent-asserted content is `justification`, `platform`, `device`, and clarification responses. A PS MUST visually distinguish the two and attribute the agent's, and MUST NOT decide on agent-asserted content alone where resource-asserted content covering the same operation is available. Nothing previously required the distinction, so a person reading a consent screen could not tell which party asserted what, and the agent controlled one of the two.
+  - Added the Security Considerations subsection Agent Control of the Consent Surface. Sanitizing the `justification` prevents script injection and nothing else; the agent can still describe the access as something other than what the resource says it is. The mitigation is attribution, not filtering.
+  - Resolved the `justification` TODO. No section structure is defined for the value: the justification says why the agent wants the access, the resource says what the access does, and the person weighs the one against the other. The parameter now points at Consent Presentation and at clarification chat.
   - Three places still said a resource discovers the agent's PS from the `ps` claim in the agent token — the three-party access mode, the bootstrapping requirements, and the claim's own definition — which the Design Rationale already contradicted. The agent token's `ps` is the advance signal that the agent has a person server, which is what lets a resource decide to challenge for a person token. The PS of an issued authorization is the `iss` of the person token the resource verified, which the resource copies into the resource token's `ps`.
   - Corrected the JWT Claims Registrations table. `ps` was registered twice; the two rows are collapsed into one covering agent, resource, and auth tokens. `agent` is no longer a claim in any token and its row is removed — it survives only as a member of the mission blob, which is not a JWT. Added `presented_jti`, `account`, and `interaction`, none of which were registered.
   - Established the AAuth Access Mode Value Registry, seeded with `agent-token`, `person-token`, `session-token`, and `auth-token`. The `access_mode` field was described as a closed list of four, which left no room for the `per-call` value R3 defines; the registry is how the other extensible AAuth value spaces are already handled.
@@ -3529,7 +3556,7 @@ The following implementations are known:
 
 # Acknowledgments
 
-The author would like to thank reviewers for their feedback on concepts and earlier drafts, and contributors who raised issues and pull requests: Aaron Parecki, Ben McAdams, Christian Posta, Danny Fuhriman, Dasith Wijesiriwardena, Frederik Krogsdal Jacobsen, He Gu, Jared Hanson, Jeoffrey Haeyaert, João André Marques, Joshua Gay, Karl McGuinness, Ken Huang, Lukas Friman, Mark Hendrickson, Mayur Agnihotri, Nate Barbettini, Nick Gamb, Paul Carleton, Rohan Harikumar, Sanjay Dalal, Scott Motte, Wils Dawson, Zeeshan Khan.
+The author would like to thank reviewers for their feedback on concepts and earlier drafts, and contributors who raised issues and pull requests: Aaron Parecki, Ben McAdams, Christian Posta, Danny Fuhriman, Dasith Wijesiriwardena, David Brossard, Frederik Krogsdal Jacobsen, He Gu, Jared Hanson, Jeoffrey Haeyaert, João André Marques, Joi Ito, Joshua Gay, Karl McGuinness, Ken Huang, Lukas Friman, Mark Hendrickson, Mayur Agnihotri, Nate Barbettini, Nick Gamb, Paul Carleton, Rohan Harikumar, Sanjay Dalal, Scott Motte, Wils Dawson, Yolanda Cao, Zeeshan Khan.
 
 {backmatter}
 

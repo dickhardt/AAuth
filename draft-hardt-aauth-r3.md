@@ -55,6 +55,26 @@ organization = "Hellō"
 </reference>
 
 
+<reference anchor="I-D.rosomakho-oauth-txn-challenge" target="https://datatracker.ietf.org/doc/draft-rosomakho-oauth-txn-challenge">
+  <front>
+    <title>OAuth Transaction Authorization Challenge</title>
+    <author initials="Y." surname="Rosomakho" fullname="Yaroslav Rosomakho">
+      <organization>Zscaler</organization>
+    </author>
+    <author initials="B." surname="Campbell" fullname="Brian Campbell">
+      <organization>Ping Identity</organization>
+    </author>
+    <author initials="K." surname="McGuinness" fullname="Karl McGuinness">
+      <organization>Independent</organization>
+    </author>
+    <author initials="P." surname="Kasselman" fullname="Pieter Kasselman">
+      <organization>Defakto Security</organization>
+    </author>
+    <date year="2026" month="June"/>
+  </front>
+</reference>
+
+
 .# Abstract
 
 This document defines AAuth Rich Resource Requests (R3), an extension to the AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]) that enables structured, vocabulary-based authorization for resource access. Resources publish R3 documents (content-addressed authorization definitions) and advertise vocabularies describing their operations. Agents request access using those vocabularies. Auth tokens carry granted operations in the same vocabulary format, enabling resources to enforce authorization directly from the token. Resources annotate individual operations in their vocabulary with the credential each requires, so an agent can plan before its first call. R3 provides human-displayable context for consent decisions and content-addressed audit provenance via the `r3_s256` hash in auth tokens.
@@ -640,7 +660,7 @@ An `r3_per_call` operation is authorized in principle but not for any specific c
 
 A **per-call proposal** is the document that carries the specifics of that one pending call. It is an R3 document scoped to a single invocation: same structure, same content-addressing (#content-addressing), and the same AS/PS-only fetch restriction as a class R3 document. Reusing content-addressing keeps tokens small — they carry only the `r3_uri`/`r3_s256` reference, never the parameters — and binds the eventual approval to the exact call that was proposed.
 
-## Proposal Document
+## Proposal Document {#proposal-document}
 
 In addition to the R3 document fields (#r3-document), a per-call proposal carries:
 
@@ -651,6 +671,10 @@ In addition to the R3 document fields (#r3-document), a per-call proposal carrie
 - `s256` (REQUIRED). `BASE64URL(SHA-256(value-bytes))` of the parameter value as it will be presented at call time.
 - `excerpt` (OPTIONAL). A short, human-readable excerpt of the value for display.
 - `media_type` (OPTIONAL). The media type of the value.
+
+**`result`** (OPTIONAL). What the resource holds, present only when the resource has already run the operation and is seeking approval to release the result to the agent (#release-gating). Its absence means the call has not run and the approval is for execution.
+
+Its members are resource-defined. They describe the result in terms the AS can evaluate and the PS can act on — how many records came back, which categories of data they hold — and they are what a later request from the same agent is judged against (#release-gating). The result itself is not carried, and the prose a person reads belongs in `display`, as it does for any other proposal.
 
 **`display`** (RECOMMENDED). Per-call human context for the user's approval decision. In addition to the structured fields defined in (#r3-document), a proposal's `display` MAY include a `detail` Markdown string. The following sections are RECOMMENDED as a convention (not normative requirements): `## Action`, `## To` / `## Recipient`, `## Details`, `## Content` (excerpt), `## Irreversible`.
 
@@ -670,18 +694,55 @@ In addition to the R3 document fields (#r3-document), a per-call proposal carrie
 }
 ```
 
-## Flow
+## Flow {#per-call-flow}
 
 1. **Per-call challenge.** The agent invokes an `r3_per_call` operation. The resource builds the proposal, persists it keyed by its `r3_s256`, and returns `AAuth-Requirement` with a resource token whose `r3_uri`/`r3_s256` reference the proposal — either as a `401` the agent retries, or as a `202 Accepted` deferred delivery that holds the invocation ([@!I-D.hardt-oauth-aauth-protocol]). A resource that can hold the invocation SHOULD use `202`: the parameters never leave its hands, so the verification in step 3 disappears and the agent never reconstructs the call. The token carries only the reference, not the parameters.
 2. **Approval.** The AS fetches the proposal and evaluates `parameters` per policy; the PS renders `display` for user consent. On approval, the AS issues a per-call auth token that echoes the proposal's `r3_uri`/`r3_s256` and lists the now-approved operation in `r3_granted`.
 3. **Enforced completion.** Under `202`, the resource executes the held call when a valid per-call auth token arrives at the pending URL; there are no parameters to verify, because the agent never re-sends the call. Under `401`, the agent retries the actual call with the per-call auth token, and the resource recovers the proposal from its store via `r3_s256` and MUST verify that the agent's actual parameters match the approved proposal: inline parameter values MUST be compared structurally (JSON value equality — member order and insignificant whitespace do not affect the result), and for any parameter represented as a digest the resource MUST verify that `BASE64URL(SHA-256(presented-value))` equals the stored `s256`, so the agent MUST present those values byte-identically. If anything differs, the resource MUST reject the call. An approval to email one recipient cannot be replayed against another.
 4. **Single use.** The grant is consumed by the call it approved, on either delivery. A resource MUST NOT execute more than one invocation under one per-call auth token: under `202`, completion consumes the pending record; under `401`, the resource MUST mark the stored proposal consumed when it executes the call. A repeated presentation of the same per-call auth token MUST be answered from the retained result of the executed call, not executed again — the first response can be lost in transit, and the agent cannot otherwise distinguish "not executed" from "executed, response lost". The resource SHOULD retain the result at least until the auth token's `exp`.
 
-## Large and Sensitive Payloads
+## Large and Sensitive Payloads {#large-and-sensitive-payloads}
 
 Representing a parameter as a digest keeps large or sensitive payloads out of every token and away from the PS: only the `s256` and a short `excerpt` appear in the proposal. The full bytes travel directly from the agent to the resource at call time, where the resource verifies them against the digest. This is also a privacy control — the resource chooses what the PS (and through it, the user-facing surface) sees versus what stays between the agent and the resource.
 
 Whether the AS or PS additionally *machine-evaluates* `parameters` (for example, auto-denying a payment over a threshold) or treats the proposal as display-for-human-consent only is deployment policy. The parameters are present in the proposal either way, so machine policy can be layered on without a format change.
+
+## Approving Release Rather Than Execution {#release-gating}
+
+For an operation with no side effects, nothing irreversible has happened when the resource runs it. What needs authorization is not the execution but the release of the result to the agent. A resource holding the invocation under the `202` deferred delivery is already choosing when the call runs; holding it after execution rather than before is invisible on the wire, and the agent's flow is unchanged. The `access_mode` remains `per-call`. This is a different thing for the resource to put in the proposal, not a different mode.
+
+Two things follow from executing first.
+
+The proposal can describe the actual result rather than infer consequence from the parameters. The resource already knows what the agent cannot — whether the table holds ten records or ten million — and executing generalizes that from what the target is to what this call returns. How many rows came back, which categories of field are present, and whether the result contains material the resource considers sensitive are not derivable from the query text. The person is told what will actually be disclosed.
+
+There is no drift. The result is fixed at the moment of execution, so the approval covers bytes that already exist. Under `401` the comparison in step 3 of the flow (#per-call-flow) has nothing to compare, and the parameter-substitution concern that step exists to address does not arise.
+
+When the resource has executed the operation before seeking approval, `display` MUST state that the operation has run and that what is being approved is release of its result. Approving execution and approving disclosure of a computed result are different decisions, and a person who approves believing they are gating execution has been misled about what their approval controls.
+
+A resource MUST NOT execute before approval where the execution is itself the audited, metered, or billed event. Where running the operation is what an access-logging regime records, what a rate limit or meter counts, or what triggers a call to another party, the execution has consequences of its own and the approval MUST precede it. The test is whether anything outside the result changes when the call runs.
+
+The resource decides what of the result it puts in the proposal and what it releases. It may have its own reason to withhold or redact — the result contains personal data, or material the resource has determined this person or this agent should not receive — and the per-call proposal is where it says so, through what it puts in `result` and `display` and what it then releases. The PS and the AS see only what the resource chose to put in the proposal. This is the privacy control already stated for parameter digests (#large-and-sensitive-payloads), applied on the output side, and it is why the release decision belongs to the resource rather than being derivable by the AS from the parameters.
+
+```json
+{
+  "vocabulary": "urn:aauth:vocabulary:openapi",
+  "operations": [ { "operationId": "runQuery" } ],
+  "parameters": { "query": "SELECT * FROM employees WHERE department = 'Engineering'" },
+  "result": {
+    "records": 214,
+    "contains": ["national_id", "compensation", "home_address"]
+  },
+  "display": {
+    "summary": "Release the result of a query over employee records",
+    "data_accessed": "214 employee records, including national identifiers, compensation, and home addresses",
+    "detail": "## Action\nThis query has already run. What you are approving is release of its result to the agent.\n\n## Details\n214 rows. The query selected every column, so the result carries national identifiers, compensation, and home addresses, none of which the query text names."
+  }
+}
+```
+
+What `result` says also outlives the release decision. A person approving release learns what the agent is about to hold, and so does the PS: an agent granted a result carrying national identifiers is an agent that now holds them, and the PS evaluates its next token request in that knowledge. A PS MAY approve release into a mission and refuse the agent's subsequent request to send the same data to another resource. The PS is the only party positioned to make that judgment — it sees every request the agent makes across resources, where each resource sees only its own — and `result` is what gives it something to judge. This document defines no vocabulary for the members a resource states and requires no PS to act on them. The decision is governance, made against the mission ([@!I-D.hardt-oauth-aauth-protocol]), not enforcement at the resource.
+
+Budget accounting for a call that has been executed but not released is unresolved. A resource that meters by execution has spent what the call cost whether or not the result is released, and a person who declines release has drawn down a budget for nothing. This is the same shape as the accounting of failed calls, which AAuth Budgets ([@?I-D.hardt-aauth-budgets]) leaves open, and this document does not resolve it.
 
 # Security Considerations
 
@@ -778,6 +839,11 @@ There are currently no known implementations.
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-aauth-r3-02
+  - Rewrote Why Not RAR and the Comparison with RAR table. The argument led with directionality — RAR client-declared, R3 resource-declared — which is no longer the live counterposition: OAuth Transaction Authorization Challenge ([@?I-D.rosomakho-oauth-txn-challenge]) has the protected resource sign `authorization_details` in a challenge from which the AS derives the granted authorization details. The comparison is now against resource-declared RAR, and rests on content addressing, agent opacity, and carriage by reference. The complementary position is kept and restated.
+  - Added Approving Release Rather Than Execution: for an operation with no side effects, a resource MAY run the call and seek approval to release the result rather than to execute. No wire change — `access_mode` stays `per-call` and the `202` deferred delivery already holds the invocation. The proposal then describes the actual result rather than inferring consequence from parameters, and there is nothing for the `401` comparison step to compare.
+  - Added the OPTIONAL `result` member to the proposal document. Its presence signals that the resource has run the operation and is seeking approval to release the result; its resource-defined members describe what the result holds, which is what the PS judges the agent's next request against. The result itself is not carried, and no digest of it: the resource would be hashing bytes only it holds, which no reader of the proposal ever obtains to check it against.
+  - `display` MUST state that the operation has run where the resource executed before seeking approval, and a resource MUST NOT execute before approval where execution is itself the audited, metered, or billed event. Also stated that the resource decides what of the result it puts in the proposal and what it releases — the same privacy control as for parameter digests, applied on the output side.
+  - Flagged, without resolving, budget accounting for a call executed but not released. Same shape as the open accounting of failed calls in AAuth Budgets ([@?I-D.hardt-aauth-budgets]).
   - Brought the base-claim recitals in Resource Token Extensions and Auth Token Extensions up to AAuth Protocol -11. The `agent` claim is gone from both tokens: a resource token now carries `ps`, `sub`, and `presented_jti`, and an auth token carries `ps` and a REQUIRED directed `sub`, with `mission_s256` OPTIONAL. The examples were updated to match, including the auth token's `sub`, which showed an email address where the value is an opaque directed identifier.
   - AS Processing required the AS to log "the agent identifier" against a resource token that no longer carries one. The step now names identifiers the AS actually holds — `ps`, `sub`, and `agent_jkt` from the resource token — and says where the agent identifier does come from: the `sub` of the `agent_token` the PS is REQUIRED to send on the PS-to-AS token request, or of the `subagent_token` where one is present. An AS reached any other way has no agent token and MUST NOT infer an agent identity.
   - R3 Document Access Restriction identified the entitled PS by the `ps` claim of the agent token. Under -11 an agent presents a person token in place of its agent token at the authorization endpoint, so the resource may never see an agent token, and that claim is OPTIONAL in any case. The entitled PS is now the issuer of the person token the resource verified, which is the REQUIRED `ps` claim of the resource token the resource itself issued.
@@ -809,17 +875,17 @@ The author would like to thank reviewers for their feedback, and Ben McAdams for
 
 ## Why Not RAR
 
-OAuth 2.0 Rich Authorization Requests ([@RFC9396]) defines `authorization_details` as a structured extension to authorization requests. RAR is a natural reference point for this work. R3 deliberately does not use or profile RAR for the following reasons:
+OAuth 2.0 Rich Authorization Requests ([@RFC9396]) defines `authorization_details` as a structured description of the access being authorized. RAR is a natural reference point for this work, and R3 deliberately does not use or profile it.
 
-**Directionality.** RAR is client-declared: the agent constructs `authorization_details` and sends it to the AS. The agent defines what it wants. R3 is resource-declared: the resource defines what access it provides and signs that definition. The agent cannot modify or reframe it. This is the opposite directionality, and the security properties depend on it.
+The difference is not directionality. RAR does not require that the client author `authorization_details`, and OAuth Transaction Authorization Challenge ([@?I-D.rosomakho-oauth-txn-challenge]) has the resource author them: the protected resource returns a signed challenge whose `authorization_details` describe the operation it will not perform without approval, the AS validates the challenge and obtains that approval, and the access token it issues carries granted authorization details derived from the challenge. That is resource-declared authorization detail, expressed in RAR. Three properties of R3 survive that comparison.
 
-**Agent opacity.** In R3, the R3 document is fetched by the AS directly from the resource, restricted to AS-only access. The agent carries a hash of a document it cannot read. RAR has no equivalent because the client constructs the authorization details and necessarily knows their content.
+**Content addressing.** An R3 document is identified by the hash of the bytes the resource served (#content-addressing). The `r3_uri` and `r3_s256` in an auth token name the exact document that was in effect at approval time, and a later reader re-fetches those bytes and verifies the hash, so the audit record is checkable rather than asserted. A challenge carries its `authorization_details` inline — in the challenge, and again in the token — and nothing versions or addresses them. Two grants over the same operation are two independent copies with no identity relating them, and there is nothing to re-fetch.
 
-**Content addressing.** R3 uses a content-addressed URI plus SHA-256 hash to pin the exact authorization semantics in effect at approval time. An auth token carrying `r3_uri` and `r3_s256` is a permanent, verifiable record. RAR carries no equivalent versioning or integrity guarantee.
+**Agent opacity.** The agent relaying a transaction authorization challenge can read it: the challenge is a signed JWT the client is required to validate, its `reason` is intended for display, and its `reason_uri` is dereferenceable by the client. An R3 agent carries the hash of a document the resource will refuse to serve it (#r3-document-access-restriction). What the access does, what data it touches, and what cannot be undone reach the PS and the AS and never the agent.
 
-**Audit trail.** The AS records `r3_uri` in its audit log, creating a durable reference to the exact R3 document version. This is not possible with RAR's inline `authorization_details` structure.
+**By-reference size.** R3 parameters never enter a token. A large or sensitive value is carried as a digest with an optional excerpt (#large-and-sensitive-payloads), so the bytes travel directly from the agent to the resource and the proposal the PS renders holds only what the resource chose to put there. Inline `authorization_details` puts every value in the challenge and in the token, which bounds how much of a call can be described and leaves the resource no way to describe a value without disclosing it.
 
-RAR and R3 are complementary. RAR remains appropriate for client-declared authorization detail. R3 addresses the resource-declared case that RAR was not designed for.
+RAR and R3 remain complementary. RAR is the OAuth-native way to express structured authorization detail, whichever party authors it, and a deployment already carrying `authorization_details` end to end has a working vocabulary for the operation being authorized. R3 addresses what an inline structure cannot provide: a fixed identity for the semantics that were approved, a description the agent cannot read, and parameters carried by digest.
 
 # Vocabulary Summary
 
@@ -837,10 +903,11 @@ RAR and R3 are complementary. RAR remains appropriate for client-declared author
 
 | Property | RAR ([@RFC9396]) | R3 |
 |----------|---------------|----|
-| Who declares | Client (agent) | Resource |
-| Direction | Client -> AS | Resource -> AS (via agent carrier) |
-| Agent visibility | Agent constructs the detail | Agent carries opaque token |
-| Versioning | None | Content-addressed URI + hash |
-| Audit trail | Inline in request | `r3_uri` recorded by AS |
-| Human display | Not specified | `display` section in R3 document |
-| Irreversibility signal | Not specified | `display.irreversible` field |
+| Who declares | Client, or the resource in a challenge | Resource |
+| Carriage | Inline, in the challenge and the token | Content-addressed document |
+| Agent visibility | Reads what it relays | Carries a hash it cannot resolve |
+| Versioning | None | URI plus hash |
+| Audit trail | Inline copy | `r3_uri` and `r3_s256`, re-fetchable |
+| Large values | Inline | Digest with optional excerpt |
+| Human display | `reason` in a challenge | `display` section |
+| Irreversibility | Not specified | `display.irreversible` |
