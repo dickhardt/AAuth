@@ -557,7 +557,7 @@ Signature-Key: sig=jwks_uri;
 
 The PS MUST copy `unit` and `decimals` from the resource token's `budget` claim unchanged, and MUST NOT set `amount` higher than the resource token's `budget.amount`. The AS MUST NOT issue a `budget` claim exceeding this parameter, and MAY lower it further.
 
-When the resource token carries `budget` and the PS omits this parameter, the AS MUST treat the resource token's `budget` as the PS's ceiling.
+When the resource token carries `budget` and the PS omits this parameter, the AS MUST NOT issue a `budget` claim. A PS that grants the resource's full offer says so by echoing the resource token's `budget`; omission is what a PS that does not implement this extension sends, and it MUST NOT be read as a grant. The auth token then carries no allocation, and the resource applies its own default to it (#auth-token). Reading omission as the full offer would turn a PS's non-participation into the maximum grant, the opposite of what ignoring an unrecognized claim is meant to do.
 
 # Auth Token Extensions {#auth-token}
 
@@ -1164,6 +1164,7 @@ This document has not been submitted to the datatracker. Everything below is a c
 
 ## Exploratory Changes {#exploratory-changes}
 
+- Required an affirmative PS ceiling in four-party access (#as-token-endpoint). When the resource token carries `budget` and the PS-to-AS request omits the `budget` parameter, the AS issues no `budget` claim; a PS granting the full offer echoes it. Omission previously meant the resource's full offer, which made a PS that had not implemented this extension indistinguishable from one deliberately granting the maximum.
 - Reduced `budget_consumed` from an array of up to twenty records to one record, the presented token's (#budget-consumed). Every other record duplicated a figure the issuer already had or would settle from a usage reading; the list cost a kilobyte in the `401` header and told an agent what was spent under tokens it never held. The `jti` stays so that concurrent allocations settle exactly. Stated when a record is final: a record is as of its resource token's `iat`, and final when that is at or after the auth token's `exp`. Rationale in (#why-one-record). Addresses issue #120.
 - Admitted the AS as a usage endpoint caller (#usage-authorization). The endpoint was PS-only on the assumption that an AS sits in the resource's trust domain and takes its figures outside the protocol. A general-purpose AS does not, and it sizes allocations against a ceiling of its own, so it needs the same channel; the response `aud` names whichever issuer asked.
 - Added (#settlement) under Unreported Allocations: a final consumption record settles one token early; a usage reading settles every allocation expired by its `as_of` in aggregate, without naming any of them; and a calendar ceiling settles itself when allocations are clipped to the period boundary.
