@@ -2189,7 +2189,7 @@ Table of Contents
      "justification": "I've reduced my request to read-only access."
    }
 
-   The new resource token MUST have the same iss, agent, and agent_jkt
+   The new resource token MUST have the same iss, ps, sub, and agent_jkt
    as the original.  The PS presents the updated request to the user.  A
    justification is OPTIONAL but RECOMMENDED to explain the change to
    the user.
@@ -2681,10 +2681,11 @@ Table of Contents
       mission as terminated.  When absent, the mission runs until it is
       completed or revoked.  Every PS decision path that acts on a
       mission MUST compare the current time to expires_at and MUST treat
-      a mission past it as terminated Section 9.8.  No token carrying
-      mission_s256 — person, resource, or auth — may have an exp later
-      than expires_at; an issuer MUST shorten the token's lifetime to
-      fit.
+      a mission past it as terminated Section 9.8.  The PS caps the
+      person tokens and auth tokens it issues at expires_at (#person-
+      token-structure, #auth-token-structure), and the person token
+      carries that bound to an AS Section 10.1.1; a resource token's
+      lifetime is independent of it Section 7.8.1.
    *  approved_tools: Array of tool objects (each with name and
       description) that the agent may use without per-call permission at
       the PS's permission endpoint Section 8.6.  Nothing in the protocol
@@ -5398,12 +5399,12 @@ Initial request (with Prefer: wait=N)
        authorization endpoint, or both.  Return AAuth-Access headers
        Section 7.6 for subsequent calls.  This is resource-managed
        access (two-party).
-   3.  *Accept identity claims from any PS*: Read the ps claim from the
-       agent token and issue resource tokens with aud = PS URL.  The
-       agent's PS returns an auth token asserting identity claims about
-       the user and consent for the requested scope; the resource
-       applies its own policy.  This is PS-asserted access (three-
-       party).
+   3.  *Accept identity claims from any PS*: Verify person tokens and
+       issue resource tokens with aud = the iss of the person token
+       verified.  The agent's PS returns an auth token asserting
+       identity claims about the user and consent for the requested
+       scope; the resource applies its own policy.  This is PS-asserted
+       access (three-party).
    4.  *Deploy an access server*: Issue resource tokens with aud = AS
        URL.  The PS federates with the AS.  This is federated access
        (four-party).
@@ -5730,9 +5731,10 @@ Initial request (with Prefer: wait=N)
    repudiation.  Agent keys are short-lived and agent providers rotate
    their JWKS; once a key is removed from the issuer's JWKS, a signature
    made with it can no longer be verified by re-fetching the JWKS later.
-   The persistent identifiers (agent, sub) do not by themselves
-   cryptographically prove that a specific key signed a specific request
-   at a specific time once that key is gone.
+   The persistent identifiers — the agent token's sub and the person's
+   directed sub — do not by themselves cryptographically prove that a
+   specific key signed a specific request at a specific time once that
+   key is gone.
 
    This is partly by design — short-lived keys and directed identifiers
    Section 16.1 limit long-term linkability.  Deployments that require
@@ -6594,6 +6596,13 @@ Initial request (with Prefer: wait=N)
          Link Relation Discovery added to Security Considerations.
          Requested by a developer-portal operator whose agents reach the
          portal before the resource.
+
+      -  Corrected four recitals that earlier -11 changes left behind:
+         the mission blob's expires_at text no longer says a resource
+         token may not outlive it; Updated Request and Non-Repudiation
+         no longer name the removed agent claim; Resource Adoption Path
+         step 3 routes on the verified person token rather than the
+         agent token's ps.
 
    *  draft-hardt-oauth-aauth-protocol-10
 

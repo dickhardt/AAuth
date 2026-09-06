@@ -3585,7 +3585,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 </pre><a href="#section-8.5.2.2-2" class="pilcrow">¶</a>
 </div>
-<p id="section-8.5.2.2-3">The new resource token MUST have the same <code>iss</code>, <code>agent</code>, and <code>agent_jkt</code> as the original. The PS presents the updated request to the user. A <code>justification</code> is OPTIONAL but RECOMMENDED to explain the change to the user.<a href="#section-8.5.2.2-3" class="pilcrow">¶</a></p>
+<p id="section-8.5.2.2-3">The new resource token MUST have the same <code>iss</code>, <code>ps</code>, <code>sub</code>, and <code>agent_jkt</code> as the original. The PS presents the updated request to the user. A <code>justification</code> is OPTIONAL but RECOMMENDED to explain the change to the user.<a href="#section-8.5.2.2-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="cancel-request">
@@ -4044,7 +4044,7 @@ Content-Type: application/json
 <p id="section-9.2-9">The mission blob MAY include:<a href="#section-9.2-9" class="pilcrow">¶</a></p>
 <ul class="compact">
 <li class="compact" id="section-9.2-10.1">
-            <code>expires_at</code>: ISO 8601 timestamp after which the PS treats the mission as terminated. When absent, the mission runs until it is completed or revoked. Every PS decision path that acts on a mission MUST compare the current time to <code>expires_at</code> and MUST treat a mission past it as terminated <a href="#mission-status-errors" class="auto internal xref">Section 9.8</a>. No token carrying <code>mission_s256</code> — person, resource, or auth — may have an <code>exp</code> later than <code>expires_at</code>; an issuer MUST shorten the token's lifetime to fit.<a href="#section-9.2-10.1" class="pilcrow">¶</a>
+            <code>expires_at</code>: ISO 8601 timestamp after which the PS treats the mission as terminated. When absent, the mission runs until it is completed or revoked. Every PS decision path that acts on a mission MUST compare the current time to <code>expires_at</code> and MUST treat a mission past it as terminated <a href="#mission-status-errors" class="auto internal xref">Section 9.8</a>. The PS caps the person tokens and auth tokens it issues at <code>expires_at</code> (#person-token-structure, #auth-token-structure), and the person token carries that bound to an AS <a href="#ps-to-as-token-request" class="auto internal xref">Section 10.1.1</a>; a resource token's lifetime is independent of it <a href="#resource-token-structure" class="auto internal xref">Section 7.8.1</a>.<a href="#section-9.2-10.1" class="pilcrow">¶</a>
 </li>
           <li class="compact" id="section-9.2-10.2">
             <code>approved_tools</code>: Array of tool objects (each with <code>name</code> and <code>description</code>) that the agent may use without per-call permission at the PS's permission endpoint <a href="#permission-endpoint" class="auto internal xref">Section 8.6</a>. Nothing in the protocol enforces this list; see <a href="#why-tools-are-not-enforced" class="auto internal xref">Appendix B.1.10</a>.<a href="#section-9.2-10.2" class="pilcrow">¶</a>
@@ -6438,7 +6438,7 @@ Accept-Signature-Scheme: jwt
             <strong>Manage authorization</strong>: Handle authorization with interaction, consent, or existing infrastructure — via <code>401</code> responses, an authorization endpoint, or both. Return <code>AAuth-Access</code> headers <a href="#aauth-access" class="auto internal xref">Section 7.6</a> for subsequent calls. This is resource-managed access (two-party).<a href="#section-14.3-2.2" class="pilcrow">¶</a>
 </li>
           <li id="section-14.3-2.3">
-            <strong>Accept identity claims from any PS</strong>: Read the <code>ps</code> claim from the agent token and issue resource tokens with <code>aud</code> = PS URL. The agent's PS returns an auth token asserting identity claims about the user and consent for the requested scope; the resource applies its own policy. This is PS-asserted access (three-party).<a href="#section-14.3-2.3" class="pilcrow">¶</a>
+            <strong>Accept identity claims from any PS</strong>: Verify person tokens and issue resource tokens with <code>aud</code> = the <code>iss</code> of the person token verified. The agent's PS returns an auth token asserting identity claims about the user and consent for the requested scope; the resource applies its own policy. This is PS-asserted access (three-party).<a href="#section-14.3-2.3" class="pilcrow">¶</a>
 </li>
           <li id="section-14.3-2.4">
             <strong>Deploy an access server</strong>: Issue resource tokens with <code>aud</code> = AS URL. The PS federates with the AS. This is federated access (four-party).<a href="#section-14.3-2.4" class="pilcrow">¶</a>
@@ -6682,7 +6682,7 @@ Accept-Signature-Scheme: jwt
         <h3 id="name-non-repudiation-and-audit-a">
 <a href="#section-15.17" class="section-number selfRef">15.17. </a><a href="#name-non-repudiation-and-audit-a" class="section-name selfRef">Non-Repudiation and Audit After Key Rotation</a>
         </h3>
-<p id="section-15.17-1">AAuth signatures prove authenticity at request time: a valid HTTP Message Signature shows that the signer held the private key bound to the presented identity when the request was made (proof-of-possession). This is request-time authentication, not long-term non-repudiation. Agent keys are short-lived and agent providers rotate their JWKS; once a key is removed from the issuer's JWKS, a signature made with it can no longer be verified by re-fetching the JWKS later. The persistent identifiers (<code>agent</code>, <code>sub</code>) do not by themselves cryptographically prove that a specific key signed a specific request at a specific time once that key is gone.<a href="#section-15.17-1" class="pilcrow">¶</a></p>
+<p id="section-15.17-1">AAuth signatures prove authenticity at request time: a valid HTTP Message Signature shows that the signer held the private key bound to the presented identity when the request was made (proof-of-possession). This is request-time authentication, not long-term non-repudiation. Agent keys are short-lived and agent providers rotate their JWKS; once a key is removed from the issuer's JWKS, a signature made with it can no longer be verified by re-fetching the JWKS later. The persistent identifiers — the agent token's <code>sub</code> and the person's directed <code>sub</code> — do not by themselves cryptographically prove that a specific key signed a specific request at a specific time once that key is gone.<a href="#section-15.17-1" class="pilcrow">¶</a></p>
 <p id="section-15.17-2">This is partly by design — short-lived keys and directed identifiers <a href="#directed-identifiers" class="auto internal xref">Section 16.1</a> limit long-term linkability. Deployments that require durable audit or non-repudiation beyond a key's lifetime SHOULD capture the evidence at verification time, while the key is still discoverable, rather than relying on re-verification later:<a href="#section-15.17-2" class="pilcrow">¶</a></p>
 <ul class="compact">
 <li class="compact" id="section-15.17-3.1">
@@ -7538,6 +7538,9 @@ Accept-Signature-Scheme: jwt
 </li>
             <li class="normal" id="section-19-2.1.2.50">
               <p id="section-19-2.1.2.50.1">Added the <code>aauth-resource</code> link relation, as a <code>Link</code> header field or an HTML <code>link</code> element, so that a developer portal or an API served from a host other than the resource identifier can point an agent at the resource metadata document. The target is constrained to the well-known URL and the document is verified as any metadata document is, so the link is a pointer and not an authority; verifiers never use it. Registered with IANA; Link Relation Discovery added to Security Considerations. Requested by a developer-portal operator whose agents reach the portal before the resource.<a href="#section-19-2.1.2.50.1" class="pilcrow">¶</a></p>
+</li>
+            <li class="normal" id="section-19-2.1.2.51">
+              <p id="section-19-2.1.2.51.1">Corrected four recitals that earlier -11 changes left behind: the mission blob's <code>expires_at</code> text no longer says a resource token may not outlive it; Updated Request and Non-Repudiation no longer name the removed <code>agent</code> claim; Resource Adoption Path step 3 routes on the verified person token rather than the agent token's <code>ps</code>.<a href="#section-19-2.1.2.51.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
 </li>
