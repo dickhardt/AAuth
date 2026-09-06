@@ -709,23 +709,7 @@ The resource can handle authorization itself, or it can issue a resource token �
 
 ### Response without Resource Token
 
-The resource handles authorization itself. It evaluates the request and returns a deferred response if user interaction is needed:
-
-```http
-HTTP/1.1 202 Accepted
-Location: https://resource.example/authorize/pending/abc123
-Retry-After: 0
-Cache-Control: no-store
-AAuth-Requirement: requirement=interaction;
-    url="https://resource.example/interaction"; code="A1B2-C3D4"
-Content-Type: application/json
-
-{
-  "status": "pending"
-}
-```
-
-The user completes interaction at the resource's own consent page. The agent polls the `Location` URL. When authorization is complete, the resource returns `200 OK` and MAY include an `AAuth-Access` header (#aauth-access) containing a session token for subsequent calls.
+The resource handles authorization itself. If user interaction is needed it returns a `202 Accepted` deferred response with `requirement=interaction` (#resource-managed-auth); the user completes the interaction at the resource's own consent page and the agent polls the `Location` URL. When authorization is complete, the resource returns `200 OK` and MAY include an `AAuth-Access` header (#aauth-access) containing a session token for subsequent calls.
 
 ```http
 HTTP/1.1 200 OK
@@ -1068,20 +1052,7 @@ In both cases, the PS handles user consent if needed and returns one of:
 }
 ```
 
-**User interaction required response** (`202`):
-```http
-HTTP/1.1 202 Accepted
-Location: /pending/abc123
-Retry-After: 0
-Cache-Control: no-store
-AAuth-Requirement: requirement=interaction;
-    url="https://ps.example/interaction"; code="A1B2-C3D4"
-Content-Type: application/json
-
-{
-  "status": "pending"
-}
-```
+**User interaction required response** (`202`): a deferred response with `requirement=interaction` (#interaction-required), of the same shape as (#resource-managed-auth).
 
 In four-party mode, the PS may also pass through a clarification from the AS to the agent via the `202` response (#as-token-endpoint).
 
@@ -2291,7 +2262,7 @@ The `agent-token` requirement is defined in (#requirement-agent-token); the `per
 
 An agent that does not recognize the `requirement` value MUST NOT treat the response as satisfiable. It surfaces the unsupported requirement to the caller as an error. For a `202` response with an unrecognized `requirement`, the agent MAY continue polling the `Location` URL in case a later response carries a requirement value it does understand, rather than immediately abandoning the request.
 
-### Interaction Required
+### Interaction Required {#interaction-required}
 
 When a server requires user action — such as authentication, consent, payment approval, or any decision requiring a human in the loop — it returns a `202 Accepted` response:
 
