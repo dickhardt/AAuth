@@ -1369,29 +1369,29 @@ Table of Contents
 
 7.2.3.  Authorization Endpoint Error Responses
 
-   +======================+========+==================================+
-   | Error                | Status | Meaning                          |
-   +======================+========+==================================+
-   | invalid_request      | 400    | Missing or invalid parameters    |
-   +----------------------+--------+----------------------------------+
-   | invalid_signature    | 401    | HTTP signature verification      |
-   |                      |        | failed                           |
-   +----------------------+--------+----------------------------------+
-   | invalid_person_token | 400    | Person token malformed, expired, |
-   |                      |        | revoked Section 13.7, wrong aud, |
-   |                      |        | or signature verification failed |
-   +----------------------+--------+----------------------------------+
-   | invalid_scope        | 400    | Requested scope not recognized   |
-   |                      |        | by the resource                  |
-   +----------------------+--------+----------------------------------+
-   | invalid_account      | 400    | The account named is not held by |
-   |                      |        | the person the person token      |
-   |                      |        | identifies                       |
-   +----------------------+--------+----------------------------------+
-   | server_error         | 500    | Internal error                   |
-   +----------------------+--------+----------------------------------+
+     +======================+========+===============================+
+     | Error                | Status | Meaning                       |
+     +======================+========+===============================+
+     | invalid_request      | 400    | Missing or invalid parameters |
+     +----------------------+--------+-------------------------------+
+     | invalid_signature    | 401    | HTTP signature verification   |
+     |                      |        | failed                        |
+     +----------------------+--------+-------------------------------+
+     | invalid_person_token | 400    | Person token malformed,       |
+     |                      |        | expired, wrong aud, or        |
+     |                      |        | signature verification failed |
+     +----------------------+--------+-------------------------------+
+     | invalid_scope        | 400    | Requested scope not           |
+     |                      |        | recognized by the resource    |
+     +----------------------+--------+-------------------------------+
+     | invalid_account      | 400    | The account named is not held |
+     |                      |        | by the person the person      |
+     |                      |        | token identifies              |
+     +----------------------+--------+-------------------------------+
+     | server_error         | 500    | Internal error                |
+     +----------------------+--------+-------------------------------+
 
-                                 Table 2
+                                  Table 2
 
    Error responses use the error response format Section 13.6.2.
 
@@ -4347,12 +4347,19 @@ Initial request (with Prefer: wait=N)
    +------------------------+--------+---------------------------------+
    | expired_agent_token    | 400    | Agent token has expired         |
    +------------------------+--------+---------------------------------+
-   | invalid_resource_token | 400    | Resource token malformed,       |
-   |                        |        | revoked by the resource that    |
-   |                        |        | issued it Section 13.7, or      |
+   | invalid_resource_token | 400    | Resource token malformed or     |
    |                        |        | signature verification failed   |
    +------------------------+--------+---------------------------------+
    | expired_resource_token | 400    | Resource token has expired      |
+   +------------------------+--------+---------------------------------+
+   | revoked_resource_token | 400    | The resource that issued the    |
+   |                        |        | resource token has withdrawn    |
+   |                        |        | it Section 13.7.  Terminal      |
+   |                        |        | for that token: the agent       |
+   |                        |        | MUST NOT resubmit it, and MAY   |
+   |                        |        | call the resource again,        |
+   |                        |        | which decides afresh whether    |
+   |                        |        | to issue another.               |
    +------------------------+--------+---------------------------------+
    | expired_person_token   | 400    | The person token named by the   |
    |                        |        | resource token's                |
@@ -4364,12 +4371,21 @@ Initial request (with Prefer: wait=N)
    |                        |        | obtains a fresh person token,   |
    |                        |        | then a fresh resource token.    |
    +------------------------+--------+---------------------------------+
+   | revoked_person_token   | 400    | The person token has been       |
+   |                        |        | revoked by the PS that issued   |
+   |                        |        | it Section 13.7.  Returned by   |
+   |                        |        | a PS that would otherwise       |
+   |                        |        | present it to an AS, and by     |
+   |                        |        | an AS holding the revocation.   |
+   |                        |        | The agent obtains a fresh       |
+   |                        |        | person token, then a fresh      |
+   |                        |        | resource token.                 |
+   +------------------------+--------+---------------------------------+
    | unknown_person_token   | 400    | The person token named by the   |
    |                        |        | resource token's                |
    |                        |        | presented_jti is not among      |
    |                        |        | those the PS retains            |
-   |                        |        | Section 7.8.2, or the PS has    |
-   |                        |        | revoked it Section 13.7         |
+   |                        |        | Section 7.8.2                   |
    +------------------------+--------+---------------------------------+
    | user_unreachable       | 403    | Terminal.  The PS has no        |
    |                        |        | channel to reach the user and   |
@@ -4419,14 +4435,16 @@ Initial request (with Prefer: wait=N)
       | Error        | Status | Meaning                            |
       +==============+========+====================================+
       | denied       | 403    | User or approver explicitly denied |
-      |              |        | the request, or the resource       |
-      |              |        | withdrew the resource token it was |
-      |              |        | started for Section 13.7           |
+      |              |        | the request                        |
       +--------------+--------+------------------------------------+
       | abandoned    | 403    | Interaction code was used but user |
       |              |        | did not complete                   |
       +--------------+--------+------------------------------------+
       | expired      | 408    | Timed out                          |
+      +--------------+--------+------------------------------------+
+      | revoked      | 403    | The resource withdrew the resource |
+      |              |        | token this pending request was     |
+      |              |        | started for Section 13.7           |
       +--------------+--------+------------------------------------+
       | invalid_code | 410    | Interaction code not recognized or |
       |              |        | already consumed                   |
@@ -4583,14 +4601,13 @@ Initial request (with Prefer: wait=N)
    *  *Resource revokes a resource token it issued*: The resource calls
       the revocation endpoint of the party named in the token's aud, and
       in four-party that of the ps as well.  The recipient MUST NOT
-      issue an auth token against that resource token, and SHOULD
-      terminate a pending request it started for it, which the agent
-      reads as denied Section 13.6.4.  A token request naming a revoked
-      resource token is rejected with invalid_resource_token
-      Section 13.6.3.  The window is five minutes at most Section 7, but
-      it spans the wait for user interaction, which is when a resource
-      is most likely to withdraw a request it has already challenged
-      for.
+      issue an auth token against that resource token and rejects a
+      token request naming it with revoked_resource_token
+      Section 13.6.3, and SHOULD terminate a pending request it started
+      for it, which the agent reads as revoked Section 13.6.4.  The
+      window is five minutes at most Section 7, but it spans the wait
+      for user interaction, which is when a resource is most likely to
+      withdraw a request it has already challenged for.
    *  *PS revokes a mission*: The PS marks the mission as revoked.  All
       subsequent token requests referencing that mission's s256 are
       denied.  The PS SHOULD revoke outstanding auth tokens issued under
@@ -4633,28 +4650,46 @@ Initial request (with Prefer: wait=N)
    same bound revocation entries use, and at most one hour for an auth
    token or a person token.
 
-   *Presenting a revoked token.* A recipient holding a revocation for a
-   token refuses the request the same way it refuses a token that is
-   unacceptable for any other reason.  AAuth defines no distinct error
-   to the presenting agent: the recovery is the same — obtain a fresh
-   token — and an error that said "revoked" would tell the caller a
-   revocation exists, the disclosure this endpoint's own response rule
-   avoids.  By token:
+   *Presenting a revoked token.* A revoked token is otherwise sound: it
+   verifies, it has not expired, its aud is right, its claims are
+   intact.  An error saying it is malformed or expired would be false,
+   and would leave the caller with no reason not to present it again.  A
+   recipient MUST therefore say that the token was revoked, and where it
+   says so depends on how the token was carried.
 
-   *  *Auth token* at a resource: 401 with AAuth-Requirement:
-      requirement=auth-token and a fresh resource token Section 7.5.
-      The agent returns to its PS, and if the underlying grant is gone
-      the PS denies terminally — the party that revoked is the party
-      that explains.
-   *  *Person token* at a resource: invalid_person_token at the
-      authorization endpoint Section 7.2.3, or 401 with
-      requirement=person-token elsewhere Section 7.4.
-   *  *Agent token* at a PS: 401 with Signature-Error: error=invalid_jwt
-      ([I-D.hardt-httpbis-signature-key]).  No requirement repairs it;
-      the agent obtains a fresh agent token from its provider, which is
-      the party that revoked.
-   *  *Resource token* at a PS or AS: invalid_resource_token
-      Section 13.6.3.
+   *  *Agent, person, or auth token* — the token in the Signature-Key
+      header: 401 with Signature-Error: error=revoked_jwt
+      ([I-D.hardt-httpbis-signature-key]).  The agent presented exactly
+      one token there, so the code needs no token type to be
+      unambiguous.  A resource refusing a revoked auth token SHOULD also
+      include AAuth-Requirement: requirement=auth-token with a fresh
+      resource token Section 7.5, so one response says both why the
+      token failed and how to recover; the agent's PS then decides
+      afresh, and denies terminally if the grant is gone.  For a revoked
+      agent token no requirement repairs it — the agent obtains a fresh
+      one from its provider, which is the party that revoked.
+   *  *A token carried as a request parameter* — a resource token, or
+      the person token a PS presents to an AS Section 10.1.1: the
+      signature verified, so this is not a 401.  The recipient returns
+      revoked_<token>_token in the response body, beside the invalid_
+      and expired_ codes the same parameter already has:
+      revoked_resource_token from the PS or AS the agent presented the
+      resource token to, revoked_person_token from the AS or from a PS
+      that would otherwise present it Section 13.6.3.  A pending request
+      already started against a withdrawn resource token terminates with
+      revoked Section 13.6.4.  A future parameter carrying a revocable
+      token follows the same naming.
+
+   An agent token carried as a parameter needs no such code: it is
+   revoked only at a PS Section 13.7, and a PS receives it in the
+   Signature-Key header, never as a parameter.
+
+   Naming revocation to the agent that holds the token discloses
+   nothing: the revocation is of its own token, and it is the party that
+   most needs to stop using it.  This is distinct from the revocation
+   endpoint's response to a calling server Section 13.7, which says only
+   that the revocation was recorded, because there the caller is asking
+   about tokens that are not its own.
 
    Verifying an auth token does not ask the issuer about that token.  A
    resource fetches the issuer's JWKS to obtain the verification key and
@@ -4900,9 +4935,11 @@ Initial request (with Prefer: wait=N)
        the scheme, as specified in ([I-D.hardt-httpbis-signature-key]).
        Return invalid_key if the key cannot be parsed, unknown_key if
        the key is not found at the jwks_uri, invalid_jwt if a JWT scheme
-       fails verification, expired_jwt if the JWT has expired, or
-       issuer_missing / issuer_mismatch if the issuer's metadata
-       document fails the checks in Section 13.11.
+       fails verification, expired_jwt if the JWT has expired,
+       revoked_jwt if the JWT verifies and is unexpired but the server
+       holds a revocation for it Section 13.7, or issuer_missing /
+       issuer_mismatch if the issuer's metadata document fails the
+       checks in Section 13.11.
    6.  Determine the signature algorithm from the alg member of the
        obtained key, per Section 13.8.1.  Return unsupported_algorithm
        if alg is absent, is a polymorphic identifier, or names an
@@ -6431,6 +6468,26 @@ Initial request (with Prefer: wait=N)
    _Note: This section is to be removed before publishing as an RFC._
 
    *  draft-hardt-oauth-aauth-protocol-11
+
+      -  Defined what a party returns when a revoked token is presented,
+         which nothing covered.  A revoked token verifies, is unexpired,
+         and has intact claims, so reporting it as malformed or expired
+         is false and leaves the caller no reason not to present it
+         again.  Where the answer goes follows how the token was
+         carried.  A token in the Signature-Key header — agent, person,
+         or auth — is refused with 401 and Signature-Error:
+         error=revoked_jwt, newly defined in the HTTP Signature Keys
+         specification; a resource refusing a revoked auth token SHOULD
+         carry requirement=auth-token with a fresh resource token on the
+         same response, so one message says why and how to recover.  A
+         token carried as a request parameter is not the credential that
+         signed the request, so it is answered in the body as
+         revoked_<token>_token, beside the invalid_ and expired_ codes
+         that parameter already has: added revoked_resource_token and
+         revoked_person_token.  A pending request already started
+         against a withdrawn resource token terminates with the new
+         polling code revoked, rather than denied, which says the user
+         refused.
 
       -  Added resource tokens to Token Revocation.  A resource issues
          them and can withdraw one, calling the revocation endpoint of
