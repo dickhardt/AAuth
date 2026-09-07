@@ -2482,7 +2482,7 @@ Signature-Key: sig=jwks_uri;id="https://ps.example";
 }
 ```
 
-The caller signs with the key its own metadata publishes, so the recipient resolves `https://ps.example` — the `iss` of every token that PS mints — from the signature alone.
+The caller signs as a server (#keying-material), so the recipient resolves the `id` parameter — `https://ps.example`, the `iss` of every token that PS mints — from the signature alone.
 
 **Response:** `200 OK` with an empty body, once the recipient has recorded the revocation, whether or not it holds a record of the token. A recipient that verifies tokens statelessly — fetching the issuer's JWKS, checking the signature and claims locally, and keeping nothing — has no record to match and still answers `200 OK`: it has recorded the pair and will refuse the token. There is no "not found" response. A recipient cannot distinguish a token it never saw from one it saw and no longer holds, and an answer that varied with what it holds would disclose that.
 
@@ -2544,6 +2544,17 @@ Which token the agent presents depends on what the recipient needs to know. All 
 | Agent token (#agent-tokens) | the PS and the AP always; a resource for agent identity access | which agent |
 | Person token (#person-tokens) | a resource, at its authorization endpoint | which person |
 | Auth token (#auth-tokens) | a resource, once it has authorized the agent | what is authorized |
+
+A PS, AS, AP, or resource making a signed AAuth request in its own right — a PS-to-AS token request (#ps-to-as-token-request), a revocation (#token-revocation), or any other server-to-server call — MUST use `scheme=jwks_uri`. The `id` parameter MUST be the server's `issuer` as published in its metadata (#metadata-documents), and `dwk` MUST be that metadata document's well-known name: `aauth-person.json`, `aauth-access.json`, `aauth-agent.json`, or `aauth-resource.json`.
+
+```http
+Signature-Key: sig=jwks_uri;id="https://ps.example";
+    dwk="aauth-person.json";kid="key-1"
+```
+
+The recipient resolves `id` to the caller's identity, and that identity is the `iss` of every token the server mints — the metadata check binds the two (#metadata-documents). A server-to-server request therefore identifies its caller without carrying an issuer parameter, which is what lets a revocation name a token by `jti` alone (#token-revocation).
+
+A resource that acts as an agent to reach a downstream resource (#multi-hop) is signing as an agent, not as a server: it presents its own agent token with `scheme=jwt`, as any agent does.
 
 The Signature-Key specification also defines `pseudonym` schemes (`scheme=hwk` for a bare inline public key, `scheme=jkt-jwt` for hardware-key delegation). AAuth does not use bare `hwk` access — the agent token is the minimum AAuth credential. `scheme=jkt-jwt` is used only in the agent provider's key-refresh ceremony (see [@?I-D.hardt-aauth-bootstrap]), not for protocol access to resources, PSes, or ASes.
 
@@ -3305,6 +3316,7 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-11
+  - Pinned how a server signs. Keying Material named the scheme for agents and said nothing about the PS, AS, AP, and resource requests the protocol also depends on — server-to-server signing appeared only in an example. A server signing in its own right MUST use `scheme=jwks_uri` with `id` equal to its metadata `issuer` and `dwk` the well-known name of that document, so the recipient resolves the caller to the `iss` of every token it mints. Revocation rests on that derivation: it names a token by `jti` alone and keys the entry under the verified caller. A resource acting as an agent in multi-hop signs as an agent, with `scheme=jwt`.
   - Reworked Token Revocation. The request is now `jti` and `exp`, both REQUIRED: `iss` is gone, because a caller revokes only its own tokens and the recipient takes the issuer from the verified signature, which keys the revocation and makes revoking another issuer's token unreachable rather than refused. `exp` is the revoked token's own expiration, and a recipient MAY discard the entry once `exp` plus its clock skew has passed; nothing previously bounded the entry, since the section had removed the token type that would have selected a maximum. Named the three revocable token types and where each is revoked — an agent token only at a PS, a person token and an auth token at the resource — which replaces the SHOULD that asked a resource accepting agent tokens to provide a revocation endpoint the agent provider has no way to find. Spelled out the four-party chain: a PS cannot revoke an AS-issued auth token, so it revokes the person token at the AS and the AS cascades to what it issued, which is why a PS and an AS retain what they issued until its `exp`. Replaced the `200`/`404` response rule with `200 OK` once the revocation is recorded, whether or not the recipient holds a record of the token, so a stateless verifier is not answering `404` to every revocation it honors, and defined `invalid_request` and `unsupported_iss`. Addresses issue #146.
   - Added the informative appendix A Minimal Person Server: how a PS serving one person composes from the four REQUIRED metadata fields, out-of-band consent completion, retained person tokens, and the existing pending-request rules, with no new requirement. Readers sizing a self-hosted PS were inferring the full endpoint surface.
   - Named the Supervisor: the party the PS consults for a per-act decision, the Person by default, or a supervision server (SS) the PS delegates to under the AAuth Supervision Protocol, a companion specification. Added to Terminology and Roles; Policy Evaluation Points, Consent Presentation, and Why Missions Are Not a Policy Language name it where they previously described an anonymous decision-maker. Nothing on the wire changes.
