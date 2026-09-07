@@ -4511,9 +4511,9 @@ Initial request (with Prefer: wait=N)
      "exp": 1788727813
    }
 
-   The caller signs with the key its own metadata publishes, so the
-   recipient resolves https://ps.example — the iss of every token that
-   PS mints — from the signature alone.
+   The caller signs as a server Section 13.8.2, so the recipient
+   resolves the id parameter — https://ps.example, the iss of every
+   token that PS mints — from the signature alone.
 
    *Response:* 200 OK with an empty body, once the recipient has
    recorded the revocation, whether or not it holds a record of the
@@ -4699,6 +4699,27 @@ Initial request (with Prefer: wait=N)
     +--------------+------------------------------------+------------+
 
                                  Table 15
+
+   A PS, AS, AP, or resource making a signed AAuth request in its own
+   right — a PS-to-AS token request Section 10.1.1, a revocation
+   Section 13.7, or any other server-to-server call — MUST use
+   scheme=jwks_uri.  The id parameter MUST be the server's issuer as
+   published in its metadata Section 13.11, and dwk MUST be that
+   metadata document's well-known name: aauth-person.json, aauth-
+   access.json, aauth-agent.json, or aauth-resource.json.
+
+   Signature-Key: sig=jwks_uri;id="https://ps.example";
+       dwk="aauth-person.json";kid="key-1"
+
+   The recipient resolves id to the caller's identity, and that identity
+   is the iss of every token the server mints — the metadata check binds
+   the two Section 13.11.  A server-to-server request therefore
+   identifies its caller without carrying an issuer parameter, which is
+   what lets a revocation name a token by jti alone Section 13.7.
+
+   A resource that acts as an agent to reach a downstream resource
+   Section 11.1 is signing as an agent, not as a server: it presents its
+   own agent token with scheme=jwt, as any agent does.
 
    The Signature-Key specification also defines pseudonym schemes
    (scheme=hwk for a bare inline public key, scheme=jkt-jwt for
@@ -6364,6 +6385,18 @@ Initial request (with Prefer: wait=N)
    _Note: This section is to be removed before publishing as an RFC._
 
    *  draft-hardt-oauth-aauth-protocol-11
+
+      -  Pinned how a server signs.  Keying Material named the scheme
+         for agents and said nothing about the PS, AS, AP, and resource
+         requests the protocol also depends on — server-to-server
+         signing appeared only in an example.  A server signing in its
+         own right MUST use scheme=jwks_uri with id equal to its
+         metadata issuer and dwk the well-known name of that document,
+         so the recipient resolves the caller to the iss of every token
+         it mints.  Revocation rests on that derivation: it names a
+         token by jti alone and keys the entry under the verified
+         caller.  A resource acting as an agent in multi-hop signs as an
+         agent, with scheme=jwt.
 
       -  Reworked Token Revocation.  The request is now jti and exp,
          both REQUIRED: iss is gone, because a caller revokes only its
