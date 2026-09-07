@@ -3189,7 +3189,7 @@ Content-Type: application/json
           <strong>Mission control endpoint</strong> (<code>mission_control_endpoint</code>, OPTIONAL): the control plane for principals other than the owning agent; defined by a companion specification <a href="#mission-management" class="auto internal xref">Section 9.6</a>.<a href="#section-8-2.7" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-8-2.8">
-          <strong>Revocation endpoint</strong> (<code>revocation_endpoint</code>, OPTIONAL): where authorized parties, including the agent provider, revoke tokens <a href="#token-revocation" class="auto internal xref">Section 13.7</a>.<a href="#section-8-2.8" class="pilcrow">¶</a>
+          <strong>Revocation endpoint</strong> (<code>revocation_endpoint</code>, OPTIONAL): where the agent provider revokes an agent token it issued <a href="#token-revocation" class="auto internal xref">Section 13.7</a>.<a href="#section-8-2.8" class="pilcrow">¶</a>
 </li>
       </ul>
 <p id="section-8-3">The two REQUIRED endpoints, with <code>issuer</code> and <code>jwks_uri</code>, are the whole of a conformant PS <a href="#ps-metadata" class="auto internal xref">Section 13.11.2</a>. The PS evaluates every request against the mission when one is in force, handles consent when it is needed, and issues tokens bounded by what it has verified.<a href="#section-8-3" class="pilcrow">¶</a></p>
@@ -4355,8 +4355,8 @@ Content-Type: application/problem+json
 <pre>POST /token HTTP/1.1
 Host: as.resource.example
 Content-Type: application/json
-Signature-Key: sig=jwks_uri;
-    jwks_uri="https://ps.example/.well-known/jwks.json"
+Signature-Key: sig=jwks_uri;id="https://ps.example";
+    dwk="aauth-person.json";kid="key-1"
 
 {
   "resource_token": "eyJhbGc...",
@@ -5686,35 +5686,37 @@ Content-Type: application/problem+json
         <h3 id="name-token-revocation">
 <a href="#section-13.7" class="section-number selfRef">13.7. </a><a href="#name-token-revocation" class="section-name selfRef">Token Revocation</a>
         </h3>
-<p id="section-13.7-1">Any AAuth server that issues tokens MAY provide a revocation endpoint. The endpoint accepts a signed POST identifying the token to revoke by <code>iss</code>, <code>jti</code>, and <code>exp</code>. All three are REQUIRED. <code>(iss, jti)</code> identifies the token — no token type is needed, since that pair is unique — and <code>exp</code> is the revoked token's own expiration, which bounds how long the recipient has to remember the revocation.<a href="#section-13.7-1" class="pilcrow">¶</a></p>
-<p id="section-13.7-2">Agent tokens, person tokens, and auth tokens are revocable, each at the party that acts on it:<a href="#section-13.7-2" class="pilcrow">¶</a></p>
+<p id="section-13.7-1">Any AAuth server that issues tokens MAY provide a revocation endpoint. The endpoint accepts a signed POST carrying <code>jti</code> and <code>exp</code>, both REQUIRED. <code>jti</code> identifies the token within the caller's namespace; no token type is needed, since a <code>jti</code> is unique within an issuer. <code>exp</code> is the revoked token's own expiration, which bounds how long the recipient has to remember the revocation.<a href="#section-13.7-1" class="pilcrow">¶</a></p>
+<p id="section-13.7-2"><strong>A caller revokes only its own tokens.</strong> The issuer is not a request parameter: the recipient takes it from the identity it verified on the signature <a href="#http-message-signatures-profile" class="auto internal xref">Section 13.8</a> and keys the revocation under that. A caller cannot name an issuer it cannot sign for, so revoking another issuer's token is not something a recipient refuses — it is unreachable.<a href="#section-13.7-2" class="pilcrow">¶</a></p>
+<p id="section-13.7-3">Agent tokens, person tokens, and auth tokens are revocable, each at the party that acts on it:<a href="#section-13.7-3" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-13.7-3.1">An <strong>agent token</strong> is revoked only at a PS. The agent provider that issued it calls the PS's revocation endpoint, and the PS stops honoring the agent. A resource that accepts an agent token directly under identity-based access <a href="#requirement-agent-token" class="auto internal xref">Section 7.3</a> has no revocation path: the agent provider holds no record of which resources an agent presents its token to, so it has nothing to call. That access is bounded by the agent token's lifetime alone, which is why an agent token SHOULD NOT live longer than 24 hours <a href="#agent-tokens" class="auto internal xref">Section 5.2</a>.<a href="#section-13.7-3.1" class="pilcrow">¶</a>
+<li class="compact" id="section-13.7-4.1">An <strong>agent token</strong> is revoked only at a PS, by the agent provider that issued it. A resource that accepts an agent token directly under identity-based access <a href="#requirement-agent-token" class="auto internal xref">Section 7.3</a> has no revocation path: the agent provider holds no record of which resources an agent presents its token to, so it has nothing to call. That access is bounded by the agent token's lifetime alone, which is why an agent token SHOULD NOT live longer than 24 hours <a href="#agent-tokens" class="auto internal xref">Section 5.2</a>.<a href="#section-13.7-4.1" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-13.7-3.2">A <strong>person token</strong> is revoked at the resource named in its <code>aud</code>, by the PS that issued it.<a href="#section-13.7-3.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-13.7-4.2">A <strong>person token</strong> is revoked by the PS that issued it, at the resource named in its <code>aud</code>, and at the AS the PS presented it to where the authorization was federated <a href="#ps-to-as-token-request" class="auto internal xref">Section 10.1.1</a>.<a href="#section-13.7-4.2" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-13.7-3.3">An <strong>auth token</strong> is revoked at the resource it was issued for, by the PS or AS that issued it.<a href="#section-13.7-3.3" class="pilcrow">¶</a>
+          <li class="compact" id="section-13.7-4.3">An <strong>auth token</strong> is revoked at the resource it was issued for, by the PS (three-party) or AS (four-party) that issued it. A PS that federated to an AS did not issue that auth token and cannot revoke it; it revokes the person token at the AS, and the AS revokes what it issued.<a href="#section-13.7-4.3" class="pilcrow">¶</a>
 </li>
         </ul>
-<p id="section-13.7-4">A <code>jti</code> is unique only within the namespace of the issuer that minted it. A revocation endpoint receives tokens from many issuers — a resource holds auth tokens from every PS and AS its callers use — so a <code>jti</code> alone does not identify a token unambiguously and invites cross-issuer collision, revoking the wrong token or silently failing to revoke the right one. Recipients maintaining revocation state MUST key it by <code>(iss, jti)</code>.<a href="#section-13.7-4" class="pilcrow">¶</a></p>
-<p id="section-13.7-5">A revocation entry only has to outlive the token it names. Once the current time is past the token's <code>exp</code> the token is refused on expiry alone, and the entry is dead weight; a recipient maintaining revocation state MAY discard it once the current time is past <code>exp</code> plus its clock skew tolerance. Carrying <code>exp</code> in the request discloses nothing: the caller issued the token or holds it already, and so does the agent presenting it. A recipient MAY reject a revocation whose <code>exp</code> is further in the future than the longest lifetime it accepts for any token, since it would refuse such a token on presentation anyway.<a href="#section-13.7-5" class="pilcrow">¶</a></p>
-<p id="section-13.7-6"><strong>Request:</strong><a href="#section-13.7-6" class="pilcrow">¶</a></p>
-<div class="lang-http sourcecode" id="section-13.7-7">
+<p id="section-13.7-5">A <code>jti</code> is unique only within the namespace of the issuer that minted it. A revocation endpoint receives tokens from many issuers — a resource holds auth tokens from every PS and AS its callers use — so a <code>jti</code> alone does not identify a token unambiguously and invites cross-issuer collision, revoking the wrong token or silently failing to revoke the right one. Recipients maintaining revocation state MUST key it by <code>(iss, jti)</code>, where <code>iss</code> is the verified identity of the caller.<a href="#section-13.7-5" class="pilcrow">¶</a></p>
+<p id="section-13.7-6">A revocation entry only has to outlive the token it names. Once the current time is past the token's <code>exp</code> the token is refused on expiry alone, and the entry is dead weight; a recipient maintaining revocation state MAY discard it once the current time is past <code>exp</code> plus its clock skew tolerance. Carrying <code>exp</code> in the request discloses nothing: the caller issued the token or holds it already, and so does the agent presenting it. A recipient MAY reject a revocation whose <code>exp</code> is further in the future than the longest lifetime it accepts for any token, since it would refuse such a token on presentation anyway.<a href="#section-13.7-6" class="pilcrow">¶</a></p>
+<p id="section-13.7-7"><strong>Request:</strong><a href="#section-13.7-7" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-13.7-8">
 <pre>POST /revoke HTTP/1.1
-Host: ps.example
+Host: resource.example
 Content-Type: application/json
-Signature-Key: sig=jwt;jwt="eyJhbGc..."
+Signature-Key: sig=jwks_uri;id="https://ps.example";
+    dwk="aauth-person.json";kid="key-1"
 
 {
-  "iss": "https://ps.example",
   "jti": "unique-token-identifier",
   "exp": 1788727813
 }
 
-</pre><a href="#section-13.7-7" class="pilcrow">¶</a>
+</pre><a href="#section-13.7-8" class="pilcrow">¶</a>
 </div>
-<p id="section-13.7-8"><strong>Response:</strong> <code>200 OK</code> with an empty body, once the recipient has recorded the revocation, whether or not it holds a record of the token. A recipient that verifies tokens statelessly — fetching the issuer's JWKS, checking the signature and claims locally, and keeping nothing — has no record to match and still answers <code>200 OK</code>: it has recorded the pair and will refuse the token. There is no "not found" response. A recipient cannot distinguish a token it never saw from one it saw and no longer holds, and an answer that varied with what it holds would disclose that.<a href="#section-13.7-8" class="pilcrow">¶</a></p>
-<p id="section-13.7-9">Errors use the format in <a href="#error-response-format" class="auto internal xref">Section 13.6.2</a>:<a href="#section-13.7-9" class="pilcrow">¶</a></p>
+<p id="section-13.7-9">The caller signs with the key its own metadata publishes, so the recipient resolves <code>https://ps.example</code> — the <code>iss</code> of every token that PS mints — from the signature alone.<a href="#section-13.7-9" class="pilcrow">¶</a></p>
+<p id="section-13.7-10"><strong>Response:</strong> <code>200 OK</code> with an empty body, once the recipient has recorded the revocation, whether or not it holds a record of the token. A recipient that verifies tokens statelessly — fetching the issuer's JWKS, checking the signature and claims locally, and keeping nothing — has no record to match and still answers <code>200 OK</code>: it has recorded the pair and will refuse the token. There is no "not found" response. A recipient cannot distinguish a token it never saw from one it saw and no longer holds, and an answer that varied with what it holds would disclose that.<a href="#section-13.7-10" class="pilcrow">¶</a></p>
+<p id="section-13.7-11">Errors use the format in <a href="#error-response-format" class="auto internal xref">Section 13.6.2</a>:<a href="#section-13.7-11" class="pilcrow">¶</a></p>
 <table class="center" id="table-14">
           <caption><a href="#table-14" class="selfRef">Table 14</a></caption>
 <thead>
@@ -5730,7 +5732,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
                 <code>invalid_request</code>
 </td>
               <td class="text-left" rowspan="1" colspan="1">400</td>
-              <td class="text-left" rowspan="1" colspan="1">Malformed JSON, or a missing or malformed <code>iss</code>, <code>jti</code>, or <code>exp</code>
+              <td class="text-left" rowspan="1" colspan="1">Malformed JSON, or a missing or malformed <code>jti</code> or <code>exp</code>
 </td>
             </tr>
             <tr>
@@ -5738,7 +5740,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
                 <code>unsupported_iss</code>
 </td>
               <td class="text-left" rowspan="1" colspan="1">403</td>
-              <td class="text-left" rowspan="1" colspan="1">The recipient does not accept revocations for that <code>iss</code> from this caller — the caller is neither the issuer of the token being revoked nor a PS the recipient trusts, or the recipient has no relationship with that issuer at all</td>
+              <td class="text-left" rowspan="1" colspan="1">The recipient does not accept revocations from this caller — it holds nothing issued under that identity, or the caller is not a party it exchanges tokens with</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
@@ -5749,33 +5751,35 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
             </tr>
           </tbody>
         </table>
-<p id="section-13.7-11">A request whose signature does not verify is answered with <code>401</code> and the <code>Signature-Error</code> header <a href="#error-responses" class="auto internal xref">Section 13.6</a>; the caller's identity is established before the body is examined.<a href="#section-13.7-11" class="pilcrow">¶</a></p>
-<p id="section-13.7-12">Revocation provides real-time termination of access. The PS or AS calls the revocation endpoint of the resource a token was issued for, passing that token's <code>iss</code>, <code>jti</code>, and <code>exp</code>. The following revocation scenarios are supported:<a href="#section-13.7-12" class="pilcrow">¶</a></p>
+<p id="section-13.7-13">A request whose signature does not verify is answered with <code>401</code> and the <code>Signature-Error</code> header <a href="#error-responses" class="auto internal xref">Section 13.6</a>; the caller's identity is established before the body is examined.<a href="#section-13.7-13" class="pilcrow">¶</a></p>
+<p id="section-13.7-14">Revocation provides real-time termination of access. The following revocation scenarios are supported:<a href="#section-13.7-14" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-13.7-13.1">
-            <strong>PS revokes an auth token it issued</strong> (three-party): The PS calls the resource's revocation endpoint.<a href="#section-13.7-13.1" class="pilcrow">¶</a>
+<li class="compact" id="section-13.7-15.1">
+            <strong>PS revokes an auth token it issued</strong> (three-party): The PS calls the resource's revocation endpoint.<a href="#section-13.7-15.1" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-13.7-13.2">
-            <strong>PS revokes an auth token it provided</strong> (four-party): The PS calls the resource's revocation endpoint. The PS MAY also notify the AS.<a href="#section-13.7-13.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-13.7-15.2">
+            <strong>PS terminates access it federated</strong> (four-party): The AS issued the auth token, so the PS cannot revoke it. The PS revokes the person token it presented with the token request <a href="#ps-to-as-token-request" class="auto internal xref">Section 10.1.1</a> instead, and the AS cascades to the auth tokens it issued against that person token, as below.<a href="#section-13.7-15.2" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-13.7-13.3">
-            <strong>AS revokes an auth token it issued</strong>: The AS calls the resource's revocation endpoint.<a href="#section-13.7-13.3" class="pilcrow">¶</a>
+          <li class="compact" id="section-13.7-15.3">
+            <strong>AS revokes an auth token it issued</strong>: The AS calls the resource's revocation endpoint.<a href="#section-13.7-15.3" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-13.7-13.4">
-            <strong>PS revokes a person token it issued</strong>: The PS calls the revocation endpoint of the resource named in the token's <code>aud</code>. The resource MUST refuse subsequent requests presenting that person token and MUST NOT issue a resource token naming it. The PS MUST NOT present a revoked person token to an access server, and rejects a resource token whose <code>presented_jti</code> names one with <code>unknown_person_token</code> <a href="#token-endpoint-error-codes" class="auto internal xref">Section 13.6.3</a>.<a href="#section-13.7-13.4" class="pilcrow">¶</a>
+          <li class="compact" id="section-13.7-15.4">
+            <strong>PS revokes a person token it issued</strong>: The PS calls the revocation endpoint of the resource named in the token's <code>aud</code>, and of every AS it presented that person token to <a href="#ps-to-as-token-request" class="auto internal xref">Section 10.1.1</a>. The resource MUST refuse subsequent requests presenting the person token and MUST NOT issue a resource token naming it. The AS MUST NOT issue further auth tokens against it, and SHOULD revoke the auth tokens it already issued against it by calling the revocation endpoint of the resource each names in <code>aud</code>. The PS MUST NOT present a revoked person token to an AS, and rejects a resource token whose <code>presented_jti</code> names one with <code>unknown_person_token</code> <a href="#token-endpoint-error-codes" class="auto internal xref">Section 13.6.3</a>.<a href="#section-13.7-15.4" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-13.7-13.5">
-            <strong>PS revokes a mission</strong>: The PS marks the mission as revoked. All subsequent token requests referencing that mission's <code>s256</code> are denied. The PS SHOULD revoke outstanding auth tokens issued under the mission.<a href="#section-13.7-13.5" class="pilcrow">¶</a>
+          <li class="compact" id="section-13.7-15.5">
+            <strong>PS revokes a mission</strong>: The PS marks the mission as revoked. All subsequent token requests referencing that mission's <code>s256</code> are denied. The PS SHOULD revoke outstanding auth tokens issued under the mission.<a href="#section-13.7-15.5" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-13.7-13.6">
-            <strong>Agent provider revokes an agent token it issued</strong>: On learning that an agent can no longer be trusted, the agent provider calls the PS's revocation endpoint. The PS MUST deny subsequent requests presenting that agent token, and SHOULD revoke the person tokens and auth tokens it issued or provided for that agent by calling the revocation endpoint of each resource those tokens were issued for. The PS is the only recipient of an agent token revocation: under identity-based access <a href="#requirement-agent-token" class="auto internal xref">Section 7.3</a> the agent presents its agent token to the resource directly, and the agent provider has no record of which resources those are, so that access is bounded by the agent token lifetime alone.<a href="#section-13.7-13.6" class="pilcrow">¶</a>
+          <li class="compact" id="section-13.7-15.6">
+            <strong>Agent provider revokes an agent token it issued</strong>: On learning that an agent can no longer be trusted, the agent provider calls the PS's revocation endpoint. The PS MUST deny subsequent requests presenting that agent token, and SHOULD revoke the person tokens and auth tokens it issued for that agent, and terminate what it federated by the four-party path above. The PS is the only recipient of an agent token revocation: under identity-based access <a href="#requirement-agent-token" class="auto internal xref">Section 7.3</a> the agent presents its agent token to the resource directly, and the agent provider has no record of which resources those are, so that access is bounded by the agent token lifetime alone.<a href="#section-13.7-15.6" class="pilcrow">¶</a>
 </li>
-          <li class="compact" id="section-13.7-13.7">
-            <strong>Agent provider stops issuing agent tokens</strong>: The agent provider decides not to issue new agent tokens to the agent. Existing agent tokens expire naturally. This is part of the regular token lifecycle — all tokens have limited lifetimes and require periodic re-issuance, which provides a natural policy re-evaluation point.<a href="#section-13.7-13.7" class="pilcrow">¶</a>
+          <li class="compact" id="section-13.7-15.7">
+            <strong>Agent provider stops issuing agent tokens</strong>: The agent provider decides not to issue new agent tokens to the agent. Existing agent tokens expire naturally. This is part of the regular token lifecycle — all tokens have limited lifetimes and require periodic re-issuance, which provides a natural policy re-evaluation point.<a href="#section-13.7-15.7" class="pilcrow">¶</a>
 </li>
         </ul>
-<p id="section-13.7-14">Revocation endpoints are advertised in server metadata as <code>revocation_endpoint</code>. Recipients of revocation requests MUST verify the caller's identity via HTTP Message Signatures and MUST only accept revocation from the issuer of the token being revoked or from a trusted PS; any other caller is refused with <code>unsupported_iss</code>.<a href="#section-13.7-14" class="pilcrow">¶</a></p>
-<p id="section-13.7-15">Verifying an auth token does not ask the issuer about that token. A resource fetches the issuer's JWKS to obtain the verification key and caches it across many tokens, then checks the signature and claims locally; nothing in that path reports that a particular token has been revoked. A resource therefore learns of a revocation only when one reaches its revocation endpoint, and a party that no revocation request reaches is bounded by token lifetime alone — at most one hour for an auth token <a href="#auth-tokens" class="auto internal xref">Section 10.4</a> or a person token <a href="#person-token-structure" class="auto internal xref">Section 6.1</a>, five minutes for a resource token <a href="#resource-tokens" class="auto internal xref">Section 7</a>, and, for an agent token presented directly to a resource, the 24 hours an agent token SHOULD NOT exceed <a href="#agent-tokens" class="auto internal xref">Section 5.2</a>. Revocation shortens exposure; it does not eliminate it, and deployments requiring immediate termination should issue shorter-lived tokens rather than relying on revocation reaching every holder.<a href="#section-13.7-15" class="pilcrow">¶</a></p>
+<p id="section-13.7-16">Revocation endpoints are advertised in server metadata as <code>revocation_endpoint</code>. Recipients of revocation requests MUST verify the caller's identity via HTTP Message Signatures.<a href="#section-13.7-16" class="pilcrow">¶</a></p>
+<p id="section-13.7-17">Revoking downstream means knowing what was issued downstream, so the parties that cascade a revocation retain what they issued. A PS already retains each person token it issues <a href="#person-token-endpoint" class="auto internal xref">Section 8.1</a>; to revoke what followed from one it also needs, for each auth token it issued or federated against that person token, the <code>jti</code>, the resource it was for, and the <code>exp</code>. An AS needs the same for each auth token it issues, along with the <code>jti</code> of the person token it was issued against — an auth token carries no reference to that person token, so nothing on the wire recovers the link and revoking the person token at the resource does not by itself invalidate auth tokens already there.<a href="#section-13.7-17" class="pilcrow">¶</a></p>
+<p id="section-13.7-18">Neither record is a durable ledger. An entry is useful only while the token it names could still be presented, so it MAY be discarded once the current time is past that token's <code>exp</code> plus clock skew — the same bound revocation entries use, and at most one hour for an auth token or a person token.<a href="#section-13.7-18" class="pilcrow">¶</a></p>
+<p id="section-13.7-19">Verifying an auth token does not ask the issuer about that token. A resource fetches the issuer's JWKS to obtain the verification key and caches it across many tokens, then checks the signature and claims locally; nothing in that path reports that a particular token has been revoked. A resource therefore learns of a revocation only when one reaches its revocation endpoint, and a party that no revocation request reaches is bounded by token lifetime alone — at most one hour for an auth token <a href="#auth-tokens" class="auto internal xref">Section 10.4</a> or a person token <a href="#person-token-structure" class="auto internal xref">Section 6.1</a>, five minutes for a resource token <a href="#resource-tokens" class="auto internal xref">Section 7</a>, and, for an agent token presented directly to a resource, the 24 hours an agent token SHOULD NOT exceed <a href="#agent-tokens" class="auto internal xref">Section 5.2</a>. Revocation shortens exposure; it does not eliminate it, and deployments requiring immediate termination should issue shorter-lived tokens rather than relying on revocation reaching every holder.<a href="#section-13.7-19" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="http-message-signatures-profile">
@@ -6255,7 +6259,7 @@ Accept-Signature-Scheme: jwt
               <code>mission_control_endpoint</code> (OPTIONAL): URL of the PS's mission control plane — where parties other than the owning agent read and manage missions: the person, an organization's administrator, or a management service. <code>mission_endpoint</code> is the agent's surface and authenticates callers by agent token; this endpoint serves principals AAuth does not define, so its authentication model, operations, and responses are left to a companion specification <a href="#mission-management" class="auto internal xref">Section 9.6</a>. A PS MAY also use it for a deployment's human-facing administrative interface.<a href="#section-13.11.2-4.8" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.11.2-4.9">
-              <code>revocation_endpoint</code> (OPTIONAL): URL where authorized parties can revoke tokens <a href="#token-revocation" class="auto internal xref">Section 13.7</a>. This is also where an agent provider revokes an agent token it issued, so that the PS denies the agent token and revokes what it issued for that agent.<a href="#section-13.11.2-4.9" class="pilcrow">¶</a>
+              <code>revocation_endpoint</code> (OPTIONAL): URL where an agent provider revokes an agent token it issued, so that the PS denies the agent token and revokes what it issued for that agent <a href="#token-revocation" class="auto internal xref">Section 13.7</a>. A PS is the only recipient of an agent token revocation.<a href="#section-13.11.2-4.9" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.11.2-4.10">
               <code>jwks_uri</code> (REQUIRED): URL to the PS's JSON Web Key Set<a href="#section-13.11.2-4.10" class="pilcrow">¶</a>
@@ -6301,7 +6305,7 @@ Accept-Signature-Scheme: jwt
               <code>auth_token_endpoint</code> (REQUIRED): URL where PSes send token requests<a href="#section-13.11.3-4.2" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.11.3-4.3">
-              <code>revocation_endpoint</code> (OPTIONAL): URL where authorized parties can revoke tokens <a href="#token-revocation" class="auto internal xref">Section 13.7</a><a href="#section-13.11.3-4.3" class="pilcrow">¶</a>
+              <code>revocation_endpoint</code> (OPTIONAL): URL where a PS revokes a person token it presented to this AS <a href="#token-revocation" class="auto internal xref">Section 13.7</a><a href="#section-13.11.3-4.3" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.11.3-4.4">
               <code>jwks_uri</code> (REQUIRED): URL to the AS's JSON Web Key Set<a href="#section-13.11.3-4.4" class="pilcrow">¶</a>
@@ -6365,7 +6369,7 @@ Accept-Signature-Scheme: jwt
               <code>additional_signature_components</code> (OPTIONAL): Array of HTTP message component identifiers (<span>[<a href="#RFC9421" class="cite xref">RFC9421</a>]</span>) that agents MUST include in the <code>Signature-Input</code> covered components when signing requests to this resource, in addition to the base components required by the HTTP Message Signatures profile (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>)<a href="#section-13.11.4-4.8" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-13.11.4-4.9">
-              <code>revocation_endpoint</code> (OPTIONAL): URL where authorized parties can revoke the auth tokens and person tokens issued for this resource <a href="#token-revocation" class="auto internal xref">Section 13.7</a><a href="#section-13.11.4-4.9" class="pilcrow">¶</a>
+              <code>revocation_endpoint</code> (OPTIONAL): URL where the issuer of an auth token or person token for this resource revokes it <a href="#token-revocation" class="auto internal xref">Section 13.7</a><a href="#section-13.11.4-4.9" class="pilcrow">¶</a>
 </li>
           </ul>
 </section>
@@ -7492,7 +7496,7 @@ Accept-Signature-Scheme: jwt
 <li class="normal" id="section-19-2.1">
           <p id="section-19-2.1.1">draft-hardt-oauth-aauth-protocol-11<a href="#section-19-2.1.1" class="pilcrow">¶</a></p>
 <ul class="normal">
-<li class="normal" id="section-19-2.1.2.1">The revocation request carries <code>exp</code>, the revoked token's own expiration, REQUIRED alongside <code>iss</code> and <code>jti</code>, and a recipient MAY discard the entry once <code>exp</code> plus its clock skew has passed. A recipient had no way to size or expire its revocation store: the section removed the token type, so the stated maxima could not be applied, and nothing else bounded the entry. Named the three revocable token types and where each is revoked — an agent token only at a PS, a person token and an auth token at the resource — replacing the SHOULD that asked a resource accepting agent tokens to provide a revocation endpoint the agent provider has no way to find. Replaced the <code>200</code>/<code>404</code> response rule with <code>200 OK</code> once the revocation is recorded, whether or not the recipient holds a record of the token, so a stateless verifier is not answering <code>404</code> to every revocation it honors, and defined <code>invalid_request</code> and <code>unsupported_iss</code>. Addresses issue #146.<a href="#section-19-2.1.2.1" class="pilcrow">¶</a>
+<li class="normal" id="section-19-2.1.2.1">Reworked Token Revocation. The request is now <code>jti</code> and <code>exp</code>, both REQUIRED: <code>iss</code> is gone, because a caller revokes only its own tokens and the recipient takes the issuer from the verified signature, which keys the revocation and makes revoking another issuer's token unreachable rather than refused. <code>exp</code> is the revoked token's own expiration, and a recipient MAY discard the entry once <code>exp</code> plus its clock skew has passed; nothing previously bounded the entry, since the section had removed the token type that would have selected a maximum. Named the three revocable token types and where each is revoked — an agent token only at a PS, a person token and an auth token at the resource — which replaces the SHOULD that asked a resource accepting agent tokens to provide a revocation endpoint the agent provider has no way to find. Spelled out the four-party chain: a PS cannot revoke an AS-issued auth token, so it revokes the person token at the AS and the AS cascades to what it issued, which is why a PS and an AS retain what they issued until its <code>exp</code>. Replaced the <code>200</code>/<code>404</code> response rule with <code>200 OK</code> once the revocation is recorded, whether or not the recipient holds a record of the token, so a stateless verifier is not answering <code>404</code> to every revocation it honors, and defined <code>invalid_request</code> and <code>unsupported_iss</code>. Addresses issue #146.<a href="#section-19-2.1.2.1" class="pilcrow">¶</a>
 </li>
             <li class="normal" id="section-19-2.1.2.2">Added the informative appendix A Minimal Person Server: how a PS serving one person composes from the four REQUIRED metadata fields, out-of-band consent completion, retained person tokens, and the existing pending-request rules, with no new requirement. Readers sizing a self-hosted PS were inferring the full endpoint surface.<a href="#section-19-2.1.2.2" class="pilcrow">¶</a>
 </li>
