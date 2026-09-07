@@ -2410,7 +2410,7 @@ Other RFC 9457 members (`type`, `title`, `status`, `instance`) MAY be present wi
 | `invalid_resource_token` | 400 | Resource token malformed or signature verification failed |
 | `expired_resource_token` | 400 | Resource token has expired |
 | `expired_person_token` | 400 | The person token named by the resource token's `presented_jti` has expired. Returned by a PS that would otherwise present it to an AS, and by an AS (#ps-to-as-token-request). The agent obtains a fresh person token, then a fresh resource token. |
-| `unknown_person_token` | 400 | The person token named by the resource token's `presented_jti` is not among those the PS retains (#resource-token-verification) |
+| `unknown_person_token` | 400 | The person token named by the resource token's `presented_jti` is not among those the PS retains (#resource-token-verification), or the PS has revoked it (#token-revocation) |
 | `user_unreachable` | 403 | Terminal. The PS has no channel to reach the user and the agent did not declare the `interaction` capability, so the user cannot be reached at all. The non-terminal "user action is needed" case uses a `202` with `requirement=interaction` (#requirement-responses), not this error. |
 | `as_unreachable` | 502 | PS token endpoint only. The PS could not obtain an auth token from the access server named by the resource token's `aud`: connection failure, timeout, a malformed response, or an auth token that fails delivery verification (#auth-token-delivery). The agent MAY retry with a fresh resource token after a backoff. Distinct from an AS denial, which the PS relays. |
 | `server_error` | 500 | Internal error |
@@ -2453,9 +2453,17 @@ Content-Type: application/problem+json
 
 ## Token Revocation {#token-revocation}
 
-Any AAuth server that issues tokens MAY provide a revocation endpoint. The endpoint accepts a signed POST identifying the token to revoke by the pair `(iss, jti)`. Both members are REQUIRED. The server identifies the token from that pair and its own records; no token type is needed, since `(iss, jti)` is unique.
+Any AAuth server that issues tokens MAY provide a revocation endpoint. The endpoint accepts a signed POST identifying the token to revoke by `iss`, `jti`, and `exp`. All three are REQUIRED. `(iss, jti)` identifies the token — no token type is needed, since that pair is unique — and `exp` is the revoked token's own expiration, which bounds how long the recipient has to remember the revocation.
+
+Agent tokens, person tokens, and auth tokens are revocable, each at the party that acts on it:
+
+- An **agent token** is revoked only at a PS. The agent provider that issued it calls the PS's revocation endpoint, and the PS stops honoring the agent. A resource that accepts an agent token directly under identity-based access (#requirement-agent-token) has no revocation path: the agent provider holds no record of which resources an agent presents its token to, so it has nothing to call. That access is bounded by the agent token's lifetime alone, which is why an agent token SHOULD NOT live longer than 24 hours (#agent-tokens).
+- A **person token** is revoked at the resource named in its `aud`, by the PS that issued it.
+- An **auth token** is revoked at the resource it was issued for, by the PS or AS that issued it.
 
 A `jti` is unique only within the namespace of the issuer that minted it. A revocation endpoint receives tokens from many issuers — a resource holds auth tokens from every PS and AS its callers use — so a `jti` alone does not identify a token unambiguously and invites cross-issuer collision, revoking the wrong token or silently failing to revoke the right one. Recipients maintaining revocation state MUST key it by `(iss, jti)`.
+
+A revocation entry only has to outlive the token it names. Once the current time is past the token's `exp` the token is refused on expiry alone, and the entry is dead weight; a recipient maintaining revocation state MAY discard it once the current time is past `exp` plus its clock skew tolerance. Carrying `exp` in the request discloses nothing: the caller issued the token or holds it already, and so does the agent presenting it. A recipient MAY reject a revocation whose `exp` is further in the future than the longest lifetime it accepts for any token, since it would refuse such a token on presentation anyway.
 
 **Request:**
 
@@ -2467,24 +2475,36 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
   "iss": "https://ps.example",
-  "jti": "unique-token-identifier"
+  "jti": "unique-token-identifier",
+  "exp": 1788727813
 }
 ```
 
-**Response:** `200 OK` if the token was revoked or was already invalid. `404` if the `(iss, jti)` pair is not recognized.
+**Response:** `200 OK` with an empty body, once the recipient has recorded the revocation, whether or not it holds a record of the token. A recipient that verifies tokens statelessly — fetching the issuer's JWKS, checking the signature and claims locally, and keeping nothing — has no record to match and still answers `200 OK`: it has recorded the pair and will refuse the token. There is no "not found" response. A recipient cannot distinguish a token it never saw from one it saw and no longer holds, and an answer that varied with what it holds would disclose that.
 
-Revocation provides real-time termination of access. The PS or AS calls the revocation endpoint of the resource that a token was issued for, passing the `iss` and `jti` of the auth token to revoke. The following revocation scenarios are supported:
+Errors use the format in (#error-response-format):
 
-- **PS revokes an auth token it issued** (three-party): The PS calls the resource's revocation endpoint with the auth token's `iss` and `jti`.
-- **PS revokes an auth token it provided** (four-party): The PS calls the resource's revocation endpoint with the auth token's `iss` and `jti`. The PS MAY also notify the AS.
-- **AS revokes an auth token it issued**: The AS calls the resource's revocation endpoint with the auth token's `iss` and `jti`.
+| Error | Status | Meaning |
+|-------|--------|---------|
+| `invalid_request` | 400 | Malformed JSON, or a missing or malformed `iss`, `jti`, or `exp` |
+| `unsupported_iss` | 403 | The recipient does not accept revocations for that `iss` from this caller — the caller is neither the issuer of the token being revoked nor a PS the recipient trusts, or the recipient has no relationship with that issuer at all |
+| `server_error` | 500 | Internal error |
+
+A request whose signature does not verify is answered with `401` and the `Signature-Error` header (#error-responses); the caller's identity is established before the body is examined.
+
+Revocation provides real-time termination of access. The PS or AS calls the revocation endpoint of the resource a token was issued for, passing that token's `iss`, `jti`, and `exp`. The following revocation scenarios are supported:
+
+- **PS revokes an auth token it issued** (three-party): The PS calls the resource's revocation endpoint.
+- **PS revokes an auth token it provided** (four-party): The PS calls the resource's revocation endpoint. The PS MAY also notify the AS.
+- **AS revokes an auth token it issued**: The AS calls the resource's revocation endpoint.
+- **PS revokes a person token it issued**: The PS calls the revocation endpoint of the resource named in the token's `aud`. The resource MUST refuse subsequent requests presenting that person token and MUST NOT issue a resource token naming it. The PS MUST NOT present a revoked person token to an access server, and rejects a resource token whose `presented_jti` names one with `unknown_person_token` (#token-endpoint-error-codes).
 - **PS revokes a mission**: The PS marks the mission as revoked. All subsequent token requests referencing that mission's `s256` are denied. The PS SHOULD revoke outstanding auth tokens issued under the mission.
-- **Agent provider revokes an agent token it issued**: On learning that an agent can no longer be trusted, the agent provider calls the PS's revocation endpoint with the agent token's `iss` and `jti`. The PS MUST deny subsequent requests presenting that agent token, and SHOULD revoke the auth tokens it issued or provided for that agent by calling the revocation endpoint of each resource those tokens were issued for. Under identity-based access (#requirement-agent-token) the agent presents its agent token to the resource directly, and the agent provider has no record of which resources those are; a resource accepting agent tokens SHOULD therefore provide a revocation endpoint, and where none is reached that access is bounded by the agent token lifetime alone.
+- **Agent provider revokes an agent token it issued**: On learning that an agent can no longer be trusted, the agent provider calls the PS's revocation endpoint. The PS MUST deny subsequent requests presenting that agent token, and SHOULD revoke the person tokens and auth tokens it issued or provided for that agent by calling the revocation endpoint of each resource those tokens were issued for. The PS is the only recipient of an agent token revocation: under identity-based access (#requirement-agent-token) the agent presents its agent token to the resource directly, and the agent provider has no record of which resources those are, so that access is bounded by the agent token lifetime alone.
 - **Agent provider stops issuing agent tokens**: The agent provider decides not to issue new agent tokens to the agent. Existing agent tokens expire naturally. This is part of the regular token lifecycle — all tokens have limited lifetimes and require periodic re-issuance, which provides a natural policy re-evaluation point.
 
-Revocation endpoints are advertised in server metadata as `revocation_endpoint`. Recipients of revocation requests MUST verify the caller's identity via HTTP Message Signatures and MUST only accept revocation from the issuer of the token being revoked or from a trusted PS.
+Revocation endpoints are advertised in server metadata as `revocation_endpoint`. Recipients of revocation requests MUST verify the caller's identity via HTTP Message Signatures and MUST only accept revocation from the issuer of the token being revoked or from a trusted PS; any other caller is refused with `unsupported_iss`.
 
-Verifying an auth token does not ask the issuer about that token. A resource fetches the issuer's JWKS to obtain the verification key and caches it across many tokens, then checks the signature and claims locally; nothing in that path reports that a particular token has been revoked. A resource therefore learns of a revocation only when one reaches its revocation endpoint, and a party that no revocation request reaches is bounded by token lifetime alone — at most one hour for an auth token (#auth-tokens), five minutes for a resource token (#resource-tokens). Revocation shortens exposure; it does not eliminate it, and deployments requiring immediate termination should issue shorter-lived tokens rather than relying on revocation reaching every holder.
+Verifying an auth token does not ask the issuer about that token. A resource fetches the issuer's JWKS to obtain the verification key and caches it across many tokens, then checks the signature and claims locally; nothing in that path reports that a particular token has been revoked. A resource therefore learns of a revocation only when one reaches its revocation endpoint, and a party that no revocation request reaches is bounded by token lifetime alone — at most one hour for an auth token (#auth-tokens) or a person token (#person-token-structure), five minutes for a resource token (#resource-tokens), and, for an agent token presented directly to a resource, the 24 hours an agent token SHOULD NOT exceed (#agent-tokens). Revocation shortens exposure; it does not eliminate it, and deployments requiring immediate termination should issue shorter-lived tokens rather than relying on revocation reaching every holder.
 
 ## HTTP Message Signatures Profile {#http-message-signatures-profile}
 
@@ -2819,7 +2839,7 @@ Role-specific fields, after the common fields of (#metadata-documents):
 - `scope_descriptions` (OPTIONAL): Object mapping scope values to Markdown strings for consent display. Scope values are resource-specific; resources that already define OAuth scopes SHOULD use the same scope values in AAuth. Identity-related scopes (e.g., `openid`, `profile`, `email`) follow [@!OpenID.Core].
 - `signature_window` (OPTIONAL): Integer. The signature validity window in seconds for the `created` timestamp. Default: 60. Resources serving agents with poor clock synchronization (mobile, IoT) MAY advertise a larger value. High-security resources MAY advertise a smaller value.
 - `additional_signature_components` (OPTIONAL): Array of HTTP message component identifiers ([@!RFC9421]) that agents MUST include in the `Signature-Input` covered components when signing requests to this resource, in addition to the base components required by the HTTP Message Signatures profile ([@!I-D.hardt-httpbis-signature-key])
-- `revocation_endpoint` (OPTIONAL): URL where authorized parties can revoke auth tokens for this resource (#token-revocation)
+- `revocation_endpoint` (OPTIONAL): URL where authorized parties can revoke the auth tokens and person tokens issued for this resource (#token-revocation)
 
 ### Resource Metadata Link Relation {#resource-metadata-link}
 
@@ -3277,6 +3297,7 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-11
+  - The revocation request carries `exp`, the revoked token's own expiration, REQUIRED alongside `iss` and `jti`, and a recipient MAY discard the entry once `exp` plus its clock skew has passed. A recipient had no way to size or expire its revocation store: the section removed the token type, so the stated maxima could not be applied, and nothing else bounded the entry. Named the three revocable token types and where each is revoked — an agent token only at a PS, a person token and an auth token at the resource — replacing the SHOULD that asked a resource accepting agent tokens to provide a revocation endpoint the agent provider has no way to find. Replaced the `200`/`404` response rule with `200 OK` once the revocation is recorded, whether or not the recipient holds a record of the token, so a stateless verifier is not answering `404` to every revocation it honors, and defined `invalid_request` and `unsupported_iss`. Addresses issue #146.
   - Added the informative appendix A Minimal Person Server: how a PS serving one person composes from the four REQUIRED metadata fields, out-of-band consent completion, retained person tokens, and the existing pending-request rules, with no new requirement. Readers sizing a self-hosted PS were inferring the full endpoint surface.
   - Named the Supervisor: the party the PS consults for a per-act decision, the Person by default, or a supervision server (SS) the PS delegates to under the AAuth Supervision Protocol, a companion specification. Added to Terminology and Roles; Policy Evaluation Points, Consent Presentation, and Why Missions Are Not a Policy Language name it where they previously described an anonymous decision-maker. Nothing on the wire changes.
   - Editorial pass with no normative change. Gone or merged: the Introduction's feature list and its negation, the Overview's three mission diagrams and its Bootstrapping section, the signature-header boilerplate on fourteen examples, the per-role repetition of the common metadata fields, two duplicate `202` examples and two of the three clarification-response examples, three Design Rationale entries that restated body text and five one-sentence entries now in an In Brief list, and six Security Considerations subsections that restated normative text stated elsewhere. The three `401` requirement challenges are now adjacent. Every MUST, SHOULD, and MAY survives in the section that governs it.
