@@ -474,6 +474,6 @@ TBD
 
 # Acknowledgments
 
-TBD.
+The author thanks Abay Aubakirov (Regent Protocol) for feedback from a production sub-agent deployment.
 
 {backmatter}
