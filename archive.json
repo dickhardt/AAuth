@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-09-06T00:10:00.505739+00:00",
+  "timestamp": "2026-09-08T00:09:06.286205+00:00",
   "repo": "dickhardt/AAuth",
   "labels": [
     {
@@ -1780,7 +1780,7 @@
       "id": "I_kwDOQJKwSc8AAAABNusQiQ",
       "title": "Move the person token endpoint into \u00a78; keep the token structure in \u00a76",
       "url": "https://github.com/dickhardt/AAuth/issues/103",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
@@ -1789,8 +1789,8 @@
       ],
       "body": "Feedback from Jared Hanson on the editor's draft.\n\nThe person token endpoint is documented in \u00a76.1. Every other PS endpoint is in \u00a78 Person Server: auth token (\u00a78.1), permission (\u00a78.4), audit (\u00a78.5), interaction (\u00a78.6). `person_token_endpoint` sits alongside all of them in the PS metadata document (\u00a713.11.2). Someone implementing a PS has to read \u00a76.1 and \u00a78, and nothing in \u00a76 signals that the endpoint just described is one the PS provides.\n\nAgent tokens already have the split being asked for here. \u00a75.2.1 describes acquisition abstractly and defers the mechanism; \u00a75.2.2 defines the structure. The PS-side request an agent actually makes is \u00a78.1.3. Structure is defined where the credential is introduced, the endpoint where the role that serves it is defined.\n\n**Proposal**\n\nKeep \u00a76 Person Token: the recitals about what the token does and does not assert, structure (\u00a76.2), usage (\u00a76.3), verification (\u00a76.4). Move \u00a76.1 Person Token Endpoint into \u00a78 \u2014 adjacent to \u00a78.1 PS Token Endpoint \u2014 and leave a pointer in \u00a76 the way \u00a75.2.1 points out of \u00a75.\n\nTwo things that need adjusting with the move:\n\n- \u00a78's opening sentence is \"This section defines how agents obtain authorization from their person server.\" A person token carries no authorization, so the framing has to widen to \"what a PS serves to agents\" rather than authorization specifically.\n- \u00a74.4.2 says \"The PS provides three governance endpoints\" and lists permission, audit, and interaction. Counting `auth_token_endpoint`, `person_token_endpoint`, `mission_endpoint`, and `mission_control_endpoint`, a PS serves seven. If \u00a78 is meant to be the one place a PS implementer reads, it should open with the full endpoint list.\n",
       "createdAt": "2026-08-21T16:56:34Z",
-      "updatedAt": "2026-09-04T15:56:33Z",
-      "closedAt": null,
+      "updatedAt": "2026-09-06T13:07:28Z",
+      "closedAt": "2026-09-06T13:07:28Z",
       "comments": [
         {
           "author": "dickhardt",
@@ -1798,6 +1798,13 @@
           "body": "@jaredhanson filed from your feedback \u2014 the endpoint placement point is yours. Flagging the two knock-on items I added (\u00a78's intro framing, and the endpoint count in \u00a74.4.2) in case you disagree with either.",
           "createdAt": "2026-08-21T16:58:42Z",
           "updatedAt": "2026-08-21T16:58:42Z"
+        },
+        {
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "body": "Landed in the -11 editor's copy via #132: https://dickhardt.github.io/AAuth/draft-hardt-oauth-aauth-protocol.html. Reopen if the text does not hold up.",
+          "createdAt": "2026-09-06T13:07:27Z",
+          "updatedAt": "2026-09-06T13:07:27Z"
         }
       ]
     },
@@ -1806,7 +1813,7 @@
       "id": "I_kwDOQJKwSc8AAAABNusZIQ",
       "title": "Lingering agent-token references where the person token is now authoritative",
       "url": "https://github.com/dickhardt/AAuth/issues/104",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
@@ -1815,8 +1822,8 @@
       ],
       "body": "Second half of Jared Hanson's feedback \u2014 lingering references to agent tokens that should now be person tokens. He said he would post his own list once he confirms it; these are the ones I found while checking. Companion to #103.\n\n**The rule the draft states three times**\n\n- \u00a75.2.2, on the agent token's `ps` claim: \"The PS of an issued authorization is the `iss` of the person token the resource verified (#person-token-structure), not this claim.\"\n- \u00a77.8.1, on the resource token's `ps` claim: \"The `iss` of the person token the resource verified \u2014 the person server whose namespace `sub` belongs to\"\n- \u00a74.6: \"The `ps` claim in the agent token tells the resource the agent has a person server, before the resource has anything else to go on. The PS a resource acts on is the `iss` of the person token it verifies\"\n\n**Three places in \u00a77 that still route on the agent token**\n\n1. \u00a77 intro: \"If the resource has no AS but the agent has a PS (`ps` claim in agent token): `aud` = PS URL (three-party)\"\n2. \u00a77.2 intro: \"The resource can handle authorization itself, or it can issue a resource token when the resource has an AS or the agent token includes a `ps` claim.\"\n3. \u00a77.2.2: \"If the resource has no AS but the agent has a PS (`ps` claim): `aud` = PS URL (three-party)\"\n\nAll three set `aud` from the agent token. They should read from the person token the resource verified. The paragraph immediately above (1) already says a resource MUST have verified a person token before it issues a resource token \u2014 at that point the resource holds `iss` and does not need the hint. The agent token's `ps` claim decides whether challenging with `requirement=person-token` is worth the round trip; it does not decide the audience.\n\n**Related, \u00a77.1**\n\n> An agent with no person server cannot obtain a person token and so cannot use the authorization endpoint. It calls the resource's endpoints directly and takes whatever the resource challenges with \u2014 identity-based access (#requirement-agent-token) or resource-managed authorization (#resource-managed-auth). The `401` path (#requirement-auth-token) is reached with an agent token as before.\n\nThe last sentence contradicts the section it is in. A `requirement=auth-token` 401 carries a resource token, \u00a77 says a resource MUST NOT issue one without a verified person token and MUST challenge with `requirement=person-token` instead, and an agent with no PS has nowhere to redeem a resource token anyway. The sentence should be dropped or replaced with the statement that identity access and resource-managed access are the whole of what is available without a PS.\n\n**Related, \u00a78.1.3**\n\nThe subsection is titled \"Agent Token Request\" but is the request for an *auth* token \u2014 the agent presents its agent token there, and since #75 the draft has two other agent-presented credentials. Retitle to \"Auth Token Request\", matching the `auth_token_endpoint` rename in #81.\n",
       "createdAt": "2026-08-21T16:56:52Z",
-      "updatedAt": "2026-09-04T15:56:31Z",
-      "closedAt": null,
+      "updatedAt": "2026-09-06T13:07:09Z",
+      "closedAt": "2026-09-06T13:07:09Z",
       "comments": [
         {
           "author": "dickhardt",
@@ -1831,6 +1838,13 @@
           "body": "Found one more instance while implementing `-11`.\n\nAt [`a99d353`, line 1287](https://github.com/dickhardt/AAuth/blob/a99d353cf18aee81d0c5445bac070164fb3b8bc5/draft-hardt-oauth-aauth-protocol.md#L1287), an `updated_request` requires the new Resource token to preserve the original `iss`, `agent`, and `agent_jkt`. A Resource token carries no `agent` claim ([line 1020](https://github.com/dickhardt/AAuth/blob/a99d353cf18aee81d0c5445bac070164fb3b8bc5/draft-hardt-oauth-aauth-protocol.md#L1020)), so a literal implementation compares two absent values and the check cannot bind the update to a person.\n\nDropping `agent` alone still permits substitution between concurrent person contexts held by the same signing key. The preserved set appears to need `iss`, `agent_jkt`, and the original Person-token binding\u2014at least `ps`, `sub`, and `presented_jti`. The text should also say whether `mission_s256` and `account` may change during an updated request.\n",
           "createdAt": "2026-09-01T17:47:56Z",
           "updatedAt": "2026-09-01T17:47:56Z"
+        },
+        {
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "body": "Landed in the -11 editor's copy via #136: https://dickhardt.github.io/AAuth/draft-hardt-oauth-aauth-protocol.html. Reopen if the text does not hold up.",
+          "createdAt": "2026-09-06T13:07:09Z",
+          "updatedAt": "2026-09-06T13:07:09Z"
         }
       ]
     },
@@ -1940,7 +1954,7 @@
       "id": "I_kwDOQJKwSc8AAAABPCJb1Q",
       "title": "Personal PS profile: the minimal single-person Person Server",
       "url": "https://github.com/dickhardt/AAuth/issues/109",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
@@ -1950,8 +1964,8 @@
       ],
       "body": "## Problem\n\nThe protocol already permits a minimal single-person PS \u2014 `issuer`, `auth_token_endpoint`, `person_token_endpoint`, `jwks_uri`, plus `interaction_endpoint` for consent; everything else in (#ps-metadata) is OPTIONAL \u2014 but no document says so. A reader sizing a self-hosted PS infers the full endpoint surface is required.\n\n## Suggested direction\n\nA short profile document (informational, like bootstrap): the minimal metadata floor, no missions, no audit endpoint, no mission control, consent completed on whatever surface the person already reads (phone tap, chat message), one person per deployment.\n\nIt is also the natural home for two protocol clarifications with their own issues, since a personal PS is where slow consent is the normal case rather than the exception:\n\n- pending-grant lifetime and key rotation across a pending grant\n- out-of-band interaction completion and the single-use code semantics\n\nA personal PS without a governance policy is a queue with a protocol on it; the profile should say how it composes with the governance policy work (separate issue) so it can answer routine requests without waking the person.\n\n## Context\n\nFrom the notes.ito.com deployment review ([writeup](https://notes.ito.com/7f22bdf95ddbff07c9409e25/), [review pass](https://claude.ai/share/f59ffcb2-291f-4116-9a2b-aaeb664e4e53)). One of the deployers' two priority asks for -11. Their existing \"decision docket\" is a valid backing store for this profile: the docket holds pending decisions, the phone tap resolves them, polling delivers the result.\n",
       "createdAt": "2026-08-31T19:06:38Z",
-      "updatedAt": "2026-09-04T17:45:34Z",
-      "closedAt": null,
+      "updatedAt": "2026-09-06T18:30:10Z",
+      "closedAt": "2026-09-06T18:30:10Z",
       "comments": [
         {
           "author": "dickhardt",
@@ -1994,7 +2008,7 @@
       "id": "I_kwDOQJKwSc8AAAABPCJdsQ",
       "title": "Interaction completion out of band: the PS completes on its own channel and the code is never presented",
       "url": "https://github.com/dickhardt/AAuth/issues/111",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
@@ -2003,8 +2017,8 @@
       ],
       "body": "## Problem\n\nThe interaction `code` is defined only in terms of the user arriving at the URL: \"once the user arrives at the URL with a valid code, the code is consumed and cannot be reused,\" and the single-use rule in (#interaction-endpoint) is likewise keyed on arrival at the interaction URL. That does not describe a PS that completes the interaction on a channel it already controls \u2014 a phone tap, a chat approval \u2014 where the person never visits `url` and the code is never presented.\n\n## Suggested direction\n\nState that a PS MAY complete an interaction on any channel it controls without the person visiting `url` or presenting `code`, and define what happens to the single-use code in that case (invalidated at completion; later presentation returns `invalid_code`). Polling already carries the completion signal, so this is a clarification plus code semantics, not a new mechanism.\n\n## Context\n\nFrom the notes.ito.com deployment review ([writeup](https://notes.ito.com/7f22bdf95ddbff07c9409e25/), [review pass](https://claude.ai/share/f59ffcb2-291f-4116-9a2b-aaeb664e4e53)). Belongs in the protocol, referenced from the personal PS profile (separate issue), where out-of-band completion is the normal case.\n",
       "createdAt": "2026-08-31T19:06:42Z",
-      "updatedAt": "2026-09-04T17:45:36Z",
-      "closedAt": null,
+      "updatedAt": "2026-09-06T13:07:23Z",
+      "closedAt": "2026-09-06T13:07:23Z",
       "comments": [
         {
           "author": "dickhardt",
@@ -2012,6 +2026,13 @@
           "body": "@Joi \u2014 going into -11: the server hosting the interaction URL MAY complete the interaction over a channel it controls without the person visiting `url` or presenting `code`. On completion the code is invalidated (a later presentation returns `invalid_code`) and the pending URL returns the terminal response. Only the host of `url` can complete it, so a resource-hosted interaction is not completable by the PS.\n\nDoes this cover the phone-tap case as you run it?\n",
           "createdAt": "2026-09-04T17:45:36Z",
           "updatedAt": "2026-09-04T17:45:36Z"
+        },
+        {
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "body": "Landed in the -11 editor's copy via #131: https://dickhardt.github.io/AAuth/draft-hardt-oauth-aauth-protocol.html. Reopen if the text does not hold up.",
+          "createdAt": "2026-09-06T13:07:23Z",
+          "updatedAt": "2026-09-06T13:07:23Z"
         }
       ]
     },
@@ -2074,7 +2095,7 @@
       "id": "I_kwDOQJKwSc8AAAABPCJlzA",
       "title": "Deferred verification: point queued-consumption verifiers at the signed created timestamp",
       "url": "https://github.com/dickhardt/AAuth/issues/114",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
@@ -2084,8 +2105,8 @@
       ],
       "body": "## Problem\n\n(#non-repudiation-key-rotation) tells a verifier to capture evidence *at verification time* for audit that outlives key rotation. A different case is unaddressed: the verifier is the *first* to see the artifact, minutes to hours after signing \u2014 queued consumption, batch pipelines, store-and-forward. \"Valid if the token was unexpired at signing time\" is only decidable if the signing time is itself signed. RFC 9421 `created` in the covered components is exactly that, and the profile already mandates it \u2014 but nobody reading from the queued-consumption angle is pointed there.\n\n## Suggested direction\n\nA sentence or two, probably in (#non-repudiation-key-rotation) or the signature profile: for artifacts verified after a delay, the signed `created` timestamp is the signing-time anchor; the verifier checks the token was valid at `created`, and the acceptable `created`-to-verification skew is the verifier's policy. No new mechanism.\n\n## Context\n\nFrom the notes.ito.com deployment review ([writeup](https://notes.ito.com/7f22bdf95ddbff07c9409e25/), [review pass](https://claude.ai/share/f59ffcb2-291f-4116-9a2b-aaeb664e4e53)) \u2014 their CR-9, arising from artifacts consumed from a queue well after signing.\n",
       "createdAt": "2026-08-31T19:06:55Z",
-      "updatedAt": "2026-09-04T17:45:40Z",
-      "closedAt": null,
+      "updatedAt": "2026-09-06T13:07:26Z",
+      "closedAt": "2026-09-06T13:07:26Z",
       "comments": [
         {
           "author": "dickhardt",
@@ -2093,6 +2114,13 @@
           "body": "@Joi \u2014 going into -11, in Non-Repudiation and Audit After Key Rotation and in Freshness and Replay: for an artifact first verified after a delay, the signed `created` is the signing-time anchor; the verifier checks the token was valid at `created`; the accepted `created`-to-verification skew is the verifier's policy, distinct from `signature_window` which governs online verification; and the replay cache spans whatever skew the verifier accepts. No new mechanism.\n\nDoes this cover your queued-consumption case?\n",
           "createdAt": "2026-09-04T17:45:40Z",
           "updatedAt": "2026-09-04T17:45:40Z"
+        },
+        {
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "body": "Landed in the -11 editor's copy via #131: https://dickhardt.github.io/AAuth/draft-hardt-oauth-aauth-protocol.html. Reopen if the text does not hold up.",
+          "createdAt": "2026-09-06T13:07:25Z",
+          "updatedAt": "2026-09-06T13:07:25Z"
         }
       ]
     },
@@ -2101,7 +2129,7 @@
       "id": "I_kwDOQJKwSc8AAAABPCJm-Q",
       "title": "Bootstrap: many agents, one operator \u2014 self-hosted key layout and custody",
       "url": "https://github.com/dickhardt/AAuth/issues/115",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
@@ -2110,8 +2138,8 @@
       ],
       "body": "## Problem\n\nBootstrap (#self-hosted-agents) assumes one agent per domain: a single key serves as both the AP signing key and the agent's `cnf` key. The common self-hosted shape is many agents, one operator \u2014 one domain running N distinct agents (per-lane, per-task) under one self-hosted AP. The document does not cover it, and readers get the key model wrong: the reviewed deployment planned to publish per-agent keys in the JWKS, reading \"each agent holds a signing key published at a well-known URL\" out of the current text.\n\n## Suggested direction\n\nAdd the many-agents-one-operator layout to (#self-hosted-agents):\n\n- one AP signing key, published in the JWKS\n- the AP self-issues N agent tokens with distinct `sub` and distinct `cnf` keys\n- agent keys are NOT published \u2014 they appear only in `cnf.jwk` of each agent token\n- custody guidance: where the per-agent keys live (per-lane signing proxy, per-process keystore), and that compromise of one agent key is contained to that `sub` while compromise of the AP key mints identities for the whole domain\n\nMostly this is stating the AP-key/agent-key distinction the protocol already makes, in the place self-hosters actually read.\n\n## Context\n\nFrom the notes.ito.com deployment review ([writeup](https://notes.ito.com/7f22bdf95ddbff07c9409e25/), [review pass](https://claude.ai/share/f59ffcb2-291f-4116-9a2b-aaeb664e4e53)) \u2014 the custody half of their CR-4, which they call the single most useful bootstrap addition. Their deployment is exactly this shape: ~ten lane agents, lane keys in signing proxies, one domain.\n",
       "createdAt": "2026-08-31T19:06:58Z",
-      "updatedAt": "2026-09-04T17:45:41Z",
-      "closedAt": null,
+      "updatedAt": "2026-09-06T18:29:55Z",
+      "closedAt": "2026-09-06T18:29:55Z",
       "comments": [
         {
           "author": "dickhardt",
@@ -2127,7 +2155,7 @@
       "id": "I_kwDOQJKwSc8AAAABPCJoNA",
       "title": "Bootstrap: sub-agent token acquisition is deferred here but not covered",
       "url": "https://github.com/dickhardt/AAuth/issues/116",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
@@ -2136,8 +2164,8 @@
       ],
       "body": "## Problem\n\nThe protocol defers sub-agent token acquisition to bootstrap: \"Acquisition of a sub-agent token from the agent provider is platform-dependent and is described in [@?I-D.hardt-aauth-bootstrap], parallel to top-level agent token acquisition\" ((#sub-agents)). Bootstrap does not cover it. The pointer dangles.\n\n## Suggested direction\n\nAdd a sub-agent acquisition section to bootstrap. For the self-hosted case the answer is one paragraph: the operator's self-hosted AP is the parent's AP and self-issues the sub-agent token (`sub` with the `+` delimiter, `parent_agent` claim, fresh `cnf` key) exactly as it self-issues top-level tokens. The hosted-AP case (parent requests a sub-agent token from its AP) needs its own short pattern.\n\n## Context\n\nFrom the notes.ito.com deployment review ([writeup](https://notes.ito.com/7f22bdf95ddbff07c9409e25/), [review pass](https://claude.ai/share/f59ffcb2-291f-4116-9a2b-aaeb664e4e53)). Pairs with the many-agents-one-operator issue \u2014 same section of bootstrap, same self-issue mechanics.\n",
       "createdAt": "2026-08-31T19:06:59Z",
-      "updatedAt": "2026-09-04T17:45:42Z",
-      "closedAt": null,
+      "updatedAt": "2026-09-06T18:29:56Z",
+      "closedAt": "2026-09-06T18:29:56Z",
       "comments": [
         {
           "author": "abay94",
@@ -2160,7 +2188,7 @@
       "id": "I_kwDOQJKwSc8AAAABPCJpPA",
       "title": "State the minimal conformant PS floor in ps-metadata",
       "url": "https://github.com/dickhardt/AAuth/issues/117",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
@@ -2170,8 +2198,8 @@
       ],
       "body": "## Problem\n\nA conformant PS is four metadata fields \u2014 `issuer`, `auth_token_endpoint`, `person_token_endpoint`, `jwks_uri` \u2014 plus `interaction_endpoint` if it wants consent. `mission_endpoint`, `permission_endpoint`, `audit_endpoint`, `mission_control_endpoint` are all OPTIONAL. (#ps-metadata) marks each field's requirement level but never says \"this is the floor,\" so readers sizing an implementation infer the full endpoint surface is required and conclude a PS is a big build.\n\n## Suggested direction\n\nOne or two sentences in (#ps-metadata): the minimal conformant PS is the four REQUIRED fields; a PS that issues tokens and nothing else is conformant; the optional endpoints add missions, permission checks, and audit, not conformance.\n\n## Context\n\nFrom the notes.ito.com deployment review ([writeup](https://notes.ito.com/7f22bdf95ddbff07c9409e25/), [review pass](https://claude.ai/share/f59ffcb2-291f-4116-9a2b-aaeb664e4e53)) \u2014 the main ask of their CR-6 once the redirect misreading is set aside. Also the premise of the personal PS profile issue.\n",
       "createdAt": "2026-08-31T19:07:01Z",
-      "updatedAt": "2026-09-04T17:45:43Z",
-      "closedAt": null,
+      "updatedAt": "2026-09-06T13:07:13Z",
+      "closedAt": "2026-09-06T13:07:13Z",
       "comments": [
         {
           "author": "dickhardt",
@@ -2179,6 +2207,13 @@
           "body": "@Joi \u2014 going into -11, with one correction to this issue. The floor is the four REQUIRED fields: `issuer`, `auth_token_endpoint`, `person_token_endpoint`, `jwks_uri`. `interaction_endpoint` is not part of it \u2014 it is where an agent POSTs to reach the person through the PS, not a consent surface. Consent needs no metadata at all: the PS returns `202` with `requirement=interaction` and the consent URL travels in that header.\n\nThe text will say a PS that issues person and auth tokens and runs its own consent is conformant with those four, and that the optional endpoints add missions, permission checks, audit, and the agent's relay channel, not conformance.\n\nDoes that address CR-6?\n",
           "createdAt": "2026-09-04T17:45:43Z",
           "updatedAt": "2026-09-04T17:45:43Z"
+        },
+        {
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "body": "Landed in the -11 editor's copy via #136: https://dickhardt.github.io/AAuth/draft-hardt-oauth-aauth-protocol.html. Reopen if the text does not hold up.",
+          "createdAt": "2026-09-06T13:07:12Z",
+          "updatedAt": "2026-09-06T13:07:12Z"
         }
       ]
     },
@@ -2187,7 +2222,7 @@
       "id": "I_kwDOQJKwSc8AAAABPCJqPQ",
       "title": "Warn that policy keyed on the agent identifier does not survive across access modes",
       "url": "https://github.com/dickhardt/AAuth/issues/118",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
@@ -2197,8 +2232,8 @@
       ],
       "body": "## Problem\n\nIn agent identity mode a resource verifies the agent token and sees `sub`, so it is natural to key resource-side policy on the agent identifier (identifier \u2192 allowlist). That policy does not survive the move to auth tokens: an auth token deliberately carries no agent identifier and no delegation chain ((#why-no-agent-identifier), added in -11), and the resource enforces against `sub` (the person), `scope`, and `r3_granted`. Nothing in the draft warns that policy pinned to the agent identifier has to be re-expressed as scopes or R3 operations before those endpoints leave agent identity mode.\n\nThis is the failure mode a real deployment walked into: a per-agent label allowlist at the resource, designed in agent identity mode, silently unenforceable in their planned auth-token phase. Neither of their own review passes noticed; the design reads fine until you know where agent identity stops flowing.\n\n## Suggested direction\n\nA short paragraph in (#resource-access-modes) or (#why-no-agent-identifier), addressed to resource implementers: agent identity mode is the only mode in which the agent identifier reaches you; if your authorization decisions use it, they are mode-local by construction; express durable per-operation policy as scope or R3 operations, which flow in every mode.\n\n## Context\n\nFrom the notes.ito.com deployment review ([writeup](https://notes.ito.com/7f22bdf95ddbff07c9409e25/), [review pass](https://claude.ai/share/f59ffcb2-291f-4116-9a2b-aaeb664e4e53)) \u2014 the most consequential finding of the review, and as much a doc failure as a reader failure.\n",
       "createdAt": "2026-08-31T19:07:02Z",
-      "updatedAt": "2026-09-04T17:45:45Z",
-      "closedAt": null,
+      "updatedAt": "2026-09-06T13:07:17Z",
+      "closedAt": "2026-09-06T13:07:17Z",
       "comments": [
         {
           "author": "dickhardt",
@@ -2206,6 +2241,13 @@
           "body": "@Joi \u2014 going into -11 under Resource Access Modes, addressed to resource implementers. One refinement over the issue text: the agent identifier reaches the resource in both two-party modes, agent identity and resource-managed, since the agent token signs the requests in each. It does not reach the resource in person identity, PS authorization, or federated modes. So an authorization decision keyed on it is local to the two-party modes; durable per-operation policy is expressed as `scope` or R3 operations, which flow in every mode.\n\nIs that the warning that would have caught your per-lane allowlist?\n",
           "createdAt": "2026-09-04T17:45:45Z",
           "updatedAt": "2026-09-04T17:45:45Z"
+        },
+        {
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "body": "Landed in the -11 editor's copy via #130: https://dickhardt.github.io/AAuth/draft-hardt-oauth-aauth-protocol.html. Reopen if the text does not hold up.",
+          "createdAt": "2026-09-06T13:07:17Z",
+          "updatedAt": "2026-09-06T13:07:17Z"
         }
       ]
     },
@@ -2214,7 +2256,7 @@
       "id": "I_kwDOQJKwSc8AAAABPCJrUQ",
       "title": "The person-token-before-resource-token prerequisite is stated once and easy to miss",
       "url": "https://github.com/dickhardt/AAuth/issues/119",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
@@ -2224,8 +2266,8 @@
       ],
       "body": "## Problem\n\n\"A resource MUST have verified a person token before it issues a resource token\" is stated once, in prose, in the person token section. A reader focused on resource tokens \u2014 following the 401 \u2192 resource token \u2192 PS token endpoint path \u2014 can build the whole flow without ever meeting the requirement. A real deployment's writeup did exactly that: both their numbered flow and their wire trace go straight from 401 to resource token with no person token, and they had read the draft carefully.\n\n## Suggested direction\n\nRestate the prerequisite where those readers are: in the resource token issuance requirements, and in the flow overview's step list. Possibly one line in the `AAuth-Requirement`/challenge section too, since that is where the 401 path starts. This may fold into #103 (moving the person token endpoint into \u00a78) \u2014 filing separately so the visibility problem is tracked even if the restructure lands differently.\n\n## Context\n\nFrom the notes.ito.com deployment review ([writeup](https://notes.ito.com/7f22bdf95ddbff07c9409e25/), [review pass](https://claude.ai/share/f59ffcb2-291f-4116-9a2b-aaeb664e4e53)).\n",
       "createdAt": "2026-08-31T19:07:04Z",
-      "updatedAt": "2026-09-04T17:45:46Z",
-      "closedAt": null,
+      "updatedAt": "2026-09-06T13:07:11Z",
+      "closedAt": "2026-09-06T13:07:11Z",
       "comments": [
         {
           "author": "dickhardt",
@@ -2233,6 +2275,13 @@
           "body": "@Joi \u2014 going into -11: the three-party and four-party overview figures gain the person token leg before the authorization endpoint call, with a numbered step list under each; Resource Token Structure opens with the prerequisite; and Auth Token Required says a resource MUST NOT issue that challenge to a request that carried neither a person token nor an auth token \u2014 it challenges with `requirement=person-token` instead.\n\nBoth of your flows went straight from 401 to resource token, so the figures were the failure. Does this fix it where you read?\n",
           "createdAt": "2026-09-04T17:45:46Z",
           "updatedAt": "2026-09-04T17:45:46Z"
+        },
+        {
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "body": "Landed in the -11 editor's copy via #136: https://dickhardt.github.io/AAuth/draft-hardt-oauth-aauth-protocol.html. Reopen if the text does not hold up.",
+          "createdAt": "2026-09-06T13:07:11Z",
+          "updatedAt": "2026-09-06T13:07:11Z"
         }
       ]
     },
@@ -2267,7 +2316,7 @@
       "id": "I_kwDOQJKwSc8AAAABPMypeQ",
       "title": "Mission-bound token expiry cannot be derived by the Resource or Access Server",
       "url": "https://github.com/dickhardt/AAuth/issues/121",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "joshuagay",
       "authorAssociation": "NONE",
       "assignees": [],
@@ -2276,8 +2325,8 @@
       ],
       "body": "## Problem\n\nThe mission rules require every token carrying `mission_s256` to expire no later than the mission's `expires_at`, and require each issuer to shorten the token lifetime accordingly ([`a99d353`, line 1623](https://github.com/dickhardt/AAuth/blob/a99d353cf18aee81d0c5445bac070164fb3b8bc5/draft-hardt-oauth-aauth-protocol.md#L1623)). The Person Server can satisfy this for a Person token because it holds the mission ([line 721](https://github.com/dickhardt/AAuth/blob/a99d353cf18aee81d0c5445bac070164fb3b8bc5/draft-hardt-oauth-aauth-protocol.md#L721)).\n\nThe next issuers cannot derive the same ceiling:\n\n- A Resource copies `mission_s256` from the Person token, but receives neither the mission blob nor `expires_at`. It must nevertheless cap its Resource token at the mission expiry ([lines 1024 and 1030](https://github.com/dickhardt/AAuth/blob/a99d353cf18aee81d0c5445bac070164fb3b8bc5/draft-hardt-oauth-aauth-protocol.md#L1024-L1030)).\n- In four-party access, the Access Server receives the Resource token and the digest, but not the mission expiry. It must nevertheless cap its Auth token at that expiry ([lines 1993\u20132000](https://github.com/dickhardt/AAuth/blob/a99d353cf18aee81d0c5445bac070164fb3b8bc5/draft-hardt-oauth-aauth-protocol.md#L1993-L2000)).\n\nNo rule requires either downstream token to inherit the earlier expiration. A literal implementation therefore cannot satisfy the mission-expiry requirement from its authenticated inputs.\n\n## Example\n\nA mission expires in one minute. The PS correctly issues a Person token expiring in one minute. The Resource's ordinary five-minute Resource-token lifetime then violates the mission rule unless the Resource independently knows the mission expiry. The same problem repeats when an Access Server issues the Auth token.\n\n## Suggested direction\n\nMake the ceiling transitive instead of exposing the private mission:\n\n- A Resource token carrying `mission_s256` must not outlive the authenticated Person or Auth token from which that mission binding was copied.\n- An Auth token carrying `mission_s256` must not outlive the Resource token from which the binding was copied.\n\nThe PS already caps the first Person token at `expires_at`, so these two rules propagate the bound without disclosing the mission blob or adding a claim.\n",
       "createdAt": "2026-09-01T17:48:06Z",
-      "updatedAt": "2026-09-04T18:29:48Z",
-      "closedAt": null,
+      "updatedAt": "2026-09-06T13:07:19Z",
+      "closedAt": "2026-09-06T13:07:19Z",
       "comments": [
         {
           "author": "dickhardt",
@@ -2285,6 +2334,13 @@
           "body": "@joshuagay \u2014 resolved in PR #131 (editor's copy -11), a different shape from the transitive rule but the same result:\n\n- The resource token carries no mission-expiry requirement any more. Its lifetime is independent of the mission; the PS checks the mission is active when it acts on the token, and only the PS issues tokens bounded by `expires_at`. Capping a five-minute resource token at the mission's expiry bought nothing, and chaining the auth token to the resource token would have capped auth tokens at five minutes.\n- The PS-to-AS token request gains `person_token`, REQUIRED: the person token named by the resource token's `presented_jti`, which the PS issued and retains. The AS verifies it against the resource token (`iss` = the PS, `jti` = `presented_jti`, matching `sub` / `mission_s256` / `tenant`, `cnf` = `agent_jkt`) and caps the auth token it issues at the person token's `exp`, which the PS already capped at the mission's `expires_at`. The PS checks that cap at delivery. No mission content reaches the AS beyond the `exp` it needed.\n- New `expired_person_token`, and guidance that agents refresh the person token five minutes before expiry and re-obtain resource and auth tokens against it.\n\nThanks for catching that neither downstream issuer could satisfy the rule as written.\n",
           "createdAt": "2026-09-04T18:29:48Z",
           "updatedAt": "2026-09-04T18:29:48Z"
+        },
+        {
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "body": "Landed in the -11 editor's copy via #131: https://dickhardt.github.io/AAuth/draft-hardt-oauth-aauth-protocol.html. Reopen if the text does not hold up.",
+          "createdAt": "2026-09-06T13:07:19Z",
+          "updatedAt": "2026-09-06T13:07:19Z"
         }
       ]
     },
@@ -2293,7 +2349,7 @@
       "id": "I_kwDOQJKwSc8AAAABPMyprg",
       "title": "Budgets: an omitted PS ceiling is indistinguishable from extension non-participation",
       "url": "https://github.com/dickhardt/AAuth/issues/122",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "joshuagay",
       "authorAssociation": "NONE",
       "assignees": [],
@@ -2302,8 +2358,8 @@
       ],
       "body": "## Problem\n\nIn four-party access, the PS-to-AS `budget` parameter is optional ([`a99d353`, line 545](https://github.com/dickhardt/AAuth/blob/a99d353cf18aee81d0c5445bac070164fb3b8bc5/draft-hardt-aauth-budgets.md#L545)). When the Resource token carries a Budget and the PS omits that parameter, the AS must treat the Resource's Budget as the PS's ceiling ([line 566](https://github.com/dickhardt/AAuth/blob/a99d353cf18aee81d0c5445bac070164fb3b8bc5/draft-hardt-aauth-budgets.md#L566)).\n\nThat makes two materially different cases identical on the wire:\n\n1. The PS understands Budgets and deliberately grants the Resource's full offer.\n2. The PS does not implement or recognize the Budgets extension, ignores the Resource-token claim, and forwards the ordinary token request without a `budget` parameter.\n\nIn both cases the AS is required to issue against the Resource's full offer. The second case silently upgrades extension non-participation into the maximum Budget grant. This is especially surprising because the base protocol's extensibility posture tells recipients to ignore fields they do not recognize.\n\n## Example\n\nThe Resource token offers USD 10. A Budget-aware PS would grant USD 2. A PS that has not implemented this extension ignores the Budget claim and sends no `budget` parameter. The AS interprets the omission as an explicit USD 10 ceiling and may issue the full amount.\n\n## Suggested direction\n\nRequire an affirmative PS value in four-party access: when a Resource token contains `budget`, the AS may include a Budget in its Auth token only when the PS-to-AS request also contains `budget`. Omission should produce no Budget grant or a defined error, rather than accepting the Resource's offer.\n\nThat preserves ordinary extension negotiation: a PS that does not understand Budgets cannot accidentally authorize one, while a PS that wants to grant the full offer can echo it explicitly.\n",
       "createdAt": "2026-09-01T17:48:07Z",
-      "updatedAt": "2026-09-04T15:56:28Z",
-      "closedAt": null,
+      "updatedAt": "2026-09-06T17:30:55Z",
+      "closedAt": "2026-09-06T17:30:55Z",
       "comments": []
     },
     {
@@ -2311,7 +2367,7 @@
       "id": "I_kwDOQJKwSc8AAAABPN5_Cg",
       "title": "No error code for the PS reporting an unreachable or failed AS to the agent",
       "url": "https://github.com/dickhardt/AAuth/issues/123",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
@@ -2320,16 +2376,24 @@
       ],
       "body": "## Context\n\nIn four-party Federated Authorization Access, the PS calls the AS's `auth_token_endpoint` on the agent's behalf (\u00a7PS-AS Federation). When that call fails \u2014 the AS is unreachable, times out, returns malformed responses, or the returned auth token fails Auth Token Delivery verification \u2014 the PS has to answer the agent's pending token request with *something*, but the Token Endpoint Error Codes table has no value for this class of failure.\n\n`invalid_resource_token` is wrong (the token was fine), `server_error` is misleading (the PS did not fail), and passing the AS's problem+json through verbatim conflates \"the AS denied you\" with \"the PS could not complete federation\".\n\n## Proposal\n\nAdd to \u00a7Token Endpoint Error Codes, for PS token endpoints:\n\n| Error | Status | Meaning |\n|-------|--------|---------|\n| `as_unreachable` | 502 | The PS could not obtain an auth token from the access server named by the resource token's `aud` \u2014 connection failure, timeout, or a malformed/unverifiable response. The agent MAY retry with a fresh resource token after a backoff. |\n\nDistinct from an AS *denial*: when the AS returns a well-formed terminal error (e.g. `403`), the PS SHOULD propagate that outcome to the agent rather than reporting `as_unreachable`. The spec could also say explicitly what the PS relays on AS denial \u2014 today nothing normative covers the PS\u2192agent leg of a failed federation.\n\n## Encountered while\n\nImplementing AS federation in a PS (Hell\u014d Wallet) against the reference AS at access.aauth.dev, mapping every branch of the \u00a7Deferred Responses state machine to a response on the agent's pending request.",
       "createdAt": "2026-09-01T19:54:24Z",
-      "updatedAt": "2026-09-01T19:54:24Z",
-      "closedAt": null,
-      "comments": []
+      "updatedAt": "2026-09-06T13:07:21Z",
+      "closedAt": "2026-09-06T13:07:21Z",
+      "comments": [
+        {
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "body": "Landed in the -11 editor's copy via #131: https://dickhardt.github.io/AAuth/draft-hardt-oauth-aauth-protocol.html. Reopen if the text does not hold up.",
+          "createdAt": "2026-09-06T13:07:21Z",
+          "updatedAt": "2026-09-06T13:07:21Z"
+        }
+      ]
     },
     {
       "number": 124,
       "id": "I_kwDOQJKwSc8AAAABPOoW0A",
       "title": "Terminology: distinguish supervision (per-act evaluation) from governance (the mission framework)",
       "url": "https://github.com/dickhardt/AAuth/issues/124",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [
@@ -2340,16 +2404,24 @@
       ],
       "body": "\n\nThe draft uses \"governance\" for at least three distinct things. A companion specification for the delegated evaluator (draft-hardt-aauth-supervisor) needs the per-act sense to have its own name, and the ambiguity is already visible within this document.\n\nSense A \u2014 the orthogonal layer. Missions plus permission, audit, and interaction relay. Abstract, \u00a7Introduction, \u00a7Incremental Adoption, \u00a7Protocol Overview, #agent-governance, #ps-governance-endpoints, the adoption table, \u00a7Comparison with OAuth.\n\nProposal: no change. This is a governance framework and the word is right.\n\nSense B \u2014 the per-act evaluation. The PS deciding whether this specific act is consistent with the mission's intent and prior log entries:\n\n#policy-evaluation-points: \"against the PS's governance policy\"\n#mission-log: \"the governance decisions made\"\n#call-chaining: \"The PS provides the governance constraint\"\nDesign rationale: \"Contextual governance\", \"concentrates governance evaluation at the PS\", \"governance-based constraints\", \"mission governance\" (PS/AS separation, ps claim rationale)\n\"As AI decision-making matures, governance can shift from human review to agent evaluation\"\n\nProposal: change to supervision. \"the PS's supervision policy\", \"the supervision decisions made\", \"the PS provides the supervision constraint\", \"Contextual supervision\", \"concentrates supervision at the PS\".\n\nThis aligns with draft-hardt-aauth-budgets, which already uses supervision as a term of art for exactly this and already attaches it to the PS: sizing the allocation is where the PS's supervision happens; the return to the PS is the supervision point; the supervision interval tracks whichever of expiry or exhaustion moves faster.\n\nSense C \u2014 AP fleet control. \"centralized governance over a distributed agent fleet\" and \"eliminating the governance point\" in the agent-provider rationale. This is neither the mission framework nor per-act evaluation; it is fleet-level token issuance policy.\n\nProposal: reword to avoid the collision. \"centralized control over a distributed agent fleet\", \"eliminating the enforcement point\".\n\nRelated: the design rationale says the PS \"presents the mission context, the justification, and the resource request to whatever decision-maker is appropriate: a human reviewing a consent screen, an AI agent evaluating policy on behalf of an organization, or an automated system applying heuristics.\" That decision-maker is the Supervisor. Once the companion draft exists, this paragraph should name the role rather than describing it anonymously. Flagging here so the two documents don't diverge; the naming itself can wait for the companion draft.",
       "createdAt": "2026-09-01T21:19:16Z",
-      "updatedAt": "2026-09-01T21:19:16Z",
-      "closedAt": null,
-      "comments": []
+      "updatedAt": "2026-09-06T13:07:15Z",
+      "closedAt": "2026-09-06T13:07:15Z",
+      "comments": [
+        {
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "body": "Landed in the -11 editor's copy via #130: https://dickhardt.github.io/AAuth/draft-hardt-oauth-aauth-protocol.html. Reopen if the text does not hold up.",
+          "createdAt": "2026-09-06T13:07:14Z",
+          "updatedAt": "2026-09-06T13:07:14Z"
+        }
+      ]
     },
     {
       "number": 125,
       "id": "I_kwDOQJKwSc8AAAABPZFumA",
       "title": "Parties diagram: Resource \u2192 Agent arrow labeled \"resource\" instead of \"resource token\"",
       "url": "https://github.com/dickhardt/AAuth/issues/125",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
@@ -2358,9 +2430,17 @@
       ],
       "body": "In the Protocol Parties and Relationships figure (`{#fig-parties}`), the arrow from Resource back to Agent is labeled `resource` on the line after the arrow:\n\n```\n+-----------+        +--------------+     resource     +--------------+\n```\n\nIt is the resource token, not the resource. Add `token` on the line following, matching how the other labels in the figure are split across two lines:\n\n```\n+-----------+        +--------------+     resource     +--------------+\n                                           token\n```",
       "createdAt": "2026-09-02T18:48:32Z",
-      "updatedAt": "2026-09-02T18:48:32Z",
-      "closedAt": null,
-      "comments": []
+      "updatedAt": "2026-09-06T13:07:07Z",
+      "closedAt": "2026-09-06T13:07:07Z",
+      "comments": [
+        {
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "body": "Landed in the -11 editor's copy via #136: https://dickhardt.github.io/AAuth/draft-hardt-oauth-aauth-protocol.html. Reopen if the text does not hold up.",
+          "createdAt": "2026-09-06T13:07:07Z",
+          "updatedAt": "2026-09-06T13:07:07Z"
+        }
+      ]
     },
     {
       "number": 127,
@@ -2400,15 +2480,15 @@
       "id": "I_kwDOQJKwSc8AAAABP3H4gA",
       "title": "Discovery: Support discovery of resource metadata via Link relation so dev portals can use them in case agents hit them first.",
       "url": "https://github.com/dickhardt/AAuth/issues/134",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "sdatapix",
       "authorAssociation": "NONE",
       "assignees": [],
       "labels": [],
       "body": "Support discovery of resource metadata via Link relation so dev portals can use them in case agents hit them first. \n\nA server MAY include a Link header [RFC8288] in HTTP responses:\n\n```\nLink: <https://api.example.com/aauth-resource.json>; rel=\"aauth-resource\"HTML <link> element. An HTML page MAY include a link element in the document head:\n<link rel=\"aauth-resource\" href=\"https://api.example.com/aauth-resource.json\"\n      type=\"application/aauth-resource+json\">\n```\n\nIt will require mention in Security Considerations section as well (for link spoofing, etc.).\n\nMore details on https://aauth.slack.com/archives/C0B0JGDU789/p1786715439942569",
       "createdAt": "2026-09-05T16:44:34Z",
-      "updatedAt": "2026-09-05T16:45:18Z",
-      "closedAt": null,
+      "updatedAt": "2026-09-06T13:05:29Z",
+      "closedAt": "2026-09-06T13:05:29Z",
       "comments": [
         {
           "author": "sdatapix",
@@ -2416,8 +2496,51 @@
           "body": "@dickhardt I have text ready but I am not able to push my branch yet.",
           "createdAt": "2026-09-05T16:45:18Z",
           "updatedAt": "2026-09-05T16:45:18Z"
+        },
+        {
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "body": "@sdatapix \u2014 drafted as a PR for review, since your branch was blocked: see the linked PR. Two departures from the sketch above worth your eye: the target is constrained to `{issuer}/.well-known/aauth-resource.json` so the link stays a pointer rather than a second discovery authority (it also plays no part in key discovery), and the HTML example drops `type=` because the draft defines no media type for metadata documents. Security Considerations covers link spoofing as steering, with the person token endpoint's consent as the check. If your text says something this does not, comment on the PR and it goes in.",
+          "createdAt": "2026-09-06T12:08:38Z",
+          "updatedAt": "2026-09-06T12:08:38Z"
         }
       ]
+    },
+    {
+      "number": 145,
+      "id": "I_kwDOQJKwSc8AAAABP-O4zw",
+      "title": "requirement=agent-token cannot say which claim the agent token must carry",
+      "url": "https://github.com/dickhardt/AAuth/issues/145",
+      "state": "OPEN",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "protocol"
+      ],
+      "body": "## Problem\n\n\u00a7Agent Token Required says:\n\n> The header carries no additional parameters: the agent already holds its agent token and need only present it.\n\nThat premise fails as soon as a resource requires the agent token to carry something an agent provider vouches for. The agent does hold an agent token; it holds the wrong one, and the challenge gives it no way to learn that.\n\nThe concrete case is the CSA Verifiable Agent Summit demo. An agent provider issues an ordinary `aa-agent+jwt` carrying an extension claim, `https://agentictrustframework.ai/atf`, in which it asserts a trust grade an evaluator assigned to that agent's runtime evidence. A resource requires a minimum grade. Today that resource can only answer:\n\n```http\nHTTP/1.1 401 Unauthorized\nAAuth-Requirement: requirement=agent-token\n```\n\nto an agent that already presented a valid agent token. The agent has no way to distinguish \"you sent nothing\" from \"your token lacks a claim I need,\" and re-presenting the same token loops.\n\nATF is the first instance, not a special case. Any framework in which an AP vouches for a property of the agent \u2014 an assurance level, a jurisdiction, a certification, an operator binding \u2014 lands in the same place.\n\n## Proposal\n\nDefine one parameter on the `requirement` member of `requirement=agent-token`:\n\n```http\nHTTP/1.1 401 Unauthorized\nAAuth-Requirement: requirement=agent-token; agent-claims=\"https://agentictrustframework.ai/atf\"\n```\n\n- **Type:** String. Requirement-specific data are parameters on the `requirement` member (\u00a7AAuth-Requirement Header Structure), and RFC 8941 parameter values are bare items, so an Inner List is not available.\n- **Value:** one or more claim names the agent token must carry, space-delimited. Claim names here are URIs, which cannot contain a space, so the delimiter is unambiguous \u2014 same construction as OAuth `scope`.\n- **Semantics:** the resource requires an agent token carrying each named claim. It says nothing about the claim's contents.\n- **Recipients MUST ignore unknown parameters** already, so this is backward compatible: an agent that does not implement it sees today's bare challenge.\n\nThe parameter names the claim and stops there. What acceptable values look like is the claim's own specification's business, and which of them this resource wants belongs in its `aauth-resource.json` \u2014 under the same URI, e.g.:\n\n```json\n{\n  \"issuer\": \"https://atf-demo.aauth.dev\",\n  \"access_mode\": \"agent-token\",\n  \"https://agentictrustframework.ai/policy\": {\n    \"profiles\": [\"csa-atf:0.9.1\"],\n    \"minimum_level\": \"senior\"\n  }\n}\n```\n\nSo AAuth learns exactly one framework-neutral fact \u2014 *the agent token must carry claim X* \u2014 and acquires no vocabulary from, and no opinion about, any particular framework.\n\n\u00a7Agent Token Required's sentence changes from \"carries no additional parameters\" to permitting parameters, with `agent-claims` the one defined.\n\n## Naming\n\nNot `claims`: that is already a `requirement` value (`requirement=claims`, 202, identity claims at an AS). Distinct slot, so no grammar collision, but two unrelated meanings for one word in one header field is not worth it. `agent-claims` names the token that is short.\n\n## Alternatives considered\n\n**A second top-level dictionary member** \u2014 `requirement=agent-token, agent-claims=(\"https://a/x\" \"https://b/y\")`. Legal RFC 8941, gives a real Inner List with per-item parameters, no space-delimiting. Rejected because \u00a7AAuth-Requirement Header Structure establishes that requirement-specific data hang off the `requirement` member, and a receiver iterating members would need a second shape. Worth reopening if per-claim parameters are ever needed.\n\n**Framework-specific parameters** \u2014 `atf-profile=\"csa-atf:0.9.1\"; atf-level=\"senior\"`. One round trip instead of two, but parameter keys cannot hold a URI (`lcalpha / digit / _ - . *`), so every framework takes a prefix out of one flat space and AAuth needs a parameter registry and an opinion about who gets one. A durable obligation for one round trip.\n\n**A separate `ATF-Required` header** \u2014 no AAuth change at all, but an unregistered field name in the global HTTP namespace, and undiscoverable: an agent that does not know the field sees a bare 401 and cannot find out why.\n\n**Nothing; put it only in `aauth-resource.json`** \u2014 zero spec change, and sufficient when the requirement is a static property of the resource. It cannot express a per-endpoint or per-request requirement, and it leaves the agent to guess that metadata is where the answer is. This is what the summit demo ships in the meantime.\n\n## Related\n\n- \u00a7Agent Token Required\n- \u00a7AAuth-Requirement Header Structure\n- \u00a7Resource Metadata \u2014 where the acceptable values live\n",
+      "createdAt": "2026-09-06T18:30:55Z",
+      "updatedAt": "2026-09-06T18:34:21Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 146,
+      "id": "I_kwDOQJKwSc8AAAABQDWCpA",
+      "title": "Revocation request carries no exp, so a recipient cannot bound its revocation state",
+      "url": "https://github.com/dickhardt/AAuth/issues/146",
+      "state": "CLOSED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "protocol"
+      ],
+      "body": "## Problem\n\n\u00a7Token Revocation defines the revocation request as `(iss, jti)` and nothing else:\n\n```json\n{\n  \"iss\": \"https://ps.example\",\n  \"jti\": \"unique-token-identifier\"\n}\n```\n\nand says recipients maintaining revocation state MUST key it by that pair. It does not say how long the entry must be kept, and it gives the recipient nothing it could use to work that out.\n\nA revocation entry only has to outlive the token. Once the token's `exp` has passed, the token is refused on expiry, and the entry is dead weight. So the natural retention rule is \"until `exp`, plus clock skew\" \u2014 but `exp` is not in the request, and the recipient does not otherwise have it.\n\nThat leaves two bad options:\n\n- **Keep entries forever.** Unbounded storage growth for a resource that accepts revocations from many issuers, with no safe point at which anything may be dropped.\n- **Guess a ceiling from the spec's stated maxima** \u2014 one hour for an auth token, five minutes for a resource token. But the request carries no token type, and the section says explicitly that \"no token type is needed, since `(iss, jti)` is unique.\" So the recipient cannot tell which maximum applies. Agent tokens have no stated maximum at all.\n\nThe section removed the one signal a recipient could have inferred a bound from, without adding a field that gives the bound directly.\n\nThis is most acute for the case the same section already calls out: under identity-based access (\u00a7Requirement: Agent Token) the agent presents its agent token directly, so the agent provider revokes at the resource, and \"a resource accepting agent tokens SHOULD therefore provide a revocation endpoint.\" A resource implementing that SHOULD has no way to size or expire its revocation store.\n\n## Proposal\n\nAdd `exp` to the revocation request, REQUIRED, carrying the revoked token's own `exp`:\n\n```json\n{\n  \"iss\": \"https://ps.example\",\n  \"jti\": \"unique-token-identifier\",\n  \"exp\": 1788727813\n}\n```\n\nand state the retention rule:\n\n> A recipient maintaining revocation state MAY discard an entry once the current time is past `exp` plus its clock skew tolerance, since a token past its expiry is refused on expiry alone.\n\n`exp` discloses nothing new. The caller is the token's issuer or a trusted PS and holds the value already; the presenting agent holds the whole token. It makes the entry self-expiring, which is what a KV store with a TTL wants.\n\n## Second gap in the same section, possibly a separate issue\n\n> **Response:** `200 OK` if the token was revoked or was already invalid. `404` if the `(iss, jti)` pair is not recognized.\n\nThis assumes the recipient holds records of the tokens in question, which is true of a PS or an AS. It is not true of a resource verifying agent tokens statelessly: it fetches the AP's JWKS, checks the signature and claims locally, and keeps nothing. Under the rule as written, every agent-token revocation to such a resource is a `404` \u2014 even when the resource recorded the revocation and will honour it.\n\nSuggested: `200 OK` when the recipient has recorded the revocation, whether or not it has a record of the token; reserve `404` for a recipient that can positively determine the pair was never valid for it.\n\n## Context\n\nFound while building a relying resource that accepts agent tokens under identity-based access for the CSA Verifiable Agent Summit (September 9, 2026). The resource needs a `revocation_endpoint` per this section's own SHOULD, and there is no answer to what its store's TTL should be.\n",
+      "createdAt": "2026-09-07T08:42:05Z",
+      "updatedAt": "2026-09-07T12:30:13Z",
+      "closedAt": "2026-09-07T12:30:13Z",
+      "comments": []
     }
   ],
   "pulls": [
@@ -3462,25 +3585,33 @@
       "id": "PR_kwDOQJKwSc7_OP7A",
       "title": "Conciseness pass: \u2212380 lines, no normative change",
       "url": "https://github.com/dickhardt/AAuth/pull/100",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
       "labels": [],
       "body": "Based on #99 \u2014 review that first; this diff is everything after it.\n\nProtocol draft goes from 3,867 lines (after #99) to 3,444. Every cut is a second copy of a rule, a duplicate example, or rationale that already existed elsewhere; per review decisions, Document History is untouched (it gains bullets for the batch instead). One commit per bucket:\n\n- **Overview** (\u2212152): one paragraph per access mode instead of a walkthrough that re-specified each; the mode table, parties diagram, and the three- and four-party ladders stay; the mission creation/context/completion diagrams and Bootstrapping (all forward references) go. The PS's direct-channel sentence moved to Agent Governance; agent\u2013person association was already in Agent-Person Binding.\n- **Introduction** (\u221231): the 12-bullet feature list and its 3-bullet negation; Why Not Extend OAuth? (now anchored) carries the OAuth argument.\n- **Signature-header boilerplate** (\u221247): 15 examples now show `Signature-Key` plus a one-line pointer; the canonical fully bound request in the signatures profile keeps complete headers.\n- **Metadata** (\u221253): per-role field lists carry only role-specific fields; the common-fields table was already normative.\n- **202 examples + clarification variants** (\u221282): four identical `202 requirement=interaction` blocks become references to the two defining sections; three clarification HTTP examples become one with body variants. Also fixes a stale `agent` claim recital the -11 pivot missed.\n- **Design Rationale** (\u221228): mission-hash, refresh-token, and downstream-scope arguments now appear once (body copy survives, each appendix-only clause grafted in); five one-sentence subsections merge into an In Brief list.\n- **Security Considerations** (\u221221): micro-sections merged with every MUST intact; Call Chaining Identity and Token Revocation and Lifecycle deleted as verbatim duplicates of normative text.\n- **Section merges** (\u221236): `aud` rule stated once; the three requirement challenges now adjacent with AAuth-Access/Resource-Managed following; Endpoint/Other URLs merged; Organization Visibility folded into PS-AS Collapse.\n\nAnchors kept or newly added where content moved (`#overview-*`, `#requirement-interaction`, `#ps-to-as-token-request`, `#why-not-extend-oauth`); mmark + xml2rfc build clean with no unresolved references.\n\nNot taken (from the audit, by decision or judgment): Document History (\u221240, per review), PS endpoint example body trims (\u221215, the examples earn their space).\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01423n5qBejmzaktmbofnr5k",
       "createdAt": "2026-08-14T17:29:34Z",
-      "updatedAt": "2026-09-02T19:01:12Z",
+      "updatedAt": "2026-09-06T17:31:18Z",
       "baseRepository": "dickhardt/AAuth",
       "baseRefName": "issue-batch-2026-08",
       "baseRefOid": "06ca904e6a483f491fd0482500700f18438b69c2",
       "headRepository": "dickhardt/AAuth",
       "headRefName": "conciseness-cuts",
       "headRefOid": "779d6e675790e130cc324b3ea434baf021d6a53c",
-      "closedAt": null,
+      "closedAt": "2026-09-06T17:31:17Z",
       "mergedAt": null,
       "mergedBy": null,
       "mergeCommit": null,
-      "comments": [],
+      "comments": [
+        {
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "body": "Superseded by #139, a fresh conciseness pass on the merged -11 text that took this PR's audit as its map. Closing without merging.",
+          "createdAt": "2026-09-06T17:31:16Z",
+          "updatedAt": "2026-09-06T17:31:16Z"
+        }
+      ],
       "reviews": []
     },
     {
@@ -3580,24 +3711,26 @@
       "id": "PR_kwDOQJKwSc8AAAABCO-jQg",
       "title": "Consent Presentation, R3 release gating, budgets presented-token record",
       "url": "https://github.com/dickhardt/AAuth/pull/128",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
       "labels": [],
       "body": "Clears the working tree ahead of the -11 issue batch so that PR's diff is only issue work.\n\n**Protocol** \u2014 Consent Presentation (resource-asserted vs agent-asserted content; a PS MUST distinguish and attribute, MUST NOT decide on agent-asserted content alone), the matching Security Considerations subsection, the `justification` TODO resolved, three acknowledgments. Three -11 history bullets.\n\n**R3** \u2014 Approving Release Rather Than Execution, the OPTIONAL `result` member, `display` MUST state the operation ran, Why Not RAR rewritten against OAuth Transaction Authorization Challenge.\n\n**Budgets** \u2014 presented token's spend leads `budget_consumed`, new Unreported Allocations section, comma-separated `AAuth-Budget` examples (Regent's fix).\n\n`.targets.mk` regenerated with the budgets draft included.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01YUUF1ERs9yzVmC67NsRa8n",
       "createdAt": "2026-09-04T17:09:07Z",
-      "updatedAt": "2026-09-04T17:09:07Z",
+      "updatedAt": "2026-09-06T12:57:28Z",
       "baseRepository": "dickhardt/AAuth",
       "baseRefName": "main",
       "baseRefOid": "055b7a47a3f00b6b0dcf24fd06fefbe4aa76d1dd",
       "headRepository": "dickhardt/AAuth",
       "headRefName": "consent-presentation",
       "headRefOid": "74799af35e91e27be7ab592d4f16da44883cbf96",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "closedAt": "2026-09-06T12:57:25Z",
+      "mergedAt": "2026-09-06T12:57:25Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "b240c1111838915243327810761c789faa267d36"
+      },
       "comments": [],
       "reviews": []
     },
@@ -3606,21 +3739,21 @@
       "id": "PR_kwDOQJKwSc8AAAABCPd-Lg",
       "title": "-11 issue batch 1: figure, person-token routing, prerequisite visibility, PS floor (#125 #104 #119 #117)",
       "url": "https://github.com/dickhardt/AAuth/pull/129",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
       "labels": [],
       "body": "Stacked on #128. One commit per issue.\n\n- **#125** Parties figure redrawn: Resource\u2192Agent returns a resource response or resource token; Agent\u2194PS is a signed request up, person token or auth token down. Legend follows.\n- **#104** Resource token audience derived from the verified person token in the two `aud` lists and the authorization endpoint responses intro; dropped \"the 401 path is reached with an agent token\"; Agent Token Request \u2192 Auth Token Request.\n- **#119** Three- and four-party figures gain the person token leg and a step list; Resource Token opens with the prerequisite; a resource MUST NOT challenge with `requirement=auth-token` on a request that carried neither a person token nor an auth token.\n- **#117** Person Server Metadata states the floor: the four REQUIRED fields. Consent needs no metadata field; `interaction_endpoint` is the agent's channel to the person, not a consent surface.\n\nOne history bullet per issue under -11 (none for the figure). Builds clean with mmark + xml2rfc.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01YUUF1ERs9yzVmC67NsRa8n",
       "createdAt": "2026-09-04T18:18:20Z",
-      "updatedAt": "2026-09-04T18:18:20Z",
+      "updatedAt": "2026-09-06T12:57:27Z",
       "baseRepository": "dickhardt/AAuth",
       "baseRefName": "consent-presentation",
       "baseRefOid": "74799af35e91e27be7ab592d4f16da44883cbf96",
       "headRepository": "dickhardt/AAuth",
       "headRefName": "issues-fixes",
       "headRefOid": "d1f2bd859ba6d1d48fb60c9edee9decc6f632057",
-      "closedAt": null,
+      "closedAt": "2026-09-06T12:57:27Z",
       "mergedAt": null,
       "mergedBy": null,
       "mergeCommit": null,
@@ -3632,24 +3765,26 @@
       "id": "PR_kwDOQJKwSc8AAAABCPeg_g",
       "title": "-11 issue batch 2: supervision vocabulary, decision-procedure pointer, mode-local policy warning (#124 #110 #118)",
       "url": "https://github.com/dickhardt/AAuth/pull/130",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
       "labels": [],
       "body": "Stacked on #129. One commit per issue.\n\n- **#124** Governance names the layer; supervision names the per-act evaluation. Eleven occurrences changed, the agent-provider fleet sense reworded as control/enforcement, Terminology gains Supervision. Aligns with Budgets, which already uses the term.\n- **#110** Policy Evaluation Points states what this document defines (the wire artifacts carrying the outcome) and points the decision procedure, and delegation to a supervisor that may be a person or an agent, at a companion specification on AAuth supervision. No Supervisor role added here; that is a separate decision.\n- **#118** Resource Access Modes warns that the agent identifier reaches a resource in the two-party modes only (agent identity and resource-managed), so policy keyed on it does not survive a move to auth tokens; durable per-operation policy is `scope` or R3. Pointer from Why No Agent Identifier Reaches a Resource.\n\nBuilds clean.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01YUUF1ERs9yzVmC67NsRa8n",
       "createdAt": "2026-09-04T18:19:24Z",
-      "updatedAt": "2026-09-04T18:27:30Z",
+      "updatedAt": "2026-09-06T13:00:55Z",
       "baseRepository": "dickhardt/AAuth",
-      "baseRefName": "issues-fixes",
-      "baseRefOid": "d1f2bd859ba6d1d48fb60c9edee9decc6f632057",
+      "baseRefName": "main",
+      "baseRefOid": "2f4189855e74fb4ebffec58e8bca94ba271ad365",
       "headRepository": "dickhardt/AAuth",
       "headRefName": "issues-terms",
-      "headRefOid": "dd2c995a4edb17bf684a0e257b7398959f9a80a1",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "headRefOid": "d86ee2d7d376c1c43b3dabccaef0c4b3d257882b",
+      "closedAt": "2026-09-06T13:00:53Z",
+      "mergedAt": "2026-09-06T13:00:53Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "49fc8988b5011d6065a81d52301e8e1d08d1193f"
+      },
       "comments": [],
       "reviews": []
     },
@@ -3658,24 +3793,26 @@
       "id": "PR_kwDOQJKwSc8AAAABCPf9WA",
       "title": "-11 issue batch 3: person_token to the AS, as_unreachable, out-of-band completion, deferred verification (#121 #123 #111 #114)",
       "url": "https://github.com/dickhardt/AAuth/pull/131",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
       "labels": [],
       "body": "Stacked on #130. One commit per issue.\n\n- **#121** Resource tokens are independent of the mission (the `expires_at` MUST is removed from Resource Token Structure). The PS caps the person tokens and auth tokens it issues at `expires_at`. The PS-to-AS token request gains `person_token`, REQUIRED: the person token named by the resource token's `presented_jti`. The AS verifies it against the resource token (`iss` = the PS, `jti` = `presented_jti`, matching `sub` / `mission_s256` / `tenant`, `cnf` = `agent_jkt`) and caps the auth token at its `exp`; the PS checks that cap at delivery. New `expired_person_token`. Person Token Usage advises refreshing the person token five minutes before expiry and re-obtaining resource and auth tokens against it, which also keeps the resource's `presented_jti` record current. PS retention now covers the token itself. Anchors added on PS-to-AS Token Request, Auth Token Delivery, Re-authorization.\n- **#123** `as_unreachable` (502), PS token endpoint only; a well-formed AS terminal error is relayed with the AS's `error` and status; 502 branches in the state machine.\n- **#111** The host of an interaction URL MAY complete the interaction out of band; the code is consumed at completion, `invalid_code` afterwards, the pending URL returns the terminal response. Only the host of `url` can do this.\n- **#114** Deferred verifiers anchor on the signed `created`; skew is their policy; the replay cache spans the skew.\n\nBuilds clean.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01YUUF1ERs9yzVmC67NsRa8n",
       "createdAt": "2026-09-04T18:22:18Z",
-      "updatedAt": "2026-09-04T18:28:00Z",
+      "updatedAt": "2026-09-06T13:01:12Z",
       "baseRepository": "dickhardt/AAuth",
-      "baseRefName": "issues-terms",
-      "baseRefOid": "dd2c995a4edb17bf684a0e257b7398959f9a80a1",
+      "baseRefName": "main",
+      "baseRefOid": "49fc8988b5011d6065a81d52301e8e1d08d1193f",
       "headRepository": "dickhardt/AAuth",
       "headRefName": "issues-normative",
-      "headRefOid": "b3859fd4f3cd7350800fe6fccbbc86fabb3a9c95",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "headRefOid": "05c84be54d0afec5809f01e943fb4ccb9d00ebd0",
+      "closedAt": "2026-09-06T13:01:10Z",
+      "mergedAt": "2026-09-06T13:01:10Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "927b662370af53424a59d566c1b383ce3f8bf9de"
+      },
       "comments": [],
       "reviews": []
     },
@@ -3684,24 +3821,26 @@
       "id": "PR_kwDOQJKwSc8AAAABCPjPrg",
       "title": "-11 issue batch 4: person token endpoint moves into the Person Server chapter (#103)",
       "url": "https://github.com/dickhardt/AAuth/pull/132",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
       "labels": [],
       "body": "Stacked on #131. Single commit; the largest diff of the stack, kept last so the earlier batches review cleanly.\n\n- **#103** Person Token Endpoint (about 50 lines) moves from the Person Token chapter to sit before PS Token Endpoint. The anchor `{#person-token-endpoint}` travels with it, so every existing reference, including from Budgets and R3, still resolves. Person Token keeps structure, usage, and verification and gains a pointer.\n- The Person Server chapter opening is rewritten from \"how agents obtain authorization\" to what a PS serves: the eight endpoints with their metadata field names and requirement levels, and the sentence that the two REQUIRED endpoints plus `issuer` and `jwks_uri` are a conformant PS (pairs with #117 in batch 1).\n- The Overview's \"three governance endpoints\" now points at that list.\n\nBuilds clean.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01YUUF1ERs9yzVmC67NsRa8n",
       "createdAt": "2026-09-04T18:29:01Z",
-      "updatedAt": "2026-09-04T18:29:01Z",
+      "updatedAt": "2026-09-06T13:01:29Z",
       "baseRepository": "dickhardt/AAuth",
-      "baseRefName": "issues-normative",
-      "baseRefOid": "b3859fd4f3cd7350800fe6fccbbc86fabb3a9c95",
+      "baseRefName": "main",
+      "baseRefOid": "927b662370af53424a59d566c1b383ce3f8bf9de",
       "headRepository": "dickhardt/AAuth",
       "headRefName": "issues-structure",
-      "headRefOid": "56884a8ca7d626bec0a17cecb203ef2e90586e4a",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "headRefOid": "23f2a79a2fad551bdddb8159291a6ad4ea73b225",
+      "closedAt": "2026-09-06T13:01:28Z",
+      "mergedAt": "2026-09-06T13:01:28Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "7030c949bb73b0cdead834433dcff81080616699"
+      },
       "comments": [],
       "reviews": []
     },
@@ -3710,24 +3849,522 @@
       "id": "PR_kwDOQJKwSc8AAAABCRTSdA",
       "title": "Budgets: one consumption record, the AS as usage caller, settlement (#120)",
       "url": "https://github.com/dickhardt/AAuth/pull/133",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
       "labels": [],
       "body": "Stacked on #128 (branch `consent-presentation`), which carries the Unreported Allocations section and the comma fix this builds on. Retarget to `main` once #128 merges.\n\nThree changes to `draft-hardt-aauth-budgets.md`:\n\n**One consumption record (#120).** `budget_consumed` becomes a single `{jti, consumed}` object for the auth token presented on the request the resource token answers. Every other record duplicated a figure the issuer already had or would settle from a usage reading; the list cost about a kilobyte in the `401` header and told an agent what was spent under tokens it never held. The `jti` stays: an issuer holding several live allocations for one agent cannot attribute an amount alone, and attributing by agent key would make the conservative fallback the normal case for concurrent agents. New: a record is as of its resource token's `iat`, and is the token's final figure only when that is at or after the auth token's `exp`. A record stated while the token was live is a snapshot and releases nothing, which is also why a record on an `insufficient-budget` challenge cannot free the old token's remainder (the token stays spendable). Rationale section Why One Record.\n\n**The AS as a usage endpoint caller.** The endpoint was PS-only on the assumption that an AS sits in the resource's trust domain. A general-purpose AS (access.aauth.dev fronting resources it does not operate) does not, and it sizes allocations against a ceiling of its own, so it needs the same channel. The existing authorization rule generalizes: the resource answers for values seen in auth tokens whose `iss` or `ps` names the caller. Response `aud` names whichever issuer asked.\n\n**Settlement.** New subsection under Unreported Allocations: how an issuer gets out from under the conservative rule. A final record settles one token early. A usage reading settles every allocation expired by its `as_of` in aggregate, `free = ceiling \u2212 metered \u2212 \u03a3 unsettled allocations`, without naming any of them; the only over-count is spend under still-live tokens, which vanishes as they expire. An issuer with a calendar-period ceiling SHOULD clip allocations to the period boundary, after which the period settles itself with no query.\n\nThe model is implemented and tested in the access module (allocation ledger DO, settlement by record and by reading on an alarm, randomized many-token simulation asserting the issuer never over-authorizes). The simulation is what surfaced the record-finality rule.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01KQ7zzXWHFJ4pEjbmF5DnkW",
       "createdAt": "2026-09-04T22:50:00Z",
-      "updatedAt": "2026-09-04T22:50:45Z",
+      "updatedAt": "2026-09-06T12:57:27Z",
       "baseRepository": "dickhardt/AAuth",
       "baseRefName": "consent-presentation",
       "baseRefOid": "74799af35e91e27be7ab592d4f16da44883cbf96",
       "headRepository": "dickhardt/AAuth",
       "headRefName": "budgets-settlement",
       "headRefOid": "a0fdf548123fbfd0180ad178551dd752fd3ecf31",
-      "closedAt": null,
+      "closedAt": "2026-09-06T12:57:27Z",
       "mergedAt": null,
       "mergedBy": null,
       "mergeCommit": null,
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 135,
+      "id": "PR_kwDOQJKwSc8AAAABCZngLg",
+      "title": "Discover resource metadata through the aauth-resource link relation (#134)",
+      "url": "https://github.com/dickhardt/AAuth/pull/135",
+      "state": "CLOSED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Closes #134. Based on #128 like the other -11 PRs; independent of the #129\u2013#132 stack, with its history bullet at the end of the -11 list so the two do not collide.\n\n**Resource Metadata Link Relation** (new subsection under Resource Metadata). A server MAY send `Link: <\u2026/.well-known/aauth-resource.json>; rel=\"aauth-resource\"`, and an HTML page MAY carry `<link rel=\"aauth-resource\" href=\"\u2026\">` in its head. The target MUST be a server identifier plus `/.well-known/aauth-resource.json`; an agent MUST NOT fetch any other form, and verifies the document as it verifies any metadata document (`issuer` equals the fetch URL minus the suffix). So the link is a pointer, not an authority: it can lead an agent to a resource's own statement about itself and nothing else. A resource SHOULD put the relation on its `documentation_uri` page. A `401` still carries its requirement in `AAuth-Requirement`; the link is not a substitute. Verifiers never use the relation for key discovery.\n\n**Consuming a Resource End to End**, step 1 now names the link as the second way to reach `aauth-resource.json`.\n\n**Security Considerations: Link Relation Discovery.** A link is a statement by whoever controls the page. It cannot inject metadata or affect key trust. It can steer an agent to a resource the person did not intend; the person token endpoint already puts that resource's own `name` and `description` to the person, and a person token carries no authorization. Agents SHOULD record where a link was found; HTML is untrusted input.\n\n**IANA:** `aauth-resource` registered in the Link Relation Types registry per RFC 8288 \u00a74.2.\n\nTwo choices to review: the issue's example used `type=\"application/aauth-resource+json\"`, but the draft defines no media type for metadata documents, so the example omits `type`; and the issue's example target was not under `/.well-known/`, which the text disallows on purpose, since that is what keeps the link from becoming a second discovery authority.\n\nExplicit anchor added on Untrusted Input. Builds clean.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01YUUF1ERs9yzVmC67NsRa8n",
+      "createdAt": "2026-09-06T12:08:36Z",
+      "updatedAt": "2026-09-06T14:21:46Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "consent-presentation",
+      "baseRefOid": "74799af35e91e27be7ab592d4f16da44883cbf96",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "link-relation-discovery",
+      "headRefOid": "2158e33ccb76e6ed06b811f09aee88b439bae81e",
+      "closedAt": "2026-09-06T12:57:28Z",
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
+      "comments": [
+        {
+          "author": "sdatapix",
+          "authorAssociation": "NONE",
+          "body": "I realize that PR is already merged and closed before I started reviewing (timezone difference :(\r\n\r\nIn my changes, I had an update in the following section too, Bootstrapping#Agent identity access and above. Needed to mention link rel there?",
+          "createdAt": "2026-09-06T14:03:09Z",
+          "updatedAt": "2026-09-06T14:03:09Z"
+        },
+        {
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "body": "@sdatapix \u2014 sorry about the timing; it went in as #137 before your review landed. All three points are in #142. On Bootstrapping: that section was removed in the conciseness pass (#139), and its resource bullet survives as the first sentence of Resource Metadata and step 1 of Consuming a Resource End to End, which already names the link. The Resource Metadata sentence now also says a resource SHOULD point agents at its metadata from the pages they reach first, with a pointer to the link relation section. If your text had more in that spot, say so on #142.",
+          "createdAt": "2026-09-06T14:21:32Z",
+          "updatedAt": "2026-09-06T14:21:32Z"
+        }
+      ],
+      "reviews": [
+        {
+          "id": "PRR_kwDOQJKwSc8AAAABMYBNnw",
+          "commit": {
+            "abbreviatedOid": "2158e33"
+          },
+          "author": "sdatapix",
+          "authorAssociation": "NONE",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2026-09-06T13:34:56Z",
+          "updatedAt": "2026-09-06T13:34:56Z",
+          "comments": [
+            {
+              "originalPosition": 53,
+              "body": "Link Relation Security (anchor and header should match?)",
+              "createdAt": "2026-09-06T13:34:56Z",
+              "updatedAt": "2026-09-06T13:34:56Z"
+            }
+          ]
+        },
+        {
+          "id": "PRR_kwDOQJKwSc8AAAABMYChCg",
+          "commit": {
+            "abbreviatedOid": "2158e33"
+          },
+          "author": "sdatapix",
+          "authorAssociation": "NONE",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2026-09-06T13:41:52Z",
+          "updatedAt": "2026-09-06T13:41:52Z",
+          "comments": [
+            {
+              "originalPosition": 24,
+              "body": ">A response MAY carry more than one `aauth-resource` link when it describes several resources.\n\nThis is good. Typically, this is the case when different environments are provided by the resource owner, e.g.\n\nsandbox.api.example.com\nuat.api.example.com\napi.example.com\n\nThese are also listed under serverUrl in their OpenAPI doc. \n",
+              "createdAt": "2026-09-06T13:41:52Z",
+              "updatedAt": "2026-09-06T13:41:52Z"
+            }
+          ]
+        },
+        {
+          "id": "PRR_kwDOQJKwSc8AAAABMYJh6g",
+          "commit": {
+            "abbreviatedOid": "2158e33"
+          },
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2026-09-06T14:21:31Z",
+          "updatedAt": "2026-09-06T14:21:31Z",
+          "comments": [
+            {
+              "originalPosition": 53,
+              "body": "Agreed, fixed in #142: the heading is now Link Relation Security, matching the anchor and its neighbours.",
+              "createdAt": "2026-09-06T14:21:31Z",
+              "updatedAt": "2026-09-06T14:21:59Z"
+            }
+          ]
+        },
+        {
+          "id": "PRR_kwDOQJKwSc8AAAABMYJmrg",
+          "commit": {
+            "abbreviatedOid": "2158e33"
+          },
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2026-09-06T14:21:46Z",
+          "updatedAt": "2026-09-06T14:21:46Z",
+          "comments": [
+            {
+              "originalPosition": 24,
+              "body": "Good case, and it is the one that motivates the sentence. Added in #142: a developer portal for a service with sandbox, staging, and production deployments names all three, each its own resource identifier, as an OpenAPI document lists them under `servers`.",
+              "createdAt": "2026-09-06T14:21:46Z",
+              "updatedAt": "2026-09-06T14:21:46Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": 136,
+      "id": "PR_kwDOQJKwSc8AAAABCZzcEQ",
+      "title": "-11 issue batch 1: figure, person-token routing, prerequisite visibility, PS floor (#125 #104 #119 #117)",
+      "url": "https://github.com/dickhardt/AAuth/pull/136",
+      "state": "MERGED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Replaces #129, which GitHub closed when its base branch was deleted after #128 merged; content unchanged, rebased onto main. One commit per issue.\n\n- **#125** Parties figure redrawn: Resource\u2192Agent returns a resource response or resource token; Agent\u2194PS is a signed request up, person token or auth token down. Legend follows.\n- **#104** Resource token audience derived from the verified person token in the two `aud` lists and the authorization endpoint responses intro; dropped \"the 401 path is reached with an agent token\"; Agent Token Request \u2192 Auth Token Request.\n- **#119** Three- and four-party figures gain the person token leg and a step list; Resource Token opens with the prerequisite; a resource MUST NOT challenge with `requirement=auth-token` on a request that carried neither a person token nor an auth token.\n- **#117** Person Server Metadata states the floor: the four REQUIRED fields. Consent needs no metadata field; `interaction_endpoint` is the agent's channel to the person, not a consent surface.\n\nOne history bullet per issue under -11 (none for the figure). Builds clean with mmark + xml2rfc.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01YUUF1ERs9yzVmC67NsRa8n\n",
+      "createdAt": "2026-09-06T13:00:01Z",
+      "updatedAt": "2026-09-06T13:00:15Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "b240c1111838915243327810761c789faa267d36",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "issues-fixes",
+      "headRefOid": "0bb35c2bd7f05afeed936261768237e8b8cb6bd8",
+      "closedAt": "2026-09-06T13:00:13Z",
+      "mergedAt": "2026-09-06T13:00:13Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "2f4189855e74fb4ebffec58e8bca94ba271ad365"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 137,
+      "id": "PR_kwDOQJKwSc8AAAABCZ0qVw",
+      "title": "Discover resource metadata through the aauth-resource link relation (#134)",
+      "url": "https://github.com/dickhardt/AAuth/pull/137",
+      "state": "MERGED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Replaces #135, which GitHub closed when its base branch was deleted after #128 merged; content unchanged, rebased onto main.\n\nCloses #134. Based on #128 like the other -11 PRs; independent of the #129\u2013#132 stack, with its history bullet at the end of the -11 list so the two do not collide.\n\n**Resource Metadata Link Relation** (new subsection under Resource Metadata). A server MAY send `Link: <\u2026/.well-known/aauth-resource.json>; rel=\"aauth-resource\"`, and an HTML page MAY carry `<link rel=\"aauth-resource\" href=\"\u2026\">` in its head. The target MUST be a server identifier plus `/.well-known/aauth-resource.json`; an agent MUST NOT fetch any other form, and verifies the document as it verifies any metadata document (`issuer` equals the fetch URL minus the suffix). So the link is a pointer, not an authority: it can lead an agent to a resource's own statement about itself and nothing else. A resource SHOULD put the relation on its `documentation_uri` page. A `401` still carries its requirement in `AAuth-Requirement`; the link is not a substitute. Verifiers never use the relation for key discovery.\n\n**Consuming a Resource End to End**, step 1 now names the link as the second way to reach `aauth-resource.json`.\n\n**Security Considerations: Link Relation Discovery.** A link is a statement by whoever controls the page. It cannot inject metadata or affect key trust. It can steer an agent to a resource the person did not intend; the person token endpoint already puts that resource's own `name` and `description` to the person, and a person token carries no authorization. Agents SHOULD record where a link was found; HTML is untrusted input.\n\n**IANA:** `aauth-resource` registered in the Link Relation Types registry per RFC 8288 \u00a74.2.\n\nTwo choices to review: the issue's example used `type=\"application/aauth-resource+json\"`, but the draft defines no media type for metadata documents, so the example omits `type`; and the issue's example target was not under `/.well-known/`, which the text disallows on purpose, since that is what keeps the link from becoming a second discovery authority.\n\nExplicit anchor added on Untrusted Input. Builds clean.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01YUUF1ERs9yzVmC67NsRa8n\n",
+      "createdAt": "2026-09-06T13:05:16Z",
+      "updatedAt": "2026-09-06T13:05:30Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "7030c949bb73b0cdead834433dcff81080616699",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "link-relation-discovery",
+      "headRefOid": "a112f55c847cb1a2adaf9f1bd62d84b7eea6df65",
+      "closedAt": "2026-09-06T13:05:28Z",
+      "mergedAt": "2026-09-06T13:05:28Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "e1fb6e2c1b22f03172d4d90eb293c6a5cb4a981c"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 138,
+      "id": "PR_kwDOQJKwSc8AAAABCZ0xHg",
+      "title": "Budgets: one consumption record, the AS as usage caller, settlement (#120)",
+      "url": "https://github.com/dickhardt/AAuth/pull/138",
+      "state": "MERGED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Replaces #133, which GitHub closed when its base branch was deleted after #128 merged; content unchanged, rebased onto main.\n\nStacked on #128 (branch `consent-presentation`), which carries the Unreported Allocations section and the comma fix this builds on. Retarget to `main` once #128 merges.\n\nThree changes to `draft-hardt-aauth-budgets.md`:\n\n**One consumption record (#120).** `budget_consumed` becomes a single `{jti, consumed}` object for the auth token presented on the request the resource token answers. Every other record duplicated a figure the issuer already had or would settle from a usage reading; the list cost about a kilobyte in the `401` header and told an agent what was spent under tokens it never held. The `jti` stays: an issuer holding several live allocations for one agent cannot attribute an amount alone, and attributing by agent key would make the conservative fallback the normal case for concurrent agents. New: a record is as of its resource token's `iat`, and is the token's final figure only when that is at or after the auth token's `exp`. A record stated while the token was live is a snapshot and releases nothing, which is also why a record on an `insufficient-budget` challenge cannot free the old token's remainder (the token stays spendable). Rationale section Why One Record.\n\n**The AS as a usage endpoint caller.** The endpoint was PS-only on the assumption that an AS sits in the resource's trust domain. A general-purpose AS (access.aauth.dev fronting resources it does not operate) does not, and it sizes allocations against a ceiling of its own, so it needs the same channel. The existing authorization rule generalizes: the resource answers for values seen in auth tokens whose `iss` or `ps` names the caller. Response `aud` names whichever issuer asked.\n\n**Settlement.** New subsection under Unreported Allocations: how an issuer gets out from under the conservative rule. A final record settles one token early. A usage reading settles every allocation expired by its `as_of` in aggregate, `free = ceiling \u2212 metered \u2212 \u03a3 unsettled allocations`, without naming any of them; the only over-count is spend under still-live tokens, which vanishes as they expire. An issuer with a calendar-period ceiling SHOULD clip allocations to the period boundary, after which the period settles itself with no query.\n\nThe model is implemented and tested in the access module (allocation ledger DO, settlement by record and by reading on an alarm, randomized many-token simulation asserting the issuer never over-authorizes). The simulation is what surfaced the record-finality rule.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01KQ7zzXWHFJ4pEjbmF5DnkW\n",
+      "createdAt": "2026-09-06T13:05:43Z",
+      "updatedAt": "2026-09-06T13:05:57Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "e1fb6e2c1b22f03172d4d90eb293c6a5cb4a981c",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "budgets-settlement",
+      "headRefOid": "a6885985b7f33a36dabaa9ba411545286a83c14f",
+      "closedAt": "2026-09-06T13:05:55Z",
+      "mergedAt": "2026-09-06T13:05:55Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "58b2a26c0373131cbf18a6661b8db6aed8e5da0b"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 139,
+      "id": "PR_kwDOQJKwSc8AAAABCZ8C8A",
+      "title": "Conciseness pass on -11: \u2212300 lines, no normative change",
+      "url": "https://github.com/dickhardt/AAuth/pull/139",
+      "state": "MERGED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "A fresh pass over today's main, in the buckets #100 identified but re-judged against the current text. #100 stays as the record of that audit; this does not update it. Protocol draft goes from 4,000 lines to 3,700. One commit per bucket; each builds with mmark + xml2rfc.\n\n- **Introduction** (\u221228): the ten-bullet feature list and its three-bullet negation become one paragraph. Why Not Extend OAuth carries the argument.\n- **Overview** (\u221274): the three mission diagrams restated the Mission chapter and become one paragraph; Bootstrapping restated agent tokens, metadata, the `ps` claim, agent-person binding, and PS-AS trust, and is gone. Its three statements with no other home moved: the `ps` claim MUST to Agent Governance, the PS direct-channel MAY to PS Governance Endpoints, the `access_mode` / R3 SHOULD to Consuming a Resource; the \"a resource MAY omit metadata\" sentence to Resource Metadata. The three-party walkthrough is two sentences. The mode table, parties figure, ladders, and the #119 step lists stay.\n- **Signature-header boilerplate** (\u221272): fourteen examples showed `Signature-Input`, `Signature`, and `Content-Digest` lines that varied only by endpoint; they now show `Signature-Key`, and Conventions says what is omitted. The fully bound request in Covered Components and the AAuth-Access example (whose point is the covered `authorization` header) keep complete headers.\n- **202 examples and clarification variants** (\u221236): Response without Resource Token and PS Response point at the defining `requirement=interaction` sections; the three clarification-response examples keep one full request and two bodies. Anchor `{#interaction-required}` added.\n- **Metadata** (\u221230): the seven display fields were listed identically under all four roles; the common-fields table is normative, so per-role lists carry only role-specific fields.\n- **Design Rationale** (\u221231): the mission-hash, refresh-token, and downstream-scope entries restated body text; their one surviving clause each is grafted into the body. Five one-sentence entries become an In Brief list. The GNAP resource-token bullet points at Why Resource Tokens (anchor added) instead of repeating it.\n- **Security Considerations** (\u221222): Proof-of-Possession absorbs Token Security. Clarification Chat Security, Token Issuer Discovery, AAuth-Access Security, Call Chaining Identity, and Token Revocation and Lifecycle restated normative text stated elsewhere. Token Revocation loses its closing paragraph, a copy of Policy Evaluation Points.\n- **Section merges** (\u221212): the `aud` rule stated once; Endpoint URLs and Other URLs merged; Organization Visibility is a sentence in PS-AS Collapse; Auth Token Required moves beside the other two `401` challenges, with AAuth-Access and Resource-Managed Authorization following.\n- **Document History**: untouched except one bullet for the pass.\n\n**Normative accounting.** Every RFC 2119 sentence in main was diffed against the branch. All 39 that no longer appear verbatim are either the 28 duplicated metadata field lines, reworded in place, or relocated as listed above. One consolidation to note: the clarification-round limit was SHOULD in Clarification Limits and MUST in Clarification Chat Security; the MUST governed, and Clarification Limits now says MUST with five RECOMMENDED. One MUST NOT (session token not usable as a bearer token) moved from Security Considerations into the AAuth-Access header section.\n\n**Not taken:** PS endpoint example bodies (they earn their space); Document History.\n\n**Found while reading, not fixed here (separate PR):** five stale recitals \u2014 the mission blob's `expires_at` text still says resource tokens may not outlive it, which #131 changed; Updated Request and Non-Repudiation still name the removed `agent` claim; Resource Adoption Path step 3 still routes on the agent token's `ps`; and the `clarification_response` TODO.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01YUUF1ERs9yzVmC67NsRa8n",
+      "createdAt": "2026-09-06T13:36:39Z",
+      "updatedAt": "2026-09-06T13:48:22Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "58b2a26c0373131cbf18a6661b8db6aed8e5da0b",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "conciseness-11",
+      "headRefOid": "938883857f6ebc59da7eac1a4847617013d9f699",
+      "closedAt": "2026-09-06T13:48:21Z",
+      "mergedAt": "2026-09-06T13:48:20Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "d129f2530d59abaf7b9138a79db269849c845c60"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 140,
+      "id": "PR_kwDOQJKwSc8AAAABCZ8OyA",
+      "title": "Correct four recitals left behind by earlier -11 changes",
+      "url": "https://github.com/dickhardt/AAuth/pull/140",
+      "state": "MERGED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Found while reading the whole draft for the conciseness pass (#139); kept separate because these change what the text says.\n\n- **Mission blob `expires_at`** still said \"No token carrying `mission_s256` \u2014 person, resource, or auth \u2014 may have an `exp` later than `expires_at`; an issuer MUST shorten the token's lifetime to fit.\" #131 made resource tokens independent of the mission and carried the bound to the AS in the person token. The sentence now says exactly that and points at the three sections that hold the rules.\n- **Updated Request** required the new resource token to have the same `iss`, `agent`, and `agent_jkt`. There is no `agent` claim in a resource token since the -11 pivot; the identity it carries is `ps` and `sub`. Now `iss`, `ps`, `sub`, and `agent_jkt`.\n- **Non-Repudiation** referred to \"the persistent identifiers (`agent`, `sub`)\". Now the agent token's `sub` and the person's directed `sub`.\n- **Resource Adoption Path step 3** still said \"Read the `ps` claim from the agent token and issue resource tokens with `aud` = PS URL\", the routing #104 removed everywhere else. Now the verified person token's `iss`.\n\nThe `clarification_response` TODO stays; recommended sections are still to be defined.\n\nHistory bullet is at the end of the -11 list so it does not collide with #139's at the top. Builds clean; independent of #139 and mergeable in either order.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01YUUF1ERs9yzVmC67NsRa8n",
+      "createdAt": "2026-09-06T13:37:24Z",
+      "updatedAt": "2026-09-06T13:48:40Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "d129f2530d59abaf7b9138a79db269849c845c60",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "stale-recitals",
+      "headRefOid": "50d71f4fddfffcf0fdfdd4b0bd7fe68c0a60404d",
+      "closedAt": "2026-09-06T13:48:39Z",
+      "mergedAt": "2026-09-06T13:48:39Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "39a017d64c1a35dea6188e3fae71f4a3f3aa03e7"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 141,
+      "id": "PR_kwDOQJKwSc8AAAABCaClkQ",
+      "title": "Budgets: an omitted PS ceiling grants nothing in four-party access (#122)",
+      "url": "https://github.com/dickhardt/AAuth/pull/141",
+      "state": "MERGED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Closes #122.\n\nThe PS-to-AS `budget` parameter is OPTIONAL, and the text said that when the resource token carried a budget and the PS omitted the parameter, the AS MUST treat the resource's budget as the PS's ceiling. That made two cases identical on the wire: a budget-aware PS deliberately granting the full offer, and a PS that has not implemented this extension and forwarded an ordinary token request. The second silently became the maximum grant, the reverse of the family's ignore-what-you-don't-recognize posture.\n\nNow: when the resource token carries `budget` and the PS omits the parameter, the AS MUST NOT issue a `budget` claim, and omission MUST NOT be read as a grant. A PS granting the full offer echoes the resource token's `budget`. The auth token then carries no allocation, and the existing rule in Auth Token Extensions applies: the resource treats it as carrying no budget authorization and applies its own default. No new error; a PS that cannot size an allocation surfaces at the resource, where the existing exhaustion path already handles a token without one.\n\nOne sentence changed, one history bullet added. Builds clean. #127 (Regent implementation status) deliberately not included.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01YUUF1ERs9yzVmC67NsRa8n",
+      "createdAt": "2026-09-06T14:02:03Z",
+      "updatedAt": "2026-09-06T17:30:56Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "39a017d64c1a35dea6188e3fae71f4a3f3aa03e7",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "budgets-affirmative-ceiling",
+      "headRefOid": "d06331e9b32ac224c42187a8109d8a045a52a056",
+      "closedAt": "2026-09-06T17:30:54Z",
+      "mergedAt": "2026-09-06T17:30:54Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "04c528899e22cbdd222a57adb8be6da4204f6fc7"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 142,
+      "id": "PR_kwDOQJKwSc8AAAABCaHnpQ",
+      "title": "Link relation: review follow-ups from #135",
+      "url": "https://github.com/dickhardt/AAuth/pull/142",
+      "state": "MERGED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Follow-ups to @sdatapix's review of #135, which had merged (as #137) before the review landed.\n\n- **Heading matches anchor.** \"Link Relation Discovery\" in Security Considerations is now \"Link Relation Security\", matching `{#link-relation-security}` and the naming of its neighbours.\n- **Several links, one page.** The multiple-links sentence now carries the case that motivates it: a developer portal for a service with sandbox, staging, and production deployments names all three, each its own resource identifier, as an OpenAPI document lists them under `servers`.\n- **The Bootstrapping mention.** That section was removed in the conciseness pass (#139); its resource bullet survives as the first sentence of Resource Metadata and as step 1 of Consuming a Resource End to End, which already names the link. The Resource Metadata sentence now also says a resource SHOULD point agents at its metadata from pages they reach first, with a pointer to the link relation section.\n\nBuilds clean.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01YUUF1ERs9yzVmC67NsRa8n",
+      "createdAt": "2026-09-06T14:21:30Z",
+      "updatedAt": "2026-09-06T17:31:15Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "04c528899e22cbdd222a57adb8be6da4204f6fc7",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "link-relation-review",
+      "headRefOid": "33ec2682b04dc977bd72e269803ea28afb7ede21",
+      "closedAt": "2026-09-06T17:31:14Z",
+      "mergedAt": "2026-09-06T17:31:14Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "0a5044456b981f3eae14c6c9bcb3389427cc27cf"
+      },
+      "comments": [],
+      "reviews": [
+        {
+          "id": "PRR_kwDOQJKwSc8AAAABMYNTOA",
+          "commit": {
+            "abbreviatedOid": "33ec268"
+          },
+          "author": "sdatapix",
+          "authorAssociation": "NONE",
+          "state": "APPROVED",
+          "body": "Looks good. Thanks @dickhardt ",
+          "createdAt": "2026-09-06T14:39:46Z",
+          "updatedAt": "2026-09-06T17:31:03Z",
+          "comments": []
+        }
+      ]
+    },
+    {
+      "number": 143,
+      "id": "PR_kwDOQJKwSc8AAAABCa5doQ",
+      "title": "Bootstrap: many agents under one operator, and sub-agent token acquisition (#115, #116)",
+      "url": "https://github.com/dickhardt/AAuth/pull/143",
+      "state": "MERGED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Closes #115. Closes #116. Both from the notes.ito.com review; @Joi, this is the text.\n\n**Many Agents, One Operator** (new subsection under Self-Hosted Agents). One published AP key; one self-issued token per agent, each with its own `sub` and its own `cnf` key; agent keys never published, appearing only in each token's `cnf.jwk`. Framed as the two-key pattern in another shape: the AP key is the domain's durable key, each agent key is that agent's ephemeral key and rotates for the cost of one token. Custody by blast radius: AP key in hardware or an issuer-only keystore, agent keys with the agent (per-lane signing proxy, per-process keystore, process memory for short-lived tokens); one agent key compromised is one `sub` until expiry, the AP key compromised mints the domain. The \"self-hosted agents use a single key\" statements in Per-Platform Key Handling, Self-Hosted Refresh, and Self-Hosted Enrollment now say that is the one-agent case, and Security Considerations gains the several-agent contrast.\n\n**Sub-Agent Tokens** (new section before the enrollment sketches). Self-hosted: the operator's AP self-issues the sub-agent token like any other, with `sub` = parent local part + `+` + discriminator, `parent_agent` naming a top-level parent, `ps` copied from the parent, a fresh `cnf` key generated where the sub-agent runs, and `exp` no later than the parent's; example payload included; the parent plays no role in issuance. Hosted AP: the sub-agent's key is generated where it runs, the parent requests the token with its own ephemeral key and agent token, the AP checks the parent carries no `parent_agent`, applies its spawn policy, and returns the token through the parent; no endpoint is defined, the shape is what any AP offering it needs to cover. Sub-agents never refresh on their own; they have no enrollment. Two things an AP should record: which parent requested each token, and how many are live per parent.\n\nPatterns Covered and Document History (-02) updated. Informational throughout, lowercase should/must per the document's convention. Builds clean.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01YUUF1ERs9yzVmC67NsRa8n",
+      "createdAt": "2026-09-06T17:33:16Z",
+      "updatedAt": "2026-09-06T18:29:56Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "0a5044456b981f3eae14c6c9bcb3389427cc27cf",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "bootstrap-many-agents-subagents",
+      "headRefOid": "cfe7e499c9733704d4b63bb521c57b6b42b4281f",
+      "closedAt": "2026-09-06T18:29:54Z",
+      "mergedAt": "2026-09-06T18:29:54Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "4ce6a6fd480a1572b650ec264ced81183fb22d40"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 144,
+      "id": "PR_kwDOQJKwSc8AAAABCbCImQ",
+      "title": "Name the Supervisor role; appendix on a minimal person server (#109)",
+      "url": "https://github.com/dickhardt/AAuth/pull/144",
+      "state": "MERGED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Two commits.\n\n**The Supervisor.** Named as a role that does not appear on the wire: the party the PS consults for a per-act decision, the Person by default (a consent screen is the Person supervising), or a **supervision server (SS)** the PS MAY delegate to. The naming mirrors Person / Person Server: the SS represents the Supervisor to the PS as the PS represents the Person to everyone else. The protocol between a PS and an SS is AAuth Supervision, a companion specification. Added to Terminology (Parties) and Roles; Policy Evaluation Points, Consent Presentation, and Why Missions Are Not a Policy Language now name the Supervisor where they described an anonymous decision-maker. Consent remains the Person's word. The parties figure is unchanged; the Supervisor sits behind the PS.\n\n**A Minimal Person Server** (informative appendix, closes #109). How a PS serving one person composes from what the document already defines: the four REQUIRED metadata fields and what each omitted endpoint costs; one-person agent binding and approval-endpoint authentication; directed `sub` derivation and person-token retention; three-party answered directly and four-party federated with the retained person token; consent as a `202` with `url` and `code` that the PS completes out of band from a tap, so a queue of pending decisions is the whole consent surface; long waits handled by the existing resubmit-and-remember rules; the person as Supervisor, with a supervision server as what such a PS grows into. Every paragraph points at the governing section. No new requirement.\n\nTwo history bullets. Builds clean.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01YUUF1ERs9yzVmC67NsRa8n",
+      "createdAt": "2026-09-06T18:06:02Z",
+      "updatedAt": "2026-09-06T18:30:10Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "0a5044456b981f3eae14c6c9bcb3389427cc27cf",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "supervisor-and-minimal-ps",
+      "headRefOid": "94f297c61c2b7b37f6ed062d0445fbd17d4e9ceb",
+      "closedAt": "2026-09-06T18:30:09Z",
+      "mergedAt": "2026-09-06T18:30:09Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "b6ca19bad10f2a819d97782807fce448436a5866"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 147,
+      "id": "PR_kwDOQJKwSc8AAAABCfnqXg",
+      "title": "Revocation: carry exp, name what is revocable and where, define errors (#146)",
+      "url": "https://github.com/dickhardt/AAuth/pull/147",
+      "state": "MERGED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Closes #146.\n\n## Request is `jti` + `exp`\n\nA caller revokes only its own tokens, so `iss` is redundant with the verified signer. The recipient takes the issuer from the signature and keys the revocation under it \u2014 revoking another issuer's token is unreachable, not refused. This also drops the \"or from a trusted PS\" clause that let one PS revoke another's tokens.\n\n```http\nPOST /revoke HTTP/1.1\nHost: resource.example\nSignature-Key: sig=jwks_uri;id=\"https://ps.example\";\n    dwk=\"aauth-person.json\";kid=\"key-1\"\n\n{ \"jti\": \"unique-token-identifier\", \"exp\": 1788727813 }\n```\n\n`exp` is the revoked token's own expiration. A recipient MAY discard the entry once past `exp` plus clock skew, and MAY reject an `exp` further out than the longest lifetime it accepts. Nothing previously bounded the entry: the section had removed the token type, so the stated per-type maxima could not be applied.\n\n## What is revocable, and where\n\n- **agent token** \u2014 only at a PS, by the agent provider. A resource that takes an agent token directly under identity-based access has no revocation path, since the AP holds no record of which resources the agent visits. Bounded by the agent token lifetime, hence the 24-hour ceiling (#agent-tokens). This drops the old SHOULD asking such a resource to run a revocation endpoint nobody can find.\n- **person token** \u2014 by the issuing PS, at the resource in `aud` and at any AS it was presented to.\n- **auth token** \u2014 at the resource, by the PS (three-party) or AS (four-party) that issued it.\n\n## Four-party chain\n\nThe AS issued the auth token, so the PS cannot revoke it. The PS revokes the **person token** at the AS; the AS cascades to the auth tokens it issued against that person token, calling the revocation endpoint of the resource each names in `aud`. The PS also revokes the person token at the resource.\n\nAn auth token carries no reference to the person token it came from, so nothing on the wire recovers the link \u2014 the AS must hold it. Stated the retention this implies for both PS and AS, and that it is bounded by the token's own `exp`: at most one hour, not a durable ledger.\n\n## Response and errors\n\n`200 OK`, empty body, once the revocation is recorded \u2014 whether or not the recipient holds a record of the token. A stateless verifier was previously required to answer `404` to every revocation it honored. No \"not found\": a recipient cannot distinguish a token it never saw from one it saw and no longer holds, and an answer that varied would disclose what it holds.\n\n| Error | Status | Meaning |\n|-------|--------|---------|\n| `invalid_request` | 400 | Missing or malformed `jti` or `exp` |\n| `unsupported_iss` | 403 | Recipient does not accept revocations from this caller at all |\n| `server_error` | 500 | Internal error |\n\nSignature failures stay at `401` with `Signature-Error`.\n\n## Drive-by\n\nThe PS-to-AS example's `Signature-Key` used a `jwks_uri=\"...\"` parameter, which the `jwks_uri` scheme does not define \u2014 it takes `id`, `dwk`, and `kid`. Fixed, since the revocation rules now depend on the signer's identity being derivable from that header.\n\n## Resolved by this PR\n\nThe malicious-PS flooding question from #146's review largely closes: a PS can no longer revoke tokens it did not issue, so it can only affect its own people, and `exp` caps the store at 24 hours of junk. What is left is ordinary per-signer rate limiting.\n\nBuilds clean with mmark + xml2rfc.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01Vibbcv1TAfcACkkbNTkraE",
+      "createdAt": "2026-09-07T09:14:17Z",
+      "updatedAt": "2026-09-07T12:30:15Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "b6ca19bad10f2a819d97782807fce448436a5866",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "revocation-exp-146",
+      "headRefOid": "072fda1926bd1f740560fd12c06cd8505b49c188",
+      "closedAt": "2026-09-07T12:30:12Z",
+      "mergedAt": "2026-09-07T12:30:12Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "87b92839d5f48ed7c8ec2801e1fb7ca8be6f4773"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 148,
+      "id": "PR_kwDOQJKwSc8AAAABCjhJXQ",
+      "title": "Keying Material: pin how a server signs",
+      "url": "https://github.com/dickhardt/AAuth/pull/148",
+      "state": "MERGED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "\u00a7Keying Material pinned the scheme for agents \u2014 MUST use `scheme=jwt`, MUST NOT use `jwks_uri` or `hwk` \u2014 and said nothing about the PS, AS, AP, and resource requests the protocol also depends on. Server-to-server signing appeared only in the PS-to-AS example, which was itself malformed until #147 fixed it.\n\nAdded:\n\n> A PS, AS, AP, or resource making a signed AAuth request in its own right \u2014 a PS-to-AS token request, a revocation, or any other server-to-server call \u2014 MUST use `scheme=jwks_uri`. The `id` parameter MUST be the server's `issuer` as published in its metadata, and `dwk` MUST be that metadata document's well-known name: `aauth-person.json`, `aauth-access.json`, `aauth-agent.json`, or `aauth-resource.json`.\n\nThe recipient resolves `id` to the caller's identity, and the metadata `issuer` check binds that identity to the `iss` of every token the server mints.\n\n## Why this matters now\n\nToken revocation (#146, #147) names a token by `jti` alone and keys the entry under the verified caller. That derivation had no normative footing: a server signing with `scheme=jwks` presents a JWKS URL as its identity, not an issuer URL, and a recipient would have had nothing to key on. With the scheme pinned, `(id, jti)` is two plain strings off the same request.\n\n## Carve-out\n\nA resource acting as an agent to reach a downstream resource (#multi-hop) is signing as an agent, not as a server \u2014 it presents its own agent token with `scheme=jwt`, as \u00a7Call Chaining already requires.\n\nBuilds clean with mmark + xml2rfc.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01Vibbcv1TAfcACkkbNTkraE",
+      "createdAt": "2026-09-07T17:07:42Z",
+      "updatedAt": "2026-09-07T17:49:31Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "87b92839d5f48ed7c8ec2801e1fb7ca8be6f4773",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "server-signing-scheme",
+      "headRefOid": "17f830f3fa1ab1e4279989ef1e47b4670f12d9a9",
+      "closedAt": "2026-09-07T17:49:28Z",
+      "mergedAt": "2026-09-07T17:49:28Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "4d04198b6e67197b1fec5e0b0c8071f490e4e02f"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 149,
+      "id": "PR_kwDOQJKwSc8AAAABCjkoWQ",
+      "title": "Revocation: resource tokens, and what a revoked token gets back",
+      "url": "https://github.com/dickhardt/AAuth/pull/149",
+      "state": "CLOSED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Stacked on #148. Depends on dickhardt/signature-key#37 for `revoked_jwt`.\n\n## Resource tokens are revocable\n\nA resource issues resource tokens, so it can withdraw one. It calls the revocation endpoint of the party named in `aud` \u2014 the PS in three-party, the AS in four-party \u2014 and, in four-party, the `ps` as well: the agent hands the resource token to its PS first, so the PS holds it and may be running a consent prompt against it.\n\nThe recipient MUST NOT issue an auth token against it and SHOULD terminate a pending request started for it. Five minutes is the whole window (#resource-tokens), but it spans the wait for user interaction, which is exactly when a resource is most likely to want to withdraw a request it already challenged for.\n\n## What a revoked token gets back\n\nThis was undefined. A revoked token verifies, has not expired, has the right `aud`, and has intact claims \u2014 so `invalid_*` and `expired_*` are both false, and a caller told either has no reason not to present the same token again. Where the answer goes follows how the token was carried.\n\n**In the `Signature-Key` header** (agent, person, or auth token): `401` with `Signature-Error: error=revoked_jwt`. Exactly one token rides in that header, so the code needs no token type. A resource refusing a revoked auth token SHOULD also carry `AAuth-Requirement: requirement=auth-token` with a fresh resource token, so one response says both why it failed and how to recover \u2014 the agent's PS then decides afresh and denies terminally if the grant is gone.\n\n`revoked_jwt` is new in signature-key (dickhardt/signature-key#37), as a sibling of `expired_jwt` in the Signature Error Code registry.\n\n**As a request parameter** (resource token; the person token a PS presents to an AS): the signature verified, so this is not a `401`, and `revoked_jwt` does not reach it. The body carries `revoked_<token>_token`, beside the `invalid_` and `expired_` codes that parameter already has:\n\n| Error | Status | From |\n|---|---|---|\n| `revoked_resource_token` | 400 | the PS or AS the agent presented it to |\n| `revoked_person_token` | 400 | the AS, or a PS that would otherwise present it |\n\nA pending request already started against a withdrawn resource token terminates with the new polling code `revoked`, rather than `denied`, which says the user refused.\n\nAn agent token needs no parameter code: it is revoked only at a PS, and a PS always receives it in the `Signature-Key` header.\n\n## Disclosure\n\nNaming revocation to the agent holding the token discloses nothing \u2014 the token is its own, and it is the party that most needs to stop using it. That is a different audience from the revocation endpoint's own response to a calling server, which still says only that the revocation was recorded.\n\nBuilds clean with mmark + xml2rfc.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01Vibbcv1TAfcACkkbNTkraE",
+      "createdAt": "2026-09-07T17:17:23Z",
+      "updatedAt": "2026-09-07T17:49:30Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "server-signing-scheme",
+      "baseRefOid": "17f830f3fa1ab1e4279989ef1e47b4670f12d9a9",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "resource-token-revocation",
+      "headRefOid": "7e6059fb598491577037b4257ad50081657e66c4",
+      "closedAt": "2026-09-07T17:49:30Z",
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 150,
+      "id": "PR_kwDOQJKwSc8AAAABCjwGdw",
+      "title": "Revocation: resource tokens, and what a revoked token gets back",
+      "url": "https://github.com/dickhardt/AAuth/pull/150",
+      "state": "MERGED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Stacked on #148. Depends on dickhardt/signature-key#37 for `revoked_jwt`.\n\n## Resource tokens are revocable\n\nA resource issues resource tokens, so it can withdraw one. It calls the revocation endpoint of the party named in `aud` \u2014 the PS in three-party, the AS in four-party \u2014 and, in four-party, the `ps` as well: the agent hands the resource token to its PS first, so the PS holds it and may be running a consent prompt against it.\n\nThe recipient MUST NOT issue an auth token against it and SHOULD terminate a pending request started for it. Five minutes is the whole window (#resource-tokens), but it spans the wait for user interaction, which is exactly when a resource is most likely to want to withdraw a request it already challenged for.\n\n## What a revoked token gets back\n\nThis was undefined. A revoked token verifies, has not expired, has the right `aud`, and has intact claims \u2014 so `invalid_*` and `expired_*` are both false, and a caller told either has no reason not to present the same token again. Where the answer goes follows how the token was carried.\n\n**In the `Signature-Key` header** (agent, person, or auth token): `401` with `Signature-Error: error=revoked_jwt`. Exactly one token rides in that header, so the code needs no token type. A resource refusing a revoked auth token SHOULD also carry `AAuth-Requirement: requirement=auth-token` with a fresh resource token, so one response says both why it failed and how to recover \u2014 the agent's PS then decides afresh and denies terminally if the grant is gone.\n\n`revoked_jwt` is new in signature-key (dickhardt/signature-key#37), as a sibling of `expired_jwt` in the Signature Error Code registry.\n\n**As a request parameter** (resource token; the person token a PS presents to an AS): the signature verified, so this is not a `401`, and `revoked_jwt` does not reach it. The body carries `revoked_<token>_token`, beside the `invalid_` and `expired_` codes that parameter already has:\n\n| Error | Status | From |\n|---|---|---|\n| `revoked_resource_token` | 400 | the PS or AS the agent presented it to |\n| `revoked_person_token` | 400 | the AS, or a PS that would otherwise present it |\n\nA pending request already started against a withdrawn resource token terminates with the new polling code `revoked`, rather than `denied`, which says the user refused.\n\nAn agent token needs no parameter code: it is revoked only at a PS, and a PS always receives it in the `Signature-Key` header.\n\n## Disclosure\n\nNaming revocation to the agent holding the token discloses nothing \u2014 the token is its own, and it is the party that most needs to stop using it. That is a different audience from the revocation endpoint's own response to a calling server, which still says only that the revocation was recorded.\n\nBuilds clean with mmark + xml2rfc.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01Vibbcv1TAfcACkkbNTkraE\n",
+      "createdAt": "2026-09-07T17:50:34Z",
+      "updatedAt": "2026-09-07T17:51:45Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "4d04198b6e67197b1fec5e0b0c8071f490e4e02f",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "resource-token-revocation",
+      "headRefOid": "ba8727d94bf532181221cd1abe7bbad51f78c5f4",
+      "closedAt": "2026-09-07T17:51:42Z",
+      "mergedAt": "2026-09-07T17:51:42Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "6cfc2e0a4c42146b686133b991b9f2ef24baea61"
+      },
       "comments": [],
       "reviews": []
     }
