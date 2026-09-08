@@ -141,6 +141,7 @@ Table of Contents
        8.8.2.  Interaction Response
        8.8.3.  Interaction Endpoint Errors
      8.9.  Re-authorization
+       8.9.1.  Expiry and the Refresh Margin
    9.  Mission
      9.1.  Mission Creation
      9.2.  Mission Approval
@@ -1212,13 +1213,13 @@ Table of Contents
    An agent SHOULD obtain a fresh person token at least five minutes
    before the current one expires, and SHOULD re-obtain resource tokens
    and auth tokens against it before they expire, so that no token in
-   the chain lapses mid-task.  The refresh runs through the resource's
-   authorization endpoint Section 7.1 presenting the fresh person token,
-   which is also what restores a full-length chain: a resource token
-   issued on a step-up names the auth token the request carried, and the
-   auth token issued against it inherits that token's exp
-   Section 10.4.1.  This parallels the agent-token guidance in
-   Section 8.9.
+   the chain lapses mid-task; the margin and its rationale are in
+   Section 8.9.1.  The refresh runs through the resource's authorization
+   endpoint Section 7.1 presenting the fresh person token, which is also
+   what restores a full-length chain: a resource token issued on a step-
+   up names the auth token the request carried, and the auth token
+   issued against it inherits that token's exp Section 10.4.1.  This
+   parallels the agent-token guidance in Section 8.9.
 
 6.3.  Person Token Verification
 
@@ -2519,6 +2520,70 @@ Table of Contents
    interruptions.  Auth tokens MUST NOT have an exp value that exceeds
    the exp of the agent token used to obtain them — a resource MUST
    reject an auth token whose associated agent token has expired.
+
+8.9.1.  Expiry and the Refresh Margin
+
+   A verifier judges exp against its own clock.  This document defines
+   no tolerance for clock skew on exp: a token is expired the moment the
+   verifier's clock passes it, at every party that verifies it. iat
+   records when the issuer signed and is not a validity check; a
+   verifier MAY use it for audit, or to bound the age of a token by its
+   own policy, but MUST NOT reject a token because iat is later than its
+   own clock.
+
+   Clock skew is therefore the agent's to absorb, and the agent is the
+   right party: it verifies nothing, and it is the only party that holds
+   every token in the chain.  An agent SHOULD refresh a token when fewer
+   than five minutes remain before its exp, and SHOULD NOT present a
+   token inside that margin.  Three things make the margin worth its
+   cost:
+
+   *  *One token is verified at several places, in sequence.* A person
+      token or auth token that a resource names in presented_jti is
+      verified by the resource, then by the PS, and in four-party access
+      by the AS, with network time, a possible deferred interaction, and
+      the PS's polling of the AS in between Section 10.3.  A token that
+      was valid at the resource can be expired by the time the AS sees
+      it.  The margin makes every party reach the same answer.
+   *  *Expiry propagates downward.* A person token cannot outlive the
+      agent token presented when it was requested Section 6.1, and an
+      auth token cannot outlive either the agent token or the presented
+      token Section 10.4.1.  A token presented with thirty seconds left
+      buys a thirty-second token.  The margin keeps what is issued worth
+      having.
+   *  *Skew becomes invisible.* Real clock skew is seconds; a five-
+      minute margin covers it without any party having to reason about
+      another's clock.
+
+   Five minutes is RECOMMENDED because it is the maximum lifetime of a
+   resource token Section 7.8.1.  A resource token names the token the
+   request carried; if that token had at least five minutes left when
+   the resource token was issued, it is still valid when the resource
+   token is redeemed, however late within the resource token's life the
+   agent submits it.  The number is tied to something the protocol
+   already fixes rather than chosen on its own.
+
+   Because expiry propagates downward, refresh runs from the top of the
+   chain: the agent token first Section 5.2, then the person token
+   Section 8.1, then the resource token and auth token against it.
+   Refreshing in the other order produces a token capped by one about to
+   expire.
+
+   Refresh is not required when the agent will present the token no
+   further — a completed task, a finished mission, a resource the agent
+   is done with.  Refreshing a person token for a resource the agent
+   will not use again spends a request, and where consent is not on file
+   may put a question to the person for nothing.  An agent MAY also
+   renew reactively — presenting an auth token until the resource
+   answers 401 with expired_jwt ([I-D.hardt-httpbis-signature-key]),
+   then re-authorizing — for a request that is idempotent and can bear
+   the extra round trip, since the auth token is presented only to the
+   resource, which verifies it there and then.  The margin matters most
+   for a token another party will name and pass on: a person token or
+   auth token that will become presented_jti is verified again after the
+   resource, and presenting it inside the margin risks
+   expired_presented_token downstream Section 12.6.3 after the resource
+   has already accepted it.
 
 9.  Mission
 
@@ -6377,6 +6442,21 @@ Initial request (with Prefer: wait=N)
    _Note: This section is to be removed before publishing as an RFC._
 
    *  draft-hardt-oauth-aauth-protocol-11
+
+      -  Added Expiry and the Refresh Margin under Re-authorization.  A
+         verifier judges exp against its own clock with no skew
+         tolerance, and iat is not a validity check.  The agent absorbs
+         skew instead: it SHOULD refresh a token with fewer than five
+         minutes left and SHOULD NOT present one inside that margin,
+         because a presented token is verified at several parties in
+         sequence, expiry propagates downward through the chain, and
+         five minutes is the resource token's maximum lifetime — a token
+         with that much left when a resource token names it is still
+         valid when the resource token is redeemed.  Refresh runs from
+         the agent token down.  States when refresh is unnecessary (no
+         further use) and when reactive renewal on expired_jwt is
+         acceptable (an auth token presented only to the resource, for
+         an idempotent request).
 
       -  presented_jti names the token the request actually carried, and
          the agent passes that token to the PS as presented_token.  On a
