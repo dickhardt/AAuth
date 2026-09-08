@@ -141,6 +141,7 @@ Table of Contents
        8.8.2.  Interaction Response
        8.8.3.  Interaction Endpoint Errors
      8.9.  Re-authorization
+       8.9.1.  Expiry and the Refresh Margin
    9.  Mission
      9.1.  Mission Creation
      9.2.  Mission Approval
@@ -724,6 +725,7 @@ Table of Contents
      | HTTPSig w/ agent_token               |            |
      | POST auth_token_endpoint             |            |
      | w/ resource_token                    |            |
+     | + presented_token                    |            |
      |-------------------------------------------------->|
      |                                      |            |
      | auth_token                           |            |
@@ -775,13 +777,14 @@ Table of Contents
      | HTTPSig w/ agent_token              |       |                      |
      | POST auth_token_endpoint            |       |                      |
      | w/ resource_token                   |       |                      |
+     | + presented_token                   |       |                      |
      |-------------------------------------------->|                      |
      |                                     |       |                      |
      |                                     |       | HTTPSig w/ jwks_uri  |
      |                                     |       | POST                 |
      |                                     |       | auth_token_endpoint  |
      |                                     |       | w/ resource_token    |
-     |                                     |       | + person_token       |
+     |                                     |       | + presented_token    |
      |                                     |       |--------------------->|
      |                                     |       |                      |
      |                                     |       | auth_token           |
@@ -1046,8 +1049,9 @@ Table of Contents
    detection, audit, and revocation - cnf: Confirmation claim
    ([RFC7800]) with jwk containing the agent's public key.  The JWK MUST
    carry a fully-specified alg member Section 12.8.1. - iat: Issued at
-   timestamp - exp: Expiration timestamp.  Agent tokens SHOULD NOT have
-   a lifetime exceeding 24 hours.
+   timestamp.  Not a validity check; see Section 8.9.1 for its uses and
+   the one bound a verifier MAY apply - exp: Expiration timestamp.
+   Agent tokens SHOULD NOT have a lifetime exceeding 24 hours.
 
    Optional payload claims: - ps: The HTTPS URL of the agent's person
    server.  Configured per agent instance.  When present, it tells a
@@ -1086,7 +1090,10 @@ Table of Contents
        {iss}/.well-known/{dwk} per the HTTP Signature Keys specification
        ([I-D.hardt-httpbis-signature-key]).  Locate the key matching the
        JWT header kid and verify the JWT signature.
-   3.  Verify exp is in the future and iat is not in the future.
+   3.  Verify exp is in the future, judged by the verifier's own clock
+       Section 8.9.1. iat is not a validity check; a verifier MAY refuse
+       an iat further ahead of its clock than the signature validity
+       window.
    4.  Verify iss is a valid HTTPS URL conforming to the Server
        Identifier requirements.
    5.  Verify cnf.jwk matches the key used to sign the HTTP request.
@@ -1154,7 +1161,8 @@ Table of Contents
       agent's public key.  The JWK MUST carry a fully-specified alg
       member Section 12.8.1.
    *  jti: Unique token identifier for audit and revocation
-   *  iat: Issued at timestamp
+   *  iat: Issued at timestamp.  Not a validity check; see Section 8.9.1
+      for its uses and the one bound a verifier MAY apply
    *  exp: Expiration timestamp.  Person tokens MUST NOT have a lifetime
       exceeding 1 hour, and MUST NOT outlive the agent token presented
       when the token was requested or, when mission_s256 is present, the
@@ -1210,10 +1218,12 @@ Table of Contents
    An agent SHOULD obtain a fresh person token at least five minutes
    before the current one expires, and SHOULD re-obtain resource tokens
    and auth tokens against it before they expire, so that no token in
-   the chain lapses mid-task.  The refresh runs through the resource's
-   authorization endpoint Section 7.1 presenting the fresh person token;
-   that presentation is also what keeps the resource's record of the
-   person token behind presented_jti current Section 7.8.1.  This
+   the chain lapses mid-task; the margin and its rationale are in
+   Section 8.9.1.  The refresh runs through the resource's authorization
+   endpoint Section 7.1 presenting the fresh person token, which is also
+   what restores a full-length chain: a resource token issued on a step-
+   up names the auth token the request carried, and the auth token
+   issued against it inherits that token's exp Section 10.4.1.  This
    parallels the agent-token guidance in Section 8.9.
 
 6.3.  Person Token Verification
@@ -1225,7 +1235,10 @@ Table of Contents
        {iss}/.well-known/{dwk} per the HTTP Signature Keys specification
        ([I-D.hardt-httpbis-signature-key]).  Locate the key matching the
        JWT header kid and verify the JWT signature.
-   3.  Verify exp is in the future and iat is not in the future.
+   3.  Verify exp is in the future, judged by the verifier's own clock
+       Section 8.9.1. iat is not a validity check; a verifier MAY refuse
+       an iat further ahead of its clock than the signature validity
+       window.
    4.  Verify iss is a valid HTTPS URL conforming to the Server
        Identifier requirements Section 12.10.1.
    5.  Verify aud matches the resource's own identifier.
@@ -1570,11 +1583,11 @@ Table of Contents
 7.8.  Resource Token
 
    A resource issues a resource token only after verifying a person
-   token Section 6.3: the token's ps, sub, and presented_jti are copied
-   from that person token, and there is nothing to copy otherwise.  A
-   resource that has not verified one challenges with
-   requirement=person-token Section 7.4 rather than issuing a resource
-   token.
+   token Section 6.3 or an auth token Section 10.4.3 on the request: the
+   token's ps, sub, and presented_jti are copied from the token the
+   request carried, and there is nothing to copy otherwise.  A resource
+   that has verified neither challenges with requirement=person-token
+   Section 7.4 rather than issuing a resource token.
 
 7.8.1.  Resource Token Structure
 
@@ -1591,21 +1604,23 @@ Table of Contents
    URL (when the resource delegates authorization to the agent's PS) or
    the AS URL (when the resource has its own access server) - jti:
    Unique token identifier for replay detection, audit, and revocation -
-   ps: The iss of the person token the resource verified — the person
-   server whose namespace sub belongs to - sub: The sub of that person
-   token, identifying the person this authorization is for -
-   presented_jti: The jti of the person token whose verification
-   established ps and sub.  On the first challenge of a grant that token
-   was presented with the request; on a step-up or per-call challenge
-   the request carries an auth token, and the resource supplies the
-   value from its record of the person token it verified earlier.
-   Binding the resource token to one person token by jti is what makes
-   mission stripping detectable Appendix C.1.9 - agent_jkt: JWK
+   ps: The person server whose namespace sub belongs to — the iss of the
+   person token the request carried, or the ps of the auth token it
+   carried - sub: The sub of the token the request carried, identifying
+   the person this authorization is for - presented_jti: The jti of the
+   token the request carried, whose verification established ps and sub:
+   the person token on the first challenge of a grant, or the auth token
+   on a step-up or per-call challenge.  The resource names the token it
+   just verified and keeps no record.  The agent passes that token to
+   the PS with its token request as presented_token Section 8.2.
+   Binding the resource token to one presented token by jti is what
+   makes mission stripping detectable Appendix C.1.9 - agent_jkt: JWK
    Thumbprint ([RFC7638]) of the agent's current signing key - iat:
-   Issued at timestamp - exp: Expiration timestamp - scope: Requested
-   scopes, as a space-separated string of scope values.  Companion
-   specifications MAY define alternative authorization claims that
-   replace scope.
+   Issued at timestamp.  Not a validity check; see Section 8.9.1 for its
+   uses and the one bound a verifier MAY apply - exp: Expiration
+   timestamp - scope: Requested scopes, as a space-separated string of
+   scope values.  Companion specifications MAY define alternative
+   authorization claims that replace scope.
 
    A resource token carries no agent identifier. agent_jkt binds it to
    the agent's key, and the recipient learns the agent's identity from
@@ -1613,9 +1628,9 @@ Table of Contents
 
    Optional payload claims: - account: The account the authorization is
    for, echoing the account parameter of the request that produced this
-   token Section 12.3. - mission_s256: REQUIRED when the person token
-   carried one, copied unchanged Section 6.1.  A resource MUST NOT omit
-   it. - tenant: Copied from the person token when it carried one. -
+   token Section 12.3. - mission_s256: REQUIRED when the presented token
+   carried one, copied unchanged.  A resource MUST NOT omit it. -
+   tenant: Copied from the presented token when it carried one. -
    interaction: Present when the resource requires its own user-facing
    flow — for example, obtaining OAuth authorization from a third-party
    service — before the PS can issue an auth token.  Contains: - url:
@@ -1644,22 +1659,33 @@ Table of Contents
        via {iss}/.well-known/{dwk} per the HTTP Signature Keys
        specification ([I-D.hardt-httpbis-signature-key]).  Locate the
        key matching the JWT header kid and verify the JWT signature.
-   3.  Verify exp is in the future and iat is not in the future.
+   3.  Verify exp is in the future, judged by the verifier's own clock
+       Section 8.9.1. iat is not a validity check; a verifier MAY refuse
+       an iat further ahead of its clock than the signature validity
+       window.
    4.  Verify aud matches the recipient's own identifier (the PS in
        three-party, or the AS in four-party).
    5.  Verify agent_jkt matches the JWK Thumbprint of the key used to
        sign the HTTP request.
-   6.  A PS MUST resolve presented_jti against its retained records of
-       issued person tokens Section 8.1.  If no record exists — a
-       tampered token, another PS's jti, or a token outside the
-       retention window — the PS MUST reject the resource token with
-       unknown_person_token.  If a record exists, the PS MUST verify
-       that ps, sub, mission_s256, and tenant match it exactly,
-       rejecting the resource token on any mismatch or omission; a
-       mismatch against an existing record is evidence of tampering,
-       such as mission stripping, and SHOULD be surfaced to operators
-       rather than only rejected.  An AS MUST verify that ps names the
-       PS that sent the token request.
+   6.  Verify the presented_token from the token request (#ps-token-
+       endpoint, #ps-to-as-token-request) by its typ: a person token
+       (aa-person+jwt) per Section 6.3, an auth token (aa-auth+jwt) per
+       Section 10.4.3, with two substitutions — aud MUST equal the
+       resource token's iss rather than the verifier's own identifier,
+       and cnf.jwk MUST match the resource token's agent_jkt rather than
+       the key that signed the request — and without the resource's
+       record check on sub.  A token that fails is rejected with
+       invalid_presented_token, or expired_presented_token when only exp
+       fails.  Then verify that the presented token's jti equals
+       presented_jti, that its iss (person token) or ps (auth token)
+       equals the resource token's ps, and that its sub, mission_s256,
+       and tenant match the resource token's exactly, rejecting the
+       resource token with invalid_resource_token on any mismatch or
+       omission.  A mismatch against a token that verifies is evidence
+       of tampering, such as mission stripping, and SHOULD be surfaced
+       to operators rather than only rejected.  A PS MUST verify that ps
+       names itself; an AS MUST verify that ps names the PS that sent
+       the token request.
    7.  If mission_s256 is present, a PS MUST verify the mission is
        active and that the current time precedes its expires_at where
        one is set.
@@ -1679,10 +1705,12 @@ Table of Contents
    3.  Verify iss matches the resource the agent sent the request to.
    4.  Verify agent_jkt matches the JWK Thumbprint of the agent's
        signing key.
-   5.  Verify ps matches the agent's own person server, and sub the
-       value in the person token the agent presented.
+   5.  Verify ps matches the agent's own person server, sub the value in
+       the token the agent presented, and presented_jti that token's
+       jti.
    6.  Verify exp is in the future.
-   7.  Send the resource token to the agent's PS's auth token endpoint.
+   7.  Send the resource token, with the token the agent presented as
+       presented_token, to the agent's PS's auth token endpoint.
 
 8.  Person Server
 
@@ -1786,16 +1814,14 @@ Table of Contents
    invalid_request covers a missing or malformed resource or
    mission_s256 value.
 
-   Issuing a person token creates a retention obligation.  A PS MUST
-   retain each person token it issues — the token itself, so that it can
-   be presented to an access server Section 10.1.1, and with it the jti,
-   ps, sub, mission_s256, tenant, and exp that answer resource token
-   verification Section 7.8.2.  Because a resource token may name a
-   person token that was valid when the resource token was issued, the
-   record MUST be retained beyond the person token's exp by at least the
-   longest resource token lifetime the PS accepts Section 7.  A resource
-   token naming a jti the PS has no record of is rejected with
-   unknown_person_token Section 12.6.3.
+   Issuing a person token creates a retention obligation, for revocation
+   rather than for verification Section 12.7.  A PS MUST record, for
+   each person token it issues, the jti, the aud, and the exp, and, once
+   it has presented the token to an access server Section 10.1.1, which
+   one, and MUST keep the record until the token's exp plus clock skew.
+   The PS does not need the token itself to verify a resource token that
+   names it: the agent presents the token with its token request
+   Section 8.2.
 
    An agent SHOULD cache a person token for a resource until it expires
    rather than requesting one per call.  A person token is scoped to one
@@ -1854,6 +1880,14 @@ Table of Contents
    *Request parameters:*
 
    *  resource_token (REQUIRED): The resource token.
+   *  presented_token (REQUIRED): The token the agent presented to the
+      resource that issued resource_token, whose jti the resource
+      token's presented_jti names Section 7.8.1: the person token on the
+      first challenge of a grant, or the auth token on a step-up or per-
+      call challenge.  The PS verifies it against the resource token
+      Section 7.8.2 and, in four-party, passes it to the AS
+      Section 10.1.1.  Its exp bounds the auth token issued
+      Section 10.4.1.
    *  upstream_token (OPTIONAL): An auth token from an upstream
       authorization, used in call chaining Section 11.1.1.
    *  subagent_token (OPTIONAL): A sub-agent's agent token, present when
@@ -1915,6 +1949,7 @@ Table of Contents
 
    {
      "resource_token": "eyJhbGc...",
+     "presented_token": "eyJhbGc...",
      "justification": "Find available meeting times"
    }
 
@@ -2498,6 +2533,103 @@ Table of Contents
    the exp of the agent token used to obtain them — a resource MUST
    reject an auth token whose associated agent token has expired.
 
+8.9.1.  Expiry and the Refresh Margin
+
+   A verifier judges exp against its own clock.  This document defines
+   no tolerance for clock skew on exp: a token is expired the moment the
+   verifier's clock passes it, at every party that verifies it. iat is
+   REQUIRED on every token this document defines, and it is not a
+   validity check.  A verifier MAY reject a token whose iat is too far
+   in the future by its own policy — an issuer whose clock is badly
+   wrong, or a claim that was never true — but an iat a few seconds
+   ahead of the verifier's clock is ordinary skew, not a defect.  This
+   is the same skew the verifier already allows on a signature's created
+   Section 12.8.4.2, so a verifier that applies such a bound SHOULD use
+   that validity window — 60 seconds by default — rather than a bound of
+   its own.  The five-minute refresh margin above is not the number
+   here: it covers the life of a token across several verifiers, while a
+   future iat is only two clocks disagreeing at one moment.
+
+   A verifier that refuses for this reason answers clock_skew: in the
+   body for a token carried as a request parameter Section 12.6.3, and
+   as Signature-Error: error=clock_skew
+   ([I-D.hardt-httpbis-signature-key]) for the token in the Signature-
+   Key header or a signature whose created is ahead of the verifier's
+   clock by more than the window.  The code is distinct from invalid_
+   and expired_ because the remedy is different: those say "get a fresh
+   token", and a fresh token from an issuer whose clock is ahead carries
+   the same skew.  A future iat becomes acceptable with time, so the
+   agent MAY wait and present the same token again; the Date header on
+   the response is the verifier's clock, and iat minus Date minus the
+   window is how long to wait.  A difference of minutes is an issuer to
+   report, not a wait to sit through. iat is kept for what it does do.
+   It is what neighbouring profiles expect to find — [RFC9068] and
+   [OpenID.Core] both require it — so AAuth tokens read like other JWTs
+   to the libraries and log pipelines that handle them.  It is the
+   issuance time an audit record, a person's dashboard, or an operator's
+   log reports.  It lets a verifier check an issuer's lifetime ceiling
+   without a clock: exp minus iat MUST NOT exceed the ceiling for the
+   token type (#agent-tokens, #person-token-structure, #resource-token-
+   structure, #auth-token-structure), which is a consistency check on
+   the issuer rather than a freshness check on the token.  And a
+   verifier MAY use it to bound the age of a token by its own policy, as
+   [OpenID.Core] Section 3.1.3.7 does for ID Tokens; this document
+   defines no bound in either direction.
+
+   Clock skew is therefore the agent's to absorb, and the agent is the
+   right party: it verifies nothing, and it is the only party that holds
+   every token in the chain.  An agent SHOULD refresh a token when fewer
+   than five minutes remain before its exp, and SHOULD NOT present a
+   token inside that margin.  Three things make the margin worth its
+   cost:
+
+   *  *One token is verified at several places, in sequence.* A person
+      token or auth token that a resource names in presented_jti is
+      verified by the resource, then by the PS, and in four-party access
+      by the AS, with network time, a possible deferred interaction, and
+      the PS's polling of the AS in between Section 10.3.  A token that
+      was valid at the resource can be expired by the time the AS sees
+      it.  The margin makes every party reach the same answer.
+   *  *Expiry propagates downward.* A person token cannot outlive the
+      agent token presented when it was requested Section 6.1, and an
+      auth token cannot outlive either the agent token or the presented
+      token Section 10.4.1.  A token presented with thirty seconds left
+      buys a thirty-second token.  The margin keeps what is issued worth
+      having.
+   *  *Skew becomes invisible.* Real clock skew is seconds; a five-
+      minute margin covers it without any party having to reason about
+      another's clock.
+
+   Five minutes is RECOMMENDED because it is the maximum lifetime of a
+   resource token Section 7.8.1.  A resource token names the token the
+   request carried; if that token had at least five minutes left when
+   the resource token was issued, it is still valid when the resource
+   token is redeemed, however late within the resource token's life the
+   agent submits it.  The number is tied to something the protocol
+   already fixes rather than chosen on its own.
+
+   Because expiry propagates downward, refresh runs from the top of the
+   chain: the agent token first Section 5.2, then the person token
+   Section 8.1, then the resource token and auth token against it.
+   Refreshing in the other order produces a token capped by one about to
+   expire.
+
+   Refresh is not required when the agent will present the token no
+   further — a completed task, a finished mission, a resource the agent
+   is done with.  Refreshing a person token for a resource the agent
+   will not use again spends a request, and where consent is not on file
+   may put a question to the person for nothing.  An agent MAY also
+   renew reactively — presenting an auth token until the resource
+   answers 401 with expired_jwt ([I-D.hardt-httpbis-signature-key]),
+   then re-authorizing — for a request that is idempotent and can bear
+   the extra round trip, since the auth token is presented only to the
+   resource, which verifies it there and then.  The margin matters most
+   for a token another party will name and pass on: a person token or
+   auth token that will become presented_jti is verified again after the
+   resource, and presenting it inside the margin risks
+   expired_presented_token downstream Section 12.6.3 after the resource
+   has already accepted it.
+
 9.  Mission
 
    Missions are OPTIONAL.  The protocol operates in all modes without
@@ -2690,7 +2822,7 @@ Table of Contents
       mission MUST compare the current time to expires_at and MUST treat
       a mission past it as terminated Section 9.8.  The PS caps the
       person tokens and auth tokens it issues at expires_at (#person-
-      token-structure, #auth-token-structure), and the person token
+      token-structure, #auth-token-structure), and the presented token
       carries that bound to an AS Section 10.1.1; a resource token's
       lifetime is independent of it Section 7.8.1.
    *  approved_tools: Array of tool objects (each with name and
@@ -2987,13 +3119,15 @@ Table of Contents
    *  agent_token (REQUIRED): The agent's agent token.  For a parent-
       mediated sub-agent authorization, this is the parent (top-level)
       agent's token.
-   *  person_token (REQUIRED): The person token named by the resource
-      token's presented_jti, which the PS issued and retains
-      Section 8.1.  It carries the identity the resource saw — sub,
-      tenant, and mission_s256 when present — under the PS's own
-      signature, and its exp bounds the auth token the AS issues
-      Section 10.4.1.  A PS MUST NOT present an expired person token; it
-      rejects the agent's token request with expired_person_token
+   *  presented_token (REQUIRED): The token named by the resource
+      token's presented_jti, passed through from the agent's token
+      request Section 8.2.  A person token carries the identity the
+      resource saw — sub, tenant, and mission_s256 when present — under
+      the PS's signature; an auth token carries it under the signature
+      of the server that issued it, which on a step-up in four-party is
+      this AS.  Its exp bounds the auth token the AS issues
+      Section 10.4.1.  A PS MUST NOT present an expired token; it
+      rejects the agent's token request with expired_presented_token
       Section 12.6.3, and the agent obtains a fresh person token and a
       fresh resource token.
    *  subagent_token (OPTIONAL): A sub-agent's agent token, present when
@@ -3005,20 +3139,17 @@ Table of Contents
       authorization, used in call chaining Section 11.1.1.
 
    The resource token carries the person's identity as ps and sub
-   Section 7.8.1, and the person token carries the same identity under
-   the PS's signature, so the AS needs no separate identity parameter
-   and requirement=claims Section 10.2 is reserved for claims beyond it.
+   Section 7.8.1, and the presented token carries the same identity
+   under its issuer's signature, so the AS needs no separate identity
+   parameter and requirement=claims Section 10.2 is reserved for claims
+   beyond it.
 
-   The AS MUST verify person_token per Section 6.3, with two
-   substitutions: aud MUST equal the resource token's iss rather than
-   the AS's own identifier, and cnf.jwk MUST match the resource token's
-   agent_jkt rather than the key that signed this request, which is the
-   PS's.  The AS MUST further verify that the person token's iss is the
-   PS that signed the request, that its jti equals the resource token's
-   presented_jti, and that its sub, mission_s256, and tenant match the
-   resource token's.  A mismatch is rejected with
-   invalid_resource_token; an expired person token with
-   expired_person_token.
+   The AS MUST verify presented_token against the resource token per
+   step 6 of Section 7.8.2, which is the same check the PS made.  A
+   person token's iss and an auth token's ps MUST be the PS that signed
+   this request.  The errors are those of that step:
+   invalid_presented_token, expired_presented_token, and
+   invalid_resource_token for a mismatch.
 
    agent_token remains REQUIRED even though the resource never sees an
    agent identifier.  A resource deploys an AS because it wants policy
@@ -3038,7 +3169,7 @@ Table of Contents
    {
      "resource_token": "eyJhbGc...",
      "agent_token": "eyJhbGc...",
-     "person_token": "eyJhbGc..."
+     "presented_token": "eyJhbGc..."
    }
 
 10.1.2.  AS Response
@@ -3114,7 +3245,7 @@ Table of Contents
        person at this resource.
    6.  Verify scope is consistent with what was requested — not broader
        than the scope in the resource token.
-   7.  Verify exp does not exceed the exp of the person_token the PS
+   7.  Verify exp does not exceed the exp of the presented_token the PS
        presented Section 10.1.1.
 
    After verification, the PS returns the auth token to the agent.  The
@@ -3324,14 +3455,16 @@ Table of Contents
    resources see different values for the same person Section 15.1. -
    cnf: Confirmation claim with jwk containing the agent's public key.
    The JWK MUST carry a fully-specified alg member Section 12.8.1. -
-   iat: Issued at timestamp - exp: Expiration timestamp.  Auth tokens
-   MUST NOT have a lifetime exceeding 1 hour, and MUST NOT expire later
-   than the agent token used to obtain them Section 8.9.  When
-   mission_s256 is present, a PS-issued auth token MUST NOT expire later
-   than the mission's expires_at Section 9.2; an AS-issued auth token
-   MUST NOT expire later than the exp of the person_token the PS
-   presented with the token request Section 10.1.1, which the PS capped
-   at the same bound Section 6.1.
+   iat: Issued at timestamp.  Not a validity check; see Section 8.9.1
+   for its uses and the one bound a verifier MAY apply - exp: Expiration
+   timestamp.  Auth tokens MUST NOT have a lifetime exceeding 1 hour,
+   MUST NOT expire later than the agent token used to obtain them
+   Section 8.9, and MUST NOT expire later than the presented_token of
+   the token request (#ps-token-endpoint, #ps-to-as-token-request) — a
+   person token, which the PS capped at the mission's expires_at when
+   mission_s256 is present Section 6.1, or an auth token bounded the
+   same way in its turn.  A PS-issued auth token carrying mission_s256
+   MUST NOT expire later than the mission's expires_at Section 9.2.
 
    An auth token carries no agent identifier and no delegation chain.
    cnf binds it to one key, and the resource enforces against sub and
@@ -3382,7 +3515,10 @@ Table of Contents
        Signature Keys specification ([I-D.hardt-httpbis-signature-key]).
        Locate the key matching the JWT header kid and verify the JWT
        signature.
-   3.  Verify exp is in the future and iat is not in the future.
+   3.  Verify exp is in the future, judged by the verifier's own clock
+       Section 8.9.1. iat is not a validity check; a verifier MAY refuse
+       an iat further ahead of its clock than the signature validity
+       window.
    4.  Verify iss is a valid HTTPS URL.
 
 10.4.3.2.  Request-Context Binding
@@ -3620,8 +3756,10 @@ Table of Contents
    3.  The parent POSTs to the PS's auth_token_endpoint, signing the
        request with its own key and presenting its own agent token via
        the Signature-Key header.  The request body includes
-       resource_token (the sub-agent's resource token) and
-       subagent_token (the sub-agent's agent token).
+       resource_token (the sub-agent's resource token), presented_token
+       (the token the sub-agent presented to the resource: the person
+       token from step 1, or the sub-agent's auth token on a step-up),
+       and subagent_token (the sub-agent's agent token).
    4.  The PS processes this as an authorization request from the parent
        Section 8.2:
        *  It verifies the HTTP Message Signature against the parent's
@@ -4215,86 +4353,100 @@ Initial request (with Prefer: wait=N)
 
 12.6.3.  Token Endpoint Error Codes
 
-   +========================+========+=================================+
-   | Error                  | Status | Meaning                         |
-   +========================+========+=================================+
-   | invalid_request        | 400    | Malformed JSON, missing         |
-   |                        |        | required fields                 |
-   +------------------------+--------+---------------------------------+
-   | invalid_agent_token    | 400    | Agent token malformed or        |
-   |                        |        | signature verification failed   |
-   +------------------------+--------+---------------------------------+
-   | expired_agent_token    | 400    | Agent token has expired         |
-   +------------------------+--------+---------------------------------+
-   | invalid_resource_token | 400    | Resource token malformed or     |
-   |                        |        | signature verification failed   |
-   +------------------------+--------+---------------------------------+
-   | expired_resource_token | 400    | Resource token has expired      |
-   +------------------------+--------+---------------------------------+
-   | revoked_resource_token | 400    | The resource that issued the    |
-   |                        |        | resource token has withdrawn    |
-   |                        |        | it Section 12.7.  Terminal      |
-   |                        |        | for that token: the agent       |
-   |                        |        | MUST NOT resubmit it, and MAY   |
-   |                        |        | call the resource again,        |
-   |                        |        | which decides afresh whether    |
-   |                        |        | to issue another.               |
-   +------------------------+--------+---------------------------------+
-   | expired_person_token   | 400    | The person token named by the   |
-   |                        |        | resource token's                |
-   |                        |        | presented_jti has expired.      |
-   |                        |        | Returned by a PS that would     |
-   |                        |        | otherwise present it to an      |
-   |                        |        | AS, and by an AS                |
-   |                        |        | Section 10.1.1.  The agent      |
-   |                        |        | obtains a fresh person token,   |
-   |                        |        | then a fresh resource token.    |
-   +------------------------+--------+---------------------------------+
-   | revoked_person_token   | 400    | The person token has been       |
-   |                        |        | revoked by the PS that issued   |
-   |                        |        | it Section 12.7.  Returned by   |
-   |                        |        | a PS that would otherwise       |
-   |                        |        | present it to an AS, and by     |
-   |                        |        | an AS holding the revocation.   |
-   |                        |        | The agent obtains a fresh       |
-   |                        |        | person token, then a fresh      |
-   |                        |        | resource token.                 |
-   +------------------------+--------+---------------------------------+
-   | unknown_person_token   | 400    | The person token named by the   |
-   |                        |        | resource token's                |
-   |                        |        | presented_jti is not among      |
-   |                        |        | those the PS retains            |
-   |                        |        | Section 7.8.2                   |
-   +------------------------+--------+---------------------------------+
-   | user_unreachable       | 403    | Terminal.  The PS has no        |
-   |                        |        | channel to reach the user and   |
-   |                        |        | the agent did not declare the   |
-   |                        |        | interaction capability, so      |
-   |                        |        | the user cannot be reached at   |
-   |                        |        | all.  The non-terminal "user    |
-   |                        |        | action is needed" case uses a   |
-   |                        |        | 202 with                        |
-   |                        |        | requirement=interaction         |
-   |                        |        | Section 12.4, not this error.   |
-   +------------------------+--------+---------------------------------+
-   | as_unreachable         | 502    | PS token endpoint only.  The    |
-   |                        |        | PS could not obtain an auth     |
-   |                        |        | token from the access server    |
-   |                        |        | named by the resource token's   |
-   |                        |        | aud: connection failure,        |
-   |                        |        | timeout, a malformed            |
-   |                        |        | response, or an auth token      |
-   |                        |        | that fails delivery             |
-   |                        |        | verification Section 10.1.3.    |
-   |                        |        | The agent MAY retry with a      |
-   |                        |        | fresh resource token after a    |
-   |                        |        | backoff.  Distinct from an AS   |
-   |                        |        | denial, which the PS relays.    |
-   +------------------------+--------+---------------------------------+
-   | server_error           | 500    | Internal error                  |
-   +------------------------+--------+---------------------------------+
+   +=========================+========+===============================+
+   | Error                   | Status | Meaning                       |
+   +=========================+========+===============================+
+   | invalid_request         | 400    | Malformed JSON, missing       |
+   |                         |        | required fields               |
+   +-------------------------+--------+-------------------------------+
+   | invalid_agent_token     | 400    | Agent token malformed or      |
+   |                         |        | signature verification failed |
+   +-------------------------+--------+-------------------------------+
+   | expired_agent_token     | 400    | Agent token has expired       |
+   +-------------------------+--------+-------------------------------+
+   | invalid_resource_token  | 400    | Resource token malformed or   |
+   |                         |        | signature verification failed |
+   +-------------------------+--------+-------------------------------+
+   | expired_resource_token  | 400    | Resource token has expired    |
+   +-------------------------+--------+-------------------------------+
+   | revoked_resource_token  | 400    | The resource that issued the  |
+   |                         |        | resource token has withdrawn  |
+   |                         |        | it Section 12.7.  Terminal    |
+   |                         |        | for that token: the agent     |
+   |                         |        | MUST NOT resubmit it, and MAY |
+   |                         |        | call the resource again,      |
+   |                         |        | which decides afresh whether  |
+   |                         |        | to issue another.             |
+   +-------------------------+--------+-------------------------------+
+   | invalid_presented_token | 400    | Presented token malformed,    |
+   |                         |        | signature verification        |
+   |                         |        | failed, or its typ is neither |
+   |                         |        | a person token nor an auth    |
+   |                         |        | token Section 7.8.2           |
+   +-------------------------+--------+-------------------------------+
+   | expired_presented_token | 400    | The presented token has       |
+   |                         |        | expired.  Returned by a PS,   |
+   |                         |        | and by an AS Section 10.1.1.  |
+   |                         |        | The agent obtains a fresh     |
+   |                         |        | person token, then a fresh    |
+   |                         |        | resource token.               |
+   +-------------------------+--------+-------------------------------+
+   | revoked_presented_token | 400    | The presented token has been  |
+   |                         |        | revoked by the server that    |
+   |                         |        | issued it Section 12.7.       |
+   |                         |        | Returned by a PS, and by an   |
+   |                         |        | AS holding the revocation.    |
+   |                         |        | The agent obtains a fresh     |
+   |                         |        | person token, then a fresh    |
+   |                         |        | resource token.               |
+   +-------------------------+--------+-------------------------------+
+   | clock_skew              | 400    | A token carried as a request  |
+   |                         |        | parameter has an iat further  |
+   |                         |        | ahead of the verifier's clock |
+   |                         |        | than the signature validity   |
+   |                         |        | window Section 8.9.1.         |
+   |                         |        | Nothing about the token is    |
+   |                         |        | wrong; the issuer's clock and |
+   |                         |        | the verifier's disagree.  A   |
+   |                         |        | fresh token from the same     |
+   |                         |        | issuer carries the same skew, |
+   |                         |        | so the agent does not         |
+   |                         |        | refresh; it MAY present the   |
+   |                         |        | same token again once its iat |
+   |                         |        | is within the window — the    |
+   |                         |        | response's Date header says   |
+   |                         |        | how far the clocks are apart  |
+   |                         |        | — or surfaces the error.      |
+   +-------------------------+--------+-------------------------------+
+   | user_unreachable        | 403    | Terminal.  The PS has no      |
+   |                         |        | channel to reach the user and |
+   |                         |        | the agent did not declare the |
+   |                         |        | interaction capability, so    |
+   |                         |        | the user cannot be reached at |
+   |                         |        | all.  The non-terminal "user  |
+   |                         |        | action is needed" case uses a |
+   |                         |        | 202 with                      |
+   |                         |        | requirement=interaction       |
+   |                         |        | Section 12.4, not this error. |
+   +-------------------------+--------+-------------------------------+
+   | as_unreachable          | 502    | PS token endpoint only.  The  |
+   |                         |        | PS could not obtain an auth   |
+   |                         |        | token from the access server  |
+   |                         |        | named by the resource token's |
+   |                         |        | aud: connection failure,      |
+   |                         |        | timeout, a malformed          |
+   |                         |        | response, or an auth token    |
+   |                         |        | that fails delivery           |
+   |                         |        | verification Section 10.1.3.  |
+   |                         |        | The agent MAY retry with a    |
+   |                         |        | fresh resource token after a  |
+   |                         |        | backoff.  Distinct from an AS |
+   |                         |        | denial, which the PS relays.  |
+   +-------------------------+--------+-------------------------------+
+   | server_error            | 500    | Internal error                |
+   +-------------------------+--------+-------------------------------+
 
-                                  Table 12
+                                 Table 12
 
    Example — the resource token presented to the token endpoint has
    expired:
@@ -4480,8 +4632,9 @@ Initial request (with Prefer: wait=N)
       further auth tokens against it, and SHOULD revoke the auth tokens
       it already issued against it by calling the revocation endpoint of
       the resource each names in aud.  The PS MUST NOT present a revoked
-      person token to an AS, and rejects a resource token whose
-      presented_jti names one with unknown_person_token Section 12.6.3.
+      person token to an AS, and rejects a token request whose
+      presented_token is one with revoked_presented_token
+      Section 12.6.3.
    *  *Resource revokes a resource token it issued*: The resource calls
       the revocation endpoint of the party named in the token's aud, and
       in four-party that of the ps as well.  The recipient MUST NOT
@@ -4519,14 +4672,16 @@ Initial request (with Prefer: wait=N)
 
    Revoking downstream means knowing what was issued downstream, so the
    parties that cascade a revocation retain what they issued.  A PS
-   already retains each person token it issues Section 8.1; to revoke
-   what followed from one it also needs, for each auth token it issued
-   or federated against that person token, the jti, the resource it was
+   records each person token it issues Section 8.1; to revoke what
+   followed from one it also needs, for each auth token it issued or
+   federated against that person token, the jti, the resource it was
    for, and the exp.  An AS needs the same for each auth token it
-   issues, along with the jti of the person token it was issued against
-   — an auth token carries no reference to that person token, so nothing
-   on the wire recovers the link and revoking the person token at the
-   resource does not by itself invalidate auth tokens already there.
+   issues, along with the presented_jti it was issued against, which on
+   a step-up names an earlier auth token rather than the person token,
+   so the AS follows its own records back to the person token.  An auth
+   token carries no reference to the person token, so revoking the
+   person token at the resource does not by itself invalidate auth
+   tokens already there.
 
    Neither record is a durable ledger.  An entry is useful only while
    the token it names could still be presented, so it MAY be discarded
@@ -4553,16 +4708,17 @@ Initial request (with Prefer: wait=N)
       agent token no requirement repairs it — the agent obtains a fresh
       one from its provider, which is the party that revoked.
    *  *A token carried as a request parameter* — a resource token, or
-      the person token a PS presents to an AS Section 10.1.1: the
-      signature verified, so this is not a 401.  The recipient returns
+      the presented token an agent passes to a PS and a PS passes on to
+      an AS (#ps-token-endpoint, #ps-to-as-token-request): the signature
+      verified, so this is not a 401.  The recipient returns
       revoked_<token>_token in the response body, beside the invalid_
       and expired_ codes the same parameter already has:
       revoked_resource_token from the PS or AS the agent presented the
-      resource token to, revoked_person_token from the AS or from a PS
-      that would otherwise present it Section 12.6.3.  A pending request
-      already started against a withdrawn resource token terminates with
-      revoked Section 12.6.4.  A future parameter carrying a revocable
-      token follows the same naming.
+      resource token to, revoked_presented_token from the PS or the AS
+      Section 12.6.3.  A pending request already started against a
+      withdrawn resource token terminates with revoked Section 12.6.4.
+      A future parameter carrying a revocable token follows the same
+      naming.
 
    An agent token carried as a parameter needs no such code: it is
    revoked only at a PS Section 12.7, and a PS receives it in the
@@ -4805,9 +4961,10 @@ Initial request (with Prefer: wait=N)
        signature validity window of the server's current time.  The
        default window is 60 seconds.  Servers MAY advertise a different
        window via their metadata (e.g., signature_window in resource
-       metadata).  Reject with invalid_signature if outside this window.
-       Servers and agents SHOULD synchronize their clocks using NTP
-       ([RFC5905]).
+       metadata).  Reject with invalid_signature if created is older
+       than the window, and with clock_skew if it is further ahead of
+       the server's clock than the window Section 8.9.1.  Servers and
+       agents SHOULD synchronize their clocks using NTP ([RFC5905]).
    4.  Select the Signature-Key dictionary member for the label being
        verified and read its scheme.  If the scheme is not one the
        server implements — including any scheme this profile does not
@@ -4820,10 +4977,11 @@ Initial request (with Prefer: wait=N)
        Return invalid_key if the key cannot be parsed, unknown_key if
        the key is not found at the jwks_uri, invalid_jwt if a JWT scheme
        fails verification, expired_jwt if the JWT has expired,
-       revoked_jwt if the JWT verifies and is unexpired but the server
-       holds a revocation for it Section 12.7, or issuer_missing /
-       issuer_mismatch if the issuer's metadata document fails the
-       checks in Section 12.11.
+       clock_skew if its iat is further ahead of the server's clock than
+       the validity window Section 8.9.1, revoked_jwt if the JWT
+       verifies and is unexpired but the server holds a revocation for
+       it Section 12.7, or issuer_missing / issuer_mismatch if the
+       issuer's metadata document fails the checks in Section 12.11.
    6.  Determine the signature algorithm from the alg member of the
        obtained key, per Section 12.8.1.  Return unsupported_algorithm
        if alg is absent, is a polymorphic identifier, or names an
@@ -6128,8 +6286,9 @@ Initial request (with Prefer: wait=N)
     |               | agent's agent token    |            |           |
     +---------------+------------------------+------------+-----------+
     | presented_jti | The jti of the person  | IETF       | This      |
-    |               | token a resource token |            | document  |
-    |               | is bound to            |            |           |
+    |               | token or auth token a  |            | document  |
+    |               | resource token is      |            |           |
+    |               | bound to               |            |           |
     +---------------+------------------------+------------+-----------+
     | mission_s256  | SHA-256 hash of the    | IETF       | This      |
     |               | approved mission JSON, |            | document  |
@@ -6353,6 +6512,53 @@ Initial request (with Prefer: wait=N)
 
    *  draft-hardt-oauth-aauth-protocol-11
 
+      -  Added Expiry and the Refresh Margin under Re-authorization.  A
+         verifier judges exp against its own clock with no skew
+         tolerance. iat stays REQUIRED and is not a validity check — a
+         verifier MAY refuse an iat too far in the future, using the
+         same 60-second window it allows on a signature's created, with
+         the new error clock_skew (body, and Signature-Error for a
+         header JWT or a future created) — distinct from invalid_/
+         expired_ because refreshing does not help while waiting does —
+         and otherwise it is what neighbouring profiles expect, the
+         issuance time audit reports, a clock-free check of the issuer's
+         lifetime ceiling (exp minus iat), and an optional age bound a
+         verifier may apply by its own policy.  The agent absorbs skew
+         instead: it SHOULD refresh a token with fewer than five minutes
+         left and SHOULD NOT present one inside that margin, because a
+         presented token is verified at several parties in sequence,
+         expiry propagates downward through the chain, and five minutes
+         is the resource token's maximum lifetime — a token with that
+         much left when a resource token names it is still valid when
+         the resource token is redeemed.  Refresh runs from the agent
+         token down.  States when refresh is unnecessary (no further
+         use) and when reactive renewal on expired_jwt is acceptable (an
+         auth token presented only to the resource, for an idempotent
+         request).
+
+      -  presented_jti names the token the request actually carried, and
+         the agent passes that token to the PS as presented_token.  On a
+         step-up or per-call challenge the request carries an auth
+         token, and Resource Token Structure had the resource supply the
+         person token's jti from a record it cannot key: an auth token
+         carries no reference to the person token or the resource token,
+         and (ps, sub, agent key) does not identify one person token
+         under concurrent missions.  The resource now names the token it
+         just verified, person or auth, and copies ps, sub,
+         mission_s256, and tenant from it.  The auth token request gains
+         presented_token, REQUIRED, and the PS-to-AS request's
+         person_token becomes presented_token, passed through, so the PS
+         and the AS run one verification: signature against the issuer,
+         aud the resource, cnf.jwk against agent_jkt, jti against
+         presented_jti, claims against the resource token.  Resource
+         token verification no longer looks up retained person tokens;
+         the retention MUST narrows to what revocation needs;
+         unknown_person_token is removed and invalid_presented_token
+         added; expired_person_token and revoked_person_token become
+         expired_presented_token and revoked_presented_token.  An auth
+         token's exp is capped at the presented token's, whichever type.
+         Addresses issue #152.
+
       -  Defined what a party returns when a revoked token is presented,
          which nothing covered.  A revoked token verifies, is unexpired,
          and has intact claims, so reporting it as malformed or expired
@@ -6368,7 +6574,7 @@ Initial request (with Prefer: wait=N)
          signed the request, so it is answered in the body as
          revoked_<token>_token, beside the invalid_ and expired_ codes
          that parameter already has: added revoked_resource_token and
-         revoked_person_token.  A pending request already started
+         revoked_presented_token.  A pending request already started
          against a withdrawn resource token terminates with the new
          polling code revoked, rather than denied, which says the user
          refused.
@@ -6439,7 +6645,7 @@ Initial request (with Prefer: wait=N)
 
       -  Added the informative appendix A Minimal Person Server: how a
          PS serving one person composes from the four REQUIRED metadata
-         fields, out-of-band consent completion, retained person tokens,
+         fields, out-of-band consent completion, person token records,
          and the existing pending-request rules, with no new
          requirement.  Readers sizing a self-hosted PS were inferring
          the full endpoint surface.
@@ -6497,20 +6703,19 @@ Initial request (with Prefer: wait=N)
          wrong for it.  Found implementing federation in a PS against
          the reference AS.
 
-      -  The PS-to-AS token request gains person_token, REQUIRED: the
-         person token named by the resource token's presented_jti, which
-         the PS issued and retains.  The AS verifies it against the
-         resource token and caps the auth token it issues at its exp.
-         This closes a rule the Resource and the AS could not satisfy:
-         -11 required every token carrying mission_s256 to expire no
-         later than the mission's expires_at, and neither party holds
-         the mission.  A resource token's lifetime is now independent of
-         the mission; the PS caps what it issues at expires_at, and the
-         person token carries that bound to the AS.  Added
-         expired_person_token.  Agents are advised to refresh the person
-         token at least five minutes before expiry and to re-obtain
-         resource and auth tokens against it, which also keeps the
-         resource's presented_jti record current.
+      -  The PS-to-AS token request gains the token named by the
+         resource token's presented_jti, REQUIRED (now presented_token,
+         see above).  The AS verifies it against the resource token and
+         caps the auth token it issues at its exp.  This closes a rule
+         the Resource and the AS could not satisfy: -11 required every
+         token carrying mission_s256 to expire no later than the
+         mission's expires_at, and neither party holds the mission.  A
+         resource token's lifetime is now independent of the mission;
+         the PS caps what it issues at expires_at, and the person token
+         carries that bound to the AS.  Added expired_person_token (now
+         expired_presented_token).  Agents are advised to refresh the
+         person token at least five minutes before expiry and to re-
+         obtain resource and auth tokens against it.
 
       -  Warned resource implementers that policy keyed on the agent
          identifier is local to the two-party modes.  The identifier
@@ -6649,10 +6854,11 @@ Initial request (with Prefer: wait=N)
          and invalid_account authorization endpoint errors.
 
       -  Resource tokens carry ps, sub, and presented_jti, and no agent
-         identifier.  The PS resolves the named person token and rejects
-         any mismatch, which makes mission stripping detectable —
-         comparing claims alone cannot, because concurrent missions mean
-         several person tokens per agent and resource.
+         identifier.  The PS verifies the named token, which the agent
+         passes with its token request, and rejects any mismatch, which
+         makes mission stripping detectable — comparing claims alone
+         cannot, because concurrent missions mean several person tokens
+         per agent and resource.
 
       -  Auth tokens carry ps and a REQUIRED sub, and no agent
          identifier. act and the delegation chain are removed.
@@ -6757,9 +6963,10 @@ Initial request (with Prefer: wait=N)
       -  Renamed the resource token claim person_token_jti to
          presented_jti.  The old name asserted the credential presented
          was a person token, which is false on every step-up and per-
-         call challenge, where it is an auth token.  The value is
-         unchanged: the jti of the person token whose verification
-         established ps and sub.  Addresses issue #95.
+         call challenge, where it is an auth token.  The value is the
+         jti of the token whose verification established ps and sub: the
+         person token, or on a step-up the auth token (see above).
+         Addresses issues #95 and #152.
 
       -  Stated the person token's assurance floor where the token is
          introduced: it asserts recognition and agency, guarantees
@@ -6767,13 +6974,12 @@ Initial request (with Prefer: wait=N)
          evidence of identity proofing, legal identity, or any assurance
          level.  Addresses issue #97.
 
-      -  Stated the retention obligation resource token verification
-         already implied: a PS MUST retain a record of each person token
-         it issues, beyond exp by at least the longest resource token
-         lifetime it accepts, and rejects a resource token naming an
-         unretained jti with the new unknown_person_token error,
-         distinct from a claim mismatch against an existing record.
-         Addresses issue #87.
+      -  Stated the retention obligation on person tokens: a PS MUST
+         record the jti, aud, and exp of each person token it issues,
+         and any access server it presented it to, until exp plus clock
+         skew, for revocation.  Resource token verification does not
+         consult the record, since the agent presents the token itself
+         (see above).  Addresses issue #87.
 
       -  Added the OPTIONAL common metadata field accept_signature_algs,
          the out-of-band twin of the Accept-Signature-Alg response
@@ -7260,6 +7466,7 @@ A.1.  Four-Party: Call Chaining
      |              |                |                 |
      |              | POST auth_token_endpoint         |
      |              | resource_token from R2           |
+     |              | presented_token                  |
      |              | upstream_token                   |
      |              | agent_token (R1's)               |
      |              |--------------------------------->|
@@ -7379,19 +7586,20 @@ Appendix B.  A Minimal Person Server
    *Person tokens.* The person token endpoint Section 8.1 derives one
    directed sub per resource Section 15.1 — a keyed hash of the resource
    identifier is enough, provided the key is kept — issues the token
-   bound to the agent's key, and retains it, with its jti, for as long
-   as a resource token may name it Section 8.1.  The first token for a
-   resource the person has not used is the moment to ask them
-   Section 14.8; later ones for the same resource need not be.
+   bound to the agent's key, and records its jti, aud, and exp for
+   revocation Section 8.1; the agent presents the token itself when it
+   requests an auth token.  The first token for a resource the person
+   has not used is the moment to ask them Section 14.8; later ones for
+   the same resource need not be.
 
    *Auth tokens.* At the auth token endpoint Section 8.2, a resource
    token whose aud is the PS is answered directly: the PS decides on
    consent and issues the auth token itself.  One whose aud is an access
    server is federated Section 10.3, presenting the resource token, the
-   agent token, and the retained person token Section 10.1.1.  A minimal
-   PS that never expects four-party access can decline the second case;
-   one that supports it needs nothing beyond an HTTP client and its own
-   signing key.
+   agent token, and the presented token the agent supplied
+   Section 10.1.1.  A minimal PS that never expects four-party access
+   can decline the second case; one that supports it needs nothing
+   beyond an HTTP client and its own signing key.
 
    *Consent without a consent page.* The PS answers any request that
    needs the person with a 202 deferred response carrying
@@ -7556,13 +7764,26 @@ C.1.9.  Why a Resource Token Names the Person Token
    Binding by presented_jti rather than by comparing claims is what
    makes mission stripping detectable.  A resource cannot drop
    mission_s256 and present the result as an unscoped request, because
-   the person server resolves the person token it actually issued and
-   compares.  Comparing claims alone cannot work: an agent running
-   concurrent missions holds several person tokens for the same
-   resource, so "the person token issued for this agent and resource"
-   does not identify one, and a resource that omitted mission_s256 could
-   not be caught.  Naming the token resolves it exactly, and the person
-   server compares everything it issued in one lookup.
+   the agent hands the person server the token the resource verified,
+   under its issuer's signature, and the person server compares.
+   Comparing claims alone cannot work: an agent running concurrent
+   missions holds several person tokens for the same resource, so "the
+   person token issued for this agent and resource" does not identify
+   one, and a resource that omitted mission_s256 could not be caught.
+   Naming the token pins which one, and the jti check rejects a
+   substitute.
+
+   The same reasoning is why the agent carries the token rather than the
+   person server looking it up.  The person server issued the person
+   token and could retain it, but on a step-up the resource token names
+   an auth token, which in four-party the access server issued and the
+   person server never held.  The resource, for its part, has nothing to
+   look up by: an auth token carries no reference to the person token or
+   the resource token it followed from, and (ps, sub, agent key) is the
+   tuple just shown not to identify one.  So the resource names the
+   token it just verified, the agent passes that token along, and the
+   person server and the access server run one verification with no
+   record on the request path.
 
 C.1.10.  Why Tool Pre-Approval Is Not Enforced
 

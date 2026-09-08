@@ -806,12 +806,14 @@ Table of Contents
 
    Base claims (from AAuth Protocol): - iss: Resource URL - dwk: aauth-
    resource.json - aud: Auth server URL - jti: Unique token identifier -
-   ps: The iss of the person token the resource verified - sub: The sub
-   of that person token, identifying the person this authorization is
-   for - presented_jti: The jti of that person token, binding this
-   resource token to it - agent_jkt: JWK Thumbprint of the agent's
-   signing key - iat: Issued at timestamp - exp: Expiration timestamp -
-   scope: Requested scopes (optional)
+   ps: The person server whose namespace sub belongs to, copied from the
+   token the request carried - sub: The sub of that token, identifying
+   the person this authorization is for - presented_jti: The jti of the
+   token the request carried — the person token, or on a per-call
+   challenge the auth token — binding this resource token to it -
+   agent_jkt: JWK Thumbprint of the agent's signing key - iat: Issued at
+   timestamp - exp: Expiration timestamp - scope: Requested scopes
+   (optional)
 
    A resource token carries no agent identifier; the recipient learns
    the agent's identity from the agent token that signs the token
@@ -1419,6 +1421,10 @@ Table of Contents
 
    *  draft-hardt-aauth-r3-02
 
+      -  Resource token recital: presented_jti is the jti of the token
+         the request carried, the person token or, on a per-call
+         challenge, the auth token, and ps and sub are copied from that
+         token.  Follows AAuth Protocol -11, issue #152 there.
       -  Rewrote Why Not RAR and the Comparison with RAR table.  The
          argument led with directionality — RAR client-declared, R3
          resource-declared — which is no longer the live
