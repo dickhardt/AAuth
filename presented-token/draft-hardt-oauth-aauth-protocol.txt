@@ -2533,22 +2533,25 @@ Table of Contents
    validity check.  A verifier MAY reject a token whose iat is too far
    in the future by its own policy — an issuer whose clock is badly
    wrong, or a claim that was never true — but an iat a few seconds
-   ahead of the verifier's clock is ordinary skew, not a defect, and a
-   verifier that applies such a bound SHOULD allow at least the five-
-   minute margin above so that no token an agent presents in good faith
-   is refused for it. iat is kept for what it does do.  It is what
-   neighbouring profiles expect to find — [RFC9068] and [OpenID.Core]
-   both require it — so AAuth tokens read like other JWTs to the
-   libraries and log pipelines that handle them.  It is the issuance
-   time an audit record, a person's dashboard, or an operator's log
-   reports.  It lets a verifier check an issuer's lifetime ceiling
-   without a clock: exp minus iat MUST NOT exceed the ceiling for the
-   token type (#agent-tokens, #person-token-structure, #resource-token-
-   structure, #auth-token-structure), which is a consistency check on
-   the issuer rather than a freshness check on the token.  And a
-   verifier MAY use it to bound the age of a token by its own policy, as
-   [OpenID.Core] Section 3.1.3.7 does for ID Tokens; this document
-   defines no bound in either direction.
+   ahead of the verifier's clock is ordinary skew, not a defect.  This
+   is the same skew the verifier already allows on a signature's created
+   Section 12.8.4.2, so a verifier that applies such a bound SHOULD use
+   that validity window — 60 seconds by default — rather than a bound of
+   its own.  The five-minute refresh margin above is not the number
+   here: it covers the life of a token across several verifiers, while a
+   future iat is only two clocks disagreeing at one moment. iat is kept
+   for what it does do.  It is what neighbouring profiles expect to find
+   — [RFC9068] and [OpenID.Core] both require it — so AAuth tokens read
+   like other JWTs to the libraries and log pipelines that handle them.
+   It is the issuance time an audit record, a person's dashboard, or an
+   operator's log reports.  It lets a verifier check an issuer's
+   lifetime ceiling without a clock: exp minus iat MUST NOT exceed the
+   ceiling for the token type (#agent-tokens, #person-token-structure,
+   #resource-token-structure, #auth-token-structure), which is a
+   consistency check on the issuer rather than a freshness check on the
+   token.  And a verifier MAY use it to bound the age of a token by its
+   own policy, as [OpenID.Core] Section 3.1.3.7 does for ID Tokens; this
+   document defines no bound in either direction.
 
    Clock skew is therefore the agent's to absorb, and the agent is the
    right party: it verifies nothing, and it is the only party that holds
@@ -6466,10 +6469,10 @@ Initial request (with Prefer: wait=N)
       -  Added Expiry and the Refresh Margin under Re-authorization.  A
          verifier judges exp against its own clock with no skew
          tolerance. iat stays REQUIRED and is not a validity check — a
-         verifier MAY refuse an iat too far in the future by its own
-         policy, allowing at least the five-minute margin, and otherwise
-         it is what neighbouring profiles expect, the issuance time
-         audit reports, a clock-free check of the issuer's lifetime
+         verifier MAY refuse an iat too far in the future, using the
+         same 60-second window it allows on a signature's created, and
+         otherwise it is what neighbouring profiles expect, the issuance
+         time audit reports, a clock-free check of the issuer's lifetime
          ceiling (exp minus iat), and an optional age bound a verifier
          may apply by its own policy.  The agent absorbs skew instead:
          it SHOULD refresh a token with fewer than five minutes left and
