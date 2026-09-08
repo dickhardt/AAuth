@@ -2009,90 +2009,6 @@ The sub-agent relationship is recorded by the PS, which issued both tokens and h
 
 Because every sub-agent authorization passes through the parent, the parent retains control — it can refuse, attenuate, or rate-limit — and revocation propagates naturally: revoking the parent's grant causes the next sub-agent authorization to fail, while existing auth tokens expire normally (≤1 hour).
 
-# Third-Party Login {#third-party-login}
-
-A third party — such as a PS, enterprise portal, app marketplace, or partner site — can direct a user to an agent's or resource's `login_endpoint` to initiate authentication. The agent or resource creates a resource token and sends it to the PS's token endpoint, obtaining an auth token with user identity.
-
-This enables use cases where the user's journey starts outside the agent or resource — for example, an enterprise portal launching an agent for a specific user, an app marketplace connecting a user to a new service, or a PS dashboard directing a user to an agent.
-
-## Login Endpoint
-
-Agents and resources MAY publish a `login_endpoint` in their metadata. The `login_endpoint` accepts the following query parameters:
-
-- `ps` (REQUIRED): The PS URL to authenticate with. The agent or resource MUST verify this is a valid PS by fetching its metadata at `{ps}/.well-known/aauth-person.json` (#ps-metadata).
-- `login_hint` (OPTIONAL): Hint about who to authorize, per [@!OpenID.Core] Section 3.1.2.1.
-- `domain_hint` (OPTIONAL): Domain hint, per OpenID Connect Enterprise Extensions 1.0 [@OpenID.Enterprise].
-- `tenant` (OPTIONAL): Tenant identifier, per OpenID Connect Enterprise Extensions 1.0 [@OpenID.Enterprise].
-- `start_path` (OPTIONAL): Path on the agent's or resource's origin where the user should be directed after login completes. The recipient MUST validate that `start_path` is a relative path on its own origin.
-
-**Example login URL:**
-```
-https://agent.example/login
-    ?ps=https://ps.example
-    &tenant=corp
-    &login_hint=user@corp.example
-    &start_path=/projects/tokyo-trip
-```
-
-## Login Flow
-
-Upon receiving a request at its `login_endpoint`, the agent or resource:
-
-1. Validates the `ps` parameter by fetching the PS's metadata.
-2. Creates a resource token with `aud` = PS URL, binding the request to its own identity.
-3. POSTs to the PS's `auth_token_endpoint` with the resource token and any provided `login_hint`, `domain_hint`, or `tenant` parameters.
-4. Proceeds with the standard deferred response flow (#deferred-responses) — directing the user to the PS's interaction endpoint with the interaction code.
-5. After obtaining the auth token, redirects the user to `start_path` if provided, or to a default landing page.
-
-If the user is already authenticated at the PS, the interaction step resolves near-instantly — the PS recognizes the user from its own session. If not, the user completes a normal authentication and consent flow.
-
-~~~ ascii-art
-User         Third Party     Agent/Resource                  PS
-  |               |               |                           |
-  |  select       |               |                           |
-  |-------------->|               |                           |
-  |               |               |                           |
-  |  redirect to login_endpoint   |                           |
-  |  (ps, tenant, start_path)     |                           |
-  |<--------------|               |                           |
-  |               |               |                           |
-  |  login_endpoint               |                           |
-  |------------------------------>|                           |
-  |               |               |                           |
-  |               |               |  POST auth_token_endpoint |
-  |               |               |  resource_token,          |
-  |               |               |  login_hint, tenant       |
-  |               |               |-------------------------->|
-  |               |               |                           |
-  |               |               |  202 Accepted             |
-  |               |               |  requirement=interaction  |
-  |               |               |  url, code                |
-  |               |               |<--------------------------|
-  |               |               |                           |
-  |  direct to {url}?code={code}  |                           |
-  |<------------------------------|                           |
-  |               |               |                           |
-  |  authenticate at PS           |                           |
-  |------------------------------------------------------>---|
-  |               |               |                           |
-  |               |               |  GET pending URL          |
-  |               |               |-------------------------->|
-  |               |               |  200 OK, auth_token       |
-  |               |               |<--------------------------|
-  |               |               |                           |
-  |  redirect to start_path       |                           |
-  |<------------------------------|                           |
-~~~
-Figure: Third-Party Login Flow {#fig-third-party-login}
-
-The third party does not need to be the PS. Any party that knows the agent's or resource's `login_endpoint` (from metadata) can initiate the flow. The agent or resource treats the redirect as untrusted input — it verifies the PS through metadata discovery and initiates a signed flow.
-
-## Security Considerations for Third-Party Login
-
-- The `login_endpoint` does not carry any tokens, codes, or pre-authorized state. The agent or resource initiates a standard signed flow with the PS, which independently authenticates the user.
-- The `start_path` parameter MUST be validated as a relative path on the recipient's own origin to prevent open redirect attacks.
-- The `ps` parameter is untrusted input. The agent or resource MUST discover and verify the PS via its well-known metadata before proceeding.
-
 # Protocol Primitives {#protocol-primitives}
 
 This section defines the common mechanisms used across all AAuth endpoints: requirement responses, capabilities, deferred responses, error responses, scopes, token revocation, HTTP message signatures, key discovery, identifiers, and metadata documents.
@@ -2765,7 +2681,6 @@ Role-specific fields, after the common fields of (#metadata-documents):
 - `jwks_uri` (REQUIRED): URL to the agent provider's JSON Web Key Set
 - `callback_endpoint` (OPTIONAL): The agent's HTTPS callback endpoint URL
 - `event_endpoint` (OPTIONAL): HTTPS URL at which the AP receives event tokens from resources. Required if the AP supports AAuth Events ([@?I-D.hardt-aauth-events]).
-- `login_endpoint` (OPTIONAL): URL where third parties can direct users to initiate authentication (#third-party-login)
 - `localhost_callback_allowed` (OPTIONAL): Boolean. Default: `false`.
 
 ### Person Server Metadata {#ps-metadata}
@@ -2868,7 +2783,6 @@ Role-specific fields, after the common fields of (#metadata-documents):
 - `jwks_uri` (REQUIRED when the resource issues resource tokens or makes signed calls): URL to the resource's JSON Web Key Set. A resource that only verifies agent signatures for identity-based access — issuing no resource tokens and making no signed requests of its own (e.g., as an agent in multi-hop, #multi-hop) — has no keys to publish and MAY omit `jwks_uri`.
 - `access_mode` (OPTIONAL): The credential flow the resource expects, letting an agent plan its first call without a speculative challenge. This document defines `agent-token` (identity-only — the agent signs with its agent token), `person-token` (the resource authorizes on the person's identity alone — the agent signs with a person token), `session-token` (resource-managed — the agent completes the resource's interaction/consent flow and receives a session token via `AAuth-Access`), and `auth-token` (the agent obtains an auth token from its PS using a resource token; the initial call MUST present a person token). Extensions MAY define further values, which are recorded in the AAuth Access Mode Value Registry (#aauth-access-mode-value-registry); R3 ([@?I-D.hardt-aauth-r3]) defines `per-call`, for a resource that authorizes each invocation individually against that call's parameters. An agent that does not recognize a declared value proceeds as it would with no declaration, calling the resource and reading the `AAuth-Requirement` it gets back. Default: `agent-token`. The declaration is advisory: a resource MAY return any `AAuth-Requirement` at runtime regardless of the declared mode (#requirement-responses), and MAY apply different modes to different endpoints — a resource advertising an R3 vocabulary states the mode for an individual operation there ([@?I-D.hardt-aauth-r3]), and otherwise an agent learns of any variation from the runtime requirement. An agent MAY use `access_mode` to skip resources its setup cannot satisfy — for example, a PS-less agent (no `ps` claim in its agent token) cannot complete the `auth-token` flow.
 - `authorization_endpoint` (OPTIONAL): URL where agents request authorization (#authorization-endpoint-request). When absent, the resource issues resource tokens and interaction requirements via `401` responses (#requirement-auth-token, #resource-managed-auth).
-- `login_endpoint` (OPTIONAL): URL where third parties can direct users to initiate authentication (#third-party-login)
 - `scope_descriptions` (OPTIONAL): Object mapping scope values to Markdown strings for consent display. Scope values are resource-specific; resources that already define OAuth scopes SHOULD use the same scope values in AAuth. Identity-related scopes (e.g., `openid`, `profile`, `email`) follow [@!OpenID.Core].
 - `signature_window` (OPTIONAL): Integer. The signature validity window in seconds for the `created` timestamp. Default: 60. Resources serving agents with poor clock synchronization (mobile, IoT) MAY advertise a larger value. High-security resources MAY advertise a smaller value.
 - `additional_signature_components` (OPTIONAL): Array of HTTP message component identifiers ([@!RFC9421]) that agents MUST include in the `Signature-Input` covered components when signing requests to this resource, in addition to the base components required by the HTTP Message Signatures profile ([@!I-D.hardt-httpbis-signature-key])
@@ -3333,6 +3247,7 @@ The following implementations are known:
   - Defined what a party returns when a revoked token is presented, which nothing covered. A revoked token verifies, is unexpired, and has intact claims, so reporting it as malformed or expired is false and leaves the caller no reason not to present it again. Where the answer goes follows how the token was carried. A token in the `Signature-Key` header — agent, person, or auth — is refused with `401` and `Signature-Error: error=revoked_jwt`, newly defined in the HTTP Signature Keys specification; a resource refusing a revoked auth token SHOULD carry `requirement=auth-token` with a fresh resource token on the same response, so one message says why and how to recover. A token carried as a request parameter is not the credential that signed the request, so it is answered in the body as `revoked_<token>_token`, beside the `invalid_` and `expired_` codes that parameter already has: added `revoked_resource_token` and `revoked_person_token`. A pending request already started against a withdrawn resource token terminates with the new polling code `revoked`, rather than `denied`, which says the user refused.
   - `revocation_endpoint` is RECOMMENDED for a PS, for an AS, and for a resource that accepts person tokens; a resource that accepts only agent tokens receives no revocations and need not publish one. It was OPTIONAL everywhere, which said nothing about what the absence costs: every cascade in Token Revocation lands on one of these endpoints, and a server without one honors a revoked token until its `exp`. Addresses issue #154.
   - Added resource tokens to Token Revocation. A resource issues them and can withdraw one, calling the revocation endpoint of the party named in `aud` and, in four-party, of the `ps` holding it. The window is five minutes but spans the wait for user interaction, which is when a resource is most likely to withdraw. Also stated what a party returns when a revoked token is presented — the existing challenge or error for each token type, with no distinct "revoked" error, since the recovery is the same and a distinct error would disclose that a revocation exists.
+  - Removed Third-Party Login and the `login_endpoint` metadata field from agent providers and resources. The flow had the agent or resource mint a resource token with nothing presented and POST it to the PS, which a resource cannot do and an agent no longer can: a resource token copies `ps`, `sub`, and `presented_jti` from a verified person or auth token. Its `ps` parameter chose a PS the agent token already fixes. The use cases are agent-person binding at first interaction, the agent's own UI, or a call to the resource's authorization endpoint. Addresses issue #155.
   - Pinned how a server signs. Keying Material named the scheme for agents and said nothing about the PS, AS, AP, and resource requests the protocol also depends on — server-to-server signing appeared only in an example. A server signing in its own right MUST use `scheme=jwks_uri` with `id` equal to its metadata `issuer` and `dwk` the well-known name of that document, so the recipient resolves the caller to the `iss` of every token it mints. Revocation rests on that derivation: it names a token by `jti` alone and keys the entry under the verified caller. A resource acting as an agent in multi-hop signs as an agent, with `scheme=jwt`.
   - Reworked Token Revocation. The request is now `jti` and `exp`, both REQUIRED: `iss` is gone, because a caller revokes only its own tokens and the recipient takes the issuer from the verified signature, which keys the revocation and makes revoking another issuer's token unreachable rather than refused. `exp` is the revoked token's own expiration, and a recipient MAY discard the entry once `exp` plus its clock skew has passed; nothing previously bounded the entry, since the section had removed the token type that would have selected a maximum. Named the three revocable token types and where each is revoked — an agent token only at a PS, a person token and an auth token at the resource — which replaces the SHOULD that asked a resource accepting agent tokens to provide a revocation endpoint the agent provider has no way to find. Spelled out the four-party chain: a PS cannot revoke an AS-issued auth token, so it revokes the person token at the AS and the AS cascades to what it issued, which is why a PS and an AS retain what they issued until its `exp`. Replaced the `200`/`404` response rule with `200 OK` once the revocation is recorded, whether or not the recipient holds a record of the token, so a stateless verifier is not answering `404` to every revocation it honors, and defined `invalid_request` and `unsupported_iss`. Addresses issue #146.
   - Added the informative appendix A Minimal Person Server: how a PS serving one person composes from the four REQUIRED metadata fields, out-of-band consent completion, retained person tokens, and the existing pending-request rules, with no new requirement. Readers sizing a self-hosted PS were inferring the full endpoint surface.
