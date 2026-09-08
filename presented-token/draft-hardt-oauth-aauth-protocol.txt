@@ -2548,19 +2548,33 @@ Table of Contents
    that validity window — 60 seconds by default — rather than a bound of
    its own.  The five-minute refresh margin above is not the number
    here: it covers the life of a token across several verifiers, while a
-   future iat is only two clocks disagreeing at one moment. iat is kept
-   for what it does do.  It is what neighbouring profiles expect to find
-   — [RFC9068] and [OpenID.Core] both require it — so AAuth tokens read
-   like other JWTs to the libraries and log pipelines that handle them.
-   It is the issuance time an audit record, a person's dashboard, or an
-   operator's log reports.  It lets a verifier check an issuer's
-   lifetime ceiling without a clock: exp minus iat MUST NOT exceed the
-   ceiling for the token type (#agent-tokens, #person-token-structure,
-   #resource-token-structure, #auth-token-structure), which is a
-   consistency check on the issuer rather than a freshness check on the
-   token.  And a verifier MAY use it to bound the age of a token by its
-   own policy, as [OpenID.Core] Section 3.1.3.7 does for ID Tokens; this
-   document defines no bound in either direction.
+   future iat is only two clocks disagreeing at one moment.
+
+   A verifier that refuses for this reason answers clock_skew: in the
+   body for a token carried as a request parameter Section 12.6.3, and
+   as Signature-Error: error=clock_skew
+   ([I-D.hardt-httpbis-signature-key]) for the token in the Signature-
+   Key header or a signature whose created is ahead of the verifier's
+   clock by more than the window.  The code is distinct from invalid_
+   and expired_ because the remedy is different: those say "get a fresh
+   token", and a fresh token from an issuer whose clock is ahead carries
+   the same skew.  A future iat becomes acceptable with time, so the
+   agent MAY wait and present the same token again; the Date header on
+   the response is the verifier's clock, and iat minus Date minus the
+   window is how long to wait.  A difference of minutes is an issuer to
+   report, not a wait to sit through. iat is kept for what it does do.
+   It is what neighbouring profiles expect to find — [RFC9068] and
+   [OpenID.Core] both require it — so AAuth tokens read like other JWTs
+   to the libraries and log pipelines that handle them.  It is the
+   issuance time an audit record, a person's dashboard, or an operator's
+   log reports.  It lets a verifier check an issuer's lifetime ceiling
+   without a clock: exp minus iat MUST NOT exceed the ceiling for the
+   token type (#agent-tokens, #person-token-structure, #resource-token-
+   structure, #auth-token-structure), which is a consistency check on
+   the issuer rather than a freshness check on the token.  And a
+   verifier MAY use it to bound the age of a token by its own policy, as
+   [OpenID.Core] Section 3.1.3.7 does for ID Tokens; this document
+   defines no bound in either direction.
 
    Clock skew is therefore the agent's to absorb, and the agent is the
    right party: it verifies nothing, and it is the only party that holds
@@ -4386,6 +4400,24 @@ Initial request (with Prefer: wait=N)
    |                         |        | person token, then a fresh    |
    |                         |        | resource token.               |
    +-------------------------+--------+-------------------------------+
+   | clock_skew              | 400    | A token carried as a request  |
+   |                         |        | parameter has an iat further  |
+   |                         |        | ahead of the verifier's clock |
+   |                         |        | than the signature validity   |
+   |                         |        | window Section 8.9.1.         |
+   |                         |        | Nothing about the token is    |
+   |                         |        | wrong; the issuer's clock and |
+   |                         |        | the verifier's disagree.  A   |
+   |                         |        | fresh token from the same     |
+   |                         |        | issuer carries the same skew, |
+   |                         |        | so the agent does not         |
+   |                         |        | refresh; it MAY present the   |
+   |                         |        | same token again once its iat |
+   |                         |        | is within the window — the    |
+   |                         |        | response's Date header says   |
+   |                         |        | how far the clocks are apart  |
+   |                         |        | — or surfaces the error.      |
+   +-------------------------+--------+-------------------------------+
    | user_unreachable        | 403    | Terminal.  The PS has no      |
    |                         |        | channel to reach the user and |
    |                         |        | the agent did not declare the |
@@ -4929,9 +4961,10 @@ Initial request (with Prefer: wait=N)
        signature validity window of the server's current time.  The
        default window is 60 seconds.  Servers MAY advertise a different
        window via their metadata (e.g., signature_window in resource
-       metadata).  Reject with invalid_signature if outside this window.
-       Servers and agents SHOULD synchronize their clocks using NTP
-       ([RFC5905]).
+       metadata).  Reject with invalid_signature if created is older
+       than the window, and with clock_skew if it is further ahead of
+       the server's clock than the window Section 8.9.1.  Servers and
+       agents SHOULD synchronize their clocks using NTP ([RFC5905]).
    4.  Select the Signature-Key dictionary member for the label being
        verified and read its scheme.  If the scheme is not one the
        server implements — including any scheme this profile does not
@@ -4944,10 +4977,11 @@ Initial request (with Prefer: wait=N)
        Return invalid_key if the key cannot be parsed, unknown_key if
        the key is not found at the jwks_uri, invalid_jwt if a JWT scheme
        fails verification, expired_jwt if the JWT has expired,
-       revoked_jwt if the JWT verifies and is unexpired but the server
-       holds a revocation for it Section 12.7, or issuer_missing /
-       issuer_mismatch if the issuer's metadata document fails the
-       checks in Section 12.11.
+       clock_skew if its iat is further ahead of the server's clock than
+       the validity window Section 8.9.1, revoked_jwt if the JWT
+       verifies and is unexpired but the server holds a revocation for
+       it Section 12.7, or issuer_missing / issuer_mismatch if the
+       issuer's metadata document fails the checks in Section 12.11.
    6.  Determine the signature algorithm from the alg member of the
        obtained key, per Section 12.8.1.  Return unsupported_algorithm
        if alg is absent, is a polymorphic identifier, or names an
@@ -6482,21 +6516,25 @@ Initial request (with Prefer: wait=N)
          verifier judges exp against its own clock with no skew
          tolerance. iat stays REQUIRED and is not a validity check — a
          verifier MAY refuse an iat too far in the future, using the
-         same 60-second window it allows on a signature's created, and
-         otherwise it is what neighbouring profiles expect, the issuance
-         time audit reports, a clock-free check of the issuer's lifetime
-         ceiling (exp minus iat), and an optional age bound a verifier
-         may apply by its own policy.  The agent absorbs skew instead:
-         it SHOULD refresh a token with fewer than five minutes left and
-         SHOULD NOT present one inside that margin, because a presented
-         token is verified at several parties in sequence, expiry
-         propagates downward through the chain, and five minutes is the
-         resource token's maximum lifetime — a token with that much left
-         when a resource token names it is still valid when the resource
-         token is redeemed.  Refresh runs from the agent token down.
-         States when refresh is unnecessary (no further use) and when
-         reactive renewal on expired_jwt is acceptable (an auth token
-         presented only to the resource, for an idempotent request).
+         same 60-second window it allows on a signature's created, with
+         the new error clock_skew (body, and Signature-Error for a
+         header JWT or a future created) — distinct from invalid_/
+         expired_ because refreshing does not help while waiting does —
+         and otherwise it is what neighbouring profiles expect, the
+         issuance time audit reports, a clock-free check of the issuer's
+         lifetime ceiling (exp minus iat), and an optional age bound a
+         verifier may apply by its own policy.  The agent absorbs skew
+         instead: it SHOULD refresh a token with fewer than five minutes
+         left and SHOULD NOT present one inside that margin, because a
+         presented token is verified at several parties in sequence,
+         expiry propagates downward through the chain, and five minutes
+         is the resource token's maximum lifetime — a token with that
+         much left when a resource token names it is still valid when
+         the resource token is redeemed.  Refresh runs from the agent
+         token down.  States when refresh is unnecessary (no further
+         use) and when reactive renewal on expired_jwt is acceptable (an
+         auth token presented only to the resource, for an idempotent
+         request).
 
       -  presented_jti names the token the request actually carried, and
          the agent passes that token to the PS as presented_token.  On a
