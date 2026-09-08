@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                        7 September 2026
-Expires: 11 March 2027
+Intended status: Standards Track                        8 September 2026
+Expires: 12 March 2027
 
 
                              AAuth Protocol
@@ -50,7 +50,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 11 March 2027.
+   This Internet-Draft will expire on 12 March 2027.
 
 Copyright Notice
 
@@ -1711,8 +1711,8 @@ Table of Contents
    *  *Mission control endpoint* (mission_control_endpoint, OPTIONAL):
       the control plane for principals other than the owning agent;
       defined by a companion specification Section 9.6.
-   *  *Revocation endpoint* (revocation_endpoint, OPTIONAL): where the
-      agent provider revokes an agent token it issued, and where a
+   *  *Revocation endpoint* (revocation_endpoint, RECOMMENDED): where
+      the agent provider revokes an agent token it issued, and where a
       resource revokes a resource token this PS holds Section 13.7.
 
    The two REQUIRED endpoints, with issuer and jwks_uri, are the whole
@@ -4469,12 +4469,17 @@ Initial request (with Prefer: wait=N)
 
 13.7.  Token Revocation
 
-   Any AAuth server that issues tokens MAY provide a revocation
-   endpoint.  The endpoint accepts a signed POST carrying jti and exp,
-   both REQUIRED. jti identifies the token within the caller's
-   namespace; no token type is needed, since a jti is unique within an
-   issuer. exp is the revoked token's own expiration, which bounds how
-   long the recipient has to remember the revocation.
+   A PS and an AS SHOULD provide a revocation endpoint, and so SHOULD a
+   resource that accepts person tokens.  A resource that accepts only
+   agent tokens receives no revocations — the PS is the only recipient
+   of an agent token revocation, as below — and has no use for one.  A
+   server without a revocation endpoint honors a revoked token until its
+   exp: up to an hour for an auth token or a person token, and the agent
+   token's lifetime for an agent.  The endpoint accepts a signed POST
+   carrying jti and exp, both REQUIRED. jti identifies the token within
+   the caller's namespace; no token type is needed, since a jti is
+   unique within an issuer. exp is the revoked token's own expiration,
+   which bounds how long the recipient has to remember the revocation.
 
    *A caller revokes only its own tokens.* The issuer is not a request
    parameter: the recipient takes it from the identity it verified on
@@ -5299,7 +5304,7 @@ Initial request (with Prefer: wait=N)
       operations, and responses are left to a companion specification
       Section 9.6.  A PS MAY also use it for a deployment's human-facing
       administrative interface.
-   *  revocation_endpoint (OPTIONAL): URL where an agent provider
+   *  revocation_endpoint (RECOMMENDED): URL where an agent provider
       revokes an agent token it issued, so that the PS denies the agent
       token and revokes what it issued for that agent, and where a
       resource revokes a resource token this PS holds Section 13.7.  A
@@ -5343,7 +5348,7 @@ Initial request (with Prefer: wait=N)
       fetch the metadata document.  This is the value placed in the iss
       claim of auth tokens.
    *  auth_token_endpoint (REQUIRED): URL where PSes send token requests
-   *  revocation_endpoint (OPTIONAL): URL where a PS revokes a person
+   *  revocation_endpoint (RECOMMENDED): URL where a PS revokes a person
       token it presented to this AS, and where a resource revokes a
       resource token whose aud is this AS Section 13.7
    *  jwks_uri (REQUIRED): URL to the AS's JSON Web Key Set
@@ -5432,8 +5437,12 @@ Initial request (with Prefer: wait=N)
       Signature-Input covered components when signing requests to this
       resource, in addition to the base components required by the HTTP
       Message Signatures profile ([I-D.hardt-httpbis-signature-key])
-   *  revocation_endpoint (OPTIONAL): URL where the issuer of an auth
-      token or person token for this resource revokes it Section 13.7
+   *  revocation_endpoint (RECOMMENDED for a resource that accepts
+      person tokens): URL where the issuer of an auth token or person
+      token for this resource revokes it Section 13.7.  A resource that
+      accepts only agent tokens receives no revocations and need not
+      publish one.  Without it, a revoked person token or auth token is
+      honored until its exp.
 
 13.11.5.  Resource Metadata Link Relation
 
@@ -6489,6 +6498,14 @@ Initial request (with Prefer: wait=N)
          polling code revoked, rather than denied, which says the user
          refused.
 
+      -  revocation_endpoint is RECOMMENDED for a PS, for an AS, and for
+         a resource that accepts person tokens; a resource that accepts
+         only agent tokens receives no revocations and need not publish
+         one.  It was OPTIONAL everywhere, which said nothing about what
+         the absence costs: every cascade in Token Revocation lands on
+         one of these endpoints, and a server without one honors a
+         revoked token until its exp.  Addresses issue #154.
+
       -  Added resource tokens to Token Revocation.  A resource issues
          them and can withdraw one, calling the revocation endpoint of
          the party named in aud and, in four-party, of the ps holding
@@ -7463,9 +7480,8 @@ Appendix B.  A Minimal Person Server
    audit_endpoint; no interaction_endpoint, so an agent that would have
    relayed an interaction directs the person to it itself
    Section 13.4.3.2; and no mission_control_endpoint.  A
-   revocation_endpoint is OPTIONAL and worth having, since it is how the
-   person's agent provider tells the PS to stop honoring an agent
-   Section 13.7.
+   revocation_endpoint is RECOMMENDED, since it is how the person's
+   agent provider tells the PS to stop honoring an agent Section 13.7.
 
    *One person.* Every agent that reaches the PS acts for the same
    person, so agent-person binding Section 15.14 reduces to the first
