@@ -1049,9 +1049,9 @@ Table of Contents
    detection, audit, and revocation - cnf: Confirmation claim
    ([RFC7800]) with jwk containing the agent's public key.  The JWK MUST
    carry a fully-specified alg member Section 12.8.1. - iat: Issued at
-   timestamp.  Recorded, never a reason to reject; see Section 8.9.1 for
-   its uses - exp: Expiration timestamp.  Agent tokens SHOULD NOT have a
-   lifetime exceeding 24 hours.
+   timestamp.  Not a validity check; see Section 8.9.1 for its uses and
+   the one bound a verifier MAY apply - exp: Expiration timestamp.
+   Agent tokens SHOULD NOT have a lifetime exceeding 24 hours.
 
    Optional payload claims: - ps: The HTTPS URL of the agent's person
    server.  Configured per agent instance.  When present, it tells a
@@ -1158,8 +1158,8 @@ Table of Contents
       agent's public key.  The JWK MUST carry a fully-specified alg
       member Section 12.8.1.
    *  jti: Unique token identifier for audit and revocation
-   *  iat: Issued at timestamp.  Recorded, never a reason to reject; see
-      Section 8.9.1 for its uses
+   *  iat: Issued at timestamp.  Not a validity check; see Section 8.9.1
+      for its uses and the one bound a verifier MAY apply
    *  exp: Expiration timestamp.  Person tokens MUST NOT have a lifetime
       exceeding 1 hour, and MUST NOT outlive the agent token presented
       when the token was requested or, when mission_s256 is present, the
@@ -1610,11 +1610,11 @@ Table of Contents
    Binding the resource token to one presented token by jti is what
    makes mission stripping detectable Appendix C.1.9 - agent_jkt: JWK
    Thumbprint ([RFC7638]) of the agent's current signing key - iat:
-   Issued at timestamp.  Recorded, never a reason to reject; see
-   Section 8.9.1 for its uses - exp: Expiration timestamp - scope:
-   Requested scopes, as a space-separated string of scope values.
-   Companion specifications MAY define alternative authorization claims
-   that replace scope.
+   Issued at timestamp.  Not a validity check; see Section 8.9.1 for its
+   uses and the one bound a verifier MAY apply - exp: Expiration
+   timestamp - scope: Requested scopes, as a space-separated string of
+   scope values.  Companion specifications MAY define alternative
+   authorization claims that replace scope.
 
    A resource token carries no agent identifier. agent_jkt binds it to
    the agent's key, and the recipient learns the agent's identity from
@@ -2530,20 +2530,25 @@ Table of Contents
    no tolerance for clock skew on exp: a token is expired the moment the
    verifier's clock passes it, at every party that verifies it. iat is
    REQUIRED on every token this document defines, and it is not a
-   validity check: a verifier MUST NOT reject a token because iat is
-   later than its own clock.  It is kept for what it does do.  It is
-   what neighbouring profiles expect to find — [RFC9068] and
-   [OpenID.Core] both require it — so AAuth tokens read like other JWTs
-   to the libraries and log pipelines that handle them.  It is the
-   issuance time an audit record, a person's dashboard, or an operator's
-   log reports.  It lets a verifier check an issuer's lifetime ceiling
+   validity check.  A verifier MAY reject a token whose iat is too far
+   in the future by its own policy — an issuer whose clock is badly
+   wrong, or a claim that was never true — but an iat a few seconds
+   ahead of the verifier's clock is ordinary skew, not a defect, and a
+   verifier that applies such a bound SHOULD allow at least the five-
+   minute margin above so that no token an agent presents in good faith
+   is refused for it. iat is kept for what it does do.  It is what
+   neighbouring profiles expect to find — [RFC9068] and [OpenID.Core]
+   both require it — so AAuth tokens read like other JWTs to the
+   libraries and log pipelines that handle them.  It is the issuance
+   time an audit record, a person's dashboard, or an operator's log
+   reports.  It lets a verifier check an issuer's lifetime ceiling
    without a clock: exp minus iat MUST NOT exceed the ceiling for the
    token type (#agent-tokens, #person-token-structure, #resource-token-
    structure, #auth-token-structure), which is a consistency check on
    the issuer rather than a freshness check on the token.  And a
    verifier MAY use it to bound the age of a token by its own policy, as
    [OpenID.Core] Section 3.1.3.7 does for ID Tokens; this document
-   defines no such bound.
+   defines no bound in either direction.
 
    Clock skew is therefore the agent's to absorb, and the agent is the
    right party: it verifies nothing, and it is the only party that holds
@@ -3424,16 +3429,16 @@ Table of Contents
    resources see different values for the same person Section 15.1. -
    cnf: Confirmation claim with jwk containing the agent's public key.
    The JWK MUST carry a fully-specified alg member Section 12.8.1. -
-   iat: Issued at timestamp.  Recorded, never a reason to reject; see
-   Section 8.9.1 for its uses - exp: Expiration timestamp.  Auth tokens
-   MUST NOT have a lifetime exceeding 1 hour, MUST NOT expire later than
-   the agent token used to obtain them Section 8.9, and MUST NOT expire
-   later than the presented_token of the token request (#ps-token-
-   endpoint, #ps-to-as-token-request) — a person token, which the PS
-   capped at the mission's expires_at when mission_s256 is present
-   Section 6.1, or an auth token bounded the same way in its turn.  A
-   PS-issued auth token carrying mission_s256 MUST NOT expire later than
-   the mission's expires_at Section 9.2.
+   iat: Issued at timestamp.  Not a validity check; see Section 8.9.1
+   for its uses and the one bound a verifier MAY apply - exp: Expiration
+   timestamp.  Auth tokens MUST NOT have a lifetime exceeding 1 hour,
+   MUST NOT expire later than the agent token used to obtain them
+   Section 8.9, and MUST NOT expire later than the presented_token of
+   the token request (#ps-token-endpoint, #ps-to-as-token-request) — a
+   person token, which the PS capped at the mission's expires_at when
+   mission_s256 is present Section 6.1, or an auth token bounded the
+   same way in its turn.  A PS-issued auth token carrying mission_s256
+   MUST NOT expire later than the mission's expires_at Section 9.2.
 
    An auth token carries no agent identifier and no delegation chain.
    cnf binds it to one key, and the resource enforces against sub and
@@ -6460,7 +6465,9 @@ Initial request (with Prefer: wait=N)
 
       -  Added Expiry and the Refresh Margin under Re-authorization.  A
          verifier judges exp against its own clock with no skew
-         tolerance. iat stays REQUIRED and is never a reason to reject:
+         tolerance. iat stays REQUIRED and is not a validity check — a
+         verifier MAY refuse an iat too far in the future by its own
+         policy, allowing at least the five-minute margin, and otherwise
          it is what neighbouring profiles expect, the issuance time
          audit reports, a clock-free check of the issuer's lifetime
          ceiling (exp minus iat), and an optional age bound a verifier
