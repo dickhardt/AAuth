@@ -907,7 +907,8 @@ Table of Contents
 
 16.  Acknowledgments
 
-   TBD.
+   The author thanks Abay Aubakirov (Regent Protocol) for feedback from
+   a production sub-agent deployment.
 
 17.  References
 
