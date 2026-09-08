@@ -565,7 +565,7 @@ Verify the agent token per [@!RFC7515] and [@!RFC7519]:
 
 1. Decode the JWT header. Verify `typ` is `aa-agent+jwt`.
 2. Verify `dwk` is `aauth-agent.json`. Discover the issuer's JWKS via `{iss}/.well-known/{dwk}` per the HTTP Signature Keys specification ([@!I-D.hardt-httpbis-signature-key]). Locate the key matching the JWT header `kid` and verify the JWT signature.
-3. Verify `exp` is in the future and `iat` is not in the future.
+3. Verify `exp` is in the future, judged by the verifier's own clock (#refresh-margin). `iat` is not a validity check; a verifier MAY refuse an `iat` further ahead of its clock than the signature validity window.
 4. Verify `iss` is a valid HTTPS URL conforming to the Server Identifier requirements.
 5. Verify `cnf.jwk` matches the key used to sign the HTTP request.
 6. If `ps` is present, verify it is a valid HTTPS URL conforming to the Server Identifier requirements.
@@ -651,7 +651,7 @@ Verify the person token per [@!RFC7515] and [@!RFC7519]:
 
 1. Decode the JWT header. Verify `typ` is `aa-person+jwt`.
 2. Verify `dwk` is `aauth-person.json`. Discover the issuer's JWKS via `{iss}/.well-known/{dwk}` per the HTTP Signature Keys specification ([@!I-D.hardt-httpbis-signature-key]). Locate the key matching the JWT header `kid` and verify the JWT signature.
-3. Verify `exp` is in the future and `iat` is not in the future.
+3. Verify `exp` is in the future, judged by the verifier's own clock (#refresh-margin). `iat` is not a validity check; a verifier MAY refuse an `iat` further ahead of its clock than the signature validity window.
 4. Verify `iss` is a valid HTTPS URL conforming to the Server Identifier requirements (#server-identifiers).
 5. Verify `aud` matches the resource's own identifier.
 6. `cnf.jwk` is REQUIRED. Verify it matches the key used to sign the HTTP request, applying the same structural checks as auth token verification (#request-context-binding).
@@ -897,7 +897,7 @@ Verify the resource token per [@!RFC7515] and [@!RFC7519]:
 
 1. Decode the JWT header. Verify `typ` is `aa-resource+jwt`.
 2. Verify `dwk` is `aauth-resource.json`. Discover the issuer's JWKS via `{iss}/.well-known/{dwk}` per the HTTP Signature Keys specification ([@!I-D.hardt-httpbis-signature-key]). Locate the key matching the JWT header `kid` and verify the JWT signature.
-3. Verify `exp` is in the future and `iat` is not in the future.
+3. Verify `exp` is in the future, judged by the verifier's own clock (#refresh-margin). `iat` is not a validity check; a verifier MAY refuse an `iat` further ahead of its clock than the signature validity window.
 4. Verify `aud` matches the recipient's own identifier (the PS in three-party, or the AS in four-party).
 5. Verify `agent_jkt` matches the JWK Thumbprint of the key used to sign the HTTP request.
 6. Verify the `presented_token` from the token request (#ps-token-endpoint, #ps-to-as-token-request) by its `typ`: a person token (`aa-person+jwt`) per (#person-token-verification), an auth token (`aa-auth+jwt`) per (#auth-token-verification), with two substitutions — `aud` MUST equal the resource token's `iss` rather than the verifier's own identifier, and `cnf.jwk` MUST match the resource token's `agent_jkt` rather than the key that signed the request — and without the resource's record check on `sub`. A token that fails is rejected with `invalid_presented_token`, or `expired_presented_token` when only `exp` fails. Then verify that the presented token's `jti` equals `presented_jti`, that its `iss` (person token) or `ps` (auth token) equals the resource token's `ps`, and that its `sub`, `mission_s256`, and `tenant` match the resource token's exactly, rejecting the resource token with `invalid_resource_token` on any mismatch or omission. A mismatch against a token that verifies is evidence of tampering, such as mission stripping, and SHOULD be surfaced to operators rather than only rejected. A PS MUST verify that `ps` names itself; an AS MUST verify that `ps` names the PS that sent the token request.
@@ -1908,7 +1908,7 @@ When a resource receives an auth token, verify per [@!RFC7515] and [@!RFC7519]. 
 
 1. Decode the JWT header. Verify `typ` is `aa-auth+jwt`.
 2. Verify `dwk` is `aauth-access.json` (auth token from an AS) or `aauth-person.json` (auth token from a PS asserting identity). Discover the issuer's JWKS via `{iss}/.well-known/{dwk}` per the HTTP Signature Keys specification ([@!I-D.hardt-httpbis-signature-key]). Locate the key matching the JWT header `kid` and verify the JWT signature.
-3. Verify `exp` is in the future and `iat` is not in the future.
+3. Verify `exp` is in the future, judged by the verifier's own clock (#refresh-margin). `iat` is not a validity check; a verifier MAY refuse an `iat` further ahead of its clock than the signature validity window.
 4. Verify `iss` is a valid HTTPS URL.
 
 #### Request-Context Binding
