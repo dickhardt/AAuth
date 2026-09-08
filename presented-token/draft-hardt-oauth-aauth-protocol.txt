@@ -1049,8 +1049,9 @@ Table of Contents
    detection, audit, and revocation - cnf: Confirmation claim
    ([RFC7800]) with jwk containing the agent's public key.  The JWK MUST
    carry a fully-specified alg member Section 12.8.1. - iat: Issued at
-   timestamp - exp: Expiration timestamp.  Agent tokens SHOULD NOT have
-   a lifetime exceeding 24 hours.
+   timestamp.  Recorded, never a reason to reject; see Section 8.9.1 for
+   its uses - exp: Expiration timestamp.  Agent tokens SHOULD NOT have a
+   lifetime exceeding 24 hours.
 
    Optional payload claims: - ps: The HTTPS URL of the agent's person
    server.  Configured per agent instance.  When present, it tells a
@@ -1157,7 +1158,8 @@ Table of Contents
       agent's public key.  The JWK MUST carry a fully-specified alg
       member Section 12.8.1.
    *  jti: Unique token identifier for audit and revocation
-   *  iat: Issued at timestamp
+   *  iat: Issued at timestamp.  Recorded, never a reason to reject; see
+      Section 8.9.1 for its uses
    *  exp: Expiration timestamp.  Person tokens MUST NOT have a lifetime
       exceeding 1 hour, and MUST NOT outlive the agent token presented
       when the token was requested or, when mission_s256 is present, the
@@ -1608,10 +1610,11 @@ Table of Contents
    Binding the resource token to one presented token by jti is what
    makes mission stripping detectable Appendix C.1.9 - agent_jkt: JWK
    Thumbprint ([RFC7638]) of the agent's current signing key - iat:
-   Issued at timestamp - exp: Expiration timestamp - scope: Requested
-   scopes, as a space-separated string of scope values.  Companion
-   specifications MAY define alternative authorization claims that
-   replace scope.
+   Issued at timestamp.  Recorded, never a reason to reject; see
+   Section 8.9.1 for its uses - exp: Expiration timestamp - scope:
+   Requested scopes, as a space-separated string of scope values.
+   Companion specifications MAY define alternative authorization claims
+   that replace scope.
 
    A resource token carries no agent identifier. agent_jkt binds it to
    the agent's key, and the recipient learns the agent's identity from
@@ -2525,11 +2528,22 @@ Table of Contents
 
    A verifier judges exp against its own clock.  This document defines
    no tolerance for clock skew on exp: a token is expired the moment the
-   verifier's clock passes it, at every party that verifies it. iat
-   records when the issuer signed and is not a validity check; a
-   verifier MAY use it for audit, or to bound the age of a token by its
-   own policy, but MUST NOT reject a token because iat is later than its
-   own clock.
+   verifier's clock passes it, at every party that verifies it. iat is
+   REQUIRED on every token this document defines, and it is not a
+   validity check: a verifier MUST NOT reject a token because iat is
+   later than its own clock.  It is kept for what it does do.  It is
+   what neighbouring profiles expect to find — [RFC9068] and
+   [OpenID.Core] both require it — so AAuth tokens read like other JWTs
+   to the libraries and log pipelines that handle them.  It is the
+   issuance time an audit record, a person's dashboard, or an operator's
+   log reports.  It lets a verifier check an issuer's lifetime ceiling
+   without a clock: exp minus iat MUST NOT exceed the ceiling for the
+   token type (#agent-tokens, #person-token-structure, #resource-token-
+   structure, #auth-token-structure), which is a consistency check on
+   the issuer rather than a freshness check on the token.  And a
+   verifier MAY use it to bound the age of a token by its own policy, as
+   [OpenID.Core] Section 3.1.3.7 does for ID Tokens; this document
+   defines no such bound.
 
    Clock skew is therefore the agent's to absorb, and the agent is the
    right party: it verifies nothing, and it is the only party that holds
@@ -3410,7 +3424,8 @@ Table of Contents
    resources see different values for the same person Section 15.1. -
    cnf: Confirmation claim with jwk containing the agent's public key.
    The JWK MUST carry a fully-specified alg member Section 12.8.1. -
-   iat: Issued at timestamp - exp: Expiration timestamp.  Auth tokens
+   iat: Issued at timestamp.  Recorded, never a reason to reject; see
+   Section 8.9.1 for its uses - exp: Expiration timestamp.  Auth tokens
    MUST NOT have a lifetime exceeding 1 hour, MUST NOT expire later than
    the agent token used to obtain them Section 8.9, and MUST NOT expire
    later than the presented_token of the token request (#ps-token-
@@ -6445,18 +6460,21 @@ Initial request (with Prefer: wait=N)
 
       -  Added Expiry and the Refresh Margin under Re-authorization.  A
          verifier judges exp against its own clock with no skew
-         tolerance, and iat is not a validity check.  The agent absorbs
-         skew instead: it SHOULD refresh a token with fewer than five
-         minutes left and SHOULD NOT present one inside that margin,
-         because a presented token is verified at several parties in
-         sequence, expiry propagates downward through the chain, and
-         five minutes is the resource token's maximum lifetime — a token
-         with that much left when a resource token names it is still
-         valid when the resource token is redeemed.  Refresh runs from
-         the agent token down.  States when refresh is unnecessary (no
-         further use) and when reactive renewal on expired_jwt is
-         acceptable (an auth token presented only to the resource, for
-         an idempotent request).
+         tolerance. iat stays REQUIRED and is never a reason to reject:
+         it is what neighbouring profiles expect, the issuance time
+         audit reports, a clock-free check of the issuer's lifetime
+         ceiling (exp minus iat), and an optional age bound a verifier
+         may apply by its own policy.  The agent absorbs skew instead:
+         it SHOULD refresh a token with fewer than five minutes left and
+         SHOULD NOT present one inside that margin, because a presented
+         token is verified at several parties in sequence, expiry
+         propagates downward through the chain, and five minutes is the
+         resource token's maximum lifetime — a token with that much left
+         when a resource token names it is still valid when the resource
+         token is redeemed.  Refresh runs from the agent token down.
+         States when refresh is unnecessary (no further use) and when
+         reactive renewal on expired_jwt is acceptable (an auth token
+         presented only to the resource, for an idempotent request).
 
       -  presented_jti names the token the request actually carried, and
          the agent passes that token to the PS as presented_token.  On a
