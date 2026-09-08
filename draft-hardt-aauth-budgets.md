@@ -701,7 +701,7 @@ Inference APIs commonly emit final usage in the stream's terminal event. That is
 
 # Budget Exhaustion {#exhaustion}
 
-**Auth token expired.** The budget expires with the token. This is already-defined behavior: `401` with `AAuth-Requirement: requirement=auth-token; resource-token="..."`. This document adds nothing.
+**Auth token expired.** The budget expires with the token. The challenge is already-defined behavior: `401` with `AAuth-Requirement: requirement=auth-token; resource-token="..."`. What this document adds is what rides on it: the resource token's consumption record, issued at or after the expired token's `exp`, is that token's final figure and settles it exactly (#settlement). This challenge is the in-band moment the final record rides; a resource that omits it leaves the issuer to settle from a usage reading.
 
 **Budget exhausted, token still valid.** The same response. The base protocol already permits a resource to return `requirement=auth-token` with a new resource token to a request that already carries an auth token, when the request requires higher authorization than the current token provides, and requires agents to be prepared for step-up at any time. Budget exhaustion is that case, and the agent's action is identical either way: take the fresh resource token to its PS.
 
@@ -1150,7 +1150,7 @@ This section records the status of known implementations of the protocol defined
 
 **tokenpony** (Infinite Logic PBC) meters LLM inference and implements TPX [@?TPX], an OAuth 2.0 profile carrying the same grant for human-driven apps. That deployment is live, and this extension is being added over the same metering core, with AuthGravity as the person server and Harness News as the agent, in four-party access. TPX is a complete deployment on its own: it needs no person server and nothing from this document, and the two specifications share no wire surface — one meter, two independent authorization envelopes.
 
-**Regent Protocol** is implementing both sides: the `budget` claim in auth tokens issued by its gate, with allocation and lifetime derived from the owner's mandate, and resource-side metering middleware in `regent-httpsig` performing atomic reserve-commit-release and emitting `AAuth-Budget`.
+**Regent Protocol** is in production at get4agent.com (marketplace resource and provisioning server): allocations, refusals with `required`, the streaming cost-omitted mode, the usage endpoint, and sub-agent delegation. Its open-source resource/PS middleware `regent-httpsig` (Python, Apache-2.0) publishes test vectors.
 
 **The editor** is implementing this extension in several services.
 
@@ -1163,6 +1163,10 @@ Implementation reports and test vectors are expected from these efforts and will
 This document has not been submitted to the datatracker. Everything below is a change to the editor's copy, made while the design was being explored against implementations in progress. The log is reset at first submission, which becomes `draft-hardt-aauth-budgets-00`; readers wanting the detail behind any entry will find it in the repository's history and pull requests.
 
 ## Exploratory Changes {#exploratory-changes}
+
+- Updated Implementation Status: Regent Protocol is in production at get4agent.com, and its `regent-httpsig` middleware publishes test vectors. Addresses issue #127.
+
+- Stated in (#exhaustion) that the expired-token challenge is where the final consumption record rides: issued at or after the token's `exp`, the record settles the token exactly (#settlement). Previously the recital said this document adds nothing to that path, which understated it — omitting the record there leaves the issuer to settle from a usage reading. Raised from production, where a verifier now tolerates an expired auth token solely to issue this challenge.
 
 - Required an affirmative PS ceiling in four-party access (#as-token-endpoint). When the resource token carries `budget` and the PS-to-AS request omits the `budget` parameter, the AS issues no `budget` claim; a PS granting the full offer echoes it. Omission previously meant the resource's full offer, which made a PS that had not implemented this extension indistinguishable from one deliberately granting the maximum.
 - Reduced `budget_consumed` from an array of up to twenty records to one record, the presented token's (#budget-consumed). Every other record duplicated a figure the issuer already had or would settle from a usage reading; the list cost a kilobyte in the `401` header and told an agent what was spent under tokens it never held. The `jti` stays so that concurrent allocations settle exactly. Stated when a record is final: a record is as of its resource token's `iat`, and final when that is at or after the auth token's `exp`. Rationale in (#why-one-record). Addresses issue #120.
