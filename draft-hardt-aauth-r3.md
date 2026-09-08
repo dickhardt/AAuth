@@ -501,9 +501,9 @@ Base claims (from AAuth Protocol):
 - `dwk`: `aauth-resource.json`
 - `aud`: Auth server URL
 - `jti`: Unique token identifier
-- `ps`: The `iss` of the person token the resource verified
-- `sub`: The `sub` of that person token, identifying the person this authorization is for
-- `presented_jti`: The `jti` of that person token, binding this resource token to it
+- `ps`: The person server whose namespace `sub` belongs to, copied from the token the request carried
+- `sub`: The `sub` of that token, identifying the person this authorization is for
+- `presented_jti`: The `jti` of the token the request carried — the person token, or on a per-call challenge the auth token — binding this resource token to it
 - `agent_jkt`: JWK Thumbprint of the agent's signing key
 - `iat`: Issued at timestamp
 - `exp`: Expiration timestamp
@@ -839,6 +839,7 @@ There are currently no known implementations.
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-aauth-r3-02
+  - Resource token recital: `presented_jti` is the `jti` of the token the request carried, the person token or, on a per-call challenge, the auth token, and `ps` and `sub` are copied from that token. Follows AAuth Protocol -11, issue #152 there.
   - Rewrote Why Not RAR and the Comparison with RAR table. The argument led with directionality — RAR client-declared, R3 resource-declared — which is no longer the live counterposition: OAuth Transaction Authorization Challenge ([@?I-D.rosomakho-oauth-txn-challenge]) has the protected resource sign `authorization_details` in a challenge from which the AS derives the granted authorization details. The comparison is now against resource-declared RAR, and rests on content addressing, agent opacity, and carriage by reference. The complementary position is kept and restated.
   - Added Approving Release Rather Than Execution: for an operation with no side effects, a resource MAY run the call and seek approval to release the result rather than to execute. No wire change — `access_mode` stays `per-call` and the `202` deferred delivery already holds the invocation. The proposal then describes the actual result rather than inferring consequence from parameters, and there is nothing for the `401` comparison step to compare.
   - Added the OPTIONAL `result` member to the proposal document. Its presence signals that the resource has run the operation and is seeking approval to release the result; its resource-defined members describe what the result holds, which is what the PS judges the agent's next request against. The result itself is not carried, and no digest of it: the resource would be hashing bytes only it holds, which no reader of the proposal ever obtains to check it against.
