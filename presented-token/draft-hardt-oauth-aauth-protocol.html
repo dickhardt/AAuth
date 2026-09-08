@@ -2627,7 +2627,7 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
 </li>
             <li id="section-5.2.4-2.2">Verify <code>dwk</code> is <code>aauth-agent.json</code>. Discover the issuer's JWKS via <code>{iss}/.well-known/{dwk}</code> per the HTTP Signature Keys specification (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). Locate the key matching the JWT header <code>kid</code> and verify the JWT signature.<a href="#section-5.2.4-2.2" class="pilcrow">¶</a>
 </li>
-            <li id="section-5.2.4-2.3">Verify <code>exp</code> is in the future and <code>iat</code> is not in the future.<a href="#section-5.2.4-2.3" class="pilcrow">¶</a>
+            <li id="section-5.2.4-2.3">Verify <code>exp</code> is in the future, judged by the verifier's own clock <a href="#refresh-margin" class="auto internal xref">Section 8.9.1</a>. <code>iat</code> is not a validity check; a verifier MAY refuse an <code>iat</code> further ahead of its clock than the signature validity window.<a href="#section-5.2.4-2.3" class="pilcrow">¶</a>
 </li>
             <li id="section-5.2.4-2.4">Verify <code>iss</code> is a valid HTTPS URL conforming to the Server Identifier requirements.<a href="#section-5.2.4-2.4" class="pilcrow">¶</a>
 </li>
@@ -2762,7 +2762,7 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
 </li>
           <li id="section-6.3-2.2">Verify <code>dwk</code> is <code>aauth-person.json</code>. Discover the issuer's JWKS via <code>{iss}/.well-known/{dwk}</code> per the HTTP Signature Keys specification (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). Locate the key matching the JWT header <code>kid</code> and verify the JWT signature.<a href="#section-6.3-2.2" class="pilcrow">¶</a>
 </li>
-          <li id="section-6.3-2.3">Verify <code>exp</code> is in the future and <code>iat</code> is not in the future.<a href="#section-6.3-2.3" class="pilcrow">¶</a>
+          <li id="section-6.3-2.3">Verify <code>exp</code> is in the future, judged by the verifier's own clock <a href="#refresh-margin" class="auto internal xref">Section 8.9.1</a>. <code>iat</code> is not a validity check; a verifier MAY refuse an <code>iat</code> further ahead of its clock than the signature validity window.<a href="#section-6.3-2.3" class="pilcrow">¶</a>
 </li>
           <li id="section-6.3-2.4">Verify <code>iss</code> is a valid HTTPS URL conforming to the Server Identifier requirements <a href="#server-identifiers" class="auto internal xref">Section 12.10.1</a>.<a href="#section-6.3-2.4" class="pilcrow">¶</a>
 </li>
@@ -3111,7 +3111,7 @@ Content-Type: application/json
 </li>
             <li id="section-7.8.2-2.2">Verify <code>dwk</code> is <code>aauth-resource.json</code>. Discover the issuer's JWKS via <code>{iss}/.well-known/{dwk}</code> per the HTTP Signature Keys specification (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). Locate the key matching the JWT header <code>kid</code> and verify the JWT signature.<a href="#section-7.8.2-2.2" class="pilcrow">¶</a>
 </li>
-            <li id="section-7.8.2-2.3">Verify <code>exp</code> is in the future and <code>iat</code> is not in the future.<a href="#section-7.8.2-2.3" class="pilcrow">¶</a>
+            <li id="section-7.8.2-2.3">Verify <code>exp</code> is in the future, judged by the verifier's own clock <a href="#refresh-margin" class="auto internal xref">Section 8.9.1</a>. <code>iat</code> is not a validity check; a verifier MAY refuse an <code>iat</code> further ahead of its clock than the signature validity window.<a href="#section-7.8.2-2.3" class="pilcrow">¶</a>
 </li>
             <li id="section-7.8.2-2.4">Verify <code>aud</code> matches the recipient's own identifier (the PS in three-party, or the AS in four-party).<a href="#section-7.8.2-2.4" class="pilcrow">¶</a>
 </li>
@@ -4678,7 +4678,7 @@ Content-Type: application/json
 </li>
               <li id="section-10.4.3.1-1.2">Verify <code>dwk</code> is <code>aauth-access.json</code> (auth token from an AS) or <code>aauth-person.json</code> (auth token from a PS asserting identity). Discover the issuer's JWKS via <code>{iss}/.well-known/{dwk}</code> per the HTTP Signature Keys specification (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). Locate the key matching the JWT header <code>kid</code> and verify the JWT signature.<a href="#section-10.4.3.1-1.2" class="pilcrow">¶</a>
 </li>
-              <li id="section-10.4.3.1-1.3">Verify <code>exp</code> is in the future and <code>iat</code> is not in the future.<a href="#section-10.4.3.1-1.3" class="pilcrow">¶</a>
+              <li id="section-10.4.3.1-1.3">Verify <code>exp</code> is in the future, judged by the verifier's own clock <a href="#refresh-margin" class="auto internal xref">Section 8.9.1</a>. <code>iat</code> is not a validity check; a verifier MAY refuse an <code>iat</code> further ahead of its clock than the signature validity window.<a href="#section-10.4.3.1-1.3" class="pilcrow">¶</a>
 </li>
               <li id="section-10.4.3.1-1.4">Verify <code>iss</code> is a valid HTTPS URL.<a href="#section-10.4.3.1-1.4" class="pilcrow">¶</a>
 </li>

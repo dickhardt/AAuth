@@ -1090,7 +1090,10 @@ Table of Contents
        {iss}/.well-known/{dwk} per the HTTP Signature Keys specification
        ([I-D.hardt-httpbis-signature-key]).  Locate the key matching the
        JWT header kid and verify the JWT signature.
-   3.  Verify exp is in the future and iat is not in the future.
+   3.  Verify exp is in the future, judged by the verifier's own clock
+       Section 8.9.1. iat is not a validity check; a verifier MAY refuse
+       an iat further ahead of its clock than the signature validity
+       window.
    4.  Verify iss is a valid HTTPS URL conforming to the Server
        Identifier requirements.
    5.  Verify cnf.jwk matches the key used to sign the HTTP request.
@@ -1232,7 +1235,10 @@ Table of Contents
        {iss}/.well-known/{dwk} per the HTTP Signature Keys specification
        ([I-D.hardt-httpbis-signature-key]).  Locate the key matching the
        JWT header kid and verify the JWT signature.
-   3.  Verify exp is in the future and iat is not in the future.
+   3.  Verify exp is in the future, judged by the verifier's own clock
+       Section 8.9.1. iat is not a validity check; a verifier MAY refuse
+       an iat further ahead of its clock than the signature validity
+       window.
    4.  Verify iss is a valid HTTPS URL conforming to the Server
        Identifier requirements Section 12.10.1.
    5.  Verify aud matches the resource's own identifier.
@@ -1653,7 +1659,10 @@ Table of Contents
        via {iss}/.well-known/{dwk} per the HTTP Signature Keys
        specification ([I-D.hardt-httpbis-signature-key]).  Locate the
        key matching the JWT header kid and verify the JWT signature.
-   3.  Verify exp is in the future and iat is not in the future.
+   3.  Verify exp is in the future, judged by the verifier's own clock
+       Section 8.9.1. iat is not a validity check; a verifier MAY refuse
+       an iat further ahead of its clock than the signature validity
+       window.
    4.  Verify aud matches the recipient's own identifier (the PS in
        three-party, or the AS in four-party).
    5.  Verify agent_jkt matches the JWK Thumbprint of the key used to
@@ -3492,7 +3501,10 @@ Table of Contents
        Signature Keys specification ([I-D.hardt-httpbis-signature-key]).
        Locate the key matching the JWT header kid and verify the JWT
        signature.
-   3.  Verify exp is in the future and iat is not in the future.
+   3.  Verify exp is in the future, judged by the verifier's own clock
+       Section 8.9.1. iat is not a validity check; a verifier MAY refuse
+       an iat further ahead of its clock than the signature validity
+       window.
    4.  Verify iss is a valid HTTPS URL.
 
 10.4.3.2.  Request-Context Binding
