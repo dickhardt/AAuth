@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-09-08T00:09:06.286205+00:00",
+  "timestamp": "2026-09-10T00:08:58.363548+00:00",
   "repo": "dickhardt/AAuth",
   "labels": [
     {
@@ -2447,7 +2447,7 @@
       "id": "I_kwDOQJKwSc8AAAABPuad6w",
       "title": "Budgets: update Implementation Status for Regent Protocol (in production)",
       "url": "https://github.com/dickhardt/AAuth/issues/127",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
@@ -2456,8 +2456,8 @@
       ],
       "body": "Regent Protocol reports they are in production and sent the line they want the Implementation Status section to carry:\n\n> Regent Protocol - in production at get4agent.com (marketplace resource + provisioning server): allocations, refusals with `required`, streaming cost-omitted mode, usage endpoint, sub-agent delegation; open-source resource/PS middleware `regent-httpsig` (Python, MIT) with published test vectors.\n\nThey said to trim as we see fit. Replace the current \"implementing\" entry in `draft-hardt-aauth-budgets.md` with this in the next revision.",
       "createdAt": "2026-09-04T15:59:30Z",
-      "updatedAt": "2026-09-05T03:51:58Z",
-      "closedAt": null,
+      "updatedAt": "2026-09-08T10:11:51Z",
+      "closedAt": "2026-09-08T10:11:51Z",
       "comments": [
         {
           "author": "dickhardt",
@@ -2540,6 +2540,109 @@
       "createdAt": "2026-09-07T08:42:05Z",
       "updatedAt": "2026-09-07T12:30:13Z",
       "closedAt": "2026-09-07T12:30:13Z",
+      "comments": []
+    },
+    {
+      "number": 151,
+      "id": "I_kwDOQJKwSc8AAAABQO51uQ",
+      "title": "Settlement of a revoked auth token: is revocation an early exp?",
+      "url": "https://github.com/dickhardt/AAuth/issues/151",
+      "state": "OPEN",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "budgets"
+      ],
+      "body": "## Problem\n\n(#settlement) keys finality strictly on `exp`: a record is final when its resource token was issued at or after the auth token's `exp`, and a usage reading settles an allocation once its `exp` is at or before `as_of`. Revocation appears in (#token-scope) as a control \u2014 the budget ends with the token, committed consumption is unaffected, an in-flight request completes \u2014 but not in (#settlement) at all. So a revoked token's remainder stays reserved until `exp`, even though the token can start no new spend.\n\nAn issuer that wants its money back early therefore has exactly one lever today: short TTLs. A production deployment asked the sharper question: is revoke-then-settle intended \u2014 revoke at a checkpoint and treat the record in hand as final \u2014 or does a revoked token still owe a post-`exp` figure?\n\nThe checkpoint record cannot simply become final: requests in flight at revocation complete after it, so the snapshot can undercount. And the revocation response cannot carry the figure \u2014 it is deliberately an empty `200` that does not vary with what the recipient holds (base protocol, Token Revocation).\n\n## Suggested direction\n\nTreat revocation as an early `exp`, with the drain made the resource's obligation on the record channel:\n\n1. **Record channel.** A resource MUST NOT issue a consumption record for a revoked token until the requests in flight at revocation have settled. A record the resource issues after recording the revocation is then final, and the issuer can verify that ordering itself \u2014 it made the revocation call, so `iat` at or after its own call is checkable, mirroring the `iat`-vs-`exp` arithmetic (#settlement) already uses.\n2. **Reading channel.** A reading settles a revoked allocation once `as_of` is at or after the revocation \u2014 subject to the same drain caveat, which the reading cannot express. Either accept the in-flight race there (the unsafe direction: it releases early) or leave readings on `exp` semantics and let early settlement be a record-channel property only.\n\nOption 2's second branch is the conservative one: revocation accelerates settlement only where a resource-signed record attests the drain, and readings stay as specified.\n\n## Context\n\nRaised by Regent Protocol from production (get4agent.com): they would rather revoke at a checkpoint than run short TTLs, and asked whether the spec means revocation that way. They found the settle-on-snapshot behavior as a bug in their own settlement path while adopting (#settlement), which is what surfaced the question.\n",
+      "createdAt": "2026-09-08T08:37:31Z",
+      "updatedAt": "2026-09-08T16:34:08Z",
+      "closedAt": null,
+      "comments": [
+        {
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "body": "What the rule buys, and its precondition:\n\n**Buys:** TTL stops being the only bound on dead-reserved capital. With revocation as both the spend stop and (post-drain) the settlement trigger, an issuer can issue at the protocol's one-hour cap and reclaim the remainder the moment a checkpoint looks wrong, instead of running minutes-short tokens. This is the answer to the short-TTL-vs-revoke trade the production question posed.\n\n**Precondition:** the resource must expose a revocation endpoint, which is MAY in the base protocol. An issuer should size TTL by whether it holds a revocation path to that resource \u2014 revocation path, TTL at the cap; none, short TTL remains the only lever. Worth a sentence in the resolution.\n\n**Kept in view:** expiry was doing two jobs \u2014 bounding the reservation and forcing the agent back to the PS. Revocation takes over only the first. An issuer running long TTLs takes its supervision from allocation sizing (exhaustion still forces the return) and from usage readings between re-authorizations, revoking on anomaly.",
+          "createdAt": "2026-09-08T08:48:58Z",
+          "updatedAt": "2026-09-08T08:48:58Z"
+        },
+        {
+          "author": "abay94",
+          "authorAssociation": "NONE",
+          "body": "Implementer's view from the meter side (regent-httpsig / get4agent.com). Context first: until this morning our marketplace exposed no revocation endpoint and our envelope path did not consult agent revocation, so a revoked agent's live envelope spent until exp. Both shipped today (regent-httpsig 0.6.0, get4agent.com), with the drain rule below, which is why its exact shape matters to us.\n\nDrain, as our meter runs it. A reservation is held per in-flight request and resolved on commit or release; an unresolved reservation counts as consumed once its timeout passes. Revocation fits directly: mark the jti revoked, refuse new reservations, and the token is drained when no reservation remains outstanding. The drain is therefore bounded by the resource's reservation timeout, and I'd suggest the resolution say so: a resource MUST issue the record no later than its reservation timeout after revocation, with unresolved in-flight requests counted as consumed. Without that bound the issuer has no worst case to wait for.\n\nRecord channel. Agreed that a record issued after the revocation is final and verifiable by iat. On our side a revoked token presented at the resource gets the same challenge an expired one does, with the final record on the resource token once the drain is complete; while a request is still in flight the challenge carries no record.\n\nThe carrier problem. After revocation the record still travels through the agent, and revocation is most often applied to an agent that is compromised or gone. When the whole agent is revoked, the usage endpoint's per-key query already gives the issuer a pull path: every token of that agent is bound to one key, so the per-key total settles all of its allocations together, provided the issuer keeps its own ledger of what it has already settled per key. What that query cannot do is settle one revoked token among several live ones under the same key. A per-token member alongside jkts, answered only for tokens that are expired or revoked, i.e. drained, would close that case without touching reading semantics for live tokens.\n\nReading channel. Agree with the conservative branch: readings stay on exp.\n",
+          "createdAt": "2026-09-08T16:34:08Z",
+          "updatedAt": "2026-09-08T16:34:08Z"
+        }
+      ]
+    },
+    {
+      "number": 152,
+      "id": "I_kwDOQJKwSc8AAAABQPRwwg",
+      "title": "presented_jti should name the token actually presented, and the agent should pass it to the PS",
+      "url": "https://github.com/dickhardt/AAuth/issues/152",
+      "state": "OPEN",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "protocol"
+      ],
+      "body": "## Problem\n\n`presented_jti` in a resource token is defined as the `jti` of the person token whose verification established `ps` and `sub`. \u00a7Resource Token Structure says that on a step-up or per-call challenge, where the request carries an auth token, \"the resource supplies the value from its record of the person token it verified earlier.\"\n\nThe resource has no such record it can key. \u00a7Token Revocation says an auth token \"carries no reference to that person token, so nothing on the wire recovers the link.\" The auth token also carries no resource token `jti`. The only tuple the resource holds when it receives an auth token is `(ps, sub, agent key)`, which \u00a7Why a Resource Token Names the Person Token says is exactly the tuple that does not identify one person token under concurrent missions. So the rule in \u00a7Resource Token Structure cannot be implemented on a step-up.\n\nSeparately, the PS resolves `presented_jti` by lookup: \u00a7Resource Token Verification step 6 has the PS \"resolve `presented_jti` against its retained records of issued person tokens,\" and \u00a7Person Token Endpoint makes the PS retain every person token it issues, beyond `exp` by the longest resource token lifetime, so the lookup can succeed. That retention exists for the request path. The AS, by contrast, gets the person token on the wire (`person_token` in \u00a7PS-to-AS Token Request) and verifies it statelessly. The two verifiers do the same check two different ways.\n\nThe -11 changelog renamed `person_token_jti` to `presented_jti` (issue #95) because the presented credential is an auth token on step-up, but kept the value as the person token's `jti`. The rename is half done.\n\n## Proposal\n\n**`presented_jti` names the token that was actually presented.** On the first request of a grant that is the person token. On a subsequent request, a step-up or an R3 per-call challenge, it is the auth token the request carried. Both token types carry `sub`, `mission_s256`, and `tenant`, and the PS as `iss` (person token) or `ps` (auth token), so the resource copies the same claims from either. The resource names the token it just verified and keeps no record.\n\n**The agent passes `presented_token` to the PS.** The auth token request at `auth_token_endpoint` gains `presented_token`, REQUIRED: the token the agent presented to the resource, whose `jti` the resource token's `presented_jti` names. The agent holds it already; it is cached per (resource, mission) for a person token, or is the current auth token. The PS-to-AS request's `person_token` becomes `presented_token`, passed through.\n\n**One verification paragraph at PS and AS.** Verify `presented_token` by its `typ`: signature against its issuer, `aud` equals the resource token's `iss`, `cnf.jwk` matches `agent_jkt`, `jti` equals `presented_jti`, and `sub`, `ps`, `mission_s256`, `tenant` match the resource token. This is the AS's existing check with the person-token-only assumption removed; PS step 6 becomes the same paragraph. Mission stripping is still caught, since `mission_s256` is under the issuer's signature in either token type.\n\n**Expiry.** The new auth token's `exp` is capped at the presented token's `exp`, whichever type it is. An auth token's `exp` was already capped by the person token's, so the bound is sound. A step-up on a nearly expired auth token yields a nearly expired auth token; the existing refresh guidance (fresh person token five minutes early, re-obtain through the authorization endpoint) is how an agent gets a full-length chain.\n\n**Retention.** The PS's retention MUST narrows from \"so resource token verification can resolve it\" to what revocation and the dashboard need. `unknown_person_token` goes; a bad `presented_jti` is a signature failure or a `jti` mismatch. `expired_person_token` becomes `expired_presented_token`.\n\n**Revocation.** An AS can now record which `presented_jti` each auth token was issued against and walk a chain of step-ups back to the person token, which eases the \"nothing on the wire recovers the link\" problem in \u00a7Token Revocation.\n\n**Agent token stays out.** A resource issues a resource token only after verifying a person token (\u00a7Resource Token). `presented_token` is a person token or an auth token. The neutral name leaves room if that rule changes.\n\n`agent_token` in the PS-to-AS request is unchanged: the AS still needs the AP's claims for policy.\n",
+      "createdAt": "2026-09-08T09:12:16Z",
+      "updatedAt": "2026-09-08T09:12:16Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 154,
+      "id": "I_kwDOQJKwSc8AAAABQPjL2A",
+      "title": "revocation_endpoint: RECOMMENDED for PS and AS, and for a resource that accepts person tokens",
+      "url": "https://github.com/dickhardt/AAuth/issues/154",
+      "state": "OPEN",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "protocol"
+      ],
+      "body": "## Problem\n\n`revocation_endpoint` is OPTIONAL in PS, AS, and resource metadata, and \u00a7Token Revocation opens with \"Any AAuth server that issues tokens MAY provide a revocation endpoint.\" Since #146 the endpoint is where every cascade lands:\n\n- A PS's endpoint is where the agent provider revokes an agent token and where a resource withdraws a resource token. Without it an agent provider that has decided an agent can no longer be trusted has no way to say so, and the agent runs until its token expires.\n- An AS's endpoint is where a PS revokes a person token it federated. Without it the four-party cascade in \u00a7Token Revocation cannot start, and the AS keeps issuing auth tokens against a revoked person token until its `exp`.\n- A resource's endpoint is the only place a person token or an auth token is revoked. Without it a revoked person token or auth token is honored for up to an hour.\n\nOPTIONAL says none of that matters. It also says the same thing to a resource that accepts only agent tokens, for which the endpoint has no possible caller: the #146 changelog already notes that the agent provider has no way to find such a resource, and \u00a7Token Revocation says the PS is the only recipient of an agent token revocation.\n\n## Proposal\n\n- PS metadata: `revocation_endpoint` RECOMMENDED.\n- AS metadata: `revocation_endpoint` RECOMMENDED.\n- Resource metadata: `revocation_endpoint` RECOMMENDED for a resource that accepts person tokens, and therefore auth tokens. A resource that accepts only agent tokens receives no revocations and has no reason to publish one; say so rather than call it OPTIONAL.\n- \u00a7Token Revocation: replace \"MAY provide\" with the same rule, and say what the absence costs: the revoked token is honored until its `exp`.\n- Minimal PS appendix: the sentence calling it OPTIONAL follows the metadata section.\n",
+      "createdAt": "2026-09-08T09:39:01Z",
+      "updatedAt": "2026-09-08T09:39:01Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 155,
+      "id": "I_kwDOQJKwSc8AAAABQPjMxA",
+      "title": "Remove Third-Party Login and login_endpoint",
+      "url": "https://github.com/dickhardt/AAuth/issues/155",
+      "state": "OPEN",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "protocol"
+      ],
+      "body": "## Problem\n\n\u00a7Third-Party Login and the `login_endpoint` metadata field, on agent providers and resources, describe a flow the protocol can no longer run.\n\n- \u00a7Login Flow has the agent or resource \"create a resource token with `aud` = PS URL, binding the request to its own identity\" and POST it to `auth_token_endpoint`. A resource token is issued only after verifying a person token or an auth token, and copies `ps`, `sub`, and `presented_jti` from it (\u00a7Resource Token). There is nothing to copy. And only an agent, signing with an agent token, calls `auth_token_endpoint`. A resource cannot run this flow at all.\n- The `ps` query parameter lets the third party choose the PS. An agent's PS is the `ps` claim of its agent token. Nothing for a third party to choose.\n- The section was OIDC third-party-initiated login (OpenID Connect Core 1.0 \u00a74) carried over. Its use cases are covered elsewhere or are not protocol: a portal launching an agent for a person is agent-person binding, which the PS establishes at first interaction (\u00a7Agent-Person Binding); a PS dashboard directing a person to an agent is the agent's own UI; an agent that needs the person calls the resource's `authorization_endpoint` and follows the requirement it gets back.\n- No companion draft references `login_endpoint`.\n\n## Proposal\n\nRemove \u00a7Third-Party Login, its figure, and `login_endpoint` from Agent Provider Metadata and Resource Metadata. The `login_hint`, `domain_hint`, `tenant`, and `prompt` parameters of the auth token request stay; they serve the first interaction, where binding happens, and do not depend on this section.\n",
+      "createdAt": "2026-09-08T09:39:02Z",
+      "updatedAt": "2026-09-08T09:39:02Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 160,
+      "id": "I_kwDOQJKwSc8AAAABQXTfqw",
+      "title": "Linking a person to an upstream service a resource brokers",
+      "url": "https://github.com/dickhardt/AAuth/issues/160",
+      "state": "OPEN",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "## Summary\n\nAAuth authorizes an **agent** to perform operations. It has no ceremony for\nlinking a **person** to a third-party service that a resource brokers access to \u2014\none that grants the agent nothing.\n\nThis issue proposes that shape for discussion. **We intend to implement it first\nand learn from it before proposing any draft text** \u2014 filing it here so the\ndesign is public and reviewable while we do.\n\n## The gap\n\nSome resources are proxies: they front an upstream API (Google Calendar, HubSpot,\nSlack) that the person must have connected before the resource can serve any\nrequest at all. Today that connection can only be established as a side effect of\nan authorization:\n\n- The agent names operations at the authorization endpoint.\n- The resource decides a connection is required and attaches an `interaction` to\n  the resource token.\n- The person server flows the person through it on the way to consent.\n\nThat works, but it means **upstream access can never be acquired before it is\nneeded**. Every new service, and every new upstream account, first surfaces as an\ninterruption in the middle of unrelated work. An agent that knows it will need\nGmail, Calendar and Contacts has no way to say so up front.\n\n## Proposal\n\n### 1. A `connection` object in resource metadata\n\nIts presence in `/.well-known/aauth-resource.json` declares that this resource\nfronts an upstream the person must link, and describes what can be requested.\n\n```jsonc\n\"connection\": {\n  \"endpoint\":      \"https://calendar-googleapis-com.example/connections\",\n  \"upstream_name\": \"Google\",\n  \"scopes\": [\n    { \"scope\": \".../auth/calendar.readonly\", \"default\": true,\n      \"description\": \"Read your calendars and events\" },\n    { \"scope\": \".../auth/calendar.events\",\n      \"description\": \"Create and change events\" }\n  ],\n  \"account_description\": \"Google email account\"\n}\n```\n\nNotes on two choices that were not obvious:\n\n- **Raw upstream scopes, not an abstracted profile vocabulary.** An earlier draft\n  named breadths (`read` / `write` / `full`). It lost information \u2014 an agent\n  understands `.../auth/calendar.readonly` better than it understands `\"read\"` \u2014\n  and required per-resource mapping that scope-set comparison with the upstream's\n  own implication rules already does.\n- **`account_description` present or absent is the whole account model.** Present\n  means the agent must name an account when linking, because the identifier is\n  something the person knows and the upstream's authorize URL can pre-select\n  (Google's `login_hint`, Slack's `team`). Absent means it must not, because the\n  value is chosen inside the provider's UI and is not something a person can type\n  (a HubSpot portal id, a Threads profile). Everything else \u2014 how many accounts\n  exist, whether one is required on a given call \u2014 is observable at runtime and\n  does not belong in static metadata.\n\nThe `description` fields are read by the agent, not rendered to a person, so they\nstay in one language. See \u00a74.\n\n### 2. A connections collection\n\n```\nPOST   {connection.endpoint}            link an upstream account\nGET    {connection.endpoint}            list this person's connections\nDELETE {connection.endpoint}/{account}  disconnect one\n```\n\nAll authenticated with a person token.\n\n`POST` body: `{ scopes?, account? }`. Omitting `scopes` requests the declared\ndefaults; a requested set must be a subset of what is declared. `account` is\npresent exactly when `account_description` is.\n\nThe response is a resource token carrying an interaction and **no `scope`\nclaim** (\u00a73). Already linked at those scopes or broader returns a status, not an\nerror \u2014 retry-safety is what makes \"link everything up front\" a safe instruction\nfor an agent.\n\n`GET` returns, per connection: the account, a human label where the account key\nis not itself human, the scopes held, when it was connected, and whether the\ngrant is still believed live. Two details that matter in practice: return the\n**implication-expanded** scope set, so a client does not need the upstream's\nhierarchy rules to reason correctly; and be explicit that this is what the\nresource *believes* it holds, since a person can revoke at the upstream without\ntelling anyone.\n\n### 3. The resource token needs no new claim\n\nA link is signalled by the interaction the token already carries. Adding a claim\ndescribing the connection was tried and removed: the person server does not\nrender it, its logic needs only to know *that* an interaction is required, it\nnever sends the value back to the resource, and the agent already knows what it\nasked for. The resource holds the detail on the pending record the interaction\ncode keys.\n\nThat leaves one new invariant:\n\n> **A `scope` claim is present exactly when an auth token will be issued.**\n\nA link ceremony issues nothing, so its token carries no `scope`. This conflicts\nwith `scope` being unconditionally REQUIRED on a resource token, which is the one\nnormative change the proposal needs.\n\nThe person server's handling becomes three independent tests:\n\n```\nr3 reference present  \u2192 render consent from the document\nelse scope present    \u2192 render consent from the scope descriptions\nelse                  \u2192 no consent card\n\ninteraction present   \u2192 send the person to the resource's interaction endpoint\n\nscope present         \u2192 issue an auth token\nelse                  \u2192 terminate the ceremony without one\n```\n\nAn authorization and a link **compose** \u2014 a token may carry both, which is\nexactly the case that exists today when a resource decides a connection is needed\nbefore it can honour an authorization.\n\n### 4. Two audiences for text\n\nWorth stating explicitly because it settled several questions above: text in this\nprotocol has two audiences, and they want opposite treatment.\n\n- **A person reads it** \u2014 consent cards, interaction explainers. Must be an\n  identifier the renderer localises, or language-tagged.\n- **An agent reads it** and renders to the person in their own language \u2014 tool\n  descriptions, operation summaries, scope descriptions. Plain, single-language\n  prose is correct; translating it is waste.\n\nA corollary that removed a metadata field: naming what an upstream calls an\naccount (`workspace`, `organisation`, `portal`) looks like a localisation lever\nand is really a localisation trap. A vendor's term of art does not survive\ntranslation, and the authoritative word is whatever that vendor uses in that\nlocale \u2014 which a fixed enum cannot mirror. A generic noun that is right\neverywhere beats a specific one that is wrong in most places.\n\n### 5. Interaction endpoints belong in metadata\n\nNot strictly part of this ceremony, but it came out of designing it and applies\nto every interaction AAuth already has.\n\nToday an interaction is carried as a URL plus a code. If the endpoint is\npublished in resource metadata and only the code travels, the redirect target\nstops being a per-request value chosen by the token issuer and becomes a stable,\npublished property that a registry can validate once and a reconcile job can\nwatch for drift. It costs nothing to fetch: the resource token already names the\nwell-known document that publishes its signing key, so any party verifying the\ntoken has that document in hand.\n\n## Status\n\nNot a draft PR. We are building this to find out whether it is the right shape,\nand would rather discover the problems in an implementation than in spec text.\nComments on the shape \u2014 particularly the `scope`-implies-issuance invariant in\n\u00a73, and whether the connections collection is the right home for this \u2014 are very\nwelcome.\n",
+      "createdAt": "2026-09-08T23:52:45Z",
+      "updatedAt": "2026-09-08T23:52:45Z",
+      "closedAt": null,
       "comments": []
     }
   ],
@@ -4364,6 +4467,156 @@
       "mergedBy": "dickhardt",
       "mergeCommit": {
         "oid": "6cfc2e0a4c42146b686133b991b9f2ef24baea61"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 153,
+      "id": "PR_kwDOQJKwSc8AAAABCpYiyg",
+      "title": "presented_jti names the token actually presented; agent passes presented_token to the PS (#152)",
+      "url": "https://github.com/dickhardt/AAuth/pull/153",
+      "state": "MERGED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "protocol"
+      ],
+      "body": "Addresses #152.\n\n## What changes\n\n- **`presented_jti` names the token the request actually carried.** Person token on the first challenge of a grant, auth token on a step-up or per-call challenge. The resource copies `ps`, `sub`, `mission_s256`, and `tenant` from whichever it verified and keeps no record. Resource Token Structure previously had the resource fill the value on a step-up from \"its record of the person token it verified earlier,\" which it cannot key: an auth token carries no reference to the person token or the resource token, and `(ps, sub, agent key)` is the tuple \u00a7Why a Resource Token Names the Person Token already shows does not identify one person token.\n- **Auth token request gains `presented_token`, REQUIRED.** The agent passes the token it presented. It already holds it.\n- **PS-to-AS request: `person_token` becomes `presented_token`,** passed through. `agent_token` is unchanged; the AS still gets the AP's claims for policy.\n- **One verification.** Resource Token Verification step 6 now verifies `presented_token` by `typ` with the two substitutions the AS already applied (`aud` = resource token `iss`, `cnf.jwk` = `agent_jkt`), then checks `jti` = `presented_jti` and claims against the resource token. The AS section points at that step.\n- **Retention narrows.** The PS records `jti`, `aud`, `exp`, and any AS it presented to, for revocation, until `exp` plus skew. The lookup on the request path is gone.\n- **Errors.** `unknown_person_token` removed. `invalid_presented_token` added. `expired_person_token` and `revoked_person_token` renamed to `expired_presented_token` and `revoked_presented_token`, following the `<parameter>_token` pattern from #150.\n- **Expiry.** An auth token is capped at the presented token's `exp`, whichever type. A step-up on a nearly expired auth token yields a nearly expired auth token; the existing early-refresh guidance is the way back to a full-length chain, and the refresh paragraph now says so.\n- **Revocation.** The AS records the `presented_jti` each auth token was issued against and follows its own records back to the person token on a step-up chain.\n- Rationale added to \u00a7Why a Resource Token Names the Person Token. Changelog entry added; the four earlier -11 entries this supersedes (#87, #95, `person_token` in PS-to-AS, the revocation error names) are adjusted in place since -11 is unpublished.\n\n## Also in this PR\n\n- R3 resource token recital updated to match: `presented_jti` is the person token or, on a per-call challenge, the auth token.\n\n## Not in this PR\n\n- The `login_endpoint` flow (\u00a7Login) creates a resource token without a presented token. That was already inconsistent with the person-token-first rule and is untouched here.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_017JbQcf8BB9PRyDoftadNjo\n\n",
+      "createdAt": "2026-09-08T09:17:15Z",
+      "updatedAt": "2026-09-08T15:02:31Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "b20e6b52ab7c9e4317ef484c294aceab6bbc4211",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "presented-token",
+      "headRefOid": "c7012e5b3631e8cde0c39a811fcd52bd7c144909",
+      "closedAt": "2026-09-08T15:02:28Z",
+      "mergedAt": "2026-09-08T15:02:28Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "55ae44cc3a07da29c4d6821c3800569ac77b9441"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 156,
+      "id": "PR_kwDOQJKwSc8AAAABCpk6pA",
+      "title": "revocation_endpoint RECOMMENDED for PS, AS, and resources that accept person tokens (#154)",
+      "url": "https://github.com/dickhardt/AAuth/pull/156",
+      "state": "MERGED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "protocol"
+      ],
+      "body": "Addresses #154.\n\n- PS and AS metadata: `revocation_endpoint` RECOMMENDED.\n- Resource metadata: RECOMMENDED for a resource that accepts person tokens. A resource that accepts only agent tokens receives no revocations, since the PS is the only recipient of an agent token revocation, and need not publish one.\n- \u00a7Token Revocation opens with the same rule in place of \"MAY provide\", and says what the absence costs: a revoked token is honored until its `exp`.\n- PS endpoint list and the Minimal Person Server appendix follow.\n- Changelog entry.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_017JbQcf8BB9PRyDoftadNjo\n",
+      "createdAt": "2026-09-08T09:39:47Z",
+      "updatedAt": "2026-09-08T09:40:20Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "6cfc2e0a4c42146b686133b991b9f2ef24baea61",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "revocation-recommended",
+      "headRefOid": "4fe920a1709654bbae9e5d91130fda287e043933",
+      "closedAt": "2026-09-08T09:40:18Z",
+      "mergedAt": "2026-09-08T09:40:18Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "51878689bd168f16e078cdaa1def1de753ee0064"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 157,
+      "id": "PR_kwDOQJKwSc8AAAABCpk_Mg",
+      "title": "Remove Third-Party Login and login_endpoint (#155)",
+      "url": "https://github.com/dickhardt/AAuth/pull/157",
+      "state": "MERGED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "protocol"
+      ],
+      "body": "Addresses #155.\n\n- Removed \u00a7Third-Party Login: Login Endpoint, Login Flow, the figure, and its security considerations.\n- Removed `login_endpoint` from Agent Provider Metadata and Resource Metadata.\n- `login_hint`, `domain_hint`, `tenant`, and `prompt` on the auth token request are untouched.\n- Changelog entry.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_017JbQcf8BB9PRyDoftadNjo\n",
+      "createdAt": "2026-09-08T09:39:53Z",
+      "updatedAt": "2026-09-08T09:40:25Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "6cfc2e0a4c42146b686133b991b9f2ef24baea61",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "remove-login",
+      "headRefOid": "42e906c79604531b3d72de0429c53afec8dbc3a4",
+      "closedAt": "2026-09-08T09:40:23Z",
+      "mergedAt": "2026-09-08T09:40:22Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "b20e6b52ab7c9e4317ef484c294aceab6bbc4211"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 158,
+      "id": "PR_kwDOQJKwSc8AAAABCp2DmA",
+      "title": "Bootstrap: acknowledge Regent Protocol sub-agent deployment feedback",
+      "url": "https://github.com/dickhardt/AAuth/pull/158",
+      "state": "MERGED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "bootstrap"
+      ],
+      "body": "Acknowledgements: thanks Abay Aubakirov (Regent Protocol) for feedback from a production sub-agent deployment, replacing the TBD placeholder.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_017JbQcf8BB9PRyDoftadNjo\n",
+      "createdAt": "2026-09-08T10:11:31Z",
+      "updatedAt": "2026-09-08T10:11:47Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "b20e6b52ab7c9e4317ef484c294aceab6bbc4211",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "bootstrap-acks",
+      "headRefOid": "69c6e4d102044d604db21a8f432dc8e6f367572e",
+      "closedAt": "2026-09-08T10:11:46Z",
+      "mergedAt": "2026-09-08T10:11:46Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "46f98cb7de29b4ec07c88ee71423eec02948b1a7"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 159,
+      "id": "PR_kwDOQJKwSc8AAAABCp2G1Q",
+      "title": "Budgets: Regent in production; final record rides the expired-token challenge (#127)",
+      "url": "https://github.com/dickhardt/AAuth/pull/159",
+      "state": "MERGED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "budgets"
+      ],
+      "body": "Closes #127.\n\n- Implementation Status: Regent Protocol is in production at get4agent.com, with the features that run and the open-source `regent-httpsig` middleware publishing test vectors. Changelog line added.\n- Exhaustion recital: the expired-token challenge is where the resource token's final consumption record rides, settling the token exactly. The recital previously said this document adds nothing there. Softened \"the only in-band moment\" to \"the in-band moment\", since a revoked-token refusal also carries a resource token (#150) and whether that settles is #151.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_017JbQcf8BB9PRyDoftadNjo\n",
+      "createdAt": "2026-09-08T10:11:37Z",
+      "updatedAt": "2026-09-08T10:11:52Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "b20e6b52ab7c9e4317ef484c294aceab6bbc4211",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "budgets-regent-production",
+      "headRefOid": "f09422d72daffe6bf7dbf484918d1b8a46a401d6",
+      "closedAt": "2026-09-08T10:11:50Z",
+      "mergedAt": "2026-09-08T10:11:50Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "e9d970937c332bf9f0436a6a5d3ea6b9e99d5c59"
       },
       "comments": [],
       "reviews": []
