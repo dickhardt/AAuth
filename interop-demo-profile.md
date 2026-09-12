@@ -49,7 +49,7 @@ The resource signs a resource token as `aa-resource+jwt` with `iss` set to its o
 
 ## Surface 4 — Auth-token issuance and presentation
 
-The agent sends the resource token to the PS's `auth_token_endpoint`. The PS resolves the person token named by `presented_jti`, confirms the resource token's claims match what it issued, and either issues the auth token itself (three-party) or federates with the resource's AS (four-party).
+The agent sends the resource token and, as `presented_token`, the person token it presented to the resource to the PS's `auth_token_endpoint`. The PS verifies the person token, confirms the resource token's `presented_jti`, `ps`, `sub`, `mission_s256`, and `tenant` match it, and either issues the auth token itself (three-party) or federates with the resource's AS (four-party), forwarding `presented_token` so the AS makes the same check.
 
 The issued `aa-auth+jwt` carries:
 
@@ -72,8 +72,8 @@ Note that no token a resource reads carries an agent identifier. `agent_jkt` in 
 1. The parent POSTs to the PS's `person_token_endpoint` with `subagent_token` (the sub-agent's agent token); the issued person token's `cnf` is the sub-agent's key. The parent passes it to the sub-agent out of band.
 2. The sub-agent presents that person token to a resource and receives a resource token bound to its own key (`agent_jkt` = thumbprint of the sub-agent's key).
 3. The sub-agent passes the resource token to the parent out of band.
-4. The parent POSTs to the PS's `auth_token_endpoint` with `resource_token` (the sub-agent's) and `subagent_token`.
-5. The PS verifies `resource_token.agent_jkt` equals the thumbprint of `subagent_token.cnf.jwk`, and `subagent_token.parent_agent` names the parent.
+4. The parent POSTs to the PS's `auth_token_endpoint` with `resource_token` (the sub-agent's), `presented_token` (the person token from step 1, which the sub-agent presented to the resource and passed back with the resource token), and `subagent_token`.
+5. The PS verifies `resource_token.agent_jkt` equals the thumbprint of `subagent_token.cnf.jwk`, `resource_token.presented_jti` equals `presented_token.jti`, `presented_token.cnf.jwk` is the sub-agent's key, and `subagent_token.parent_agent` names the parent.
 6. The issued auth token has `cnf.jwk` = the sub-agent's key.
 
 The sub-agent relationship is recorded by the PS, which issued both tokens and holds the `parent_agent` binding. It does not appear in any token the resource sees.

@@ -604,7 +604,7 @@ The subscription ticket URL (see (#protected-subscriptions)) encodes authorizati
 
 - Short-lived (expiry appropriate to the expected delay between issuing and using the ticket).
 - Single-use (the resource invalidates the ticket on first successful subscription registration).
-- Bound to the agent that triggered the prior interaction (the resource MUST verify that `sub` in the subscribe token matches the agent that established the ticket).
+- Bound to the signing key that established the ticket. No token the resource verified when it issued the ticket carries an agent identifier ([@!I-D.hardt-oauth-aauth-protocol]); what it verified is the key in `cnf`. The resource MUST record the JWK Thumbprint of that key with the ticket, and MUST verify that the thumbprint of the subscribe token's `cnf.jwk` equals it when the ticket is used. The subscribe token's `sub` names the agent to its AP for delivery; it is not what binds the ticket.
 
 ## AP as Delivery Intermediary
 
