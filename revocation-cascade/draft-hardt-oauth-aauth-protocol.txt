@@ -4688,8 +4688,8 @@ Initial request (with Prefer: wait=N)
       it presented that person token to Section 10.1.1.  The resource
       MUST refuse subsequent requests presenting the person token and
       MUST NOT issue a resource token naming it.  The AS MUST NOT issue
-      further auth tokens against it, and SHOULD revoke the auth tokens
-      it already issued against it by calling the revocation endpoint of
+      further auth tokens against it, and MUST revoke the auth tokens it
+      already issued against it by calling the revocation endpoint of
       the resource each names in aud.  The PS MUST NOT present a revoked
       person token to an AS, and rejects a token request whose
       presented_token is one with revoked_presented_token
@@ -6594,7 +6594,9 @@ Initial request (with Prefer: wait=N)
          the AP, since even a count would say which resources the person
          uses through that agent.  Revocation is idempotent: a repeated
          revocation re-attempts what did not succeed and reports the
-         current outcome.  Addresses issue #173.
+         current outcome.  The AS's cascade to the resource is now a
+         MUST, since the PS reads how far a revocation went from it.
+         Addresses issue #173.
 
       -  Added Expiry and the Refresh Margin under Re-authorization.  A
          verifier judges exp against its own clock with no skew
