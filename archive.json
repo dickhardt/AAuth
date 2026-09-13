@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-09-10T00:08:58.363548+00:00",
+  "timestamp": "2026-09-13T00:10:01.075541+00:00",
   "repo": "dickhardt/AAuth",
   "labels": [
     {
@@ -2644,6 +2644,40 @@
       "updatedAt": "2026-09-08T23:52:45Z",
       "closedAt": null,
       "comments": []
+    },
+    {
+      "number": 161,
+      "id": "I_kwDOQJKwSc8AAAABQqoWCw",
+      "title": "Adoption Matrix: PS authorization and federated rows should say auth token, not person token",
+      "url": "https://github.com/dickhardt/AAuth/issues/161",
+      "state": "OPEN",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "protocol"
+      ],
+      "body": "The Adoption Matrix in (#incremental-adoption) says `Person token` in the Agent column for the PS authorization and Federated authorization rows. It is an **auth token** in both.\n\nCurrent, `draft-hardt-oauth-aauth-protocol.md:2889`:\n\n| Agent | Resource | Mode | What Works |\n|-------|----------|------|------------|\n| Agent token | Recognizes signatures | Agent identity | ... |\n| Agent token | Manages authorization | Resource-managed | ... |\n| Person token | Accepts person tokens | Person identity | ... |\n| **Person token** | Issues resource tokens | PS authorization | ... |\n| **Person token** | AS deployed | Federated authorization | ... |\n| Agent token + `ps` + mission | Any or none | + governance | ... |\n\nIn both of those modes the person token is only what the agent sends to the resource to get a resource token issued. What the agent then presents on the access request \u2014 the credential the resource verifies and enforces \u2014 is the auth token, from the PS in three-party and from the AS in four-party. That is what the Agent column names in the other rows: the credential the agent uses at the resource.\n\nThe `Person identity` row is correct as written, since there the person token *is* the credential the resource accepts.\n\nProposed:\n\n| Auth token | Issues resource tokens | PS authorization | ... |\n| Auth token | AS deployed | Federated authorization | ... |\n",
+      "createdAt": "2026-09-10T14:23:37Z",
+      "updatedAt": "2026-09-10T14:23:37Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 163,
+      "id": "I_kwDOQJKwSc8AAAABRANuLw",
+      "title": "login_hint in the resource token structure",
+      "url": "https://github.com/dickhardt/AAuth/issues/163",
+      "state": "OPEN",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "The auth token request already lists `login_hint` (OpenID Core 3.1.2.1) as an OPTIONAL parameter the agent sends to the PS. A resource that steps up for an identity claim (secret.agent.coop asks for `scope: email` for one specific address) knows the hint, but the resource token structure has no claim to carry it, so the agent has nothing to forward.\n\nAsk: an OPTIONAL `login_hint` claim on the resource token, passed through by the agent as the token request parameter, with the note that it is a hint: the PS may ignore it and the resource MUST check the resulting claim against what it asked for. Companion issues: aauth-dev/packages-js (createResourceToken option), aauth-dev/proxy (forwarding).",
+      "createdAt": "2026-09-12T21:10:33Z",
+      "updatedAt": "2026-09-12T21:10:33Z",
+      "closedAt": null,
+      "comments": []
     }
   ],
   "pulls": [
@@ -4618,6 +4652,32 @@
       "mergeCommit": {
         "oid": "e9d970937c332bf9f0436a6a5d3ea6b9e99d5c59"
       },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 162,
+      "id": "PR_kwDOQJKwSc8AAAABDQdwFw",
+      "title": "Fixes from the .NET SDK draft-11 review",
+      "url": "https://github.com/dickhardt/AAuth/pull/162",
+      "state": "OPEN",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Responds to the 18 questions in aauth-dev/dotnet-samples `.agent/plans/2026-09-11-aauth-v11-spec-migration/spec-open-questions.md`, reviewed against editor's copy 55ae44c. Numbering below follows that document.\n\n| # | Question | Outcome |\n|---|---|---|\n| 1 | `clock_skew` / `revoked_jwt` | Defined in HTTP Signature Keys. Both merged to its main on 2026-09-12 (PRs #37, #40); not yet published as -09. No AAuth change. |\n| 2 | Upstream token key and audience | Fixed. `cnf` is the calling agent's key. Upstream Token Verification now states its substitutions to Auth Token Verification and that an intermediary is its own AP. Added `invalid_`/`expired_`/`revoked_upstream_token`. |\n| 3 | Intermediary's person and mission | Clarified. The PS resolves `sub` as the directed identifier it minted for the upstream `aud`; the mission is the upstream token's, and the intermediary sends no `mission_s256`. |\n| 4 | Events ticket binding | Fixed. Ticket binds to the JWK Thumbprint of the key that established it; the subscribe token's `cnf.jwk` must match. |\n| 5 | `updated_request` and the presented token | Fixed. `presented_token` is REQUIRED on every `updated_request` (same token or a fresh one); PS verifies the pair per step 6 before replacing the request. Same body PS-to-AS. |\n| 6 | Person token vs auth token | Fixed. A resource token follows a verified person token or auth token. The authorization endpoint takes a person token. No earlier person token is retained. |\n| 7 | Repeated completion vs 410 | Fixed. Retained-result rules override; records are keyed by auth token `jti`, so two grants are two records. |\n| 8 | Recovery from a revoked auth token | Fixed. Resource answers `requirement=person-token`; a resource token naming the revoked token is a dead end. |\n| 9 | Refresh margin and resource tokens | Fixed. Margin applies to agent, person, and auth tokens only. |\n| 10 | Mandatory lifetime checks | Clarified. `exp \u2212 iat` is MUST for person and auth tokens, SHOULD for agent and resource tokens. Rejecting a future `iat` stays optional. |\n| 11 | Claims response `sub` | Clarified. `sub` is not a claim; an AS does not request it and a PS does not return it. |\n| 12 | Release approval and metering | Fixed in R3. Metered execution is excluded from release gating; other cases follow the Budgets metering-policy rule. |\n| 13 | `cost` on a refusal | Fixed in Budgets. Example drops `cost`; `required` is the figure a refusal reports. |\n| 14 | Usage response `aud` | Fixed in Budgets. The caller's server identifier, resolved from the `jwks_uri` in `Signature-Key`. |\n| 15 | Interop profile | Fixed. Surfaces 4 and 5 carry `presented_token`. |\n| 16 | Superseded history entries | The -11 history entry will be collapsed to its final state before the revision is tagged. This PR adds one bullet and corrects the one it contradicts. |\n| 17 | Supervision Protocol | Neither companion exists yet. Both references now carry an editor's note marking them TBD. Leave both outside the base protocol surface. |\n| 18 | Person token exposure | Clarified. A third party without the key gets an identifier only; the key holder can use it at an identity-only resource, bounded by `aud` and lifetime. |\n\nBuilds clean with mmark and xml2rfc.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01SxNAXTfkdsYkXXgtZou4eA\n",
+      "createdAt": "2026-09-12T13:55:28Z",
+      "updatedAt": "2026-09-12T13:55:28Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "55ae44cc3a07da29c4d6821c3800569ac77b9441",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "draft11-review-fixes",
+      "headRefOid": "23a3ed42511043db0c132b8e56b5023687901e22",
+      "closedAt": null,
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
       "comments": [],
       "reviews": []
     }
