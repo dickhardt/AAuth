@@ -94,7 +94,7 @@ This document provides informational guidance for agent providers (APs) on enrol
 
 *Note: This section is to be removed before publishing as an RFC.*
 
-Discussion of this document takes place on GitHub at https://github.com/dickhardt/AAuth. Issues, comments, and pull requests are welcome there. Source for this draft is in the same repository.
+This document is part of the AAuth specification family. Source for this draft and an issue tracker can be found at https://github.com/dickhardt/AAuth.
 
 {mainmatter}
 
@@ -128,9 +128,7 @@ Throughout, when this document refers to "the durable key" and "the ephemeral ke
 
 # Conventions and Definitions
 
-{::boilerplate bcp14-tagged}
-
-This document is informational guidance and does not itself impose normative requirements. Normative requirements relevant to bootstrap are defined in [@!I-D.hardt-oauth-aauth-protocol]; this document references them where helpful but uses lowercase "should" / "must" in its own descriptive prose.
+This document is informational guidance and uses no BCP 14 keywords. Normative requirements relevant to bootstrap are defined in [@!I-D.hardt-oauth-aauth-protocol]; this document references them where helpful but uses lowercase "should" / "must" in its own descriptive prose.
 
 # Terminology
 
@@ -287,14 +285,14 @@ JWT payload:
 
 # Refresh Patterns {#refresh-patterns}
 
-Agent token lifetime is the AP's policy re-evaluation cadence — every refresh is the AP's chance to re-check device posture, attestation freshness, and account status before issuing a new token. A typical lifetime is **1 hour**, matching common practice for proof-of-possession-bound access tokens. APs may use shorter lifetimes (e.g., 5–15 minutes) for higher-assurance deployments where attestation must be refreshed often, or longer lifetimes up to the AAuth Protocol's 24-hour ceiling for low-policy-churn deployments where refresh chattiness is undesirable.
+Agent token lifetime is the AP's policy re-evaluation cadence — every refresh is the AP's chance to re-check device posture, attestation freshness, and account status before issuing a new token. A typical lifetime is **1 hour**, matching common practice for proof-of-possession-bound access tokens. APs may use shorter lifetimes (e.g., 5–15 minutes) for higher-assurance deployments where attestation must be refreshed often, or longer lifetimes up to the 24 hours the AAuth Protocol recommends as the maximum, for low-policy-churn deployments where refresh chattiness is undesirable.
 
 ## Two-Key Refresh
 
 On web, mobile, and desktop, refresh chains the new ephemeral key to the durable key via the `jkt-jwt` scheme [@!I-D.hardt-httpbis-signature-key]:
 
 1. The agent generates a fresh ephemeral key pair.
-2. The agent constructs a JWT signed by the **durable key**, naming the new ephemeral public key. This is the "naming JWT" carried in the `Signature-Key` header under `scheme=jkt-jwt`.
+2. The agent constructs a JWT signed by the **durable key**, naming the new ephemeral public key. This is the "naming JWT" carried in the `Signature-Key` header under the `jkt-jwt` scheme.
 3. The agent signs the refresh request with the **ephemeral key** under [@!RFC9421] HTTP Message Signatures.
 4. The AP verifies the durable-key signature on the naming JWT, looks up the enrollment by the durable key's thumbprint, verifies the HTTP signature against the ephemeral public key, applies its policy (device posture, attestation freshness, account status), and returns a new agent token whose `cnf.jwk` is the ephemeral public key.
 5. The agent uses the new agent token and ephemeral key for the agent token's lifetime, then discards the ephemeral key on the next refresh.
@@ -366,7 +364,7 @@ The parent plays no protocol role in issuance here. The operator spawns the sub-
 When the parent's tokens come from an AP the operator does not run, the parent requests the sub-agent's token from that AP. This document defines no endpoint for it; the shape below is what any AP offering sub-agent issuance needs to cover, and an AP publishes how it does so in its own documentation.
 
 1. The sub-agent generates its key pair where it will run, and gives its public key to the parent. Where the parent spawns the sub-agent in a runtime it controls, it may generate the pair on the sub-agent's behalf and hand over the private key at spawn; the point is that the private key ends up with the sub-agent and nowhere else.
-2. The parent sends a signed request to the AP, signing with its own ephemeral key and presenting its own agent token under `scheme=jwt` ([@!I-D.hardt-httpbis-signature-key]). The body carries the sub-agent's public key and, if the parent wants to name it, a discriminator.
+2. The parent sends a signed request to the AP, signing with its own ephemeral key and presenting its own agent token under the `jwt` scheme ([@!I-D.hardt-httpbis-signature-key]). The body carries the sub-agent's public key and, if the parent wants to name it, a discriminator.
 3. The AP verifies the parent's signature and token, checks that the token carries no `parent_agent` (a sub-agent may not have sub-agents), and applies its policy: how many sub-agents this parent may have live, what lifetime they get, whether this parent may spawn at all.
 4. The AP issues the sub-agent token: `sub` formed from the parent's `local` part and the discriminator (its own if the parent offered none, or if the parent's collides), `parent_agent` naming the parent, `ps` copied from the parent's token, `cnf.jwk` the sub-agent's public key, `exp` no later than the parent's token. The AP returns it to the parent, which passes it to the sub-agent.
 
@@ -385,7 +383,7 @@ This section sketches a typical end-to-end enrollment for each platform. The ske
 3. Agent posts the durable public key to an AP-internal enrollment endpoint, signed by the new key (`hwk` scheme).
 4. AP optionally performs a WebAuthn registration and verifies it.
 5. AP records `(ap_user, durable_jkt)` and is now ready to issue agent tokens.
-6. When the agent needs an agent token directed at PS_X, it generates a fresh **ephemeral** WebCrypto key and calls an AP-internal token-issuance endpoint indicating `ps=PS_X`, signed via `jkt-jwt` chaining the durable key to the ephemeral key (#refresh-patterns). The AP returns an agent token with `sub` derived per the AP's identifier strategy (#identifier-strategies) (using the durable key's thumbprint when derivation is used), `ps = PS_X`, `cnf.jwk` = the ephemeral public key, and any AP-attested claims.
+6. When the agent needs an agent token, it generates a fresh **ephemeral** WebCrypto key and calls an AP-internal token-issuance endpoint, signed via `jkt-jwt` chaining the durable key to the ephemeral key (#refresh-patterns). The AP returns an agent token with `sub` derived per the AP's identifier strategy (#identifier-strategies) (using the durable key's thumbprint when derivation is used), `ps` set to the agent's configured person server (an agent has exactly one PS and one person), `cnf.jwk` = the ephemeral public key, and any AP-attested claims.
 
 ## Mobile App Enrollment
 
@@ -460,6 +458,7 @@ TBD
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-aauth-bootstrap-02
+  - Consistency pass against AAuth Protocol -11. Dropped the BCP 14 boilerplate, which an informational document that uses no keywords does not need. The web enrollment sketch no longer issues agent tokens "directed at" a PS: an agent has one person server, carried in `ps`. The agent-token lifetime bound is the protocol's recommended maximum, not a ceiling. Scheme names are given as prose.
   - Added Many Agents, One Operator under Self-Hosted Agents: one published AP key, one self-issued token per agent with its own `sub` and `cnf` key, agent keys never published, custody by blast radius. The single-key description assumed one agent per domain, and a deployment read it as "each agent holds a key published at a well-known URL". Refresh, enrollment, and Security Considerations gained the several-agent case.
   - Added Sub-Agent Tokens: the self-hosted case, where the operator's AP self-issues the sub-agent token with `parent_agent`, a `+` discriminator, the parent's `ps`, and a fresh `cnf` key; and the hosted-AP case, where the parent requests it with its own ephemeral key and token, and the AP checks the parent is top-level, applies policy, and returns the token. The protocol deferred acquisition here and nothing covered it.
   - Referenced the AAuth Protocol by its datatracker document URL, which tracks the latest revision.
