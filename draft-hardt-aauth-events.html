@@ -1089,7 +1089,7 @@ svg {
 <a href="#name-discussion-venues" class="section-name selfRef">Discussion Venues</a>
       </h2>
 <p id="section-note.1-1"><em>Note: This section is to be removed before publishing as an RFC.</em><a href="#section-note.1-1" class="pilcrow">¶</a></p>
-<p id="section-note.1-2">Discussion of this document takes place on GitHub at <a href="https://github.com/dickhardt/AAuth">https://github.com/dickhardt/AAuth</a>. Issues, comments, and pull requests are welcome there. Source for this draft is in the same repository.<a href="#section-note.1-2" class="pilcrow">¶</a></p>
+<p id="section-note.1-2">This document is part of the AAuth specification family. Source for this draft and an issue tracker can be found at <a href="https://github.com/dickhardt/AAuth">https://github.com/dickhardt/AAuth</a>.<a href="#section-note.1-2" class="pilcrow">¶</a></p>
 </section>
 <div id="status-of-memo">
 <section id="section-boilerplate.1">
@@ -1286,9 +1286,6 @@ svg {
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14.2.1">
                 <p id="section-toc.1-1.14.2.1.1"><a href="#section-14.1" class="auto internal xref">14.1</a>.  <a href="#name-jwt-type-values" class="internal xref">JWT Type Values</a></p>
 </li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14.2.2">
-                <p id="section-toc.1-1.14.2.2.1"><a href="#section-14.2" class="auto internal xref">14.2</a>.  <a href="#name-aauth-r3-vocabulary-identif" class="internal xref">AAuth R3 Vocabulary Identifiers</a></p>
-</li>
             </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15">
@@ -1482,7 +1479,7 @@ svg {
           <strong>Event ID (eid)</strong>: An opaque, AP-generated identifier that uniquely identifies a subscription at the AP. The agent maps the <code>eid</code> to its own context. The <code>eid</code> is the correlation key between the subscribe token, the AP's subscription record, and the event token.<a href="#section-3-3.2" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-3-3.3">
-          <strong>Event Token</strong>: A JWT issued and signed by the resource when an event fires, addressed to the agent (<code>aud</code> = agent identifier), and delivered to the AP's event endpoint using the <code>self-jwt</code> Signature-Key scheme (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>).<a href="#section-3-3.3" class="pilcrow">¶</a>
+          <strong>Event Token</strong>: A JWT issued and signed by the resource when an event fires, addressed to the agent (<code>aud</code> = agent identifier), identified by its <code>jti</code>, and delivered to the AP's event endpoint using the <code>self-jwt</code> Signature-Key scheme (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>).<a href="#section-3-3.3" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-3-3.4">
           <strong>Event Endpoint</strong>: An endpoint published by the AP in its metadata at which resources deliver event tokens.<a href="#section-3-3.4" class="pilcrow">¶</a>
@@ -1561,7 +1558,7 @@ svg {
       <h2 id="name-ap-metadata">
 <a href="#section-5" class="section-number selfRef">5. </a><a href="#name-ap-metadata" class="section-name selfRef">AP Metadata</a>
       </h2>
-<p id="section-5-1">The AP MUST publish an <code>event_endpoint</code> claim in its metadata at <code>/.well-known/aauth-agent.json</code> if it supports AAuth Events. The <code>event_endpoint</code> is an HTTPS URL at which the AP receives event tokens from resources.<a href="#section-5-1" class="pilcrow">¶</a></p>
+<p id="section-5-1">The AP MUST publish an <code>event_endpoint</code> field in its metadata at <code>/.well-known/aauth-agent.json</code> if it supports AAuth Events. The <code>event_endpoint</code> is an HTTPS URL at which the AP receives event tokens from resources.<a href="#section-5-1" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="section-5-2">
 <pre>{
   "issuer": "https://ap.example",
@@ -1588,7 +1585,7 @@ svg {
 <p id="section-6.1-2">Header:<a href="#section-6.1-2" class="pilcrow">¶</a></p>
 <ul class="compact">
 <li class="compact" id="section-6.1-3.1">
-            <code>alg</code>: Signing algorithm. A fully-specified identifier is REQUIRED; <code>Ed25519</code> is RECOMMENDED. Implementations MUST NOT accept <code>none</code> or the polymorphic <code>EdDSA</code> identifier.<a href="#section-6.1-3.1" class="pilcrow">¶</a>
+            <code>alg</code>: per (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Signature Algorithms)<a href="#section-6.1-3.1" class="pilcrow">¶</a>
 </li>
           <li class="compact" id="section-6.1-3.2">
             <code>typ</code>: <code>aa-subscribe+jwt</code><a href="#section-6.1-3.2" class="pilcrow">¶</a>
@@ -1654,7 +1651,7 @@ svg {
         <h3 id="name-presentation">
 <a href="#section-6.2" class="section-number selfRef">6.2. </a><a href="#name-presentation" class="section-name selfRef">Presentation</a>
         </h3>
-<p id="section-6.2-1">The agent presents the subscribe token as the <code>Signature-Key</code> JWT on the subscription registration request, using <code>scheme=jwt</code>:<a href="#section-6.2-1" class="pilcrow">¶</a></p>
+<p id="section-6.2-1">The agent presents the subscribe token as the <code>Signature-Key</code> JWT on the subscription registration request, under the <code>jwt</code> scheme:<a href="#section-6.2-1" class="pilcrow">¶</a></p>
 <div class="lang-http sourcecode" id="section-6.2-2">
 <pre>POST /appointments/waitlist HTTP/1.1
 Host: resource.example
@@ -1663,7 +1660,7 @@ Signature-Input: sig=("@method" "@authority"
     "@path" "signature-key" "content-type");created=1750000000
 Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;
-    jwt="eyJhbGciOiJFZERTQSIsInR5cCI6ImFhLXN1Yitqd3QiLCJraWQiOiIuLi4ifQ..."
+    jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtc3Vic2NyaWJlK2p3dCIsImtpZCI6Ii4uLiJ9..."
 
 {
   "event_types": ["slot.available"]
@@ -1681,17 +1678,13 @@ Signature-Key: sig=jwt;
         </h3>
 <p id="section-6.3-1">The resource MUST verify the subscribe token as follows:<a href="#section-6.3-1" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="compact type-1" id="section-6.3-2">
-<li id="section-6.3-2.1">Decode the JWT header. Verify <code>typ</code> is <code>aa-subscribe+jwt</code>.<a href="#section-6.3-2.1" class="pilcrow">¶</a>
+<li id="section-6.3-2.1">Verify the token per (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Common JWT Verification), with <code>typ</code> <code>aa-subscribe+jwt</code> and <code>dwk</code> <code>aauth-agent.json</code>. <code>exp</code> is judged by the verifier's own clock; <code>iat</code> is not a validity check.<a href="#section-6.3-2.1" class="pilcrow">¶</a>
 </li>
-          <li id="section-6.3-2.2">Verify <code>dwk</code> is <code>aauth-agent.json</code>. Discover the AP's JWKS via <code>{iss}/.well-known/{dwk}</code> per (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). Locate the key matching <code>kid</code> and verify the JWT signature.<a href="#section-6.3-2.2" class="pilcrow">¶</a>
+          <li id="section-6.3-2.2">Verify <code>aud</code> matches the resource's own URL.<a href="#section-6.3-2.2" class="pilcrow">¶</a>
 </li>
-          <li id="section-6.3-2.3">Verify <code>exp</code> is in the future and <code>iat</code> is not in the future.<a href="#section-6.3-2.3" class="pilcrow">¶</a>
+          <li id="section-6.3-2.3">Verify <code>cnf.jwk</code> matches the key used to sign the HTTP request.<a href="#section-6.3-2.3" class="pilcrow">¶</a>
 </li>
-          <li id="section-6.3-2.4">Verify <code>aud</code> matches the resource's own URL.<a href="#section-6.3-2.4" class="pilcrow">¶</a>
-</li>
-          <li id="section-6.3-2.5">Verify <code>cnf.jwk</code> matches the key used to sign the HTTP request.<a href="#section-6.3-2.5" class="pilcrow">¶</a>
-</li>
-          <li id="section-6.3-2.6">Verify <code>eid</code> is present and non-empty.<a href="#section-6.3-2.6" class="pilcrow">¶</a>
+          <li id="section-6.3-2.4">Verify <code>eid</code> is present and non-empty.<a href="#section-6.3-2.4" class="pilcrow">¶</a>
 </li>
         </ol>
 <p id="section-6.3-3">After verification, the resource stores the subscription record with sufficient information to deliver events — at minimum <code>{eid, iss}</code> (the Event ID and the AP's issuer URL). When an event fires, the resource resolves the AP's <code>event_endpoint</code> from <code>{iss}/.well-known/aauth-agent.json</code> at delivery time, using standard HTTP caching for the well-known document.<a href="#section-6.3-3" class="pilcrow">¶</a></p>
@@ -1728,15 +1721,15 @@ Signature-Key: sig=jwt;
 <p id="section-7.2-1">Some event channels require the agent to be authorized before it can register a subscription — for example, subscribing to events for a specific patient's appointments, or events associated with a particular account. In these cases, the resource does not accept subscription registrations from arbitrary agents; only agents that have already been authorized in an earlier interaction may register.<a href="#section-7.2-1" class="pilcrow">¶</a></p>
 <p id="section-7.2-2">This specification defines a <strong>pre-authorized subscription URL</strong> pattern for protected subscriptions:<a href="#section-7.2-2" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="compact type-1" id="section-7.2-3">
-<li id="section-7.2-3.1">The agent makes an authenticated request to the resource (using an auth token obtained through one of the AAuth Protocol access modes).<a href="#section-7.2-3.1" class="pilcrow">¶</a>
+<li id="section-7.2-3.1">The agent makes an authenticated request to the resource (presenting a person token or auth token).<a href="#section-7.2-3.1" class="pilcrow">¶</a>
 </li>
-          <li id="section-7.2-3.2">The resource, if subscription to events is available for the context established by this interaction, returns a <strong>subscription ticket URL</strong> — an HTTPS URL that encodes a short-lived, single-use authorization to register a subscription. The ticket URL is opaque and is valid only for the specific context (agent, operation, and resource state) established in step 1.<a href="#section-7.2-3.2" class="pilcrow">¶</a>
+          <li id="section-7.2-3.2">The resource, if subscription to events is available for the context established by this interaction, returns a <strong>subscription ticket URL</strong> — an HTTPS URL that encodes a short-lived, single-use authorization to register a subscription. The ticket URL is opaque and is valid only for the specific context (key, operation, and resource state) established in step 1.<a href="#section-7.2-3.2" class="pilcrow">¶</a>
 </li>
           <li id="section-7.2-3.3">The agent obtains a subscribe token from its AP.<a href="#section-7.2-3.3" class="pilcrow">¶</a>
 </li>
           <li id="section-7.2-3.4">The agent presents the subscribe token (as the <code>Signature-Key</code> JWT) on a signed POST to the subscription ticket URL. No additional auth token is required at this step; the authorization is embedded in the URL. The request body MAY include additional parameters as defined by the resource's AsyncAPI channel schema.<a href="#section-7.2-3.4" class="pilcrow">¶</a>
 </li>
-          <li id="section-7.2-3.5">The resource validates the subscribe token, verifies the ticket in the URL is valid for the calling agent (by checking <code>sub</code> in the subscribe token matches the agent that triggered step 1) and has not been used before, and registers the subscription.<a href="#section-7.2-3.5" class="pilcrow">¶</a>
+          <li id="section-7.2-3.5">The resource validates the subscribe token, verifies the ticket in the URL is valid for the calling key (the JWK Thumbprint of the subscribe token's <code>cnf.jwk</code> equals the thumbprint recorded when the ticket was issued, see <a href="#pre-authorized-subscription-url-security" class="auto internal xref">Section 12.5</a>) and has not been used before, and registers the subscription.<a href="#section-7.2-3.5" class="pilcrow">¶</a>
 </li>
         </ol>
 <p id="section-7.2-4">The subscription ticket URL is resource-controlled: the resource issues it, defines its scope and expiry, and enforces its single-use constraint. The ticket is not defined by this specification beyond the pattern above.<a href="#section-7.2-4" class="pilcrow">¶</a></p>
@@ -1763,7 +1756,7 @@ Signature-Input: sig=("@method" "@authority"
     "@path" "signature-key" "content-type");created=1750000000
 Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;
-    jwt="eyJhbGciOiJFZERTQSIsInR5cCI6ImFhLXN1Yitqd3QiLCJraWQiOiIuLi4ifQ..."
+    jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtc3Vic2NyaWJlK2p3dCIsImtpZCI6Ii4uLiJ9..."
 
 {
   "event_types": ["slot.available"]
@@ -1791,7 +1784,7 @@ Signature-Key: sig=jwt;
 <p id="section-8.1-2">Header:<a href="#section-8.1-2" class="pilcrow">¶</a></p>
 <ul class="compact">
 <li class="compact" id="section-8.1-3.1">
-            <code>alg</code>: Signing algorithm. A fully-specified identifier is REQUIRED; <code>Ed25519</code> is RECOMMENDED.<a href="#section-8.1-3.1" class="pilcrow">¶</a>
+            <code>alg</code>: per (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Signature Algorithms)<a href="#section-8.1-3.1" class="pilcrow">¶</a>
 </li>
           <li class="compact" id="section-8.1-3.2">
             <code>typ</code>: <code>aa-event+jwt</code><a href="#section-8.1-3.2" class="pilcrow">¶</a>
@@ -1815,10 +1808,13 @@ Signature-Key: sig=jwt;
             <code>eid</code>: Event ID. MUST match the <code>eid</code> from the subscribe token for this subscription. The AP uses the <code>eid</code> to look up the subscription record and route to the agent. The agent uses the <code>eid</code> to look up its local context mapping.<a href="#section-8.1-5.4" class="pilcrow">¶</a>
 </li>
           <li class="compact" id="section-8.1-5.5">
-            <code>iat</code>: Issued-at timestamp.<a href="#section-8.1-5.5" class="pilcrow">¶</a>
+            <code>jti</code>: Unique identifier for this event token. <code>(iss, jti)</code> identifies one event; it is the deduplication key at the AP and the agent. The <code>eid</code> cannot serve, since every event on a subscription carries the same <code>eid</code>.<a href="#section-8.1-5.5" class="pilcrow">¶</a>
 </li>
           <li class="compact" id="section-8.1-5.6">
-            <code>exp</code>: Expiration timestamp. The agent MUST NOT act on an event token with <code>exp</code> in the past. The meaning of <code>exp</code> is event-specific — for time-sensitive events, it encodes the deadline by which the agent must act.<a href="#section-8.1-5.6" class="pilcrow">¶</a>
+            <code>iat</code>: Issued-at timestamp.<a href="#section-8.1-5.6" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-8.1-5.7">
+            <code>exp</code>: Expiration timestamp. The agent MUST NOT act on an event token with <code>exp</code> in the past. The meaning of <code>exp</code> is event-specific — for time-sensitive events, it encodes the deadline by which the agent must act.<a href="#section-8.1-5.7" class="pilcrow">¶</a>
 </li>
         </ul>
 <p id="section-8.1-6">The event token MUST NOT contain a <code>cnf</code> claim. The event token is a self-issued JWT per the <code>self-jwt</code> Signature-Key scheme (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>): the resource is both the JWT issuer and the HTTP request signer, and the key identified by <code>kid</code> in the resource's JWKS verifies both the JWT and the HTTP Message Signature.<a href="#section-8.1-6" class="pilcrow">¶</a></p>
@@ -1830,6 +1826,7 @@ Signature-Key: sig=jwt;
   "dwk": "aauth-resource.json",
   "aud": "aauth:k7q3p9n2@ap.example",
   "eid": "evt_8f3k2n9p",
+  "jti": "ev-4d2a91",
   "iat": 1750200000,
   "exp": 1750200300
 }
@@ -1859,7 +1856,7 @@ Signature-Input: sig=("@method" "@authority"
     "@path" "signature-key" "content-type" "content-digest");created=1750200000
 Signature: sig=:...resource signing key signature bytes...:
 Signature-Key: sig=self-jwt;
-    jwt="eyJhbGciOiJFZERTQSIsInR5cCI6ImFhLWV2ZW50K2p3dCIsImtpZCI6Ii4uLiJ9..."
+    jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtZXZlbnQrand0Iiwia2lkIjoiLi4uIn0..."
 
 {
   "event_type": "slot.available",
@@ -1868,7 +1865,7 @@ Signature-Key: sig=self-jwt;
 
 </pre><a href="#section-9.1-2" class="pilcrow">¶</a>
 </div>
-<p id="section-9.1-3">The event token in <code>Signature-Key</code> provides the resource's identity (<code>iss</code>) and routing and authorization claims (<code>eid</code>, <code>aud</code>, <code>exp</code>). Unlike agent tokens and subscribe tokens (which use the <code>jwt</code> scheme with <code>cnf.jwk</code>), the event token uses the <code>self-jwt</code> scheme (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>): the resource is both the JWT issuer and the HTTP request signer, so no <code>cnf.jwk</code> is needed. The resource has a stable JWKS discoverable from <code>{iss}/.well-known/{dwk}</code>, and the AP uses the same key (identified by <code>kid</code> in the JWT header) to verify both the JWT signature and the HTTP signature. The request body structure is defined by the resource's AsyncAPI message schema for the event type (see <a href="#event-discovery" class="auto internal xref">Section 11</a>). The AP forwards both the event token and the payload body to the agent.<a href="#section-9.1-3" class="pilcrow">¶</a></p>
+<p id="section-9.1-3">The event token in <code>Signature-Key</code> provides the resource's identity (<code>iss</code>), routing and authorization claims (<code>eid</code>, <code>aud</code>, <code>exp</code>), and the event's identity (<code>jti</code>). Unlike agent tokens and subscribe tokens (which use the <code>jwt</code> scheme with <code>cnf.jwk</code>), the event token uses the <code>self-jwt</code> scheme (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>): the resource is both the JWT issuer and the HTTP request signer, so no <code>cnf.jwk</code> is needed. The resource has a stable JWKS discoverable from <code>{iss}/.well-known/{dwk}</code>, and the AP uses the same key (identified by <code>kid</code> in the JWT header) to verify both the JWT signature and the HTTP signature. The request body structure is defined by the resource's AsyncAPI message schema for the event type (see <a href="#event-discovery" class="auto internal xref">Section 11</a>). The AP forwards both the event token and the payload body to the agent.<a href="#section-9.1-3" class="pilcrow">¶</a></p>
 <p id="section-9.1-4">The resource resolves the AP's <code>event_endpoint</code> from <code>{iss}/.well-known/aauth-agent.json</code> at delivery time, using standard HTTP caching for the AP's well-known document.<a href="#section-9.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -1879,9 +1876,9 @@ Signature-Key: sig=self-jwt;
         </h3>
 <p id="section-9.2-1">The AP MUST validate the event delivery request as follows:<a href="#section-9.2-1" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="compact type-1" id="section-9.2-2">
-<li id="section-9.2-2.1">Extract the event token JWT from the <code>Signature-Key</code> header (<code>scheme=self-jwt</code>). Verify <code>typ</code> is <code>aa-event+jwt</code>. Verify <code>cnf</code> is absent, per the <code>self-jwt</code> scheme (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>).<a href="#section-9.2-2.1" class="pilcrow">¶</a>
+<li id="section-9.2-2.1">Extract the event token JWT from the <code>Signature-Key</code> header (the <code>self-jwt</code> scheme). Verify it per (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Common JWT Verification), with <code>typ</code> <code>aa-event+jwt</code> and <code>dwk</code> <code>aauth-resource.json</code>. Verify <code>cnf</code> is absent, per the <code>self-jwt</code> scheme (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>).<a href="#section-9.2-2.1" class="pilcrow">¶</a>
 </li>
-          <li id="section-9.2-2.2">Discover the resource's JWKS via <code>{iss}/.well-known/{dwk}</code>. Locate the key matching <code>kid</code> and verify the JWT signature.<a href="#section-9.2-2.2" class="pilcrow">¶</a>
+          <li id="section-9.2-2.2">The AP MAY deduplicate on <code>(iss, jti)</code> and drop a delivery it has already recorded.<a href="#section-9.2-2.2" class="pilcrow">¶</a>
 </li>
           <li id="section-9.2-2.3">Verify the HTTP signature using the same key (matched by <code>kid</code>), per the <code>self-jwt</code> scheme: the JWT signing key and the HTTP signing key are the same key, discoverable from the resource's well-known document.<a href="#section-9.2-2.3" class="pilcrow">¶</a>
 </li>
@@ -1927,17 +1924,13 @@ Content-Type: application/json
         </h3>
 <p id="section-10.1-1">Upon receiving an event token (and optional payload) from the AP, the agent MUST:<a href="#section-10.1-1" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="compact type-1" id="section-10.1-2">
-<li id="section-10.1-2.1">Decode the JWT header. Verify <code>typ</code> is <code>aa-event+jwt</code>.<a href="#section-10.1-2.1" class="pilcrow">¶</a>
+<li id="section-10.1-2.1">Verify the token per (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Common JWT Verification), with <code>typ</code> <code>aa-event+jwt</code> and <code>dwk</code> <code>aauth-resource.json</code>. If <code>exp</code> has passed, the agent SHOULD NOT act on the event (the response window has closed).<a href="#section-10.1-2.1" class="pilcrow">¶</a>
 </li>
-          <li id="section-10.1-2.2">Discover the resource's JWKS via <code>{iss}/.well-known/{dwk}</code> per (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>). Verify the JWT signature.<a href="#section-10.1-2.2" class="pilcrow">¶</a>
+          <li id="section-10.1-2.2">Verify <code>aud</code> matches the agent's own identifier.<a href="#section-10.1-2.2" class="pilcrow">¶</a>
 </li>
-          <li id="section-10.1-2.3">Verify <code>aud</code> matches the agent's own identifier.<a href="#section-10.1-2.3" class="pilcrow">¶</a>
+          <li id="section-10.1-2.3">Look up <code>eid</code> in the agent's local context mapping to recover the context associated with this subscription.<a href="#section-10.1-2.3" class="pilcrow">¶</a>
 </li>
-          <li id="section-10.1-2.4">Verify <code>exp</code> is in the future. If <code>exp</code> has passed, the agent SHOULD NOT act on the event (the response window has closed).<a href="#section-10.1-2.4" class="pilcrow">¶</a>
-</li>
-          <li id="section-10.1-2.5">Look up <code>eid</code> in the agent's local context mapping to recover the context associated with this subscription.<a href="#section-10.1-2.5" class="pilcrow">¶</a>
-</li>
-          <li id="section-10.1-2.6">Deduplicate: if the agent has already processed an event with this <code>eid</code> from this <code>iss</code>, it SHOULD ignore the duplicate. The <code>eid</code> is a natural idempotency key.<a href="#section-10.1-2.6" class="pilcrow">¶</a>
+          <li id="section-10.1-2.4">Deduplicate: if the agent has already processed an event with this <code>jti</code> from this <code>iss</code>, it SHOULD ignore the duplicate. <code>(iss, jti)</code> is the idempotency key.<a href="#section-10.1-2.4" class="pilcrow">¶</a>
 </li>
         </ol>
 <p id="section-10.1-3">If a payload was included, the agent MAY use it directly. The payload structure is defined by the resource's AsyncAPI message schema for the event type.<a href="#section-10.1-3" class="pilcrow">¶</a></p>
@@ -1956,14 +1949,8 @@ Content-Type: application/json
         <h3 id="name-r3-vocabulary-identifier">
 <a href="#section-11.1" class="section-number selfRef">11.1. </a><a href="#name-r3-vocabulary-identifier" class="section-name selfRef">R3 Vocabulary Identifier</a>
         </h3>
-<p id="section-11.1-1">The vocabulary identifier for AAuth Events is:<a href="#section-11.1-1" class="pilcrow">¶</a></p>
-<div class="alignLeft art-text artwork" id="section-11.1-2">
-<pre>urn:aauth:vocabulary:asyncapi
-
-</pre><a href="#section-11.1-2" class="pilcrow">¶</a>
-</div>
-<p id="section-11.1-3">Resources that support AAuth Events SHOULD declare this vocabulary in their AAuth resource metadata:<a href="#section-11.1-3" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="section-11.1-4">
+<p id="section-11.1-1">The vocabulary identifier for AAuth Events is <code>urn:aauth:vocabulary:asyncapi</code>, registered in the AAuth R3 Vocabulary Registry by R3 (<span>[<a href="#I-D.hardt-aauth-r3" class="cite xref">I-D.hardt-aauth-r3</a>]</span>), which also defines the operation entry format. Resources that support AAuth Events SHOULD declare this vocabulary in their AAuth resource metadata:<a href="#section-11.1-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-11.1-2">
 <pre>{
   "issuer": "https://resource.example",
   "r3_vocabularies": {
@@ -1972,7 +1959,7 @@ Content-Type: application/json
   }
 }
 
-</pre><a href="#section-11.1-4" class="pilcrow">¶</a>
+</pre><a href="#section-11.1-2" class="pilcrow">¶</a>
 </div>
 </section>
 </div>
@@ -1990,7 +1977,7 @@ Content-Type: application/json
             <strong>Operations</strong>: <code>receive</code> operations on channels, with the security requirement and message schema.<a href="#section-11.2-2.2" class="pilcrow">¶</a>
 </li>
           <li class="compact" id="section-11.2-2.3">
-            <strong>Messages</strong>: The payload schema for each event type. The AsyncAPI payload schema describes the <code>payload</code> field in the event delivery POST body (see <a href="#event-delivery" class="auto internal xref">Section 9</a>). The AAuth event token envelope (<code>iss</code>, <code>aud</code>, <code>eid</code>, <code>exp</code>) is implicit and not part of the AsyncAPI schema.<a href="#section-11.2-2.3" class="pilcrow">¶</a>
+            <strong>Messages</strong>: The payload schema for each event type. The AsyncAPI payload schema describes the event delivery POST body (see <a href="#event-delivery" class="auto internal xref">Section 9</a>). The AAuth event token envelope (<code>iss</code>, <code>aud</code>, <code>eid</code>, <code>exp</code>) is implicit and not part of the AsyncAPI schema.<a href="#section-11.2-2.3" class="pilcrow">¶</a>
 </li>
           <li class="compact" id="section-11.2-2.4">
             <strong>Security schemes</strong>: The AAuth subscribe token security scheme.<a href="#section-11.2-2.4" class="pilcrow">¶</a>
@@ -2074,7 +2061,7 @@ operations:
 components:
   messages:
     SlotAvailable:
-      contentType: application/jwt
+      contentType: application/json
       payload:
         type: object
         properties:
@@ -2128,7 +2115,7 @@ components:
         <h3 id="name-replay-prevention">
 <a href="#section-12.3" class="section-number selfRef">12.3. </a><a href="#name-replay-prevention" class="section-name selfRef">Replay Prevention</a>
         </h3>
-<p id="section-12.3-1">The AP enforces <code>max_uses</code> per <code>eid</code> and rejects event tokens with <code>exp</code> in the past. The agent additionally deduplicates on <code>eid</code> from the same <code>iss</code> <a href="#agent-verification" class="auto internal xref">Section 10.1</a>. These two layers prevent replay: a captured event token cannot be re-delivered once the AP has tracked its delivery and the agent has processed it.<a href="#section-12.3-1" class="pilcrow">¶</a></p>
+<p id="section-12.3-1">The AP enforces <code>max_uses</code> per <code>eid</code>, rejects event tokens with <code>exp</code> in the past, and MAY deduplicate on <code>(iss, jti)</code>. The agent deduplicates on <code>(iss, jti)</code> <a href="#agent-verification" class="auto internal xref">Section 10.1</a>. These layers prevent replay: a captured event token cannot be re-delivered once the AP has tracked its delivery and the agent has processed it.<a href="#section-12.3-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="subscribe-token-replay-at-registration">
@@ -2191,7 +2178,7 @@ components:
         <h3 id="name-event-content">
 <a href="#section-13.2" class="section-number selfRef">13.2. </a><a href="#name-event-content" class="section-name selfRef">Event Content</a>
         </h3>
-<p id="section-13.2-1">The event token carries no event-specific data — it is the security and routing envelope only. Event-specific content travels in the <code>payload</code> field of the POST body (see <a href="#event-delivery" class="auto internal xref">Section 9</a>), which is also visible to the AP during routing. Resources SHOULD NOT include sensitive personal data in the payload beyond what is necessary for the agent to evaluate relevance. Sensitive details SHOULD be fetched by the agent from the resource's data API using a current auth token.<a href="#section-13.2-1" class="pilcrow">¶</a></p>
+<p id="section-13.2-1">The event token carries no event-specific data — it is the security and routing envelope only. Event-specific content travels as the POST body (see <a href="#event-delivery" class="auto internal xref">Section 9</a>), which is also visible to the AP during routing. Resources SHOULD NOT include sensitive personal data in the payload beyond what is necessary for the agent to evaluate relevance. Sensitive details SHOULD be fetched by the agent from the resource's data API using a current auth token.<a href="#section-13.2-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2217,19 +2204,6 @@ components:
         </ul>
 </section>
 </div>
-<div id="aauth-r3-vocabulary-identifiers">
-<section id="section-14.2">
-        <h3 id="name-aauth-r3-vocabulary-identif">
-<a href="#section-14.2" class="section-number selfRef">14.2. </a><a href="#name-aauth-r3-vocabulary-identif" class="section-name selfRef">AAuth R3 Vocabulary Identifiers</a>
-        </h3>
-<p id="section-14.2-1">This specification defines the following R3 vocabulary identifier:<a href="#section-14.2-1" class="pilcrow">¶</a></p>
-<ul class="compact">
-<li class="compact" id="section-14.2-2.1">
-            <code>urn:aauth:vocabulary:asyncapi</code>: AAuth AsyncAPI event vocabulary.<a href="#section-14.2-2.1" class="pilcrow">¶</a>
-</li>
-        </ul>
-</section>
-</div>
 </section>
 </div>
 <div id="implementation-status">
@@ -2251,11 +2225,13 @@ components:
 <li class="compact" id="section-16-2.1">
           <p id="section-16-2.1.1">draft-hardt-aauth-events-00<a href="#section-16-2.1.1" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-16-2.1.2.1">Referenced the AAuth Protocol and AAuth Bootstrap by their datatracker document URLs, which track the latest revision.<a href="#section-16-2.1.2.1" class="pilcrow">¶</a>
+<li class="compact" id="section-16-2.1.2.1">Consistency pass against AAuth Protocol -11. Event tokens carry <code>jti</code>, and the AP and agent deduplicate on <code>(iss, jti)</code>; deduplicating on <code>eid</code> would have dropped every event after the first on an unlimited subscription. The protected-subscription flow binds the ticket to the JWK Thumbprint of the subscribe token's <code>cnf.jwk</code>, matching Security Considerations. <code>iat</code> is not a validity check. The event payload is the POST body, not a <code>payload</code> member, and the AsyncAPI message <code>contentType</code> is <code>application/json</code>. Token <code>alg</code> rules and the common verification steps point at the protocol rather than restating it. Example JWTs use <code>Ed25519</code> and the registered <code>typ</code> values. The AsyncAPI vocabulary identifier is registered by R3, not defined here.<a href="#section-16-2.1.2.1" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-16-2.1.2.2">Algorithm identifiers: <code>Ed25519</code> rather than the deprecated polymorphic <code>EdDSA</code>; the <code>cnf.jwk</code> example carries the <code>alg</code> member now required of every conveyed key.<a href="#section-16-2.1.2.2" class="pilcrow">¶</a>
+            <li class="compact" id="section-16-2.1.2.2">Referenced the AAuth Protocol and AAuth Bootstrap by their datatracker document URLs, which track the latest revision.<a href="#section-16-2.1.2.2" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-16-2.1.2.3">Initial draft.<a href="#section-16-2.1.2.3" class="pilcrow">¶</a>
+            <li class="compact" id="section-16-2.1.2.3">Algorithm identifiers: <code>Ed25519</code> rather than the deprecated polymorphic <code>EdDSA</code>; the <code>cnf.jwk</code> example carries the <code>alg</code> member now required of every conveyed key.<a href="#section-16-2.1.2.3" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-16-2.1.2.4">Initial draft.<a href="#section-16-2.1.2.4" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
@@ -2380,7 +2356,7 @@ components:
 <a href="#appendix-A.6" class="section-number selfRef">A.6. </a><a href="#name-why-the-event-token-is-the-" class="section-name selfRef">Why the Event Token Is the Transport Layer, Not the Data Layer</a>
         </h3>
 <p id="appendix-A.6-1">The event token carries only what is needed for security, routing, and correlation: <code>iss</code>, <code>aud</code>, <code>eid</code>, <code>exp</code>. It is the cryptographic layer — the AP uses it to authenticate the resource, look up the subscription, and verify the delivery is authorized. The agent uses it to verify authenticity and look up its context via <code>eid</code>.<a href="#appendix-A.6-1" class="pilcrow">¶</a></p>
-<p id="appendix-A.6-2">Event-specific data travels as a separate <code>payload</code> in the same POST body. The AsyncAPI message schema for the event type defines the payload structure. This separation keeps the JWT minimal and avoids embedding event data in a signed-but-not-encrypted envelope. For events where the agent needs full details beyond the payload, it fetches them from the resource's data API using a current auth token.<a href="#appendix-A.6-2" class="pilcrow">¶</a></p>
+<p id="appendix-A.6-2">Event-specific data travels as the POST body. The AsyncAPI message schema for the event type defines the payload structure. This separation keeps the JWT minimal and avoids embedding event data in a signed-but-not-encrypted envelope. For events where the agent needs full details beyond the payload, it fetches them from the resource's data API using a current auth token.<a href="#appendix-A.6-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="why-the-event-token-uses-the-self-jwt-scheme">
