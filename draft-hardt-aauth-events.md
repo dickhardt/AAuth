@@ -87,7 +87,7 @@ This document defines AAuth Events — an event subscription and delivery mechan
 
 *Note: This section is to be removed before publishing as an RFC.*
 
-Discussion of this document takes place on GitHub at https://github.com/dickhardt/AAuth. Issues, comments, and pull requests are welcome there. Source for this draft is in the same repository.
+This document is part of the AAuth specification family. Source for this draft and an issue tracker can be found at https://github.com/dickhardt/AAuth.
 
 {mainmatter}
 
@@ -142,7 +142,7 @@ This document additionally uses:
 
 - **Subscribe Token**: A JWT issued by the AP to the agent, authorizing a specific resource to deliver events to the AP on the agent's behalf. Contains the Event ID and the agent's current signing key.
 - **Event ID (eid)**: An opaque, AP-generated identifier that uniquely identifies a subscription at the AP. The agent maps the `eid` to its own context. The `eid` is the correlation key between the subscribe token, the AP's subscription record, and the event token.
-- **Event Token**: A JWT issued and signed by the resource when an event fires, addressed to the agent (`aud` = agent identifier), and delivered to the AP's event endpoint using the `self-jwt` Signature-Key scheme ([@!I-D.hardt-httpbis-signature-key]).
+- **Event Token**: A JWT issued and signed by the resource when an event fires, addressed to the agent (`aud` = agent identifier), identified by its `jti`, and delivered to the AP's event endpoint using the `self-jwt` Signature-Key scheme ([@!I-D.hardt-httpbis-signature-key]).
 - **Event Endpoint**: An endpoint published by the AP in its metadata at which resources deliver event tokens.
 - **Subscription Ticket**: An opaque, short-lived value returned by a resource in response to an authenticated interaction, pre-authorizing a subsequent subscription registration call. Used when subscription to a protected channel requires prior authenticated context.
 
@@ -195,7 +195,7 @@ Figure: AAuth Events Protocol Overview {#fig-overview}
 
 # AP Metadata {#ap-metadata}
 
-The AP MUST publish an `event_endpoint` claim in its metadata at `/.well-known/aauth-agent.json` if it supports AAuth Events. The `event_endpoint` is an HTTPS URL at which the AP receives event tokens from resources.
+The AP MUST publish an `event_endpoint` field in its metadata at `/.well-known/aauth-agent.json` if it supports AAuth Events. The `event_endpoint` is an HTTPS URL at which the AP receives event tokens from resources.
 
 ```json
 {
@@ -215,7 +215,7 @@ A subscribe token is a JWT with `typ: aa-subscribe+jwt`, issued and signed by th
 
 Header:
 
-- `alg`: Signing algorithm. A fully-specified identifier is REQUIRED; `Ed25519` is RECOMMENDED. Implementations MUST NOT accept `none` or the polymorphic `EdDSA` identifier.
+- `alg`: per ([@!I-D.hardt-oauth-aauth-protocol], Signature Algorithms)
 - `typ`: `aa-subscribe+jwt`
 - `kid`: Key identifier (AP's signing key)
 
@@ -253,7 +253,7 @@ Example subscribe token payload:
 
 ## Presentation
 
-The agent presents the subscribe token as the `Signature-Key` JWT on the subscription registration request, using `scheme=jwt`:
+The agent presents the subscribe token as the `Signature-Key` JWT on the subscription registration request, under the `jwt` scheme:
 
 ```http
 POST /appointments/waitlist HTTP/1.1
@@ -263,7 +263,7 @@ Signature-Input: sig=("@method" "@authority"
     "@path" "signature-key" "content-type");created=1750000000
 Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;
-    jwt="eyJhbGciOiJFZERTQSIsInR5cCI6ImFhLXN1Yitqd3QiLCJraWQiOiIuLi4ifQ..."
+    jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtc3Vic2NyaWJlK2p3dCIsImtpZCI6Ii4uLiJ9..."
 
 {
   "event_types": ["slot.available"]
@@ -276,12 +276,10 @@ The subscribe token replaces the agent token as the `Signature-Key` JWT for subs
 
 The resource MUST verify the subscribe token as follows:
 
-1. Decode the JWT header. Verify `typ` is `aa-subscribe+jwt`.
-2. Verify `dwk` is `aauth-agent.json`. Discover the AP's JWKS via `{iss}/.well-known/{dwk}` per ([@!I-D.hardt-httpbis-signature-key]). Locate the key matching `kid` and verify the JWT signature.
-3. Verify `exp` is in the future and `iat` is not in the future.
-4. Verify `aud` matches the resource's own URL.
-5. Verify `cnf.jwk` matches the key used to sign the HTTP request.
-6. Verify `eid` is present and non-empty.
+1. Verify the token per ([@!I-D.hardt-oauth-aauth-protocol], Common JWT Verification), with `typ` `aa-subscribe+jwt` and `dwk` `aauth-agent.json`. `exp` is judged by the verifier's own clock; `iat` is not a validity check.
+2. Verify `aud` matches the resource's own URL.
+3. Verify `cnf.jwk` matches the key used to sign the HTTP request.
+4. Verify `eid` is present and non-empty.
 
 After verification, the resource stores the subscription record with sufficient information to deliver events — at minimum `{eid, iss}` (the Event ID and the AP's issuer URL). When an event fires, the resource resolves the AP's `event_endpoint` from `{iss}/.well-known/aauth-agent.json` at delivery time, using standard HTTP caching for the well-known document.
 
@@ -301,11 +299,11 @@ Some event channels require the agent to be authorized before it can register a 
 
 This specification defines a **pre-authorized subscription URL** pattern for protected subscriptions:
 
-1. The agent makes an authenticated request to the resource (using an auth token obtained through one of the AAuth Protocol access modes).
-2. The resource, if subscription to events is available for the context established by this interaction, returns a **subscription ticket URL** — an HTTPS URL that encodes a short-lived, single-use authorization to register a subscription. The ticket URL is opaque and is valid only for the specific context (agent, operation, and resource state) established in step 1.
+1. The agent makes an authenticated request to the resource (presenting a person token or auth token).
+2. The resource, if subscription to events is available for the context established by this interaction, returns a **subscription ticket URL** — an HTTPS URL that encodes a short-lived, single-use authorization to register a subscription. The ticket URL is opaque and is valid only for the specific context (key, operation, and resource state) established in step 1.
 3. The agent obtains a subscribe token from its AP.
 4. The agent presents the subscribe token (as the `Signature-Key` JWT) on a signed POST to the subscription ticket URL. No additional auth token is required at this step; the authorization is embedded in the URL. The request body MAY include additional parameters as defined by the resource's AsyncAPI channel schema.
-5. The resource validates the subscribe token, verifies the ticket in the URL is valid for the calling agent (by checking `sub` in the subscribe token matches the agent that triggered step 1) and has not been used before, and registers the subscription.
+5. The resource validates the subscribe token, verifies the ticket in the URL is valid for the calling key (the JWK Thumbprint of the subscribe token's `cnf.jwk` equals the thumbprint recorded when the ticket was issued, see (#pre-authorized-subscription-url-security)) and has not been used before, and registers the subscription.
 
 The subscription ticket URL is resource-controlled: the resource issues it, defines its scope and expiry, and enforces its single-use constraint. The ticket is not defined by this specification beyond the pattern above.
 
@@ -333,7 +331,7 @@ Signature-Input: sig=("@method" "@authority"
     "@path" "signature-key" "content-type");created=1750000000
 Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;
-    jwt="eyJhbGciOiJFZERTQSIsInR5cCI6ImFhLXN1Yitqd3QiLCJraWQiOiIuLi4ifQ..."
+    jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtc3Vic2NyaWJlK2p3dCIsImtpZCI6Ii4uLiJ9..."
 
 {
   "event_types": ["slot.available"]
@@ -352,7 +350,7 @@ When an event fires, the resource issues an event token: a JWT signed by the res
 
 Header:
 
-- `alg`: Signing algorithm. A fully-specified identifier is REQUIRED; `Ed25519` is RECOMMENDED.
+- `alg`: per ([@!I-D.hardt-oauth-aauth-protocol], Signature Algorithms)
 - `typ`: `aa-event+jwt`
 - `kid`: Key identifier (resource's signing key)
 
@@ -362,6 +360,7 @@ Required payload claims:
 - `dwk`: `aauth-resource.json` — the well-known metadata document name for key discovery ([@!I-D.hardt-httpbis-signature-key]).
 - `aud`: Agent identifier (`aauth:local@domain`). The agent MUST verify this matches its own identifier.
 - `eid`: Event ID. MUST match the `eid` from the subscribe token for this subscription. The AP uses the `eid` to look up the subscription record and route to the agent. The agent uses the `eid` to look up its local context mapping.
+- `jti`: Unique identifier for this event token. `(iss, jti)` identifies one event; it is the deduplication key at the AP and the agent. The `eid` cannot serve, since every event on a subscription carries the same `eid`.
 - `iat`: Issued-at timestamp.
 - `exp`: Expiration timestamp. The agent MUST NOT act on an event token with `exp` in the past. The meaning of `exp` is event-specific — for time-sensitive events, it encodes the deadline by which the agent must act.
 
@@ -377,6 +376,7 @@ Example event token payload:
   "dwk": "aauth-resource.json",
   "aud": "aauth:k7q3p9n2@ap.example",
   "eid": "evt_8f3k2n9p",
+  "jti": "ev-4d2a91",
   "iat": 1750200000,
   "exp": 1750200300
 }
@@ -396,7 +396,7 @@ Signature-Input: sig=("@method" "@authority"
     "@path" "signature-key" "content-type" "content-digest");created=1750200000
 Signature: sig=:...resource signing key signature bytes...:
 Signature-Key: sig=self-jwt;
-    jwt="eyJhbGciOiJFZERTQSIsInR5cCI6ImFhLWV2ZW50K2p3dCIsImtpZCI6Ii4uLiJ9..."
+    jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtZXZlbnQrand0Iiwia2lkIjoiLi4uIn0..."
 
 {
   "event_type": "slot.available",
@@ -404,7 +404,7 @@ Signature-Key: sig=self-jwt;
 }
 ```
 
-The event token in `Signature-Key` provides the resource's identity (`iss`) and routing and authorization claims (`eid`, `aud`, `exp`). Unlike agent tokens and subscribe tokens (which use the `jwt` scheme with `cnf.jwk`), the event token uses the `self-jwt` scheme ([@!I-D.hardt-httpbis-signature-key]): the resource is both the JWT issuer and the HTTP request signer, so no `cnf.jwk` is needed. The resource has a stable JWKS discoverable from `{iss}/.well-known/{dwk}`, and the AP uses the same key (identified by `kid` in the JWT header) to verify both the JWT signature and the HTTP signature. The request body structure is defined by the resource's AsyncAPI message schema for the event type (see (#event-discovery)). The AP forwards both the event token and the payload body to the agent.
+The event token in `Signature-Key` provides the resource's identity (`iss`), routing and authorization claims (`eid`, `aud`, `exp`), and the event's identity (`jti`). Unlike agent tokens and subscribe tokens (which use the `jwt` scheme with `cnf.jwk`), the event token uses the `self-jwt` scheme ([@!I-D.hardt-httpbis-signature-key]): the resource is both the JWT issuer and the HTTP request signer, so no `cnf.jwk` is needed. The resource has a stable JWKS discoverable from `{iss}/.well-known/{dwk}`, and the AP uses the same key (identified by `kid` in the JWT header) to verify both the JWT signature and the HTTP signature. The request body structure is defined by the resource's AsyncAPI message schema for the event type (see (#event-discovery)). The AP forwards both the event token and the payload body to the agent.
 
 The resource resolves the AP's `event_endpoint` from `{iss}/.well-known/aauth-agent.json` at delivery time, using standard HTTP caching for the AP's well-known document.
 
@@ -412,8 +412,8 @@ The resource resolves the AP's `event_endpoint` from `{iss}/.well-known/aauth-ag
 
 The AP MUST validate the event delivery request as follows:
 
-1. Extract the event token JWT from the `Signature-Key` header (`scheme=self-jwt`). Verify `typ` is `aa-event+jwt`. Verify `cnf` is absent, per the `self-jwt` scheme ([@!I-D.hardt-httpbis-signature-key]).
-2. Discover the resource's JWKS via `{iss}/.well-known/{dwk}`. Locate the key matching `kid` and verify the JWT signature.
+1. Extract the event token JWT from the `Signature-Key` header (the `self-jwt` scheme). Verify it per ([@!I-D.hardt-oauth-aauth-protocol], Common JWT Verification), with `typ` `aa-event+jwt` and `dwk` `aauth-resource.json`. Verify `cnf` is absent, per the `self-jwt` scheme ([@!I-D.hardt-httpbis-signature-key]).
+2. The AP MAY deduplicate on `(iss, jti)` and drop a delivery it has already recorded.
 3. Verify the HTTP signature using the same key (matched by `kid`), per the `self-jwt` scheme: the JWT signing key and the HTTP signing key are the same key, discoverable from the resource's well-known document.
 4. Look up the subscription record by `eid`. If no active subscription exists for this `eid`, return `404`.
 5. Verify `iss` matches the resource recorded at subscription time (the `aud` of the subscribe token for this `eid`).
@@ -446,12 +446,10 @@ See (#non-normative-ap-agent) for non-normative examples of AP-to-agent delivery
 
 Upon receiving an event token (and optional payload) from the AP, the agent MUST:
 
-1. Decode the JWT header. Verify `typ` is `aa-event+jwt`.
-2. Discover the resource's JWKS via `{iss}/.well-known/{dwk}` per ([@!I-D.hardt-httpbis-signature-key]). Verify the JWT signature.
-3. Verify `aud` matches the agent's own identifier.
-4. Verify `exp` is in the future. If `exp` has passed, the agent SHOULD NOT act on the event (the response window has closed).
-5. Look up `eid` in the agent's local context mapping to recover the context associated with this subscription.
-6. Deduplicate: if the agent has already processed an event with this `eid` from this `iss`, it SHOULD ignore the duplicate. The `eid` is a natural idempotency key.
+1. Verify the token per ([@!I-D.hardt-oauth-aauth-protocol], Common JWT Verification), with `typ` `aa-event+jwt` and `dwk` `aauth-resource.json`. If `exp` has passed, the agent SHOULD NOT act on the event (the response window has closed).
+2. Verify `aud` matches the agent's own identifier.
+3. Look up `eid` in the agent's local context mapping to recover the context associated with this subscription.
+4. Deduplicate: if the agent has already processed an event with this `jti` from this `iss`, it SHOULD ignore the duplicate. `(iss, jti)` is the idempotency key.
 
 If a payload was included, the agent MAY use it directly. The payload structure is defined by the resource's AsyncAPI message schema for the event type.
 
@@ -461,13 +459,7 @@ Resources describe their event capabilities using AsyncAPI ([@AsyncAPI]) as an A
 
 ## R3 Vocabulary Identifier
 
-The vocabulary identifier for AAuth Events is:
-
-```
-urn:aauth:vocabulary:asyncapi
-```
-
-Resources that support AAuth Events SHOULD declare this vocabulary in their AAuth resource metadata:
+The vocabulary identifier for AAuth Events is `urn:aauth:vocabulary:asyncapi`, registered in the AAuth R3 Vocabulary Registry by R3 ([@!I-D.hardt-aauth-r3]), which also defines the operation entry format. Resources that support AAuth Events SHOULD declare this vocabulary in their AAuth resource metadata:
 
 ```json
 {
@@ -485,7 +477,7 @@ The resource's AsyncAPI document describes:
 
 - **Channels**: Event streams the agent may subscribe to. Channels MAY use parameterized addresses (e.g., `/waitlist/{subscriptionTicket}`) when the subscription endpoint URL is dynamic (see (#protected-subscriptions)).
 - **Operations**: `receive` operations on channels, with the security requirement and message schema.
-- **Messages**: The payload schema for each event type. The AsyncAPI payload schema describes the `payload` field in the event delivery POST body (see (#event-delivery)). The AAuth event token envelope (`iss`, `aud`, `eid`, `exp`) is implicit and not part of the AsyncAPI schema.
+- **Messages**: The payload schema for each event type. The AsyncAPI payload schema describes the event delivery POST body (see (#event-delivery)). The AAuth event token envelope (`iss`, `aud`, `eid`, `exp`) is implicit and not part of the AsyncAPI schema.
 - **Security schemes**: The AAuth subscribe token security scheme.
 
 ## Security Scheme
@@ -557,7 +549,7 @@ operations:
 components:
   messages:
     SlotAvailable:
-      contentType: application/jwt
+      contentType: application/json
       payload:
         type: object
         properties:
@@ -592,7 +584,7 @@ Event tokens are signed by the resource using the resource's own signing key. Th
 
 ## Replay Prevention
 
-The AP enforces `max_uses` per `eid` and rejects event tokens with `exp` in the past. The agent additionally deduplicates on `eid` from the same `iss` (#agent-verification). These two layers prevent replay: a captured event token cannot be re-delivered once the AP has tracked its delivery and the agent has processed it.
+The AP enforces `max_uses` per `eid`, rejects event tokens with `exp` in the past, and MAY deduplicate on `(iss, jti)`. The agent deduplicates on `(iss, jti)` (#agent-verification). These layers prevent replay: a captured event token cannot be re-delivered once the AP has tracked its delivery and the agent has processed it.
 
 ## Subscribe Token Replay at Registration
 
@@ -604,7 +596,7 @@ The subscription ticket URL (see (#protected-subscriptions)) encodes authorizati
 
 - Short-lived (expiry appropriate to the expected delay between issuing and using the ticket).
 - Single-use (the resource invalidates the ticket on first successful subscription registration).
-- Bound to the agent that triggered the prior interaction (the resource MUST verify that `sub` in the subscribe token matches the agent that established the ticket).
+- Bound to the signing key that established the ticket. No token the resource verified when it issued the ticket carries an agent identifier ([@!I-D.hardt-oauth-aauth-protocol]); what it verified is the key in `cnf`. The resource MUST record the JWK Thumbprint of that key with the ticket, and MUST verify that the thumbprint of the subscribe token's `cnf.jwk` equals it when the ticket is used. The subscribe token's `sub` names the agent to its AP for delivery; it is not what binds the ticket.
 
 ## AP as Delivery Intermediary
 
@@ -622,7 +614,7 @@ The `sub` claim in the subscribe token carries the agent's stable identifier. Re
 
 ## Event Content
 
-The event token carries no event-specific data — it is the security and routing envelope only. Event-specific content travels in the `payload` field of the POST body (see (#event-delivery)), which is also visible to the AP during routing. Resources SHOULD NOT include sensitive personal data in the payload beyond what is necessary for the agent to evaluate relevance. Sensitive details SHOULD be fetched by the agent from the resource's data API using a current auth token.
+The event token carries no event-specific data — it is the security and routing envelope only. Event-specific content travels as the POST body (see (#event-delivery)), which is also visible to the AP during routing. Resources SHOULD NOT include sensitive personal data in the payload beyond what is necessary for the agent to evaluate relevance. Sensitive details SHOULD be fetched by the agent from the resource's data API using a current auth token.
 
 # IANA Considerations
 
@@ -632,12 +624,6 @@ This specification defines the following JWT `typ` header parameter values, to b
 
 - `aa-subscribe+jwt`: AAuth Subscribe Token.
 - `aa-event+jwt`: AAuth Event Token.
-
-## AAuth R3 Vocabulary Identifiers
-
-This specification defines the following R3 vocabulary identifier:
-
-- `urn:aauth:vocabulary:asyncapi`: AAuth AsyncAPI event vocabulary.
 
 # Implementation Status
 
@@ -650,6 +636,7 @@ TBD
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-aauth-events-00
+  - Consistency pass against AAuth Protocol -11. Event tokens carry `jti`, and the AP and agent deduplicate on `(iss, jti)`; deduplicating on `eid` would have dropped every event after the first on an unlimited subscription. The protected-subscription flow binds the ticket to the JWK Thumbprint of the subscribe token's `cnf.jwk`, matching Security Considerations. `iat` is not a validity check. The event payload is the POST body, not a `payload` member, and the AsyncAPI message `contentType` is `application/json`. Token `alg` rules and the common verification steps point at the protocol rather than restating it. Example JWTs use `Ed25519` and the registered `typ` values. The AsyncAPI vocabulary identifier is registered by R3, not defined here.
   - Referenced the AAuth Protocol and AAuth Bootstrap by their datatracker document URLs, which track the latest revision.
   - Algorithm identifiers: `Ed25519` rather than the deprecated polymorphic `EdDSA`; the `cnf.jwk` example carries the `alg` member now required of every conveyed key.
   - Initial draft.
@@ -709,7 +696,7 @@ The AP informs the resource of remaining uses in the `202 Accepted` response bod
 
 The event token carries only what is needed for security, routing, and correlation: `iss`, `aud`, `eid`, `exp`. It is the cryptographic layer — the AP uses it to authenticate the resource, look up the subscription, and verify the delivery is authorized. The agent uses it to verify authenticity and look up its context via `eid`.
 
-Event-specific data travels as a separate `payload` in the same POST body. The AsyncAPI message schema for the event type defines the payload structure. This separation keeps the JWT minimal and avoids embedding event data in a signed-but-not-encrypted envelope. For events where the agent needs full details beyond the payload, it fetches them from the resource's data API using a current auth token.
+Event-specific data travels as the POST body. The AsyncAPI message schema for the event type defines the payload structure. This separation keeps the JWT minimal and avoids embedding event data in a signed-but-not-encrypted envelope. For events where the agent needs full details beyond the payload, it fetches them from the resource's data API using a current auth token.
 
 ## Why the Event Token Uses the self-jwt Scheme
 
