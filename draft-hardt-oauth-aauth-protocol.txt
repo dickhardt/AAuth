@@ -992,11 +992,11 @@ Table of Contents
 
    Agent identifiers are URIs using the aauth scheme, of the form
    aauth:local@domain where domain is the agent provider's domain.  The
-   local part MUST consist of lowercase ASCII letters (a-z), digits
-   (0-9), hyphen (-), underscore (_), plus (+), and period (.).  The
-   local part MUST NOT be empty and MUST NOT exceed 255 characters.  The
-   domain part MUST be a valid domain name conforming to the server
-   identifier requirements Section 12.11.1 (without scheme).
+   local part MUST consist of ASCII letters (A-Za-z), digits (0-9),
+   hyphen (-), underscore (_), plus (+), and period (.).  The local part
+   MUST NOT be empty and MUST NOT exceed 255 characters.  The domain
+   part MUST be a valid domain name conforming to the server identifier
+   requirements Section 12.11.1 (without scheme).
 
    The plus character (+) is RESERVED as the sub-agent delimiter
    Section 11.2.  A top-level agent's local part MUST NOT contain +. A
@@ -1017,12 +1017,14 @@ Table of Contents
 
    Invalid agent identifiers:
 
-   *  My Agent@agent.example (uppercase letters and space in local part)
+   *  My Agent@agent.example (space in local part)
    *  @agent.example (empty local part)
    *  agent@http://agent.example (domain includes scheme)
 
    Implementations MUST perform exact string comparison on agent
-   identifiers (case-sensitive).
+   identifiers (case-sensitive): aauth:Agent@agent.example and
+   aauth:agent@agent.example are different agents, and an implementation
+   MUST NOT case-fold the local part.
 
 5.2.  Agent Token
 
@@ -6599,6 +6601,11 @@ Initial request (with Prefer: wait=N)
 
    *  draft-hardt-oauth-aauth-protocol-11
 
+      -  The agent identifier local part accepts uppercase ASCII
+         letters.  Comparison was already exact and case-sensitive, so
+         the lowercase-only rule protected nothing and excluded base62
+         identifiers such as a provider's own opaque ids; an
+         implementation MUST NOT case-fold the local part (issue #164).
       -  Added the person token (aa-person+jwt): issued by a PS to
          identify the person to one resource, presented in the
          Signature-Key header in place of the agent token, lifetime
