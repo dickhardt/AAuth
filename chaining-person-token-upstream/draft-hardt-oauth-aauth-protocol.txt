@@ -3570,7 +3570,9 @@ Table of Contents
        obtained with.  If the PS has revoked that agent's agent token or
        its binding to the person Section 14.14, it MUST reject the
        request with revoked_upstream_token, whether or not it has
-       revoked the upstream token itself.
+       revoked the upstream token itself.  A PS that cannot identify the
+       calling agent MUST reject the request with
+       invalid_upstream_token.
    5.  The PS evaluates the request against the mission and its
        supervision policy, based on the upstream token's claims and
        mission context.  The resulting downstream authorization is not
