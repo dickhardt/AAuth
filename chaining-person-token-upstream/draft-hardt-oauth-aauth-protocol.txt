@@ -1147,7 +1147,8 @@ Table of Contents
    *  cnf: jwk is the agent's public key
    *  exp: Person tokens MUST NOT have a lifetime exceeding 1 hour, and
       MUST NOT outlive the agent token presented when the token was
-      requested or, when mission_s256 is present, the mission's
+      requested, the upstream_token when the request carried one
+      Section 11.1.1, or, when mission_s256 is present, the mission's
       expires_at Section 9.2.
 
    Required payload claims specific to person tokens:
@@ -3438,7 +3439,9 @@ Table of Contents
       the token request (#ps-token-endpoint, #ps-to-as-token-request) —
       a person token, which the PS capped at the mission's expires_at
       when mission_s256 is present Section 6.1, or an auth token bounded
-      the same way in its turn.  A PS-issued auth token carrying
+      the same way in its turn.  When the token request carried
+      upstream_token Section 11.1.1, the auth token MUST NOT expire
+      later than that token either.  A PS-issued auth token carrying
       mission_s256 MUST NOT expire later than the mission's expires_at
       Section 9.2.
 
@@ -3582,14 +3585,20 @@ Table of Contents
 
    When a resource needs to access a downstream resource on behalf of
    the caller, it acts as an agent — the intermediary.  The upstream
-   token is the token the calling agent presented in the Signature-Key
-   header of the request the intermediary is fulfilling: a person token
-   when the intermediary served that request on the person's identity
-   Section 4.1.3, an auth token when it required authorization.  An
-   intermediary MUST NOT present any other token as the upstream token.
-   A resource that requires an auth token does not serve a request
-   carrying only a person token Section 14.11, so it has no such request
-   to fulfill.
+   token is a token the calling agent presented in the Signature-Key
+   header of a request the intermediary served: a person token when the
+   intermediary served on the person's identity Section 4.1.3, an auth
+   token when it required authorization.  A person token the
+   intermediary answered with a challenge for an auth token is not one:
+   the request it came on was not served Section 14.11.
+
+   An intermediary MAY present the same upstream token for any number of
+   downstream requests until it expires.  Downstream access does not
+   outlive it: a person token issued with upstream_token expires no
+   later than the upstream token Section 6.1, and so does an auth token
+   issued on a request carrying one Section 10.4.1.  Once the upstream
+   token has expired the intermediary uses a later token from the
+   calling agent, which it receives on the agent's next request.
 
    The intermediary routes the downstream token requests to the person
    server the upstream token names: the iss of a person token, the ps of
@@ -6746,11 +6755,11 @@ Initial request (with Prefer: wait=N)
 
       -  Call chaining accepts a person token as upstream_token, at the
          person token endpoint, the auth token endpoint, and the PS-to-
-         AS request.  The upstream token is the token the calling agent
-         presented to the intermediary on the request it is fulfilling,
-         so an intermediary that serves on identity alone can chain;
-         before, only an auth token was defined and such an intermediary
-         had nothing to present.  The PS used nothing an auth token adds
+         AS request.  The upstream token is a token the calling agent
+         presented on a request the intermediary served, so an
+         intermediary that serves on identity alone can chain; before,
+         only an auth token was defined and such an intermediary had
+         nothing to present.  The PS used nothing an auth token adds
          over a person token: it resolves the person from aud and sub,
          reads mission_s256, and does not require downstream access to
          be a subset of upstream scope.  Routing follows a person
@@ -6758,7 +6767,11 @@ Initial request (with Prefer: wait=N)
          branches on typ, and the revocation cascade walks from a person
          token presented upstream as well.  The rule rejecting a person
          token where an auth token is required does not apply to
-         upstream_token.
+         upstream_token.  An intermediary MAY reuse an upstream token
+         until it expires, and downstream access does not outlive it: a
+         person token issued with upstream_token, and an auth token
+         issued on a request carrying one, expire no later than the
+         upstream token.
       -  Intermediary Agent Identity: an intermediary MUST be its own
          agent provider, with aauth-agent.json on its own origin, issuer
          equal to its resource issuer, and a self-issued agent token.
