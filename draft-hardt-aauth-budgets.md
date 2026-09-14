@@ -707,7 +707,7 @@ Inference APIs commonly emit final usage in the stream's terminal event. That is
 
 **Request exceeds the remainder.** The budget has remainder, but this request's maximum cost exceeds it (#overshoot). The same `401` challenge, with `reason=insufficient-budget`. The agent has a second move here that exhaustion does not offer: lower the request's bound to fit the `remaining` reported beside the challenge, and retry on the token it already holds. The `required` member (#required-member) is what makes that move a calculation rather than a search.
 
-A request refused under this section MUST NOT draw down the budget or appear in the record and counters. The resource declined to serve it; metering the refusal would make exhaustion self-perpetuating.
+A request refused under this section MUST NOT draw down the budget or appear in the record and counters. The resource declined to serve it; metering the refusal would make exhaustion self-perpetuating. A refusal therefore carries no `cost`; `required` (#required-member) is the figure a refusal reports.
 
 The fresh resource token SHOULD carry the presented token's consumption record (#budget-consumed), its spend to date — the context for deciding whether to authorize more, and the figure that tells the issuer how much of the refused allocation was actually consumed.
 
@@ -719,7 +719,7 @@ A resource challenging because the budget is exhausted rather than because the t
 HTTP/1.1 401 Unauthorized
 AAuth-Requirement: requirement=auth-token;
     resource-token="eyJ..."; reason=budget-exhausted
-AAuth-Budget: cost=180000, remaining=0,
+AAuth-Budget: remaining=0,
     unit="USD", decimals=6
 ```
 
@@ -1004,7 +1004,7 @@ It is RECOMMENDED rather than REQUIRED because the figures are decision context 
 
 ## Authorization and Errors {#usage-authorization}
 
-The `jwks_uri` in the `Signature-Key` header names the caller, and is the value the response echoes as `aud`. A caller is a person server or an access server. The resource MUST only answer for values that have appeared in auth tokens it accepted whose `iss` or `ps` claim names the caller: for a PS, the tokens it issued in three-party access and the tokens carrying it as `ps` in four-party access; for an AS, the tokens it issued. This applies to thumbprints in `jkts` as much as to scope keys. `sub` is directed per PS, so one person server cannot even name another's subjects; `tenant`, `mission_s256`, and thumbprints are not directed, and this check is what stops a third party from querying them.
+The `jwks_uri` in the `Signature-Key` header identifies the caller's key set. The resource resolves it to the server identifier whose metadata publishes that `jwks_uri` — a person server's `aauth-person.json` or an access server's `aauth-access.json` — and that identifier is what the response carries as `aud` (#usage-response). A caller is a person server or an access server. The resource MUST only answer for values that have appeared in auth tokens it accepted whose `iss` or `ps` claim names the caller: for a PS, the tokens it issued in three-party access and the tokens carrying it as `ps` in four-party access; for an AS, the tokens it issued. This applies to thumbprints in `jkts` as much as to scope keys. `sub` is directed per PS, so one person server cannot even name another's subjects; `tenant`, `mission_s256`, and thumbprints are not directed, and this check is what stops a third party from querying them.
 
 An AS is entitled because it sizes allocations against a ceiling of its own (#narrowing-chain) and is bound by (#unreported-allocations) for them. An AS operated by the resource may take the same figures from the resource directly; the endpoint is for the AS that is not.
 
