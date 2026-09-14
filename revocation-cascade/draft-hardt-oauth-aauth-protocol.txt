@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                       13 September 2026
-Expires: 17 March 2027
+Intended status: Standards Track                       14 September 2026
+Expires: 18 March 2027
 
 
                              AAuth Protocol
@@ -50,7 +50,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 17 March 2027.
+   This Internet-Draft will expire on 18 March 2027.
 
 Copyright Notice
 
@@ -4694,7 +4694,15 @@ Initial request (with Prefer: wait=N)
       person token to an AS, and rejects a token request whose
       presented_token is one with revoked_presented_token
       Section 12.6.3.  The AS answers the PS once its revocation at the
-      resource is terminal, reporting the outcome in downstream.
+      resource is terminal, reporting the outcome in downstream.  Where
+      an auth token issued against the revoked person token was later
+      presented as an upstream_token Section 11.1.1, the PS SHOULD
+      revoke the person tokens it issued from it in the same cascade, at
+      their resources and at the ASes it presented them to, so that an
+      intermediary does not keep access downstream to a person who has
+      withdrawn the grant that started the chain.  The PS finds them in
+      its own records, as below; the AS holds no part of the chain
+      beyond the person token it was presented.
    *  *Resource revokes a resource token it issued*: The resource calls
       the revocation endpoint of the party named in the token's aud, and
       in four-party that of the ps as well.  The recipient MUST NOT
@@ -4744,6 +4752,21 @@ Initial request (with Prefer: wait=N)
    token carries no reference to the person token, so revoking the
    person token at the resource does not by itself invalidate auth
    tokens already there.
+
+   A chain adds one link, held by the PS alone.  A person token issued
+   with an upstream_token Section 8.1 is issued for the person the
+   upstream token was issued for, and the PS records the upstream
+   token's (iss, jti) with the entry.  Every hop of a chain routes to
+   the same PS — the intermediary's request names the PS in the upstream
+   token's ps Section 11.1.1 — and the PS already knows that auth token,
+   having issued or federated it against an earlier person token, so a
+   revocation of that earlier person token walks from it to the auth
+   token to the person tokens issued downstream from it without any new
+   record elsewhere.  An AS records nothing of the chain: the auth token
+   it issues to an intermediary is issued against the person token the
+   PS presented, the same presented_jti as any other, and the
+   upstream_token beside it is evidence for the policy decision, not the
+   token the auth token is issued against.
 
    Neither record is a durable ledger.  An entry is useful only while
    the token it names could still be presented, so it MAY be discarded
@@ -6595,8 +6618,17 @@ Initial request (with Prefer: wait=N)
          uses through that agent.  Revocation is idempotent: a repeated
          revocation re-attempts what did not succeed and reports the
          current outcome.  The AS's cascade to the resource is now a
-         MUST, since the PS reads how far a revocation went from it.
-         Addresses issue #173.
+         MUST, since the PS reads how far a revocation went from it.  A
+         revocation of a person token now also reaches a chain: the PS
+         records the upstream token's (iss, jti) on each person token it
+         issues with upstream_token, and SHOULD revoke those person
+         tokens when the earlier person token the upstream token was
+         issued against is revoked.  Every hop routes to the same PS, so
+         the link is in its own records; an AS records nothing of the
+         chain, since it issues against the presented person token as in
+         any other request.  Without it an intermediary kept access
+         downstream to a person who had withdrawn the upstream grant,
+         for up to an hour.  Addresses issue #173.
 
       -  Added Expiry and the Refresh Margin under Re-authorization.  A
          verifier judges exp against its own clock with no skew
