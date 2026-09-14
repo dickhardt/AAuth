@@ -311,7 +311,7 @@ The access mode annotation carries one of the `access_mode` values defined in AA
 
 `session-token` MUST NOT appear in an annotation. A resource that manages its own authorization does so for the whole resource, and says so in `access_mode`.
 
-The first three values are ordered by increasing requirement, and a credential satisfying a later one satisfies an earlier one: every request carries an agent token, and a resource MUST have verified a person token before issuing the resource token that an auth token is obtained with ([@!I-D.hardt-oauth-aauth-protocol]). An agent holding an auth token for a resource may therefore call that resource's `person-token` and `agent-token` operations without obtaining anything further.
+The first three values are ordered by increasing requirement, and a credential satisfying a later one satisfies an earlier one. An agent holding an auth token for a resource presents it on every request there, and a resource MUST have verified a person token before issuing the resource token that an auth token is obtained with ([@!I-D.hardt-oauth-aauth-protocol]). An agent holding an auth token may therefore call that resource's `person-token` and `agent-token` operations without obtaining anything further.
 
 `per-call` is not a fourth rung on that ladder. It says that no credential held in advance is sufficient: the resource challenges every invocation, builds a proposal from that call's parameters, and the grant that results is consumed by that one call. An agent planning unattended work uses `per-call` to identify the operations that will block on a person.
 
@@ -388,7 +388,7 @@ R3 extends the authorization endpoint defined in AAuth Protocol ([@!I-D.hardt-oa
 
 ## Request
 
-The agent sends `r3_operations` in the authorization endpoint request:
+The agent sends `r3_operations` in the authorization endpoint request, presenting a person token in `Signature-Key` as the protocol requires there ([@!I-D.hardt-oauth-aauth-protocol]):
 
 ```http
 POST /authorize HTTP/1.1
@@ -396,7 +396,7 @@ Host: calendar.example.com
 Content-Type: application/json
 Signature-Input: sig=("@method" "@authority" "@path" "signature-key");created=1741824000
 Signature: sig=:...signature bytes...:
-Signature-Key: sig=jwt;jwt="eyJhbGc..."
+Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtcGVyc29uK2p3dCJ9..."
 
 {
   "r3_operations": {
@@ -496,20 +496,7 @@ The `r3_s256` hash is the document's identity, not the URI. The AS caches docume
 
 R3 extends the resource token defined in AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]) (a JWT with `typ: aa-resource+jwt`) with two additional payload claims. When a resource includes R3 information, it MUST include both.
 
-Base claims (from AAuth Protocol):
-- `iss`: Resource URL
-- `dwk`: `aauth-resource.json`
-- `aud`: Auth server URL
-- `jti`: Unique token identifier
-- `ps`: The person server whose namespace `sub` belongs to, copied from the token the request carried
-- `sub`: The `sub` of that token, identifying the person this authorization is for
-- `presented_jti`: The `jti` of the token the request carried — the person token, or on a per-call challenge the auth token — binding this resource token to it
-- `agent_jkt`: JWK Thumbprint of the agent's signing key
-- `iat`: Issued at timestamp
-- `exp`: Expiration timestamp
-- `scope`: Requested scopes (optional)
-
-A resource token carries no agent identifier; the recipient learns the agent's identity from the agent token that signs the token request.
+The base claims are those of Resource Token Structure in AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]) and are not restated here. Note that `aud` is the PS URL in three-party access and the AS URL in four-party access, and that on a per-call challenge `presented_jti` names the auth token the request carried.
 
 R3 extension claims:
 - **`r3_uri`** (REQUIRED for R3): The URI where the AS can fetch the R3 document. The AS authenticates itself using an HTTP Message Signature.
@@ -574,20 +561,7 @@ The AS is not required to retain R3 documents beyond their immediate use in toke
 
 R3 extends the auth token defined in AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]) (a JWT with `typ: aa-auth+jwt`) with claims for audit provenance and vocabulary-based grants. The resource can enforce authorization directly from these claims.
 
-Base claims (from AAuth Protocol):
-- `iss`: Auth server URL
-- `dwk`: `aauth-access.json` (issued by an AS) or `aauth-person.json` (issued by a PS)
-- `aud`: Resource URL
-- `jti`: Unique token identifier
-- `ps`: The person server the person is represented by. Equal to `iss` when a PS issued the token
-- `sub`: Directed user identifier (REQUIRED), copied from the resource token. An opaque string, unique within `iss`, that the PS SHOULD derive pairwise per resource
-- `cnf`: Confirmation claim with `jwk` containing the agent's public key
-- `iat`: Issued at timestamp
-- `exp`: Expiration timestamp
-- `scope`: Authorized scopes (optional)
-- `mission_s256`: SHA-256 hash of the approved mission JSON (optional), present when the auth token was issued in the context of a mission
-
-An auth token carries no agent identifier; `cnf` binds it to one key, and the resource enforces against `sub` and the R3 claims below.
+The base claims are those of Auth Token Structure in AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]) and are not restated here. An auth token carries no agent identifier; `cnf` binds it to one key, and the resource enforces against `sub` and the R3 claims below.
 
 R3 extension claims:
 - **`r3_uri`** (REQUIRED for R3): The URI of the R3 document that was in effect at approval time.
@@ -699,7 +673,7 @@ Its members are resource-defined. They describe the result in terms the AS can e
 1. **Per-call challenge.** The agent invokes an `r3_per_call` operation. The resource builds the proposal, persists it keyed by its `r3_s256`, and returns `AAuth-Requirement` with a resource token whose `r3_uri`/`r3_s256` reference the proposal — either as a `401` the agent retries, or as a `202 Accepted` deferred delivery that holds the invocation ([@!I-D.hardt-oauth-aauth-protocol]). A resource that can hold the invocation SHOULD use `202`: the parameters never leave its hands, so the verification in step 3 disappears and the agent never reconstructs the call. The token carries only the reference, not the parameters.
 2. **Approval.** The AS fetches the proposal and evaluates `parameters` per policy; the PS renders `display` for user consent. On approval, the AS issues a per-call auth token that echoes the proposal's `r3_uri`/`r3_s256` and lists the now-approved operation in `r3_granted`.
 3. **Enforced completion.** Under `202`, the resource executes the held call when a valid per-call auth token arrives at the pending URL; there are no parameters to verify, because the agent never re-sends the call. Under `401`, the agent retries the actual call with the per-call auth token, and the resource recovers the proposal from its store via `r3_s256` and MUST verify that the agent's actual parameters match the approved proposal: inline parameter values MUST be compared structurally (JSON value equality — member order and insignificant whitespace do not affect the result), and for any parameter represented as a digest the resource MUST verify that `BASE64URL(SHA-256(presented-value))` equals the stored `s256`, so the agent MUST present those values byte-identically. If anything differs, the resource MUST reject the call. An approval to email one recipient cannot be replayed against another.
-4. **Single use.** The grant is consumed by the call it approved, on either delivery. A resource MUST NOT execute more than one invocation under one per-call auth token: under `202`, completion consumes the pending record; under `401`, the resource MUST mark the stored proposal consumed when it executes the call. A repeated presentation of the same per-call auth token MUST be answered from the retained result of the executed call, not executed again — the first response can be lost in transit, and the agent cannot otherwise distinguish "not executed" from "executed, response lost". The resource SHOULD retain the result at least until the auth token's `exp`.
+4. **Single use.** The grant is consumed by the call it approved, on either delivery. A resource MUST NOT execute more than one invocation under one per-call auth token: under `202`, completion consumes the pending record; under `401`, the resource MUST mark the stored proposal consumed when it executes the call. A repeated presentation of the same per-call auth token is answered from the retained result, keyed by the auth token's `jti`, per the Deferred Delivery rules of AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]).
 
 ## Large and Sensitive Payloads {#large-and-sensitive-payloads}
 
@@ -742,7 +716,7 @@ The resource decides what of the result it puts in the proposal and what it rele
 
 What `result` says also outlives the release decision. A person approving release learns what the agent is about to hold, and so does the PS: an agent granted a result carrying national identifiers is an agent that now holds them, and the PS evaluates its next token request in that knowledge. A PS MAY approve release into a mission and refuse the agent's subsequent request to send the same data to another resource. The PS is the only party positioned to make that judgment — it sees every request the agent makes across resources, where each resource sees only its own — and `result` is what gives it something to judge. This document defines no vocabulary for the members a resource states and requires no PS to act on them. The decision is governance, made against the mission ([@!I-D.hardt-oauth-aauth-protocol]), not enforcement at the resource.
 
-Budget accounting for a call that has been executed but not released is unresolved. A resource that meters by execution has spent what the call cost whether or not the result is released, and a person who declines release has drawn down a budget for nothing. This is the same shape as the accounting of failed calls, which AAuth Budgets ([@?I-D.hardt-aauth-budgets]) leaves open, and this document does not resolve it.
+A call whose execution is metered or billed is not a candidate for release gating: the rule above requires approval to precede it. Where a resource meters something other than execution and the person declines release, whether that call draws down a budget is the resource's metering policy, as it is for a failed call (AAuth Budgets [@?I-D.hardt-aauth-budgets], Failed Calls); whatever it meters, its record and counters MUST reflect.
 
 # Security Considerations
 
@@ -839,12 +813,13 @@ There are currently no known implementations.
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-aauth-r3-02
+  - Consistency pass against AAuth Protocol -11. The base-claim recitals in Resource Token Extensions and Auth Token Extensions are replaced by pointers to the protocol, since they had drifted twice; they also called the issuer an "Auth server", which is not a term. The access-mode ladder no longer rests on every request carrying an agent token, which -11 removed. The authorization endpoint example presents a person token. The single-use rule points at the protocol's Deferred Delivery rule for the retained result instead of restating it.
   - Resource token recital: `presented_jti` is the `jti` of the token the request carried, the person token or, on a per-call challenge, the auth token, and `ps` and `sub` are copied from that token. Follows AAuth Protocol -11, issue #152 there.
   - Rewrote Why Not RAR and the Comparison with RAR table. The argument led with directionality — RAR client-declared, R3 resource-declared — which is no longer the live counterposition: OAuth Transaction Authorization Challenge ([@?I-D.rosomakho-oauth-txn-challenge]) has the protected resource sign `authorization_details` in a challenge from which the AS derives the granted authorization details. The comparison is now against resource-declared RAR, and rests on content addressing, agent opacity, and carriage by reference. The complementary position is kept and restated.
   - Added Approving Release Rather Than Execution: for an operation with no side effects, a resource MAY run the call and seek approval to release the result rather than to execute. No wire change — `access_mode` stays `per-call` and the `202` deferred delivery already holds the invocation. The proposal then describes the actual result rather than inferring consequence from parameters, and there is nothing for the `401` comparison step to compare.
   - Added the OPTIONAL `result` member to the proposal document. Its presence signals that the resource has run the operation and is seeking approval to release the result; its resource-defined members describe what the result holds, which is what the PS judges the agent's next request against. The result itself is not carried, and no digest of it: the resource would be hashing bytes only it holds, which no reader of the proposal ever obtains to check it against.
   - `display` MUST state that the operation has run where the resource executed before seeking approval, and a resource MUST NOT execute before approval where execution is itself the audited, metered, or billed event. Also stated that the resource decides what of the result it puts in the proposal and what it releases — the same privacy control as for parameter digests, applied on the output side.
-  - Flagged, without resolving, budget accounting for a call executed but not released. Same shape as the open accounting of failed calls in AAuth Budgets ([@?I-D.hardt-aauth-budgets]).
+  - Budget accounting for a call executed but not released: a metered or billed execution is not a candidate for release gating, since approval MUST precede it; otherwise whether a declined release draws down a budget is the resource's metering policy, as for a failed call in AAuth Budgets ([@?I-D.hardt-aauth-budgets]).
   - Brought the base-claim recitals in Resource Token Extensions and Auth Token Extensions up to AAuth Protocol -11. The `agent` claim is gone from both tokens: a resource token now carries `ps`, `sub`, and `presented_jti`, and an auth token carries `ps` and a REQUIRED directed `sub`, with `mission_s256` OPTIONAL. The examples were updated to match, including the auth token's `sub`, which showed an email address where the value is an opaque directed identifier.
   - AS Processing required the AS to log "the agent identifier" against a resource token that no longer carries one. The step now names identifiers the AS actually holds — `ps`, `sub`, and `agent_jkt` from the resource token — and says where the agent identifier does come from: the `sub` of the `agent_token` the PS is REQUIRED to send on the PS-to-AS token request, or of the `subagent_token` where one is present. An AS reached any other way has no agent token and MUST NOT infer an agent identity.
   - R3 Document Access Restriction identified the entitled PS by the `ps` claim of the agent token. Under -11 an agent presents a person token in place of its agent token at the authorization endpoint, so the resource may never see an agent token, and that claim is OPTIONAL in any case. The entitled PS is now the issuer of the person token the resource verified, which is the REQUIRED `ps` claim of the resource token the resource itself issued.
