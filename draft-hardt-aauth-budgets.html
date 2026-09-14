@@ -1050,7 +1050,7 @@ svg {
 </tr></thead>
 <tfoot><tr>
 <td class="left">Hardt</td>
-<td class="center">Expires 12 March 2027</td>
+<td class="center">Expires 18 March 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1063,12 +1063,12 @@ svg {
 <dd class="internet-draft">draft-hardt-aauth-budgets-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-09-08" class="published">8 September 2026</time>
+<time datetime="2026-09-14" class="published">14 September 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Standards Track</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-03-12">12 March 2027</time></dd>
+<dd class="expires"><time datetime="2027-03-18">18 March 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1109,7 +1109,7 @@ svg {
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 12 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 18 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -2187,7 +2187,7 @@ AAuth-Budget: cost=221200
 <p id="section-13-1"><strong>Auth token expired.</strong> The budget expires with the token. The challenge is already-defined behavior: <code>401</code> with <code>AAuth-Requirement: requirement=auth-token; resource-token="..."</code>. What this document adds is what rides on it: the resource token's consumption record, issued at or after the expired token's <code>exp</code>, is that token's final figure and settles it exactly <a href="#settlement" class="auto internal xref">Section 14.4.1</a>. This challenge is the in-band moment the final record rides; a resource that omits it leaves the issuer to settle from a usage reading.<a href="#section-13-1" class="pilcrow">¶</a></p>
 <p id="section-13-2"><strong>Budget exhausted, token still valid.</strong> The same response. The base protocol already permits a resource to return <code>requirement=auth-token</code> with a new resource token to a request that already carries an auth token, when the request requires higher authorization than the current token provides, and requires agents to be prepared for step-up at any time. Budget exhaustion is that case, and the agent's action is identical either way: take the fresh resource token to its PS.<a href="#section-13-2" class="pilcrow">¶</a></p>
 <p id="section-13-3"><strong>Request exceeds the remainder.</strong> The budget has remainder, but this request's maximum cost exceeds it <a href="#overshoot" class="auto internal xref">Section 14.8</a>. The same <code>401</code> challenge, with <code>reason=insufficient-budget</code>. The agent has a second move here that exhaustion does not offer: lower the request's bound to fit the <code>remaining</code> reported beside the challenge, and retry on the token it already holds. The <code>required</code> member <a href="#required-member" class="auto internal xref">Section 13.2</a> is what makes that move a calculation rather than a search.<a href="#section-13-3" class="pilcrow">¶</a></p>
-<p id="section-13-4">A request refused under this section MUST NOT draw down the budget or appear in the record and counters. The resource declined to serve it; metering the refusal would make exhaustion self-perpetuating.<a href="#section-13-4" class="pilcrow">¶</a></p>
+<p id="section-13-4">A request refused under this section MUST NOT draw down the budget or appear in the record and counters. The resource declined to serve it; metering the refusal would make exhaustion self-perpetuating. A refusal therefore carries no <code>cost</code>; <code>required</code> <a href="#required-member" class="auto internal xref">Section 13.2</a> is the figure a refusal reports.<a href="#section-13-4" class="pilcrow">¶</a></p>
 <p id="section-13-5">The fresh resource token SHOULD carry the presented token's consumption record <a href="#budget-consumed" class="auto internal xref">Section 7.1</a>, its spend to date — the context for deciding whether to authorize more, and the figure that tells the issuer how much of the refused allocation was actually consumed.<a href="#section-13-5" class="pilcrow">¶</a></p>
 <div id="reason-parameter">
 <section id="section-13.1">
@@ -2199,7 +2199,7 @@ AAuth-Budget: cost=221200
 <pre>HTTP/1.1 401 Unauthorized
 AAuth-Requirement: requirement=auth-token;
     resource-token="eyJ..."; reason=budget-exhausted
-AAuth-Budget: cost=180000, remaining=0,
+AAuth-Budget: remaining=0,
     unit="USD", decimals=6
 
 </pre><a href="#section-13.1-2" class="pilcrow">¶</a>
@@ -2573,7 +2573,7 @@ Signature-Key: sig=jwks_uri;
         <h3 id="name-authorization-and-errors">
 <a href="#section-15.3" class="section-number selfRef">15.3. </a><a href="#name-authorization-and-errors" class="section-name selfRef">Authorization and Errors</a>
         </h3>
-<p id="section-15.3-1">The <code>jwks_uri</code> in the <code>Signature-Key</code> header names the caller, and is the value the response echoes as <code>aud</code>. A caller is a person server or an access server. The resource MUST only answer for values that have appeared in auth tokens it accepted whose <code>iss</code> or <code>ps</code> claim names the caller: for a PS, the tokens it issued in three-party access and the tokens carrying it as <code>ps</code> in four-party access; for an AS, the tokens it issued. This applies to thumbprints in <code>jkts</code> as much as to scope keys. <code>sub</code> is directed per PS, so one person server cannot even name another's subjects; <code>tenant</code>, <code>mission_s256</code>, and thumbprints are not directed, and this check is what stops a third party from querying them.<a href="#section-15.3-1" class="pilcrow">¶</a></p>
+<p id="section-15.3-1">The <code>jwks_uri</code> in the <code>Signature-Key</code> header identifies the caller's key set. The resource resolves it to the server identifier whose metadata publishes that <code>jwks_uri</code> — a person server's <code>aauth-person.json</code> or an access server's <code>aauth-access.json</code> — and that identifier is what the response carries as <code>aud</code> <a href="#usage-response" class="auto internal xref">Section 15.2</a>. A caller is a person server or an access server. The resource MUST only answer for values that have appeared in auth tokens it accepted whose <code>iss</code> or <code>ps</code> claim names the caller: for a PS, the tokens it issued in three-party access and the tokens carrying it as <code>ps</code> in four-party access; for an AS, the tokens it issued. This applies to thumbprints in <code>jkts</code> as much as to scope keys. <code>sub</code> is directed per PS, so one person server cannot even name another's subjects; <code>tenant</code>, <code>mission_s256</code>, and thumbprints are not directed, and this check is what stops a third party from querying them.<a href="#section-15.3-1" class="pilcrow">¶</a></p>
 <p id="section-15.3-2">An AS is entitled because it sizes allocations against a ceiling of its own <a href="#narrowing-chain" class="auto internal xref">Section 4.2</a> and is bound by <a href="#unreported-allocations" class="auto internal xref">Section 14.4</a> for them. An AS operated by the resource may take the same figures from the resource directly; the endpoint is for the AS that is not.<a href="#section-15.3-2" class="pilcrow">¶</a></p>
 <p id="section-15.3-3">A query for a scope key the resource does not recognize returns <code>200</code> with <code>usage</code> omitted; "never seen" and "nothing consumed" are deliberately indistinguishable, so that a query cannot be used to discover whether a person holds an account. Unrecognized thumbprints are handled differently and for a stated reason <a href="#per-key" class="auto internal xref">Section 15.2.2</a>.<a href="#section-15.3-3" class="pilcrow">¶</a></p>
 <p id="section-15.3-4"><code>invalid_request</code>, using the error response format of (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>), is returned for a body carrying more than one scope key, carrying neither a scope key nor <code>jkts</code>, or carrying a malformed value.<a href="#section-15.3-4" class="pilcrow">¶</a></p>

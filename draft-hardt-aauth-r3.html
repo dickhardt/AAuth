@@ -1048,7 +1048,7 @@ svg {
 </tr></thead>
 <tfoot><tr>
 <td class="left">Hardt</td>
-<td class="center">Expires 12 March 2027</td>
+<td class="center">Expires 18 March 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1061,12 +1061,12 @@ svg {
 <dd class="internet-draft">draft-hardt-aauth-r3-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-09-08" class="published">8 September 2026</time>
+<time datetime="2026-09-14" class="published">14 September 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Standards Track</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-03-12">12 March 2027</time></dd>
+<dd class="expires"><time datetime="2027-03-18">18 March 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1107,7 +1107,7 @@ svg {
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 12 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 18 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -2263,7 +2263,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
             <strong>Enforced completion.</strong> Under <code>202</code>, the resource executes the held call when a valid per-call auth token arrives at the pending URL; there are no parameters to verify, because the agent never re-sends the call. Under <code>401</code>, the agent retries the actual call with the per-call auth token, and the resource recovers the proposal from its store via <code>r3_s256</code> and MUST verify that the agent's actual parameters match the approved proposal: inline parameter values MUST be compared structurally (JSON value equality — member order and insignificant whitespace do not affect the result), and for any parameter represented as a digest the resource MUST verify that <code>BASE64URL(SHA-256(presented-value))</code> equals the stored <code>s256</code>, so the agent MUST present those values byte-identically. If anything differs, the resource MUST reject the call. An approval to email one recipient cannot be replayed against another.<a href="#section-10.2-1.3" class="pilcrow">¶</a>
 </li>
           <li id="section-10.2-1.4">
-            <strong>Single use.</strong> The grant is consumed by the call it approved, on either delivery. A resource MUST NOT execute more than one invocation under one per-call auth token: under <code>202</code>, completion consumes the pending record; under <code>401</code>, the resource MUST mark the stored proposal consumed when it executes the call. A repeated presentation of the same per-call auth token MUST be answered from the retained result of the executed call, not executed again — the first response can be lost in transit, and the agent cannot otherwise distinguish "not executed" from "executed, response lost". The resource SHOULD retain the result at least until the auth token's <code>exp</code>.<a href="#section-10.2-1.4" class="pilcrow">¶</a>
+            <strong>Single use.</strong> The grant is consumed by the call it approved, on either delivery. A resource MUST NOT execute more than one invocation under one per-call auth token: under <code>202</code>, completion consumes the pending record; under <code>401</code>, the resource MUST mark the stored proposal consumed when it executes the call. A repeated presentation of the same per-call auth token MUST be answered from the retained result of the executed call, not executed again — the first response can be lost in transit, and the agent cannot otherwise distinguish "not executed" from "executed, response lost". The resource SHOULD retain the result at least until the auth token's <code>exp</code>. The record is keyed by the auth token's <code>jti</code>: two grants that approve identical proposals are two records, each answered from its own result.<a href="#section-10.2-1.4" class="pilcrow">¶</a>
 </li>
         </ol>
 </section>
@@ -2308,7 +2308,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 </pre><a href="#section-10.4-8" class="pilcrow">¶</a>
 </div>
 <p id="section-10.4-9">What <code>result</code> says also outlives the release decision. A person approving release learns what the agent is about to hold, and so does the PS: an agent granted a result carrying national identifiers is an agent that now holds them, and the PS evaluates its next token request in that knowledge. A PS MAY approve release into a mission and refuse the agent's subsequent request to send the same data to another resource. The PS is the only party positioned to make that judgment — it sees every request the agent makes across resources, where each resource sees only its own — and <code>result</code> is what gives it something to judge. This document defines no vocabulary for the members a resource states and requires no PS to act on them. The decision is governance, made against the mission (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>), not enforcement at the resource.<a href="#section-10.4-9" class="pilcrow">¶</a></p>
-<p id="section-10.4-10">Budget accounting for a call that has been executed but not released is unresolved. A resource that meters by execution has spent what the call cost whether or not the result is released, and a person who declines release has drawn down a budget for nothing. This is the same shape as the accounting of failed calls, which AAuth Budgets (<span>[<a href="#I-D.hardt-aauth-budgets" class="cite xref">I-D.hardt-aauth-budgets</a>]</span>) leaves open, and this document does not resolve it.<a href="#section-10.4-10" class="pilcrow">¶</a></p>
+<p id="section-10.4-10">A call whose execution is metered or billed is not a candidate for release gating: the rule above requires approval to precede it. Where a resource meters something other than execution and the person declines release, whether that call draws down a budget is the resource's metering policy, as it is for a failed call (AAuth Budgets <span>[<a href="#I-D.hardt-aauth-budgets" class="cite xref">I-D.hardt-aauth-budgets</a>]</span>, Failed Calls); whatever it meters, its record and counters MUST reflect.<a href="#section-10.4-10" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>

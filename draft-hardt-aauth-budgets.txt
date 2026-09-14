@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                        8 September 2026
-Expires: 12 March 2027
+Intended status: Standards Track                       14 September 2026
+Expires: 18 March 2027
 
 
                              AAuth Budgets
@@ -51,7 +51,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 12 March 2027.
+   This Internet-Draft will expire on 18 March 2027.
 
 Copyright Notice
 
@@ -1107,7 +1107,9 @@ Table of Contents
 
    A request refused under this section MUST NOT draw down the budget or
    appear in the record and counters.  The resource declined to serve
-   it; metering the refusal would make exhaustion self-perpetuating.
+   it; metering the refusal would make exhaustion self-perpetuating.  A
+   refusal therefore carries no cost; required Section 13.2 is the
+   figure a refusal reports.
 
    The fresh resource token SHOULD carry the presented token's
    consumption record Section 7.1, its spend to date — the context for
@@ -1123,7 +1125,7 @@ Table of Contents
    HTTP/1.1 401 Unauthorized
    AAuth-Requirement: requirement=auth-token;
        resource-token="eyJ..."; reason=budget-exhausted
-   AAuth-Budget: cost=180000, remaining=0,
+   AAuth-Budget: remaining=0,
        unit="USD", decimals=6
 
    reason is a Token.  This document defines two values:
@@ -1755,17 +1757,20 @@ Table of Contents
 
 15.3.  Authorization and Errors
 
-   The jwks_uri in the Signature-Key header names the caller, and is the
-   value the response echoes as aud.  A caller is a person server or an
-   access server.  The resource MUST only answer for values that have
-   appeared in auth tokens it accepted whose iss or ps claim names the
-   caller: for a PS, the tokens it issued in three-party access and the
-   tokens carrying it as ps in four-party access; for an AS, the tokens
-   it issued.  This applies to thumbprints in jkts as much as to scope
-   keys. sub is directed per PS, so one person server cannot even name
-   another's subjects; tenant, mission_s256, and thumbprints are not
-   directed, and this check is what stops a third party from querying
-   them.
+   The jwks_uri in the Signature-Key header identifies the caller's key
+   set.  The resource resolves it to the server identifier whose
+   metadata publishes that jwks_uri — a person server's aauth-
+   person.json or an access server's aauth-access.json — and that
+   identifier is what the response carries as aud Section 15.2.  A
+   caller is a person server or an access server.  The resource MUST
+   only answer for values that have appeared in auth tokens it accepted
+   whose iss or ps claim names the caller: for a PS, the tokens it
+   issued in three-party access and the tokens carrying it as ps in
+   four-party access; for an AS, the tokens it issued.  This applies to
+   thumbprints in jkts as much as to scope keys. sub is directed per PS,
+   so one person server cannot even name another's subjects; tenant,
+   mission_s256, and thumbprints are not directed, and this check is
+   what stops a third party from querying them.
 
    An AS is entitled because it sizes allocations against a ceiling of
    its own Section 4.2 and is bound by Section 14.4 for them.  An AS

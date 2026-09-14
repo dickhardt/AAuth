@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                        8 September 2026
-Expires: 12 March 2027
+Intended status: Standards Track                       14 September 2026
+Expires: 18 March 2027
 
 
                    AAuth Rich Resource Requests (R3)
@@ -50,7 +50,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 12 March 2027.
+   This Internet-Draft will expire on 18 March 2027.
 
 Copyright Notice
 
@@ -1127,7 +1127,9 @@ Table of Contents
        executed again — the first response can be lost in transit, and
        the agent cannot otherwise distinguish "not executed" from
        "executed, response lost".  The resource SHOULD retain the result
-       at least until the auth token's exp.
+       at least until the auth token's exp.  The record is keyed by the
+       auth token's jti: two grants that approve identical proposals are
+       two records, each answered from its own result.
 
 10.3.  Large and Sensitive Payloads
 
@@ -1228,13 +1230,13 @@ Table of Contents
    decision is governance, made against the mission
    ([I-D.hardt-oauth-aauth-protocol]), not enforcement at the resource.
 
-   Budget accounting for a call that has been executed but not released
-   is unresolved.  A resource that meters by execution has spent what
-   the call cost whether or not the result is released, and a person who
-   declines release has drawn down a budget for nothing.  This is the
-   same shape as the accounting of failed calls, which AAuth Budgets
-   ([I-D.hardt-aauth-budgets]) leaves open, and this document does not
-   resolve it.
+   A call whose execution is metered or billed is not a candidate for
+   release gating: the rule above requires approval to precede it.
+   Where a resource meters something other than execution and the person
+   declines release, whether that call draws down a budget is the
+   resource's metering policy, as it is for a failed call (AAuth Budgets
+   [I-D.hardt-aauth-budgets], Failed Calls); whatever it meters, its
+   record and counters MUST reflect.
 
 11.  Security Considerations
 

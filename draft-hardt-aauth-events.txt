@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                        8 September 2026
-Expires: 12 March 2027
+Intended status: Standards Track                       14 September 2026
+Expires: 18 March 2027
 
 
                               AAuth Events
@@ -47,7 +47,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 12 March 2027.
+   This Internet-Draft will expire on 18 March 2027.
 
 Copyright Notice
 
@@ -907,9 +907,14 @@ Table of Contents
       issuing and using the ticket).
    *  Single-use (the resource invalidates the ticket on first
       successful subscription registration).
-   *  Bound to the agent that triggered the prior interaction (the
-      resource MUST verify that sub in the subscribe token matches the
-      agent that established the ticket).
+   *  Bound to the signing key that established the ticket.  No token
+      the resource verified when it issued the ticket carries an agent
+      identifier ([I-D.hardt-oauth-aauth-protocol]); what it verified is
+      the key in cnf.  The resource MUST record the JWK Thumbprint of
+      that key with the ticket, and MUST verify that the thumbprint of
+      the subscribe token's cnf.jwk equals it when the ticket is used.
+      The subscribe token's sub names the agent to its AP for delivery;
+      it is not what binds the ticket.
 
 12.6.  AP as Delivery Intermediary
 
