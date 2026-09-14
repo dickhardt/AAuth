@@ -495,7 +495,7 @@ This section defines agent identity — how agents are identified and how that i
 
 ## Agent Identifiers
 
-Agent identifiers are URIs using the `aauth` scheme, of the form `aauth:local@domain` where `domain` is the agent provider's domain. The `local` part MUST consist of lowercase ASCII letters (`a-z`), digits (`0-9`), hyphen (`-`), underscore (`_`), plus (`+`), and period (`.`). The `local` part MUST NOT be empty and MUST NOT exceed 255 characters. The `domain` part MUST be a valid domain name conforming to the server identifier requirements (#server-identifiers) (without scheme).
+Agent identifiers are URIs using the `aauth` scheme, of the form `aauth:local@domain` where `domain` is the agent provider's domain. The `local` part MUST consist of ASCII letters (`A-Za-z`), digits (`0-9`), hyphen (`-`), underscore (`_`), plus (`+`), and period (`.`). The `local` part MUST NOT be empty and MUST NOT exceed 255 characters. The `domain` part MUST be a valid domain name conforming to the server identifier requirements (#server-identifiers) (without scheme).
 
 The plus character (`+`) is RESERVED as the sub-agent delimiter (#sub-agents). A top-level agent's `local` part MUST NOT contain `+`. A sub-agent's `local` part MUST be its parent's `local` part, followed by `+`, followed by a non-empty discriminator (for example, `planner.7f3c+search1`). This naming is for operational readability only — a sub-agent's identifier shows its parent at a glance in logs. Parties MUST NOT parse the `local` part for protocol decisions; the `parent_agent` claim (#sub-agents) is the authoritative sub-agent marker and names the parent.
 
@@ -507,11 +507,11 @@ Valid agent identifiers:
 
 Invalid agent identifiers:
 
-- `My Agent@agent.example` (uppercase letters and space in local part)
+- `My Agent@agent.example` (space in local part)
 - `@agent.example` (empty local part)
 - `agent@http://agent.example` (domain includes scheme)
 
-Implementations MUST perform exact string comparison on agent identifiers (case-sensitive).
+Implementations MUST perform exact string comparison on agent identifiers (case-sensitive): `aauth:Agent@agent.example` and `aauth:agent@agent.example` are different agents, and an implementation MUST NOT case-fold the `local` part.
 
 ## Agent Token {#agent-tokens}
 
@@ -3253,6 +3253,7 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-11
+  - The agent identifier `local` part accepts uppercase ASCII letters. Comparison was already exact and case-sensitive, so the lowercase-only rule protected nothing and excluded base62 identifiers such as a provider's own opaque ids; an implementation MUST NOT case-fold the `local` part (issue #164).
   - Added the person token (`aa-person+jwt`): issued by a PS to identify the person to one resource, presented in the `Signature-Key` header in place of the agent token, lifetime capped at one hour and at the mission's `expires_at`. It carries no authorization, but a resource MAY serve on identity alone, so the consent question at first issuance is whether the agent may act at the resource as the person. Added `person_token_endpoint` (REQUIRED) taking `resource`, `mission_s256`, `subagent_token`, and `upstream_token`; `requirement=person-token`; the `invalid_account` authorization endpoint error; the PS's retention obligation for revocation (issue #87); and the assurance floor — continuity, not identity proofing (issue #97).
   - Five resource access modes: agent identity, resource-managed, person identity, PS authorization, and federated authorization. A resource MAY apply different modes to different endpoints and states a per-operation mode through R3 annotations. Established the AAuth Access Mode Value Registry (`agent-token`, `person-token`, `session-token`, `auth-token`; R3 adds `per-call`). Renamed `token_endpoint` to `auth_token_endpoint` and named the credential of resource-managed access the session token.
   - A resource MUST verify a person token or auth token before issuing a resource token, and answers a request carrying neither with `requirement=person-token`. The resource token carries `ps`, `sub`, and `presented_jti` copied from the verified token, and `agent_jkt`; no token a resource issues or reads carries an agent identifier, and `act` is gone from auth tokens. Auth tokens carry `ps` and a REQUIRED directed `sub`; `sub` is unique within its issuer, `(iss, sub)` is the identifier, and `tenant` is organizational context. Resource policy keyed on the agent identifier holds only in the two-party modes.
