@@ -3553,17 +3553,25 @@ Table of Contents
        holds a revocation for it Section 12.7.
    2.  Verify the issuer.  At the PS: a person token's iss MUST be this
        PS; an auth token's ps MUST be this PS, and its iss MUST be this
-       PS or an AS this PS obtained an auth token from.  At the AS: a
-       person token's iss, or an auth token's ps, MUST be the PS that
-       signed the request.  The AS does not check an auth token's iss
-       beyond verifying its signature; the PS has already done so.
+       PS or an AS this PS presented a person token to for that token's
+       aud and sub Section 10.1.1.  At the AS: a person token's iss, or
+       an auth token's ps, MUST be the PS that signed the request.  The
+       AS does not check an auth token's iss beyond verifying its
+       signature; the PS has already done so.
    3.  Verify the upstream token's aud equals the iss of the
        intermediary's agent token.  The intermediary is its own agent
        provider Section 11.1.1.1, so this is the one comparison that
        ties the token the calling agent presented to the party now
        making the downstream request.  A mismatch is rejected with
        invalid_upstream_token.
-   4.  The PS evaluates the request against the mission and its
+   4.  At the PS, identify the calling agent from its own records: the
+       agent it issued the upstream person token to, or the one it
+       issued the person token to that the upstream auth token was
+       obtained with.  If the PS has revoked that agent's agent token or
+       its binding to the person Section 14.14, it MUST reject the
+       request with revoked_upstream_token, whether or not it has
+       revoked the upstream token itself.
+   5.  The PS evaluates the request against the mission and its
        supervision policy, based on the upstream token's claims and
        mission context.  The resulting downstream authorization is not
        required to be a subset of any upstream authorization — see
@@ -3738,8 +3746,11 @@ Table of Contents
 11.2.1.  Sub-Agent Identity
 
    A sub-agent has its own agent identity — its own aauth:local@domain
-   identifier and signing key, issued by the agent provider, exactly
-   like a top-level agent.  Two things distinguish it:
+   identifier and signing key, issued by its parent's agent provider,
+   exactly like a top-level agent.  The iss of a sub-agent's agent token
+   MUST equal the iss of its parent's, and a PS MUST reject a
+   subagent_token whose iss differs from that of the signing agent's
+   token with invalid_subagent_token.  Two things distinguish it:
 
    *  *parent_agent claim*: the sub-agent's agent token includes
       parent_agent set to the parent agent's identifier.  Its presence
@@ -4396,128 +4407,131 @@ Initial request (with Prefer: wait=N)
 
 12.6.3.  Token Endpoint Error Codes
 
-   +=========================+========+===============================+
-   | Error                   | Status | Meaning                       |
-   +=========================+========+===============================+
-   | invalid_request         | 400    | Malformed JSON, missing       |
-   |                         |        | required fields               |
-   +-------------------------+--------+-------------------------------+
-   | invalid_resource_token  | 400    | Resource token malformed or   |
-   |                         |        | signature verification failed |
-   +-------------------------+--------+-------------------------------+
-   | expired_resource_token  | 400    | Resource token has expired    |
-   +-------------------------+--------+-------------------------------+
-   | revoked_resource_token  | 400    | The resource that issued the  |
-   |                         |        | resource token has withdrawn  |
-   |                         |        | it Section 12.7.  Terminal    |
-   |                         |        | for that token: the agent     |
-   |                         |        | MUST NOT resubmit it, and MAY |
-   |                         |        | call the resource again,      |
-   |                         |        | which decides afresh whether  |
-   |                         |        | to issue another.             |
-   +-------------------------+--------+-------------------------------+
-   | invalid_presented_token | 400    | Presented token malformed,    |
-   |                         |        | signature verification        |
-   |                         |        | failed, or its typ is neither |
-   |                         |        | a person token nor an auth    |
-   |                         |        | token Section 7.8.2           |
-   +-------------------------+--------+-------------------------------+
-   | expired_presented_token | 400    | The presented token has       |
-   |                         |        | expired.  Returned by a PS,   |
-   |                         |        | and by an AS Section 10.1.1.  |
-   |                         |        | The agent obtains a fresh     |
-   |                         |        | person token, then a fresh    |
-   |                         |        | resource token.               |
-   +-------------------------+--------+-------------------------------+
-   | revoked_presented_token | 400    | The presented token has been  |
-   |                         |        | revoked by the server that    |
-   |                         |        | issued it Section 12.7.       |
-   |                         |        | Returned by a PS, and by an   |
-   |                         |        | AS holding the revocation.    |
-   |                         |        | The agent obtains a fresh     |
-   |                         |        | person token, then a fresh    |
-   |                         |        | resource token.               |
-   +-------------------------+--------+-------------------------------+
-   | invalid_upstream_token  | 400    | Upstream token malformed,     |
-   |                         |        | signature verification        |
-   |                         |        | failed, or its aud is not the |
-   |                         |        | requesting intermediary       |
-   |                         |        | Section 10.4.5                |
-   +-------------------------+--------+-------------------------------+
-   | expired_upstream_token  | 400    | The upstream token has        |
-   |                         |        | expired.  The intermediary    |
-   |                         |        | cannot renew it; the calling  |
-   |                         |        | agent must re-authorize at    |
-   |                         |        | the intermediary.             |
-   +-------------------------+--------+-------------------------------+
-   | revoked_upstream_token  | 400    | The upstream token has been   |
-   |                         |        | revoked by the server that    |
-   |                         |        | issued it Section 12.7.       |
-   |                         |        | Terminal for that token.      |
-   +-------------------------+--------+-------------------------------+
-   | invalid_subagent_token  | 400    | Sub-agent token malformed,    |
-   |                         |        | signature verification        |
-   |                         |        | failed, or its parent_agent   |
-   |                         |        | does not name the signing     |
-   |                         |        | agent Section 11.2            |
-   +-------------------------+--------+-------------------------------+
-   | expired_subagent_token  | 400    | The sub-agent token has       |
-   |                         |        | expired.  The parent obtains  |
-   |                         |        | a fresh one for the sub-      |
-   |                         |        | agent.                        |
-   +-------------------------+--------+-------------------------------+
-   | revoked_subagent_token  | 400    | The sub-agent token has been  |
-   |                         |        | revoked by its agent provider |
-   |                         |        | Section 12.7.  Terminal for   |
-   |                         |        | that token.                   |
-   +-------------------------+--------+-------------------------------+
-   | clock_skew              | 400    | A token carried as a request  |
-   |                         |        | parameter has an iat further  |
-   |                         |        | ahead of the verifier's clock |
-   |                         |        | than the signature validity   |
-   |                         |        | window Section 8.9.1.         |
-   |                         |        | Nothing about the token is    |
-   |                         |        | wrong; the issuer's clock and |
-   |                         |        | the verifier's disagree.  A   |
-   |                         |        | fresh token from the same     |
-   |                         |        | issuer carries the same skew, |
-   |                         |        | so the agent does not         |
-   |                         |        | refresh; it MAY present the   |
-   |                         |        | same token again once its iat |
-   |                         |        | is within the window — the    |
-   |                         |        | response's Date header says   |
-   |                         |        | how far the clocks are apart  |
-   |                         |        | — or surfaces the error.      |
-   +-------------------------+--------+-------------------------------+
-   | user_unreachable        | 403    | Terminal.  The PS has no      |
-   |                         |        | channel to reach the user and |
-   |                         |        | the agent did not declare the |
-   |                         |        | interaction capability, so    |
-   |                         |        | the user cannot be reached at |
-   |                         |        | all.  The non-terminal "user  |
-   |                         |        | action is needed" case uses a |
-   |                         |        | 202 with                      |
-   |                         |        | requirement=interaction       |
-   |                         |        | Section 12.4, not this error. |
-   +-------------------------+--------+-------------------------------+
-   | as_unreachable          | 502    | PS token endpoint only.  The  |
-   |                         |        | PS could not obtain an auth   |
-   |                         |        | token from the access server  |
-   |                         |        | named by the resource token's |
-   |                         |        | aud: connection failure,      |
-   |                         |        | timeout, a malformed          |
-   |                         |        | response, or an auth token    |
-   |                         |        | that fails delivery           |
-   |                         |        | verification Section 10.1.3.  |
-   |                         |        | The agent MAY retry with a    |
-   |                         |        | fresh resource token after a  |
-   |                         |        | backoff.  Distinct from an AS |
-   |                         |        | denial, which the PS relays.  |
-   +-------------------------+--------+-------------------------------+
-   | server_error            | 500    | Internal error                |
-   +-------------------------+--------+-------------------------------+
+    +=========================+======+================================+
+    | Error                   |Status| Meaning                        |
+    +=========================+======+================================+
+    | invalid_request         |400   | Malformed JSON, missing        |
+    |                         |      | required fields                |
+    +-------------------------+------+--------------------------------+
+    | invalid_resource_token  |400   | Resource token malformed or    |
+    |                         |      | signature verification failed  |
+    +-------------------------+------+--------------------------------+
+    | expired_resource_token  |400   | Resource token has expired     |
+    +-------------------------+------+--------------------------------+
+    | revoked_resource_token  |400   | The resource that issued the   |
+    |                         |      | resource token has withdrawn   |
+    |                         |      | it Section 12.7.  Terminal for |
+    |                         |      | that token: the agent MUST NOT |
+    |                         |      | resubmit it, and MAY call the  |
+    |                         |      | resource again, which decides  |
+    |                         |      | afresh whether to issue        |
+    |                         |      | another.                       |
+    +-------------------------+------+--------------------------------+
+    | invalid_presented_token |400   | Presented token malformed,     |
+    |                         |      | signature verification failed, |
+    |                         |      | or its typ is neither a person |
+    |                         |      | token nor an auth token        |
+    |                         |      | Section 7.8.2                  |
+    +-------------------------+------+--------------------------------+
+    | expired_presented_token |400   | The presented token has        |
+    |                         |      | expired.  Returned by a PS,    |
+    |                         |      | and by an AS Section 10.1.1.   |
+    |                         |      | The agent obtains a fresh      |
+    |                         |      | person token, then a fresh     |
+    |                         |      | resource token.                |
+    +-------------------------+------+--------------------------------+
+    | revoked_presented_token |400   | The presented token has been   |
+    |                         |      | revoked by the server that     |
+    |                         |      | issued it Section 12.7.        |
+    |                         |      | Returned by a PS, and by an AS |
+    |                         |      | holding the revocation.  The   |
+    |                         |      | agent obtains a fresh person   |
+    |                         |      | token, then a fresh resource   |
+    |                         |      | token.                         |
+    +-------------------------+------+--------------------------------+
+    | invalid_upstream_token  |400   | Upstream token malformed,      |
+    |                         |      | signature verification failed, |
+    |                         |      | or its aud is not the          |
+    |                         |      | requesting intermediary        |
+    |                         |      | Section 10.4.5                 |
+    +-------------------------+------+--------------------------------+
+    | expired_upstream_token  |400   | The upstream token has         |
+    |                         |      | expired.  The intermediary     |
+    |                         |      | cannot renew it; the calling   |
+    |                         |      | agent must re-authorize at the |
+    |                         |      | intermediary.                  |
+    +-------------------------+------+--------------------------------+
+    | revoked_upstream_token  |400   | The upstream token has been    |
+    |                         |      | revoked by the server that     |
+    |                         |      | issued it, or the PS has       |
+    |                         |      | revoked the calling agent's    |
+    |                         |      | agent token or its binding to  |
+    |                         |      | the person (#token-revocation, |
+    |                         |      | #upstream-token-verification). |
+    |                         |      | Terminal for that token.       |
+    +-------------------------+------+--------------------------------+
+    | invalid_subagent_token  |400   | Sub-agent token malformed,     |
+    |                         |      | signature verification failed, |
+    |                         |      | its parent_agent does not name |
+    |                         |      | the signing agent, or its iss  |
+    |                         |      | is not the signing agent's     |
+    |                         |      | Section 11.2                   |
+    +-------------------------+------+--------------------------------+
+    | expired_subagent_token  |400   | The sub-agent token has        |
+    |                         |      | expired.  The parent obtains a |
+    |                         |      | fresh one for the sub-agent.   |
+    +-------------------------+------+--------------------------------+
+    | revoked_subagent_token  |400   | The sub-agent token has been   |
+    |                         |      | revoked by its agent provider  |
+    |                         |      | Section 12.7.  Terminal for    |
+    |                         |      | that token.                    |
+    +-------------------------+------+--------------------------------+
+    | clock_skew              |400   | A token carried as a request   |
+    |                         |      | parameter has an iat further   |
+    |                         |      | ahead of the verifier's clock  |
+    |                         |      | than the signature validity    |
+    |                         |      | window Section 8.9.1.  Nothing |
+    |                         |      | about the token is wrong; the  |
+    |                         |      | issuer's clock and the         |
+    |                         |      | verifier's disagree.  A fresh  |
+    |                         |      | token from the same issuer     |
+    |                         |      | carries the same skew, so the  |
+    |                         |      | agent does not refresh; it MAY |
+    |                         |      | present the same token again   |
+    |                         |      | once its iat is within the     |
+    |                         |      | window — the response's Date   |
+    |                         |      | header says how far the clocks |
+    |                         |      | are apart — or surfaces the    |
+    |                         |      | error.                         |
+    +-------------------------+------+--------------------------------+
+    | user_unreachable        |403   | Terminal.  The PS has no       |
+    |                         |      | channel to reach the user and  |
+    |                         |      | the agent did not declare the  |
+    |                         |      | interaction capability, so the |
+    |                         |      | user cannot be reached at all. |
+    |                         |      | The non-terminal "user action  |
+    |                         |      | is needed" case uses a 202     |
+    |                         |      | with requirement=interaction   |
+    |                         |      | Section 12.4, not this error.  |
+    +-------------------------+------+--------------------------------+
+    | as_unreachable          |502   | PS token endpoint only.  The   |
+    |                         |      | PS could not obtain an auth    |
+    |                         |      | token from the access server   |
+    |                         |      | named by the resource token's  |
+    |                         |      | aud: connection failure,       |
+    |                         |      | timeout, a malformed response, |
+    |                         |      | or an auth token that fails    |
+    |                         |      | delivery verification          |
+    |                         |      | Section 10.1.3.  The agent MAY |
+    |                         |      | retry with a fresh resource    |
+    |                         |      | token after a backoff.         |
+    |                         |      | Distinct from an AS denial,    |
+    |                         |      | which the PS relays.           |
+    +-------------------------+------+--------------------------------+
+    | server_error            |500   | Internal error                 |
+    +-------------------------+------+--------------------------------+
 
-                                 Table 12
+                                  Table 12
 
    The token that signs the request — the agent token in the Signature-
    Key header — has no codes in this table.  When it fails, the
@@ -6784,9 +6798,13 @@ Initial request (with Prefer: wait=N)
          token's mission_s256 into the downstream person token, so the
          mission reaches the chain; before, the PS evaluated against it
          but no downstream token carried it.  The PS verifies an
-         upstream auth token's iss is itself or an AS it obtained an
-         auth token from; the AS checks only that the upstream token
-         names the PS that signed the request.
+         upstream auth token's iss is itself or an AS it presented a
+         person token to for that aud and sub; the AS checks only that
+         the upstream token names the PS that signed the request.  The
+         PS rejects a chain whose calling agent's agent token or person
+         binding it has revoked, with revoked_upstream_token.  A sub-
+         agent's agent token iss MUST equal its parent's, checked with
+         invalid_subagent_token.
       -  Intermediary Agent Identity: an intermediary MUST be its own
          agent provider, with aauth-agent.json on its own origin, issuer
          equal to its resource issuer, and a self-issued agent token.
