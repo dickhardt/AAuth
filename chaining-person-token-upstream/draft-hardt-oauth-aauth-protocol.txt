@@ -1749,9 +1749,12 @@ Table of Contents
    issued.  The PS resolves the person from its own record for that
    resource and sub.  A PS that holds no such record MUST reject the
    request.  When the upstream token carries mission_s256, the PS
-   evaluates the request against that mission Section 11.1.1; it belongs
-   to the calling agent, not to the intermediary, and the intermediary
-   does not send mission_s256 of its own.
+   evaluates the request against that mission Section 11.1.1 and copies
+   mission_s256 into the person token it issues, so the resource token
+   and auth token downstream carry it too and the mission's expires_at
+   and termination reach the chain.  The mission belongs to the calling
+   agent, not to the intermediary, and the intermediary does not send
+   mission_s256 of its own.
 
    A PS SHOULD rate-limit the number of distinct resource values it
    accepts from one agent; each obliges it to derive and retain a
@@ -3548,10 +3551,12 @@ Table of Contents
        rejected with invalid_upstream_token, expired_upstream_token when
        only exp fails, or revoked_upstream_token when the recipient
        holds a revocation for it Section 12.7.
-   2.  Verify the issuer.  A person token's iss MUST be the PS handling
-       the chain: the PS itself, or at the AS the PS that signed the
-       request.  An auth token's ps MUST name that PS, and its iss MUST
-       be that PS or an AS the PS federated with to obtain it.
+   2.  Verify the issuer.  At the PS: a person token's iss MUST be this
+       PS; an auth token's ps MUST be this PS, and its iss MUST be this
+       PS or an AS this PS obtained an auth token from.  At the AS: a
+       person token's iss, or an auth token's ps, MUST be the PS that
+       signed the request.  The AS does not check an auth token's iss
+       beyond verifying its signature; the PS has already done so.
    3.  Verify the upstream token's aud equals the iss of the
        intermediary's agent token.  The intermediary is its own agent
        provider Section 11.1.1.1, so this is the one comparison that
@@ -3598,7 +3603,10 @@ Table of Contents
    later than the upstream token Section 6.1, and so does an auth token
    issued on a request carrying one Section 10.4.1.  Once the upstream
    token has expired the intermediary uses a later token from the
-   calling agent, which it receives on the agent's next request.
+   calling agent, which it receives on the agent's next request.  A
+   pending downstream request Section 12.5 whose upstream token expires
+   before it completes ends with expired Section 12.6.4, and the
+   intermediary starts over with a later upstream token.
 
    The intermediary routes the downstream token requests to the person
    server the upstream token names: the iss of a person token, the ps of
@@ -6771,7 +6779,14 @@ Initial request (with Prefer: wait=N)
          until it expires, and downstream access does not outlive it: a
          person token issued with upstream_token, and an auth token
          issued on a request carrying one, expire no later than the
-         upstream token.
+         upstream token; a pending downstream request whose upstream
+         token expires ends with expired.  The PS copies the upstream
+         token's mission_s256 into the downstream person token, so the
+         mission reaches the chain; before, the PS evaluated against it
+         but no downstream token carried it.  The PS verifies an
+         upstream auth token's iss is itself or an AS it obtained an
+         auth token from; the AS checks only that the upstream token
+         names the PS that signed the request.
       -  Intermediary Agent Identity: an intermediary MUST be its own
          agent provider, with aauth-agent.json on its own origin, issuer
          equal to its resource issuer, and a self-issued agent token.
