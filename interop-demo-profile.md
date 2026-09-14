@@ -37,7 +37,7 @@ The PS validates that the mission exists, is active, and belongs to this agent, 
 
 The agent presents it to the resource via `Signature-Key: sig=jwt;jwt="<person token>"` in place of its agent token, with an HTTP Message Signature covering at minimum `@method`, `@authority`, `@path`, and `signature-key`.
 
-A resource MUST have verified a person token before it issues a resource token, and copies `ps`, `sub`, `mission_s256`, and the person token's `jti` into the resource token it issues.
+A resource must have verified a person token before it issues a resource token, and copies `ps`, `sub`, `mission_s256`, and the person token's `jti` into the resource token it issues.
 
 **What to verify:** the person token's `cnf.jwk` matches the key that signed the request; the resource token's `ps`, `sub`, and `mission_s256` match the person token, and `presented_jti` names it. This can be confirmed locally by decoding both JWTs — no live AS required.
 
