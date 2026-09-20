@@ -756,7 +756,7 @@ An agent that understands the `reason` values knows what to do beyond re-authori
 
 ## Boundaries {#exhaustion-boundaries}
 
-`429 Too Many Requests` is not used. It is rate limiting, and in this protocol it already means "increase the polling interval by 5 seconds" in the deferred response state machine.
+`429 Too Many Requests` is not used by this document. The base protocol gives it two meanings already — `slow_down` on a pending URL, which asks a polling agent to lengthen its interval, and `rate_limited` at a revocation endpoint, which refuses work a caller has sent too much of ([@!I-D.hardt-oauth-aauth-protocol]). Neither is a budget condition. A budget refusal is about what the next request would cost, not about how often requests arrive, and the agent answers it by re-authorizing rather than by waiting.
 
 `402 Payment Required` is a different condition: the resource needs payment rather than re-authorization from the person. The base protocol already permits `AAuth-Requirement` on a `402`, and this document does not change that.
 
@@ -778,7 +778,7 @@ Where the resource holds the authorization state itself rather than reading it f
 
 A budget is scoped to the auth token that carries it and expires with it. There is no persistent grant identifier and no requirement that the PS carry a budget across re-issuance. This is the mechanism, not a gap: re-issuance is where the PS re-decides (#ps-decision), and a budget that survived it would be a standing grant the PS no longer sizes.
 
-The budget is revoked with the token. A PS and an AS SHOULD provide a revocation endpoint, and revoking an auth token by `(iss, jti)` ([@!I-D.hardt-oauth-aauth-protocol], Token Revocation) ends its budget along with the rest of its authorization. Consumption already committed is unaffected — a budget is a ceiling on spending, not a claim on what was spent — and a request already in flight completes, because revocation stops a token being used again rather than interrupting a call. This document adds nothing to that mechanism; it is named here because a person hitting stop expects the money to stop, and expiry alone bounds that at an hour.
+The budget is revoked with the token. A PS and an AS SHOULD provide a revocation endpoint, and revoking an auth token by `(iss, jti)` ([@!I-D.hardt-oauth-aauth-protocol], Token Revocation) ends its budget along with the rest of its authorization. Consumption already committed is unaffected — a budget is a ceiling on spending, not a claim on what was spent — and a request already in flight completes, because revocation stops a token being used again rather than interrupting a call. This document adds nothing to that mechanism; it is named here because a person hitting stop expects the money to stop, and expiry alone bounds that at an hour. What a revocation means for the issuer's own accounting — when the allocation it reserved can be released — is (#settlement).
 
 Two conditions return the agent to the PS, and either is sufficient. The auth token expires, which the base protocol caps at one hour. Or its budget is exhausted (#exhaustion), which happens after however much work it took to spend. Expiry is proportional to time and exhaustion is proportional to spend, so the supervision interval tracks whichever is moving faster: a mission running cheaply reports on the hour, one running expensively reports in minutes, and no party configures the difference.
 
@@ -803,6 +803,14 @@ A usage reading settles every allocation, in aggregate. The issuer takes the per
     free = ceiling − metered − Σ amount of every allocation not yet settled
 
 where `metered` is the person's counter — `all_time` for a standing ceiling, the matching calendar counter for a calendar one — and an allocation is settled by the reading once its `exp` is at or before `as_of`. A settled allocation needs no figure of its own: whatever it consumed is inside `metered`, and it is no longer reserved. The only over-count in `free` is consumption under still-live tokens, present in both terms; it vanishes as each expires and the next reading covers it. The per-token figure in a consumption record refines the issuer's picture of a live allocation between readings; it does not settle it.
+
+A revoked token is not an early `exp`. Revocation stops the spending; it does not by itself release the reservation, because the figure for what was spent still arrives with the next reading. What it does is move the moment after which no more can be spent, and the issuer learns whether that moment exists from the revocation's own answer: a recipient answers once its cascade is terminal, and an AS reports each resource's outcome in `downstream` ([@!I-D.hardt-oauth-aauth-protocol], Token Revocation). Three outcomes, three answers:
+
+- **Recorded at the resource.** Nothing further can be spent on that token. The allocation is settled by the first usage reading whose `as_of` is at or after the revocation was recorded, rather than the first one at or after `exp` — the same rule as any other settlement, since whatever was spent is inside `metered` by then.
+- **`revocation_unsupported`.** The resource honors the token until `exp`. The allocation stays reserved until `exp` and settles as it would have without the revocation.
+- **`revocation_unavailable`.** The issuer cannot tell which of the two it has, so it holds the allocation reserved until `exp` and MAY revoke again later.
+
+An issuer that treated every revocation as an immediate settlement would release headroom that a resource with no revocation endpoint is still spending against, which is (#unreported-allocations) in reverse and has the error mode that section rules out.
 
 An issuer whose ceiling is per calendar period SHOULD set each allocation's `exp` no later than the period boundary. No allocation then straddles two periods, every allocation of a period has expired when the period ends, and the period settles without a query. The cost is that a token issued near the boundary is short. The calendar counters have no sub-day period (#calendar-counters); an issuer with an hourly ceiling and clipped allocations never needs one, and an issuer with a trailing window settles from differences of successive `all_time` readings.
 
@@ -1022,7 +1030,7 @@ The two issuer-facing channels answer different questions at different moments. 
 
 # Capability Negotiation {#capability}
 
-This document adds `budget` to the AAuth Capability Value Registry. An agent that understands budget semantics — the `budget` claim, the `AAuth-Budget` header, and the `reason` values (#reason-parameter) — SHOULD include `budget` in its `AAuth-Capabilities` request header, and in the `capabilities` parameter of its PS token requests:
+This document adds `budget` to the AAuth Capability Value Registry. An agent that understands budget semantics — the `budget` claim, the `AAuth-Budget` header, and the `reason` values (#reason-parameter) — SHOULD include `budget` in its `AAuth-Capabilities` request header, and in the `capabilities` parameter of its person token and auth token requests ([@!I-D.hardt-oauth-aauth-protocol]). The person token request is where a budget-aware agent first reaches its PS about a resource, so it is where the declaration first matters:
 
 ```http
 AAuth-Capabilities: interaction, clarification, budget
@@ -1166,6 +1174,9 @@ This document has not been submitted to the datatracker. Everything below is a c
 
 ## Exploratory Changes {#exploratory-changes}
 
+- Settlement of a revoked auth token (#settlement): a revoked token is not an early `exp`. Where the base protocol's cascade reports the revocation as recorded at the resource, the allocation settles at the first usage reading whose `as_of` is at or after that moment; where it reports `revocation_unsupported` the resource honors the token to `exp` and the allocation stays reserved; where it reports `revocation_unavailable` the issuer cannot tell and holds the reservation to `exp`. The `downstream` report added to the base protocol's Token Revocation is what makes the three distinguishable. Issue #151.
+- (#exhaustion-boundaries) no longer says `429` means only "increase the polling interval by 5 seconds" in this protocol: the base protocol now also uses it for `rate_limited` at a revocation endpoint. Neither meaning is a budget condition, which is the point the paragraph was making.
+- An agent declares the `budget` capability in the `capabilities` parameter of its person token request as well as its auth token request, following the base protocol's addition of that parameter to the person token endpoint.
 - Updated Implementation Status: Regent Protocol is in production at get4agent.com, and its `regent-httpsig` middleware publishes test vectors. Addresses issue #127.
 
 - Consistency pass against the family (2026-09-13). Removed the expired-token challenge from (#exhaustion): a resource issues a resource token only on a valid person token or auth token, an expired auth token is answered `expired_jwt`, and the agent re-authorizes with a person token, so no resource token can name an expired token and no final consumption record rides on expiry. A consumption record is therefore always a snapshot, and the usage reading settles every allocation (#settlement); the exhausted and insufficient challenges are unchanged. An earlier entry had the resource tolerate an expired auth token solely to issue that challenge, which the base protocol does not permit. Also: the usage endpoint's `Signature-Key` examples and prose use the jwks_uri scheme's actual parameters (`id`, `dwk`, `kid`), with the caller's role read from `dwk`; the PS-to-AS example carries the REQUIRED `presented_token`; the authorization endpoint example presents a person token; revocation endpoints are RECOMMENDED per the base protocol; the resource metadata count is one endpoint; the header sending rule is stated as SHOULD in the rationale as in the rule; trailer rules are referenced as such; protocol citations no longer carry doubled parentheses; the section is titled Auth Token Endpoint Extensions after the base protocol's rename.
