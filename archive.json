@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-09-17T00:08:36.528914+00:00",
+  "timestamp": "2026-09-20T00:10:26.159071+00:00",
   "repo": "dickhardt/AAuth",
   "labels": [
     {
@@ -2709,9 +2709,17 @@
       "labels": [],
       "body": "While aligning a Go implementation with Core at [55ae44c](https://github.com/dickhardt/AAuth/blob/55ae44cc3a07da29c4d6821c3800569ac77b9441/draft-hardt-oauth-aauth-protocol.md), I found one remaining question about revocation requests to Resources.\n\n[Token Revocation](https://github.com/dickhardt/AAuth/blob/55ae44cc3a07da29c4d6821c3800569ac77b9441/draft-hardt-oauth-aauth-protocol.md#token-revocation) defines a signed POST with required JSON members `jti` and `exp`; the issuer comes from the verified caller.\n\n[Covered Components](https://github.com/dickhardt/AAuth/blob/55ae44cc3a07da29c4d6821c3800569ac77b9441/draft-hardt-oauth-aauth-protocol.md#covered-components) requires body-bearing requests to PS and AS endpoints to cover `content-digest` and `content-type`. Resources instead declare additional requirements through metadata, with a rationale covering arbitrary APIs, streamed uploads and large payloads.\n\nDoes that Resource exception also apply to its protocol-defined revocation endpoint? Unlike an arbitrary upload, this endpoint takes a small, fixed-shape JSON body whose members select the token and bound retained revocation state.\n\nWould it make sense to require signing and verification of `content-digest` and `content-type` for JSON revocation requests regardless of the recipient's role, while leaving ordinary Resource API requirements unchanged? If metadata-selected coverage is intentional here too, could Token Revocation state that explicitly so implementers apply the same rule?\n\nOur implementation currently requires both for revocation. This is a question about the normative requirement, not a claim based on omitted example headers: Conventions and #139 explain that abbreviation.\n\nRelated work: #147 defines the current request, #148 pins the server signing identity, and #154 addresses endpoint availability. I did not find this endpoint-specific body-coverage question in those discussions or #2.",
       "createdAt": "2026-09-13T16:17:51Z",
-      "updatedAt": "2026-09-13T16:17:51Z",
+      "updatedAt": "2026-09-17T12:17:05Z",
       "closedAt": null,
-      "comments": []
+      "comments": [
+        {
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "body": "Data point from the Hell\u014d PS (hellocoop/Wallet #4302): the Wallet enforces coverage of both `content-digest` and `content-type` on every signed request with a body that it receives \u2014 the revocation endpoint included \u2014 and covers both on every revocation it sends to a resource or an AS. A revocation whose signature omits either is `401` with `Signature-Error`. If the resolution here is anything other than \"required to every role\", the Wallet's outbound signing still satisfies it; its inbound check would need to relax for resources that sign without `content-type`.\n",
+          "createdAt": "2026-09-17T12:17:05Z",
+          "updatedAt": "2026-09-17T12:17:05Z"
+        }
+      ]
     },
     {
       "number": 173,
@@ -2766,6 +2774,150 @@
       "body": "The Person Token Endpoint section lists four request parameters \u2014 `resource`, `mission_s256`, `subagent_token`, `upstream_token` \u2014 and no way for the agent to declare its capabilities, name a tenant, or pass consent hints. The same section then says the PS MAY return a `202` with `requirement=interaction`, and `user_unreachable` is defined as terminal when \"the agent did not declare the `interaction` capability\". On this endpoint there is no defined way to declare it. The `AAuth-Capabilities` section rules out the header on PS endpoints and points at the `capabilities` request parameter, but the cross-reference is `(#ps-token-endpoint)` \u2014 the auth token endpoint, which does define `capabilities`, `tenant`, `login_hint`, `domain_hint`, `justification` and `prompt`. Nothing covers the person token endpoint, so a PS that needs to reach the person at first contact has no conforming signal to act on.\n\n## Current text\n\n`## Person Token Endpoint {#person-token-endpoint}`:\n\n> **Request parameters:**\n>\n> - `resource` (REQUIRED): The HTTPS URL of the resource the person token is for, conforming to the Server Identifier requirements (#server-identifiers). Becomes the `aud` of the issued token. The PS MUST validate it against those requirements.\n> - `mission_s256` (OPTIONAL): The mission the agent is operating under (#missions). [...]\n> - `subagent_token` (OPTIONAL): A sub-agent's agent token, present when a parent agent obtains a person token on behalf of one of its sub-agents (#sub-agents). [...]\n> - `upstream_token` (OPTIONAL): The person token or auth token the calling agent presented to the requester, present when a resource acting as an agent needs a person token for a downstream resource (#call-chaining). [...]\n\nSame section, on interaction:\n\n> The PS MAY require user interaction before issuing and return a `202 Accepted` deferred response with `requirement=interaction` (#requirement-responses).\n\n`## AAuth-Capabilities Request Header {#aauth-capabilities}`:\n\n> Agents SHOULD include the `AAuth-Capabilities` header on signed requests to resources. The header is not used on requests to PS endpoints: on the PS token endpoint the agent conveys capabilities via the `capabilities` request parameter (#ps-token-endpoint), and within a mission the PS also has the capabilities captured at mission approval (#mission-approval).\n\n`## Auth Token Endpoint {#ps-token-endpoint}`, the parameter that cross-reference points to:\n\n> - `capabilities` (OPTIONAL): An array of capability values (#aauth-capabilities) the agent can handle for this request \u2014 the request-body equivalent of the `AAuth-Capabilities` header, which is not used on PS endpoints. Without a mission, this is how the PS learns the agent's capabilities (for example, whether the agent can drive `requirement=interaction`). Within a mission, `capabilities` is OPTIONAL: if omitted, the PS uses the values captured at mission approval (#mission-approval); if present, it refreshes them for this request.\n\nAnd the terminal error, in `#token-endpoint-error-codes`:\n\n> | `user_unreachable` | 403 | Terminal. The PS has no channel to reach the user and the agent did not declare the `interaction` capability, so the user cannot be reached at all. [...] |\n\n## Interop failure observed\n\nClient `@aauth/fetch` and person server Hell\u014d, on a person token request at first contact \u2014 no prior agent/person binding, so the PS had to defer to the person.\n\n- The client sent its capabilities as the `AAuth-Capabilities` header. The spec rules that out on PS endpoints, so the PS did not read it.\n- Hell\u014d read `capabilities` and `tenant` from the request body. That is an extension: neither is listed for this endpoint.\n- Before that was in place the PS answered `user_unreachable` \u2014 \"user interaction is required and the agent did not declare the interaction capability\" \u2014 on a request where the agent could in fact drive the interaction. A terminal error for a case that is not terminal.\n\nTwo implementations, three different placements, and the spec does not resolve which is right.\n\n## Proposed resolution\n\n1. List these as OPTIONAL request parameters on the person token endpoint, with the same meaning and normative text as on the auth token endpoint (#ps-token-endpoint): `capabilities`, `tenant`, `login_hint`, `domain_hint`, `justification`, `prompt`.\n\n   - `capabilities` is what lets the PS return a `202` with `requirement=interaction` at first contact instead of `user_unreachable`. The endpoint already permits that `202`; without `capabilities` the PS cannot know it is allowed to send one.\n   - `tenant` decides which account the first-contact binding is for. A person with a personal account and a managed account at the same PS is two different bindings and two different directed `sub` values (#directed-identifiers); the agent has to be able to say which.\n   - `login_hint`, `domain_hint`, `justification` and `prompt` carry the same consent-time meaning here as at the auth token endpoint. First contact is a consent event \u2014 the section already says the person is answering whether this agent may act at the resource as them \u2014 so the parameters that shape a consent screen belong on it.\n\n2. State in `#aauth-capabilities` that `AAuth-Capabilities` is not read on **either** PS endpoint, and fix the cross-reference to name both, e.g. \"on the PS person token endpoint (#person-token-endpoint) and auth token endpoint (#ps-token-endpoint) the agent conveys capabilities via the `capabilities` request parameter\". As written it names only the auth token endpoint, which is what left the person token endpoint with no defined channel.\n",
       "createdAt": "2026-09-15T20:40:32Z",
       "updatedAt": "2026-09-15T20:40:32Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 178,
+      "id": "I_kwDOQJKwSc8AAAABRxBZaw",
+      "title": "Agent token revocation: does the PS revoke by agent identity, and what must it retain to do so?",
+      "url": "https://github.com/dickhardt/AAuth/issues/178",
+      "state": "OPEN",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "protocol"
+      ],
+      "body": "## Problem\n\n\u00a7Token Revocation, *Agent provider revokes an agent token it issued*: the AP names one agent token by `jti`, and the PS \"SHOULD revoke the person tokens and auth tokens it issued for that agent\". The revocation names a token; the cascade is described in terms of the agent. Three things follow that the text does not settle:\n\n1. **Scope.** Does the PS revoke everything issued to the agent identity (`sub`), or only what was issued while that particular agent token was presented? An agent holds a sequence of agent tokens over a day; the tokens the PS issued under an earlier one are still live.\n2. **Retention.** To act on a revocation keyed by an agent token `jti`, the PS must map that `jti` to the agent. Its records are keyed by `agent_id` (the token's `sub`); nothing in the retention text (the paragraph starting \"Revoking downstream means knowing what was issued downstream\") says a PS records the `jti` of each agent token it verifies.\n3. **The binding.** Whether an AP revocation suspends the agent\u2013person binding at the PS, or leaves it \u2014 the binding is the person's decision, and the AP controls whether the agent ever gets another token.\n\n## Proposal\n\n- State that the PS cascade is by agent identity: the AP has said the agent can no longer be trusted, so every person token and auth token the PS issued to that `sub` is revoked, whichever agent token was presented at issuance.\n- Add to the retention paragraph: a PS records, for each agent token it accepts, its `(iss, jti)` and the agent's `sub`, for the token's lifetime plus skew.\n- State that an AP revocation does not alter the agent\u2013person binding; a later agent token from the same AP is verified on its own terms.\n\n## Implementation note\n\nThe Hell\u014d PS (hellocoop/Wallet #4302) does all three: cascade by `agent_id`, an agent-token `jti \u2192 agent` map held for the token's life, binding left active.\n",
+      "createdAt": "2026-09-17T12:16:53Z",
+      "updatedAt": "2026-09-17T12:16:53Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 179,
+      "id": "I_kwDOQJKwSc8AAAABRxBagg",
+      "title": "Resource token revocation reaches a PS that may never have seen the token",
+      "url": "https://github.com/dickhardt/AAuth/issues/179",
+      "state": "OPEN",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "protocol"
+      ],
+      "body": "## Problem\n\n\u00a7Token Revocation, *Resource revokes a resource token it issued*: the resource calls the party in `aud` (and in four-party the `ps` too). A resource token lives five minutes and reaches the PS only if the agent takes it there; in the common case the resource revokes a token the PS has not seen and will never see. The `200` rule (\"whether it holds a record of the token does not enter into it\") covers the answer, but the text does not say what the recipient records \u2014 and a PS that records nothing for an unseen token would accept it if the agent presented it a moment later.\n\n## Proposal\n\nState that a PS or AS records every `(iss, jti)` a resource revokes regardless of whether it has seen the token, and that the resource-token lifetime (five minutes, \u00a7Resource Tokens) bounds that state \u2014 the recipient MAY discard the entry once `exp` plus its clock skew has passed, exactly as for any other entry.\n",
+      "createdAt": "2026-09-17T12:16:54Z",
+      "updatedAt": "2026-09-17T12:16:54Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 180,
+      "id": "I_kwDOQJKwSc8AAAABRxBbig",
+      "title": "Polling error code revoked: extend beyond the withdrawn resource token",
+      "url": "https://github.com/dickhardt/AAuth/issues/180",
+      "state": "OPEN",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "protocol"
+      ],
+      "body": "## Problem\n\n\u00a7Polling Error Codes defines `revoked` (403) as \"The resource withdrew the resource token this pending request was started for\". Two other events terminate a pending request the same way, and the table gives them no code:\n\n1. **A chained request whose upstream token is revoked mid-wait** (\u00a7Call Chaining). `expired` (408) already covers the lapsed upstream token; the revoked one has no counterpart, so a PS either says `expired` (false \u2014 the token did not expire) or invents a code.\n2. **An agent whose agent token is revoked while it has requests pending** (\u00a7Token Revocation, *Agent provider revokes an agent token it issued*: the PS \"MUST deny subsequent requests presenting that agent token\"). The pending request can no longer be answered for that agent; when it polls with a fresh agent token it should learn why.\n\n## Proposal\n\nWiden the `revoked` row: \"The request cannot complete because a token it depends on was revoked: the resource token it was started for, the upstream token of a chained request, or the agent token of the agent that started it.\" Optionally a `detail` naming which.\n\n## Implementation note\n\nhellocoop/Wallet #4302 answers `403 revoked` in all three cases, with the reason in `detail`.\n",
+      "createdAt": "2026-09-17T12:16:56Z",
+      "updatedAt": "2026-09-17T12:16:56Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 181,
+      "id": "I_kwDOQJKwSc8AAAABRxBchw",
+      "title": "Revocation: default for Prefer: wait, and whether a recipient may cap it",
+      "url": "https://github.com/dickhardt/AAuth/issues/181",
+      "state": "OPEN",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "protocol"
+      ],
+      "body": "## Problem\n\n\u00a7Token Revocation says a recipient that cannot finish its cascade within what it will hold the connection returns `202`, and \"the caller MAY say how long it will wait with `Prefer: wait`\". Nothing says what a recipient assumes when the caller sends no `Prefer`, nor whether a recipient may hold the connection for less than the caller asked (a load balancer's idle timeout is a hard ceiling \u2014 60 s on the usual ones).\n\n## Proposal\n\n- Default: absent `Prefer: wait`, the recipient chooses; a recipient SHOULD hold at least long enough for one round trip per downstream party (for a PS with a single-level cascade, on the order of 20 s).\n- Cap: a recipient MAY cap the wait below what the caller asked and answer `202` at its cap; the caller learns the cap from the `202`.\n\n## Implementation note\n\nhellocoop/Wallet uses a 20 s default and a 55 s ceiling.\n",
+      "createdAt": "2026-09-17T12:16:57Z",
+      "updatedAt": "2026-09-17T12:16:57Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 182,
+      "id": "I_kwDOQJKwSc8AAAABRxBddQ",
+      "title": "Revocation endpoint abuse: unbounded (iss, jti) writes from any verified server, and no 429",
+      "url": "https://github.com/dickhardt/AAuth/issues/182",
+      "state": "OPEN",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "protocol"
+      ],
+      "body": "## Problem\n\n\u00a7Token Revocation keys revocation state by the verified caller, which stops one issuer revoking another's tokens, but says nothing about volume. Any server that can publish metadata and a JWKS can sign revocations, so any such server can grow a recipient's revocation state without bound under its own `iss`, at up to 24 h per entry (the longest lifetime a recipient accepts). `unsupported_iss` is defined for \"a party it does not exchange tokens with\", which a recipient can only apply if it keeps a list of parties \u2014 and the text does not say whether it should.\n\nThe error table for the endpoint has no rate-limit code. `429` appears in -11 only as polling `slow_down` (#105 covers the resource side).\n\n## Proposal\n\n- Say that a recipient MAY restrict revocations to issuers it holds tokens from or has a record of (`unsupported_iss` for the rest), and that a recipient accepting any verified issuer SHOULD bound entries per issuer.\n- Add `429` with an error code (`rate_limited`, or reuse `slow_down`) to the revocation error table, with `Retry-After`.\n\n## Implementation note\n\nhellocoop/Wallet #4302 accepts any verified AP or resource, with 60 revocations per minute per issuer and 10 000 live entries per issuer, answering `429 rate_limited` beyond either.\n",
+      "createdAt": "2026-09-17T12:16:59Z",
+      "updatedAt": "2026-09-17T12:16:59Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 183,
+      "id": "I_kwDOQJKwSc8AAAABRxBeQw",
+      "title": "Revocation response body: an empty 200 versus a malformed one",
+      "url": "https://github.com/dickhardt/AAuth/issues/183",
+      "state": "OPEN",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "protocol"
+      ],
+      "body": "## Problem\n\n\u00a7Token Revocation: an AS answers the PS with a `200` carrying a `downstream` array; \"a recipient with nothing downstream answers with an empty body\". A caller that treats a `200` it cannot parse as `revocation_unavailable` (the text's own category for \"a malformed response\") therefore has to tell an empty body from a non-JSON one, and the text does not say that an empty body is well-formed \u2014 a strict reading of the example (`Content-Type: application/json`) is that every `200` carries JSON.\n\n## Proposal\n\nState that a `200` MAY carry no body (no `Content-Type`), that a non-empty body MUST be `application/json` and, when present, an object whose `downstream` member is optional, and that a `200` with a non-empty body that is not JSON is `revocation_unavailable` to the caller.\n\n## Implementation note\n\nhellocoop/Wallet records an empty `200` as `recorded` and a non-JSON body as `revocation_unavailable` (`malformed`); the reference resource (`@aauth/resource`) answers `200` with no body.\n",
+      "createdAt": "2026-09-17T12:17:00Z",
+      "updatedAt": "2026-09-17T12:17:00Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 184,
+      "id": "I_kwDOQJKwSc8AAAABRxBf3g",
+      "title": "Revocation 202: what the pending URL returns, and how it is polled",
+      "url": "https://github.com/dickhardt/AAuth/issues/184",
+      "state": "OPEN",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "protocol"
+      ],
+      "body": "## Problem\n\n\u00a7Token Revocation lets a recipient answer `202 Accepted` and points at \u00a7Deferred Responses, which is written for the agent-facing token endpoints: the poller is an agent signing with an agent token, the terminal answer is a token or a problem, and `AAuth-Requirement` headers describe what the agent must do. A revocation `202` is polled by a server (a PS at an AS) signing with the `jwks_uri` scheme, and its terminal answer is the revocation's `200` \u2014 for an AS, the one carrying `downstream`. None of that is stated:\n\n- Does the pending URL, when terminal, return the same `200` body the synchronous path would have (the `downstream` array)?\n- Does `Retry-After` on the `202` apply, and may the poller send `Prefer: wait`?\n- Does the poller sign as a server (`jwks_uri`), and does the recipient verify that the poller is the party that made the revocation?\n- Is a `202` ever appropriate for a recipient with nothing downstream (a resource)?\n\nRelated: #173 (answer once the cascade is terminal).\n\n## Proposal\n\nA short paragraph under \u00a7Token Revocation: the pending URL is polled with a server signature from the same identity that made the revocation; `Retry-After` and `Prefer: wait` apply as in \u00a7Deferred Responses; the terminal response is exactly the `200` the synchronous path would have returned; `202` is for recipients that cascade, never for one with nothing downstream.\n\n## Implementation note\n\nhellocoop/Wallet #4302 polls a downstream `202` with a signed `GET` until its own deadline and then records `revocation_unavailable` with the pending URL kept; the Wallet answering `202` itself is a later increment.\n",
+      "createdAt": "2026-09-17T12:17:02Z",
+      "updatedAt": "2026-09-17T12:17:02Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 185,
+      "id": "I_kwDOQJKwSc8AAAABRxBhGg",
+      "title": "May a PS tell the person how far a revocation reached?",
+      "url": "https://github.com/dickhardt/AAuth/issues/185",
+      "state": "OPEN",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "protocol"
+      ],
+      "body": "## Problem\n\n\u00a7Token Revocation constrains what an AP learns from a PS (\"A PS does not report to the agent provider\u2026 even a count would tell the AP which resources the person uses through that agent\") and what a PS learns from an AS (`downstream`). It says nothing about the person. When a person revokes an agent in their wallet, the honest answer is \"these resources acknowledged, these do not support revocation and will honor the token until it expires, these did not respond\" \u2014 which is exactly the per-recipient outcome the AP must not see, shown to the party the tokens belong to.\n\n## Proposal\n\nState that a PS MAY report the outcome of a person-initiated revocation to the person, per recipient, including `revocation_unsupported` and `revocation_unavailable`, since the person is the party the disclosure rule protects.\n\n## Implementation note\n\nhellocoop/Wallet #4302 returns `{ recorded, unsupported, unavailable, recipients[] }` from the person's revoke.\n",
+      "createdAt": "2026-09-17T12:17:04Z",
+      "updatedAt": "2026-09-17T12:17:04Z",
       "closedAt": null,
       "comments": []
     }
@@ -4757,7 +4909,7 @@
       "labels": [],
       "body": "Responds to the 18 questions in aauth-dev/dotnet-samples `.agent/plans/2026-09-11-aauth-v11-spec-migration/spec-open-questions.md`, reviewed against editor's copy 55ae44c. Numbering below follows that document.\n\n| # | Question | Outcome |\n|---|---|---|\n| 1 | `clock_skew` / `revoked_jwt` | Defined in HTTP Signature Keys. Both merged to its main on 2026-09-12 (PRs #37, #40); not yet published as -09. No AAuth change. |\n| 2 | Upstream token key and audience | Fixed. `cnf` is the calling agent's key. Upstream Token Verification now states its substitutions to Auth Token Verification and that an intermediary is its own AP. Added `invalid_`/`expired_`/`revoked_upstream_token`. |\n| 3 | Intermediary's person and mission | Clarified. The PS resolves `sub` as the directed identifier it minted for the upstream `aud`; the mission is the upstream token's, and the intermediary sends no `mission_s256`. |\n| 4 | Events ticket binding | Fixed. Ticket binds to the JWK Thumbprint of the key that established it; the subscribe token's `cnf.jwk` must match. |\n| 5 | `updated_request` and the presented token | Fixed. `presented_token` is REQUIRED on every `updated_request` (same token or a fresh one); PS verifies the pair per step 6 before replacing the request. Same body PS-to-AS. |\n| 6 | Person token vs auth token | Fixed. A resource token follows a verified person token or auth token. The authorization endpoint takes a person token. No earlier person token is retained. |\n| 7 | Repeated completion vs 410 | Fixed. Retained-result rules override; records are keyed by auth token `jti`, so two grants are two records. |\n| 8 | Recovery from a revoked auth token | Fixed. Resource answers `requirement=person-token`; a resource token naming the revoked token is a dead end. |\n| 9 | Refresh margin and resource tokens | Fixed. Margin applies to agent, person, and auth tokens only. |\n| 10 | Mandatory lifetime checks | Clarified. `exp \u2212 iat` is MUST for person and auth tokens, SHOULD for agent and resource tokens. Rejecting a future `iat` stays optional. |\n| 11 | Claims response `sub` | Clarified. `sub` is not a claim; an AS does not request it and a PS does not return it. |\n| 12 | Release approval and metering | Fixed in R3. Metered execution is excluded from release gating; other cases follow the Budgets metering-policy rule. |\n| 13 | `cost` on a refusal | Fixed in Budgets. Example drops `cost`; `required` is the figure a refusal reports. |\n| 14 | Usage response `aud` | Fixed in Budgets. The caller's server identifier, resolved from the `jwks_uri` in `Signature-Key`. |\n| 15 | Interop profile | Fixed. Surfaces 4 and 5 carry `presented_token`. |\n| 16 | Superseded history entries | The -11 history entry will be collapsed to its final state before the revision is tagged. This PR adds one bullet and corrects the one it contradicts. |\n| 17 | Supervision Protocol | Neither companion exists yet. Both references now carry an editor's note marking them TBD. Leave both outside the base protocol surface. |\n| 18 | Person token exposure | Clarified. A third party without the key gets an identifier only; the key holder can use it at an identity-only resource, bounded by `aud` and lifetime. |\n\nBuilds clean with mmark and xml2rfc.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01SxNAXTfkdsYkXXgtZou4eA\n",
       "createdAt": "2026-09-12T13:55:28Z",
-      "updatedAt": "2026-09-14T12:00:33Z",
+      "updatedAt": "2026-09-17T04:52:55Z",
       "baseRepository": "dickhardt/AAuth",
       "baseRefName": "main",
       "baseRefOid": "55ae44cc3a07da29c4d6821c3800569ac77b9441",
@@ -4770,7 +4922,15 @@
       "mergeCommit": {
         "oid": "ced914ffd4de13bacf25139dc93c3404050a1cb5"
       },
-      "comments": [],
+      "comments": [
+        {
+          "author": "dasiths",
+          "authorAssociation": "CONTRIBUTOR",
+          "body": "Thanks for the update, I will have a look and update the .NET SDK to align with this.",
+          "createdAt": "2026-09-17T04:52:55Z",
+          "updatedAt": "2026-09-17T04:52:55Z"
+        }
+      ],
       "reviews": []
     },
     {
