@@ -4587,31 +4587,35 @@ Initial request (with Prefer: wait=N)
 
 12.6.4.  Polling Error Codes
 
-      +==============+========+====================================+
-      | Error        | Status | Meaning                            |
-      +==============+========+====================================+
-      | denied       | 403    | User or approver explicitly denied |
-      |              |        | the request                        |
-      +--------------+--------+------------------------------------+
-      | abandoned    | 403    | Interaction code was used but user |
-      |              |        | did not complete                   |
-      +--------------+--------+------------------------------------+
-      | expired      | 408    | Timed out                          |
-      +--------------+--------+------------------------------------+
-      | revoked      | 403    | The resource withdrew the resource |
-      |              |        | token this pending request was     |
-      |              |        | started for Section 12.7           |
-      +--------------+--------+------------------------------------+
-      | invalid_code | 410    | Interaction code not recognized or |
-      |              |        | already consumed                   |
-      +--------------+--------+------------------------------------+
-      | slow_down    | 429    | Polling too frequently — increase  |
-      |              |        | interval by 5 seconds              |
-      +--------------+--------+------------------------------------+
-      | server_error | 500    | Internal error                     |
-      +--------------+--------+------------------------------------+
+      +==============+========+=====================================+
+      | Error        | Status | Meaning                             |
+      +==============+========+=====================================+
+      | denied       | 403    | User or approver explicitly denied  |
+      |              |        | the request                         |
+      +--------------+--------+-------------------------------------+
+      | abandoned    | 403    | Interaction code was used but user  |
+      |              |        | did not complete                    |
+      +--------------+--------+-------------------------------------+
+      | expired      | 408    | Timed out                           |
+      +--------------+--------+-------------------------------------+
+      | revoked      | 403    | A token the pending request depends |
+      |              |        | on was revoked Section 12.7: the    |
+      |              |        | resource token it was started for,  |
+      |              |        | the upstream token of a chained     |
+      |              |        | request Section 11.1.1, or the      |
+      |              |        | agent token of the agent that       |
+      |              |        | started it. detail SHOULD say which |
+      +--------------+--------+-------------------------------------+
+      | invalid_code | 410    | Interaction code not recognized or  |
+      |              |        | already consumed                    |
+      +--------------+--------+-------------------------------------+
+      | slow_down    | 429    | Polling too frequently — increase   |
+      |              |        | interval by 5 seconds               |
+      +--------------+--------+-------------------------------------+
+      | server_error | 500    | Internal error                      |
+      +--------------+--------+-------------------------------------+
 
-                                 Table 13
+                                  Table 13
 
    Example — the user denied the pending request:
 
@@ -4753,6 +4757,18 @@ Initial request (with Prefer: wait=N)
    what the PS exists to keep from it.  A recipient with nothing
    downstream answers with an empty body.
 
+   *The person learns the outcome.* The rule above keeps the per-
+   recipient outcome from the agent provider because it would say which
+   resources the person uses.  It does not keep it from the person, who
+   is the party that rule protects.  A PS MAY report the outcome of a
+   revocation the person initiated to that person, per recipient, naming
+   the resources that recorded it, those that answered
+   revocation_unsupported and will honor the tokens until they expire,
+   and those that were revocation_unavailable.  The honest answer to
+   "did you cut off the agent" is not the same at every resource, and a
+   person deciding whether to change a password or call a provider needs
+   the difference.
+
    HTTP/1.1 200 OK
    Content-Type: application/json
 
@@ -4808,26 +4824,47 @@ Initial request (with Prefer: wait=N)
 
    Errors use the format in Section 12.6.2:
 
-     +=================+========+===================================+
-     | Error           | Status | Meaning                           |
-     +=================+========+===================================+
-     | invalid_request | 400    | Malformed JSON, or a missing or   |
-     |                 |        | malformed jti or exp              |
-     +-----------------+--------+-----------------------------------+
-     | unsupported_iss | 403    | The recipient does not accept     |
-     |                 |        | revocations from this caller — it |
-     |                 |        | holds nothing issued under that   |
-     |                 |        | identity, or the caller is not a  |
-     |                 |        | party it exchanges tokens with    |
-     +-----------------+--------+-----------------------------------+
-     | server_error    | 500    | Internal error                    |
-     +-----------------+--------+-----------------------------------+
+    +=================+========+=====================================+
+    | Error           | Status | Meaning                             |
+    +=================+========+=====================================+
+    | invalid_request | 400    | Malformed JSON, or a missing or     |
+    |                 |        | malformed jti or exp                |
+    +-----------------+--------+-------------------------------------+
+    | unsupported_iss | 403    | The recipient does not accept       |
+    |                 |        | revocations from this caller — it   |
+    |                 |        | holds nothing issued under that     |
+    |                 |        | identity, or the caller is not a    |
+    |                 |        | party it exchanges tokens with      |
+    +-----------------+--------+-------------------------------------+
+    | rate_limited    | 429    | The caller has sent more            |
+    |                 |        | revocations than the recipient will |
+    |                 |        | accept from it for now.  Retry-     |
+    |                 |        | After is REQUIRED.  Distinct from   |
+    |                 |        | polling slow_down Section 12.6.4,   |
+    |                 |        | which asks for a longer polling     |
+    |                 |        | interval rather than refusing work  |
+    +-----------------+--------+-------------------------------------+
+    | server_error    | 500    | Internal error                      |
+    +-----------------+--------+-------------------------------------+
 
                                  Table 14
 
    A request whose signature does not verify is answered with 401 and
    the Signature-Error header Section 12.6; the caller's identity is
    established before the body is examined.
+
+   *What a recipient will accept.* Any server that publishes metadata
+   and a JWKS can sign a revocation, so any such server can add entries
+   to a recipient's revocation state under its own iss, each held until
+   the exp it names — up to the longest lifetime that recipient accepts.
+   A recipient MAY restrict revocations to issuers it holds tokens from,
+   or has a record of exchanging tokens with, and answer unsupported_iss
+   to the rest.  A recipient that accepts any verified issuer SHOULD
+   bound what one issuer can hold, in entries and in rate, and answer
+   rate_limited beyond either.  Nothing is lost by refusing: a
+   revocation is a caller asking a recipient to refuse a token it would
+   otherwise accept, and a recipient that holds nothing from that issuer
+   would refuse the token anyway.
 
    Revocation provides real-time termination of access.  The following
    revocation scenarios are supported:
@@ -4867,10 +4904,18 @@ Initial request (with Prefer: wait=N)
       issue an auth token against that resource token and rejects a
       token request naming it with revoked_resource_token
       Section 12.6.3, and SHOULD terminate a pending request it started
-      for it, which the agent reads as revoked Section 12.6.4.  The
-      window is five minutes at most Section 7, but it spans the wait
-      for user interaction, which is when a resource is most likely to
-      withdraw a request it has already challenged for.
+      for it, which the agent reads as revoked Section 12.6.4.  In four-
+      party the ps is commonly a party that has not seen the token and
+      never will: the agent takes a resource token to its PS, and a
+      resource that withdraws one before the agent gets there revokes at
+      a PS with no record of it.  The recipient records the (iss, jti)
+      regardless, as it does for any revocation, or it would accept the
+      token a moment later.  The five-minute resource token lifetime
+      Section 7 bounds that state, and the entry MAY be discarded once
+      the current time is past the exp the revocation named plus clock
+      skew.  The window is five minutes at most Section 7, but it spans
+      the wait for user interaction, which is when a resource is most
+      likely to withdraw a request it has already challenged for.
    *  *PS revokes a mission*: The PS marks the mission as revoked.  All
       subsequent token requests referencing that mission's s256 are
       denied.  The PS SHOULD revoke outstanding auth tokens issued under
@@ -4880,14 +4925,24 @@ Initial request (with Prefer: wait=N)
       the PS's revocation endpoint.  The PS MUST deny subsequent
       requests presenting that agent token, and SHOULD revoke the person
       tokens and auth tokens it issued for that agent, and terminate
-      what it federated by the four-party path above.  The PS is the
-      only recipient of an agent token revocation: under identity-based
-      access Section 7.3 the agent presents its agent token to the
-      resource directly, and the agent provider has no record of which
-      resources those are, so that access is bounded by the agent token
-      lifetime alone.  The PS answers the agent provider with an empty
-      200 once its cascade is terminal, reporting nothing of what it
-      revoked or where.
+      what it federated by the four-party path above.  The cascade is by
+      agent identity, not by the named token: the agent provider has
+      said that the agent can no longer be trusted, so the PS revokes
+      every person token and auth token it issued to that agent's sub,
+      whichever agent token the agent presented when it asked.  An agent
+      holds a sequence of agent tokens over a day, and what the PS
+      issued under an earlier one is still live.  The revocation does
+      not alter the agent-person binding Section 14.14: the binding is
+      the person's decision, and the agent provider already controls
+      whether the agent gets another agent token.  An agent token the
+      same provider issues later is verified on its own terms.  The PS
+      is the only recipient of an agent token revocation: under
+      identity-based access Section 7.3 the agent presents its agent
+      token to the resource directly, and the agent provider has no
+      record of which resources those are, so that access is bounded by
+      the agent token lifetime alone.  The PS answers the agent provider
+      with an empty 200 once its cascade is terminal, reporting nothing
+      of what it revoked or where.
    *  *Agent provider stops issuing agent tokens*: The agent provider
       decides not to issue new agent tokens to the agent.  Existing
       agent tokens expire naturally.  This is part of the regular token
@@ -4899,10 +4954,15 @@ Initial request (with Prefer: wait=N)
    the caller's identity via HTTP Message Signatures.
 
    Revoking downstream means knowing what was issued downstream, so the
-   parties that cascade a revocation retain what they issued.  A PS
-   records each person token it issues Section 8.1; to revoke what
-   followed from one it also needs, for each auth token it issued or
-   federated against that person token, the jti, the resource it was
+   parties that cascade a revocation retain what they issued.  A
+   revocation from an agent provider names an agent token by jti, while
+   a PS keeps its records under the agent's sub, so a PS records, for
+   each agent token it accepts, that token's (iss, jti) and the sub it
+   carried, and keeps the pair until the agent token's exp plus clock
+   skew.  Without it the PS cannot resolve the revocation to an agent at
+   all.  A PS records each person token it issues Section 8.1; to revoke
+   what followed from one it also needs, for each auth token it issued
+   or federated against that person token, the jti, the resource it was
    for, and the exp.  An AS needs the same for each auth token it
    issues, along with the presented_jti it was issued against, which on
    a step-up names an earlier auth token rather than the person token,
@@ -4964,8 +5024,11 @@ Initial request (with Prefer: wait=N)
       revoked_resource_token from the PS or AS the agent presented the
       resource token to, revoked_presented_token from the PS or the AS
       Section 12.6.3.  A pending request already started against a
-      withdrawn resource token terminates with revoked Section 12.6.4.
-      A sub-agent's agent token, carried as subagent_token, is answered
+      withdrawn resource token terminates with revoked Section 12.6.4,
+      as does one whose upstream token or whose agent's agent token is
+      revoked while it waits: in each case a token the request depends
+      on is gone, and the agent learns which from detail.  A sub-agent's
+      agent token, carried as subagent_token, is answered
       revoked_subagent_token by the PS, which is where its agent
       provider revoked it Section 12.7.
 
@@ -6839,6 +6902,30 @@ Initial request (with Prefer: wait=N)
 
    *  draft-hardt-oauth-aauth-protocol-11
 
+      -  Token Revocation: the agent token cascade, what a recipient
+         records, what it will accept, and who learns the outcome.  A PS
+         cascades an agent token revocation by agent identity — every
+         person token and auth token it issued to that sub, whichever
+         agent token was presented, since an agent holds a sequence of
+         them over a day and what was issued under an earlier one was
+         still live — records each agent token's (iss, jti) with the sub
+         it carried so that a revocation naming a jti resolves to an
+         agent at all, and leaves the agent-person binding alone, which
+         is the person's decision.  A recipient records the (iss, jti)
+         of a revoked resource token whether or not it has seen the
+         token, which in four-party is the common case for the ps, and
+         the five-minute lifetime bounds the state.  A recipient MAY
+         restrict revocations to issuers it holds tokens from and SHOULD
+         bound what one issuer can hold, with a new rate_limited (429)
+         error, since any server that can publish a JWKS could otherwise
+         grow a recipient's state without bound.  The polling revoked
+         code covers any token the pending request depends on — the
+         resource token, a chained request's upstream token, or the
+         agent's agent token — rather than the withdrawn resource token
+         alone, with detail saying which.  A PS MAY report a person-
+         initiated revocation's per-recipient outcome to the person, who
+         is the party the rule against reporting to the agent provider
+         protects.  Issues #178, #179, #180, #182, #185.
       -  Token Revocation says how a 202 is polled, what a 200 body may
          be, and how long a recipient holds the connection.  The 202
          pointed at Deferred Responses, which is written for an agent
