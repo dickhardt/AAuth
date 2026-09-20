@@ -1400,8 +1400,15 @@ Table of Contents
 
    _Note: This section is to be removed before publishing as an RFC._
 
-   *  draft-hardt-aauth-r3-02
+   This document has not been submitted to the datatracker.  Everything
+   below is a change to the editor's copy, made while the design was
+   being explored against implementations in progress.  Earlier entries
+   were logged under -01 and -02 before it was settled that the whole of
+   this work becomes the first submission; they are one list here, which
+   becomes draft-hardt-aauth-r3-00.  Readers wanting the detail behind
+   any entry will find it in the repository's history and pull requests.
 
+   *  draft-hardt-aauth-r3-00
       -  Consistency pass against AAuth Protocol -11.  The base-claim
          recitals in Resource Token Extensions and Auth Token Extensions
          are replaced by pointers to the protocol, since they had
@@ -1510,9 +1517,6 @@ Table of Contents
          Addresses issue #92.
       -  Renamed person_token_jti to presented_jti, following AAuth
          Protocol.
-
-   *  draft-hardt-aauth-r3-01
-
       -  Added per-call proposals: an r3_conditional operation is
          challenged at call time, and the resource builds a content-
          addressed proposal carrying the concrete parameters, which the
@@ -1534,10 +1538,7 @@ Table of Contents
       -  Aligned with the AAuth Protocol: issuer in resource metadata,
          and dwk values aauth-access.json and aauth-person.json in auth
          tokens.
-
-   *  draft-hardt-aauth-r3-00
-
-      -  Initial submission
+      -  Initial draft.
 
 15.  Acknowledgments
 
