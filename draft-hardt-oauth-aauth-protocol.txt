@@ -4723,13 +4723,13 @@ Initial request (with Prefer: wait=N)
    downstream party, then makes every downstream revocation it is going
    to make, and answers only when each has a terminal outcome.  If that
    takes longer than the recipient will hold the connection — the caller
-   MAY say how long it will wait with Prefer: wait — or a downstream
-   recipient itself answered 202, the recipient returns a 202 Accepted
-   deferred response Section 12.5 and the caller polls the pending URL,
-   which returns the terminal response.  A 200 therefore says that the
-   cascade is finished, not that it was started.  A recipient with
-   nothing downstream — a resource, or a PS or AS receiving a resource
-   token revocation — answers at once.
+   MAY say how long it will wait with Prefer: wait ([RFC7240]) — or a
+   downstream recipient itself answered 202, the recipient returns a 202
+   Accepted deferred response Section 12.5 and the caller polls the
+   pending URL, which returns the terminal response.  A 200 therefore
+   says that the cascade is finished, not that it was started.  A
+   recipient with nothing downstream — a resource, or a PS or AS
+   receiving a resource token revocation — answers at once.
 
    A downstream revocation is terminal when it was recorded there, or
    when it ended in one of two ways:
@@ -4764,6 +4764,39 @@ Initial request (with Prefer: wait=N)
        }
      ]
    }
+
+   *The body of a 200.* A 200 MAY carry no body, and then carries no
+   Content-Type; a recipient with nothing downstream answers that way,
+   and so does a PS answering an agent provider.  A non-empty body MUST
+   be application/json and MUST be a JSON object, whose downstream
+   member is OPTIONAL.  A caller reads an absent body as the revocation
+   recorded with nothing reported, and a non-empty body it cannot parse
+   as revocation_unavailable, the same as a 5xx — it has no terminal
+   outcome to record, and the recipient may not have one either.
+
+   *How long a recipient holds.* Absent Prefer: wait, the recipient
+   chooses how long to hold the connection, and SHOULD hold at least
+   long enough for one round trip to each downstream party it will call
+   — for a PS or an AS, whose cascade is one level deep, on the order of
+   20 seconds.  A recipient MAY hold for less than the caller asked for:
+   an idle timeout it does not control is a hard ceiling, commonly 60
+   seconds.  It answers 202 at its own cap, and the caller learns the
+   cap from the 202 arriving before the wait it asked for elapsed.
+
+   *Polling a deferred revocation.* The 202 is a deferred response
+   Section 12.5 with one difference: the poller is a server rather than
+   an agent.  It polls the pending URL with a signed GET, signing as a
+   server Section 12.9.2 under the same identity that made the
+   revocation, and sends no body.  The recipient MUST verify that
+   identity and MUST answer 404 to a poll from any other, since the
+   pending record belongs to the caller whose tokens it names.  Retry-
+   After and Prefer: wait apply as on any other pending URL.  The
+   terminal response is exactly what the synchronous path would have
+   returned — for an AS, the 200 carrying downstream — or an error from
+   the table below.  No AAuth-Requirement is used: nothing about a
+   revocation waits on a person.  A recipient with nothing downstream
+   MUST NOT answer 202; it has nothing to wait for, and has recorded the
+   revocation before it answers.
 
    *Revoking again.* Revocation is idempotent.  A recipient answering a
    repeated revocation for the same (iss, jti) records nothing new, re-
@@ -6806,6 +6839,26 @@ Initial request (with Prefer: wait=N)
 
    *  draft-hardt-oauth-aauth-protocol-11
 
+      -  Token Revocation says how a 202 is polled, what a 200 body may
+         be, and how long a recipient holds the connection.  The 202
+         pointed at Deferred Responses, which is written for an agent
+         polling with an agent token for a token or a problem; a
+         revocation 202 is polled by a server.  It is now stated that
+         the poller signs as a server under the same identity that made
+         the revocation, that the recipient answers 404 to any other
+         identity, that the terminal response is exactly what the
+         synchronous path would have returned, that no AAuth-Requirement
+         is used, and that a recipient with nothing downstream MUST NOT
+         answer 202.  A 200 MAY carry no body; a non-empty body MUST be
+         a JSON object with an OPTIONAL downstream, and one the caller
+         cannot parse is revocation_unavailable — the text categorized a
+         malformed response that way but did not say an empty body was
+         well-formed, so a caller had to tell one from the other with no
+         rule to go on.  Absent Prefer: wait the recipient chooses,
+         holding at least one round trip per downstream party, and MAY
+         cap the wait below what the caller asked and answer 202 at its
+         cap, since an idle timeout it does not control is a hard
+         ceiling.  Issues #181, #183, #184.
       -  A resource token MAY carry login_hint, which the agent passes
          to its PS as the login_hint parameter of the token request.  A
          resource stepping up for an identity claim about one particular
