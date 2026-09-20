@@ -4706,7 +4706,13 @@ Initial request (with Prefer: wait=N)
 
    The caller signs as a server Section 12.9.2, so the recipient
    resolves the id parameter — https://ps.example, the iss of every
-   token that PS mints — from the signature alone.
+   token that PS mints — from the signature alone.  The signature MUST
+   cover content-digest and content-type along with the base components
+   Section 12.9.3.1, at a resource's revocation endpoint as much as a
+   PS's or an AS's: the body is what says which token to revoke and for
+   how long to remember it, and a resource's freedom to set its own
+   coverage through additional_signature_components is about its API,
+   not about this endpoint.
 
    *Response:* 200 OK once the recipient has recorded the revocation and
    every downstream revocation it makes is terminal, as below.  Whether
@@ -5252,8 +5258,9 @@ Initial request (with Prefer: wait=N)
    Omitting any one would let a captured signature be replayed against a
    different method, host, path, or key.
 
-   On a request carrying a body to a PS or AS endpoint, the signature
-   MUST additionally cover:
+   On a request carrying a body to a PS or AS endpoint, or to any
+   revocation endpoint Section 12.7, the signature MUST additionally
+   cover:
 
    *  content-digest: The Content-Digest header value ([RFC9530])
    *  content-type: The Content-Type header value
@@ -5271,9 +5278,14 @@ Initial request (with Prefer: wait=N)
    bodyless requests, streamed uploads, and payloads large enough that
    digesting them is a real cost.  A resource therefore declares what it
    needs through additional_signature_components Section 12.12.4 rather
-   than the protocol mandating it.  Servers MAY require further covered
-   components; the agent learns about them from server metadata or from
-   an invalid_input error response that includes required_input.
+   than the protocol mandating it.  Its revocation endpoint is the
+   exception, which is why the requirement above names the endpoint
+   rather than the role: that endpoint is defined by this document, not
+   by the resource's API, and takes a body of two members that select a
+   token and add to retained state.  The same rule applies wherever it
+   is deployed.  Servers MAY require further covered components; the
+   agent learns about them from server metadata or from an invalid_input
+   error response that includes required_input.
 
    The following example shows a fully bound request combining a session
    token and an HTTP Message Signature.  Token and key values are
@@ -6902,6 +6914,15 @@ Initial request (with Prefer: wait=N)
 
    *  draft-hardt-oauth-aauth-protocol-11
 
+      -  A signature on a revocation request MUST cover content-digest
+         and content-type whatever the recipient's role.  The
+         requirement was written for PS and AS endpoints, while a
+         resource declares its own coverage through
+         additional_signature_components, so it was unclear whether a
+         resource's revocation endpoint followed the role or the
+         endpoint.  It follows the endpoint: that endpoint is defined
+         here rather than by the resource's API, and its body selects a
+         token and adds to retained state.  Issue #165.
       -  Token Revocation: the agent token cascade, what a recipient
          records, what it will accept, and who learns the outcome.  A PS
          cascades an agent token revocation by agent identity — every
