@@ -812,7 +812,9 @@ There are currently no known implementations.
 
 *Note: This section is to be removed before publishing as an RFC.*
 
-- draft-hardt-aauth-r3-02
+This document has not been submitted to the datatracker. Everything below is a change to the editor's copy, made while the design was being explored against implementations in progress. Earlier entries were logged under `-01` and `-02` before it was settled that the whole of this work becomes the first submission; they are one list here, which becomes `draft-hardt-aauth-r3-00`. Readers wanting the detail behind any entry will find it in the repository's history and pull requests.
+
+- draft-hardt-aauth-r3-00
   - Consistency pass against AAuth Protocol -11. The base-claim recitals in Resource Token Extensions and Auth Token Extensions are replaced by pointers to the protocol, since they had drifted twice; they also called the issuer an "Auth server", which is not a term. The access-mode ladder no longer rests on every request carrying an agent token, which -11 removed. The authorization endpoint example presents a person token. The single-use rule points at the protocol's Deferred Delivery rule for the retained result instead of restating it.
   - Resource token recital: `presented_jti` is the `jti` of the token the request carried, the person token or, on a per-call challenge, the auth token, and `ps` and `sub` are copied from that token. Follows AAuth Protocol -11, issue #152 there.
   - Rewrote Why Not RAR and the Comparison with RAR table. The argument led with directionality — RAR client-declared, R3 resource-declared — which is no longer the live counterposition: OAuth Transaction Authorization Challenge ([@?I-D.rosomakho-oauth-txn-challenge]) has the protected resource sign `authorization_details` in a challenge from which the AS derives the granted authorization details. The comparison is now against resource-declared RAR, and rests on content addressing, agent opacity, and carriage by reference. The complementary position is kept and restated.
@@ -829,17 +831,13 @@ There are currently no known implementations.
   - Removed the `version` field. R3 documents are content-addressed, so a revision is a different document at a different hash; `version` named nothing the hash did not, and nothing prevented two different documents carrying the same value.
   - Per-call grants are single-use on either delivery, with completion answered idempotently from the retained result. The `401` retry gained the comparison semantics it lacked — structural equality for inline parameters, digest equality for `s256` parameters — and a resource that can hold the invocation SHOULD use the `202` deferred delivery AAuth Protocol defines, under which nothing is re-sent and nothing is compared. Addresses issue #92.
   - Renamed `person_token_jti` to `presented_jti`, following AAuth Protocol.
-
-- draft-hardt-aauth-r3-01
   - Added per-call proposals: an `r3_conditional` operation is challenged at call time, and the resource builds a content-addressed proposal carrying the concrete parameters, which the AS evaluates and the resource binds on retry. A parameter MAY be carried as a digest so large or sensitive values stay between the agent and the resource.
   - Added the OPTIONAL `account` field, carrying the `account` value the authorization endpoint request named. `display` SHOULD name the account in terms the person recognises, the value itself being an identifier in the resource's namespace that may be opaque.
   - Content addressing hashes the bytes as served; canonicalization removed.
   - A resource MUST compose a single R3 document when the requested operations span more than one of its internal definitions.
   - Added operation identifier scope rules, and what a resource aggregating multiple backend services behind one resource identifier MUST do.
   - Aligned with the AAuth Protocol: `issuer` in resource metadata, and `dwk` values `aauth-access.json` and `aauth-person.json` in auth tokens.
-
-- draft-hardt-aauth-r3-00
-  - Initial submission
+  - Initial draft.
 
 # Acknowledgments
 
