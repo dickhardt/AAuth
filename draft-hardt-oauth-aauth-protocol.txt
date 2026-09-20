@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                       14 September 2026
-Expires: 18 March 2027
+Intended status: Standards Track                       20 September 2026
+Expires: 24 March 2027
 
 
                              AAuth Protocol
@@ -50,7 +50,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 18 March 2027.
+   This Internet-Draft will expire on 24 March 2027.
 
 Copyright Notice
 
@@ -1738,6 +1738,23 @@ Table of Contents
       acting as an agent needs a person token for a downstream resource
       Section 11.1.1.  The PS MUST verify it per Section 10.4.5.
 
+   The request also takes the OPTIONAL parameters of the auth token
+   request Section 8.2, with the same definitions: capabilities,
+   login_hint, tenant, domain_hint, prompt, justification, platform, and
+   device.  They matter here before they matter anywhere else, because
+   this is where a PS first decides which person the agent acts for and
+   whether it has to reach them. capabilities is how the PS learns that
+   the agent can drive an interaction; without it a PS that must reach
+   the person has no signal to act on and answers user_unreachable
+   Section 12.6.3, a terminal error, on a request the agent could have
+   completed.  Within a mission the PS uses the capabilities captured at
+   mission approval Section 9.2 when capabilities is omitted.
+   login_hint, tenant, and domain_hint choose among the bindings the PS
+   holds for the agent, or name the account when there is none. prompt
+   and justification shape the interaction the endpoint MAY require.
+   platform and device name the agent's runtime for the consent screen
+   and the person's connected-agents dashboard.
+
    Without upstream_token the PS issues for the person bound to the
    requesting agent Section 14.14.  With it, the PS issues for the
    person the upstream token was issued for.  The upstream token MUST
@@ -1767,7 +1784,8 @@ Table of Contents
 
    {
      "resource": "https://resource.example",
-     "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+     "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+     "capabilities": ["interaction"]
    }
 
    *Response* (200):
@@ -3900,13 +3918,13 @@ Table of Contents
 
    Agents SHOULD include the AAuth-Capabilities header on signed
    requests to resources.  The header is not used on requests to PS
-   endpoints: on the PS token endpoint the agent conveys capabilities
-   via the capabilities request parameter Section 8.2, and within a
-   mission the PS also has the capabilities captured at mission approval
-   Section 9.2.  Recipients MUST ignore unrecognized capability values.
-   When the header is absent, recipients MUST NOT assume any
-   capabilities — the agent may not support interaction, clarification,
-   or payment flows.
+   endpoints: on the person token endpoint Section 8.1 and the auth
+   token endpoint Section 8.2 the agent conveys capabilities via the
+   capabilities request parameter, and within a mission the PS also has
+   the capabilities captured at mission approval Section 9.2.
+   Recipients MUST ignore unrecognized capability values.  When the
+   header is absent, recipients MUST NOT assume any capabilities — the
+   agent may not support interaction, clarification, or payment flows.
 
    Capability values are Tokens and currently carry no parameters.  A
    future capability value MAY define parameters; recipients MUST ignore
@@ -6777,6 +6795,22 @@ Initial request (with Prefer: wait=N)
 
    *  draft-hardt-oauth-aauth-protocol-11
 
+      -  The person token request takes the OPTIONAL parameters of the
+         auth token request — capabilities, login_hint, tenant,
+         domain_hint, prompt, justification, platform, and device — and
+         the AAuth-Capabilities cross-reference names both PS endpoints
+         rather than only the auth token endpoint.  The endpoint listed
+         four parameters and no way to declare a capability, name a
+         tenant, or pass a hint, while the same section lets the PS
+         answer 202 with requirement=interaction and defines
+         user_unreachable as terminal when the agent did not declare the
+         interaction capability — which there was no conforming way to
+         do.  Two implementations diverged on it: an agent sent AAuth-
+         Capabilities, which the spec rules out on PS endpoints, a PS
+         read capabilities and tenant from the body as an extension, and
+         before that a first-contact request was answered
+         user_unreachable when the agent could in fact have driven the
+         interaction.  Issues #175, #177.
       -  Call chaining accepts a person token as upstream_token, at the
          person token endpoint, the auth token endpoint, and the PS-to-
          AS request.  The upstream token is a token the calling agent

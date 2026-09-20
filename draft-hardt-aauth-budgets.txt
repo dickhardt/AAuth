@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                       14 September 2026
-Expires: 18 March 2027
+Intended status: Standards Track                       20 September 2026
+Expires: 24 March 2027
 
 
                              AAuth Budgets
@@ -51,7 +51,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 18 March 2027.
+   This Internet-Draft will expire on 24 March 2027.
 
 Copyright Notice
 
