@@ -1601,13 +1601,22 @@ Table of Contents
    specification defines an authorization claim that replaces it, as R3
    does ([I-D.hardt-aauth-r3]). - account: The account the authorization
    is for, echoing the account parameter of the request that produced
-   this token Section 12.3. - mission_s256: REQUIRED when the presented
-   token carried one, copied unchanged. - tenant: Copied from the
-   presented token when it carried one. - interaction: Present when the
-   resource requires its own user-facing flow — for example, obtaining
-   OAuth authorization from a third-party service — before the PS can
-   issue an auth token.  Contains: - url: HTTPS URL of the resource's
-   interaction endpoint - code: Interaction code to present at that URL
+   this token Section 12.3. - login_hint: A hint about who the
+   authorization is for, per [OpenID.Core] Section 3.1.2.1, for a
+   resource that knows it — a resource asking for an identity claim
+   about one particular person, such as scope: email for an address it
+   already holds.  The agent passes the value to its PS as the
+   login_hint parameter of the token request Section 8.2 and MUST NOT
+   alter it.  It is a hint: the PS MAY ignore it, and the person
+   decides.  A resource MUST check the claims in the auth token it
+   receives against what it asked for rather than assuming the hint was
+   honored. - mission_s256: REQUIRED when the presented token carried
+   one, copied unchanged. - tenant: Copied from the presented token when
+   it carried one. - interaction: Present when the resource requires its
+   own user-facing flow — for example, obtaining OAuth authorization
+   from a third-party service — before the PS can issue an auth token.
+   Contains: - url: HTTPS URL of the resource's interaction endpoint -
+   code: Interaction code to present at that URL
 
    Resource tokens SHOULD NOT have a lifetime exceeding 5 minutes.  A
    resource token's lifetime is independent of any mission it names: the
@@ -1902,7 +1911,9 @@ Table of Contents
       also the text the user's clarification questions are asked about
       Section 8.5.
    *  login_hint (OPTIONAL): Hint about who to authorize, per
-      [OpenID.Core] Section 3.1.2.1.
+      [OpenID.Core] Section 3.1.2.1.  When the resource token carries a
+      login_hint Section 7.8.1 the agent sends that value here
+      unchanged.
    *  tenant (OPTIONAL): Tenant identifier, per OpenID Connect
       Enterprise Extensions 1.0 [OpenID.Enterprise].
    *  domain_hint (OPTIONAL): Domain hint, per OpenID Connect Enterprise
@@ -6795,6 +6806,14 @@ Initial request (with Prefer: wait=N)
 
    *  draft-hardt-oauth-aauth-protocol-11
 
+      -  A resource token MAY carry login_hint, which the agent passes
+         to its PS as the login_hint parameter of the token request.  A
+         resource stepping up for an identity claim about one particular
+         person — scope: email for an address it already holds — knew
+         who it was asking about and had nothing to carry the value in,
+         so the agent had nothing to forward.  It is a hint: the PS MAY
+         ignore it, and a resource checks the claims it receives against
+         what it asked for.  Issue #163.
       -  The Adoption Matrix names the auth token, not the person token,
          in the Agent column of the PS authorization and Federated
          authorization rows.  In both modes the person token is only
