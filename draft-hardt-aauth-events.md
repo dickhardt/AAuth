@@ -434,9 +434,11 @@ Content-Type: application/json
 
 When `remaining_uses` is `0`, the subscription is exhausted. The resource SHOULD clean up its subscription record and MAY prompt the agent to re-subscribe on the next interaction. When `max_uses` was not set, the AP returns `202 Accepted` with no body (or an empty JSON object).
 
-The AP returns `400` for malformed requests, `401` if the resource's HTTP signature cannot be verified, `403` if the resource does not match the subscription's authorized resource, `404` if the `eid` is unknown or the subscription has expired, and `410 Gone` if `max_uses` has been exceeded.
+The AP returns `400` for malformed requests, `401` if the resource's HTTP signature cannot be verified, `403` if the resource does not match the subscription's authorized resource, and `404` if the `eid` is unknown, the subscription has expired, or `max_uses` has been exceeded.
 
-An exhausted subscription is `410` rather than `429` because it is terminal: the subscription has been spent and no later attempt on that `eid` will be accepted, so the resource cleans up its record and re-subscribes rather than retrying. `429` says the opposite — come back later — and the base protocol already gives it two meanings of that kind, `slow_down` on a pending URL and `rate_limited` at a revocation endpoint ([@!I-D.hardt-oauth-aauth-protocol]).
+Those last three are one condition from the resource's side: the AP has no subscription that will accept this event, and the answer is to clean up and re-subscribe. `410 Gone` would say more — that there was a subscription here and it is finished — but an AP can answer that only while it still holds a record it has no other use for, so the distinction would report its retention policy rather than any protocol state. Nothing is lost by collapsing them, because exhaustion is reported in-band: `remaining_uses: 0` in the `202` of the delivery that spent the subscription reaches the resource at the moment it can act on it. An event posted after that is a race or a resource that ignored the signal, and the `404` tells it what the earlier `202` already did.
+
+`429 Too Many Requests` is not used. It invites a retry, and none of these conditions is retryable; the base protocol's two uses of it — `slow_down` on a pending URL and `rate_limited` at a revocation endpoint — both mean come back later ([@!I-D.hardt-oauth-aauth-protocol]).
 
 # Event Delivery: AP to Agent {#ap-to-agent}
 
@@ -638,7 +640,7 @@ TBD
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-aauth-events-00
-  - An exhausted subscription is answered `410 Gone` rather than `429 Too Many Requests`. Exhaustion is terminal — the `eid` will never accept another event token, and the resource's move is to clean up and re-subscribe — while `429` invites a retry after waiting, which is what it means in both of the base protocol's uses of it.
+  - An exhausted subscription is answered `404`, with an unknown `eid` and an expired subscription, rather than `429 Too Many Requests`. None of the three is retryable, while `429` invites a retry — the meaning it carries in both of the base protocol's uses of it. They are answered alike because an AP can distinguish them only while it holds a record it has no other use for, which would make the status code a report of its retention policy; exhaustion reaches the resource in-band anyway, as `remaining_uses: 0` in the `202` of the delivery that spent the subscription.
   - Consistency pass against AAuth Protocol -11. Event tokens carry `jti`, and the AP and agent deduplicate on `(iss, jti)`; deduplicating on `eid` would have dropped every event after the first on an unlimited subscription. The protected-subscription flow binds the ticket to the JWK Thumbprint of the subscribe token's `cnf.jwk`, matching Security Considerations. `iat` is not a validity check. The event payload is the POST body, not a `payload` member, and the AsyncAPI message `contentType` is `application/json`. Token `alg` rules and the common verification steps point at the protocol rather than restating it. Example JWTs use `Ed25519` and the registered `typ` values. The AsyncAPI vocabulary identifier is registered by R3, not defined here.
   - Referenced the AAuth Protocol and AAuth Bootstrap by their datatracker document URLs, which track the latest revision.
   - Algorithm identifiers: `Ed25519` rather than the deprecated polymorphic `EdDSA`; the `cnf.jwk` example carries the `alg` member now required of every conveyed key.
