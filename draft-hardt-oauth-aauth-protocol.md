@@ -638,131 +638,103 @@ A recipient MUST reject an `aa-person+jwt` wherever an auth token is required. O
 
 `sub` is unique within the issuer, not globally. A resource MUST treat `(iss, sub)` as the identifier, MUST treat the value as opaque, and MUST NOT match a `sub` received from one issuer against a record established under another, however the values compare.
 
-# Resource Access and Resource Tokens {#resource-tokens}
+# Resource Access {#resource-tokens}
 
-This section defines how agents request access to resources and how resources issue resource tokens.
+An agent calls a resource with a signed request. The resource serves it, or answers with an `AAuth-Requirement` header naming what it needs first (#requirement-responses). This section defines the four requirements a resource can raise, in the order they ask more of the agent, followed by the session token, the authorization endpoint, and the resource token.
 
-A resource token can be returned in two ways:
+| Requirement | Status | The resource needs | The agent |
+|---|---|---|---|
+| `agent-token` | `401` | the agent's identity | presents its agent token (#requirement-agent-token) |
+| `interaction` | `202` | the person, at the resource's own page | directs the person there and polls (#resource-managed-auth) |
+| `person-token` | `401` | the person's identity | obtains a person token from its PS (#requirement-person-token) |
+| `auth-token` | `401` or `202` | consent or policy for a scope | takes the enclosed resource token to its PS (#requirement-auth-token) |
 
-1. **Authorization endpoint**: The agent proactively requests access at the resource's `authorization_endpoint`. The resource responds with a resource token.
-2. **AAuth-Requirement challenge**: The agent calls a resource endpoint directly. If the agent lacks sufficient authorization, the resource returns `401` with an `AAuth-Requirement` header containing a resource token (#requirement-auth-token).
+The first two involve no person server: the resource decides on the agent's identity, or runs its own consent and issues a session token (#aauth-access). The last two need the agent's PS. An agent with no PS cannot obtain a person token, so `agent-token` and `interaction` are the whole of what is available to it.
 
-A resource issues a resource token only after verifying a person token (#person-tokens) or an auth token (#auth-tokens) on the request, and otherwise challenges with `requirement=person-token` (#resource-token). Only a person server can act on a resource token — in three-party it is the audience, and in four-party it is the only party that may call the AS token endpoint — so a resource token issued to an agent that cannot name a person is one nobody can redeem.
-
-A resource token is a signed JWT that cryptographically binds the resource's identity, the person's identity, the agent's signing key, and the requested scope. The resource sets the token's audience based on its configuration:
-
-- If the resource has its own AS: `aud` = AS URL (four-party)
-- If the resource has no AS: `aud` = the `iss` of the person token the resource verified (three-party)
-- A resource that issues no resource token handles authorization itself — via an interaction response (#user-interaction) or internal policy — and MAY return an `AAuth-Access` header (#aauth-access)
-
-A resource MAY always handle authorization itself, regardless of whether the agent has a PS.
-
-## Authorization Endpoint Request
-
-A resource MAY publish an `authorization_endpoint` in its metadata. The agent sends a signed POST to the authorization endpoint. The resource reads the person token from the `Signature-Key` header and determines how to respond — it may return a resource token, handle authorization itself, or both.
-
-The agent MUST present a person token (#person-tokens) via the `Signature-Key` header on requests to the authorization endpoint, and the resource MUST verify it per (#person-token-verification). A resource that receives a request without one responds per (#requirement-person-token).
-
-An agent with no person server cannot obtain a person token and so cannot use the authorization endpoint. It calls the resource's endpoints directly and takes whatever the resource challenges with — identity-based access (#requirement-agent-token) or resource-managed authorization (#resource-managed-auth). Those two modes are the whole of what is available to it: a resource token follows a verified person token or auth token (#resource-token), neither of which such an agent can hold, and an agent with no PS has nowhere to redeem one.
-
-**Request parameters:**
-
-- `scope` (REQUIRED): A space-separated string of scope values the agent is requesting.
-- `account` (OPTIONAL): A string identifying which account at the resource the authorization is for, drawn from the resource's own account namespace (#account-binding).
-
-```http
-POST /authorize HTTP/1.1
-Host: resource.example
-Content-Type: application/json
-Signature-Key: sig=jwt;jwt="eyJhbGc..."
-
-{
-  "scope": "data.read data.write"
-}
-```
-
-## Authorization Endpoint Responses
-
-The resource can handle authorization itself, or it can issue a resource token — to its AS, or to the PS that issued the person token it verified.
-
-### Response without Resource Token
-
-The resource handles authorization itself. If user interaction is needed it returns a `202 Accepted` deferred response with `requirement=interaction` (#resource-managed-auth); the user completes the interaction at the resource's own consent page and the agent polls the `Location` URL. When authorization is complete, the resource returns `200 OK` and MAY include an `AAuth-Access` header (#aauth-access) containing a session token for subsequent calls.
-
-```http
-HTTP/1.1 200 OK
-AAuth-Access: wrapped-session-token-value
-Content-Type: application/json
-
-{
-  "status": "authorized",
-  "scope": "data.read data.write"
-}
-```
-
-If the resource can authorize immediately (e.g., the agent's key is already authorized), it returns `200 OK` directly with the optional `AAuth-Access` header.
-
-### Response with Resource Token
-
-Alternatively, the resource MAY return a resource token, with `aud` set per (#resource-tokens) and `mission_s256` copied from the person token when it carried one.
-
-```json
-{
-  "resource_token": "eyJhbGc..."
-}
-```
-
-The agent sends the resource token to its PS's token endpoint.
-
-### Authorization Endpoint Error Responses {#authorization-endpoint-error-responses}
-
-| Error | Status | Meaning |
-|-------|--------|---------|
-| `invalid_request` | 400 | Missing or invalid parameters |
-| `invalid_signature` | 401 | HTTP signature verification failed |
-| `invalid_scope` | 400 | Requested scope not recognized by the resource |
-| `invalid_account` | 400 | The `account` named is not held by the person the person token identifies |
-| `server_error` | 500 | Internal error |
-
-Error responses use the error response format (#error-response-format). A person token that fails verification is the `Signature-Key` token failing, and is answered with `401` and `Signature-Error` per (#verification), not with a code from this table.
+A resource MAY handle authorization itself for any request, regardless of whether the agent has a PS, and MAY apply different requirements to different endpoints.
 
 ## Agent Token Required {#requirement-agent-token}
 
-A resource that requires only the agent's identity — agent identity access, with no user auth token — uses `requirement=agent-token` with a `401 Unauthorized` response when the request did not present an AAuth agent token. This signals that the resource specifically requires an AAuth agent token (`typ: aa-agent+jwt`), as distinct from any other URI-identified signing key.
+A resource that decides on the agent's identity alone answers a request that did not present an AAuth agent token with `401` and `requirement=agent-token`:
 
 ```http
 HTTP/1.1 401 Unauthorized
 AAuth-Requirement: requirement=agent-token
 ```
 
-The header carries no additional parameters: the agent already holds its agent token and need only present it. The agent retries the request, signing it per (#http-message-signatures-profile) and presenting its agent token via the `Signature-Key` header using `sig=jwt;jwt="<agent-token>"`.
+The header carries no parameters. The agent retries, presenting its agent token via the `Signature-Key` header under the `jwt` scheme (#keying-material).
 
-`requirement=agent-token` is distinct from `requirement=auth-token`: the former asks for the agent's own identity token, with no PS or AS involved; the latter asks the agent to obtain an auth token from its PS using the enclosed resource token. It is also more specific than an `Accept-Signature-Scheme` challenge ([@!I-D.hardt-httpbis-signature-key]), which names schemes and so would accept any key those schemes can convey — `requirement=agent-token` tells the agent that an AAuth agent token in particular is required.
+`requirement=agent-token` asks for an AAuth agent token (`typ: aa-agent+jwt`) in particular. An `Accept-Signature-Scheme` challenge ([@!I-D.hardt-httpbis-signature-key]) names schemes, and so would accept any key those schemes can convey; a resource challenging an AAuth agent uses `requirement=agent-token` instead (#scheme-rejection).
+
+## Resource-Managed Authorization {#resource-managed-auth}
+
+A resource that runs its own consent, login, or existing OAuth flow answers with `202 Accepted` and `requirement=interaction`:
+
+```http
+HTTP/1.1 202 Accepted
+Location: https://resource.example/pending/abc123
+Retry-After: 0
+Cache-Control: no-store
+AAuth-Requirement: requirement=interaction;
+    url="https://resource.example/interaction"; code="A1B2-C3D4"
+Content-Type: application/json
+
+{
+  "status": "pending"
+}
+```
+
+The agent directs the user to the interaction URL (#user-interaction) and polls the `Location` URL (#deferred-responses). When the interaction completes, the resource returns `200 OK` and MAY include an `AAuth-Access` header (#aauth-access) with a session token for subsequent calls.
+
+A resource MAY also authorize on the agent's identity alone, without any interaction, when the agent's key is already known or its domain is trusted.
+
+## AAuth-Access Response Header {#aauth-access}
+
+The `AAuth-Access` response header carries a **session token** from a resource to an agent. The token is opaque to the agent: the resource wraps its own authorization state, which MAY be an existing OAuth access token or other credential. It is the one AAuth credential a resource issues for its own consumption. The agent returns it in the `Authorization` header on subsequent requests:
+
+```http
+GET /api/data HTTP/1.1
+Host: resource.example
+Authorization: AAuth wrapped-session-token-value
+Signature-Input: sig=("@method" "@authority" "@path" \
+    "authorization" "signature-key");created=1730217600
+Signature: sig=:...signature bytes...:
+Signature-Key: sig=jwt;jwt="eyJhbGc..."
+```
+
+The agent MUST include `authorization` in the covered components of its HTTP signature. The token MUST NOT be usable as a standalone bearer token: the resource wraps its state so that the value is meaningless without a valid signature from the agent.
+
+A resource MAY return a new `AAuth-Access` header on any response, replacing the current session token. When the agent receives a new value, it MUST use it on subsequent requests. This is the refresh mechanism; there is no separate refresh flow.
+
+The `AAuth-Access` value, and the credential carried in `Authorization: AAuth`, is a `token68` ([@!RFC9110], Section 11.2). Recipients MUST reject empty values, values containing embedded whitespace or control characters, and responses carrying more than one credential.
 
 ## Person Token Required {#requirement-person-token}
 
-A resource that receives an authorization endpoint request carrying no person token (#person-tokens) uses `requirement=person-token` with a `401 Unauthorized` response. A resource MAY also use it on any other endpoint where it requires the person's identity before serving a request.
-
+A resource that needs to know which person the agent acts for, and has not verified a person token on the request, answers with `401` and `requirement=person-token`:
 
 ```http
 HTTP/1.1 401 Unauthorized
 AAuth-Requirement: requirement=person-token
 ```
 
-The header carries no additional parameters. The agent obtains a person token for this resource from its PS's person token endpoint (#person-token-endpoint) and retries. An agent with no person server cannot satisfy this requirement and surfaces it as an error per (#requirement-values).
+The header carries no parameters. The agent obtains a person token for this resource from its PS (#person-token-endpoint) and retries, presenting it via the `Signature-Key` header in place of its agent token (#person-token-usage). A resource MUST answer a request to its authorization endpoint that carries no person token this way (#authorization-endpoint-request), and MAY use it on any other endpoint where it requires the person's identity before serving a request.
+
+An agent with no person server cannot satisfy this requirement and surfaces it as an error (#requirement-values).
 
 ## Auth Token Required {#requirement-auth-token}
 
-A resource MUST use `requirement=auth-token` with a `401 Unauthorized` response when an auth token is required. The header MUST include a `resource-token` parameter containing a resource token JWT (#resource-token-structure). A request that carried neither a person token nor an auth token is answered with `requirement=person-token` (#requirement-person-token) instead: the resource has nothing to issue a resource token for (#resource-token).
+A resource that needs consent or policy for a scope answers with `401`, `requirement=auth-token`, and a `resource-token` parameter carrying a resource token JWT (#resource-token-structure):
 
 ```http
 HTTP/1.1 401 Unauthorized
 AAuth-Requirement: requirement=auth-token; resource-token="eyJ..."
 ```
 
-The agent MUST extract the `resource-token` parameter, verify the resource token (#resource-challenge-verification), and present it to its PS's token endpoint to obtain an auth token (#ps-token-endpoint). A resource MAY also use `402 Payment Required` with the same `AAuth-Requirement` header when payment is additionally required (#requirement-responses).
+A resource MUST use `requirement=auth-token` when an auth token is required, and the header MUST include the `resource-token` parameter. The agent MUST extract and verify the resource token (#resource-challenge-verification) and present it to its PS's auth token endpoint (#ps-token-endpoint) to obtain an auth token. It then retries, presenting the auth token via `Signature-Key` (#auth-token-usage).
 
-A resource MAY return `requirement=auth-token` with a new resource token to a request that already includes an auth token — for example, when the request requires a higher level of authorization than the current token provides. Agents MUST be prepared for this step-up authorization at any time.
+A resource issues a resource token only after verifying a person token or an auth token on the request (#resource-token). A request that carried neither is answered with `requirement=person-token` instead. A resource MAY also send `402 Payment Required` with the same header when payment is additionally required (#requirement-responses).
+
+A resource MAY return `requirement=auth-token` with a new resource token to a request that already carries an auth token, when the request needs more authorization than the token provides. Agents MUST be prepared for this step-up at any time.
 
 ### Deferred Delivery {#deferred-auth-token}
 
@@ -780,97 +752,120 @@ AAuth-Requirement: requirement=auth-token; resource-token="eyJ..."
 }
 ```
 
-The agent verifies the resource token and obtains an auth token exactly as in the `401` case, then completes at the pending URL: it polls with signed `GET` requests per (#deferred-responses), presenting the auth token via `Signature-Key` once it holds one. The resource executes the held invocation on the first poll that presents a valid auth token, and answers with the invocation's response.
+The agent obtains an auth token exactly as in the `401` case, then polls the pending URL with signed `GET` requests, presenting the auth token via `Signature-Key` once it holds one. The resource executes the held invocation on the first poll that presents a valid auth token and answers with the invocation's response.
 
-Completion consumes the pending record. The resource MUST retain the record, with the invocation's result, at least until the auth token's `exp`, and MUST answer a repeated presentation of the same auth token at the pending URL from that result rather than executing again — a response can be lost in transit, and the agent cannot otherwise distinguish "not executed" from "executed, response lost". The record is keyed by the auth token's `jti`: two grants that approve identical invocations are two records, each answered from its own result. If the resource token expires before the agent obtains an auth token, the resource MAY include a fresh resource token in the `AAuth-Requirement` header of a subsequent poll response; it still holds the invocation, so nothing is re-sent.
+Completion consumes the pending record. The resource MUST retain the record, with the invocation's result, at least until the auth token's `exp`, and MUST answer a repeated presentation of the same auth token at the pending URL from that result rather than executing again: a response can be lost in transit, and the agent cannot otherwise tell "not executed" from "executed, response lost". The record is keyed by the auth token's `jti`. If the resource token expires before the agent obtains an auth token, the resource MAY include a fresh one in the `AAuth-Requirement` header of a later poll response.
 
-Which delivery to use is the resource's choice, per invocation. The `401` is the baseline every resource can implement without holding state, and the only delivery that maps onto transports with no place to complete at a separate URL. The `202` suits a resource that can hold the invocation; a resource hosting its own interaction already returns this shape (#interaction-response-poll-authority). Agents MUST support both: the deferred-response handling agents already implement (#deferred-responses) applies unchanged, with `requirement=auth-token` in the pending response rather than `requirement=interaction`.
+Which delivery to use is the resource's choice, per invocation. The `401` needs no state and works on any transport; the `202` suits a resource that can hold the invocation. Agents MUST support both.
 
-## AAuth-Access Response Header {#aauth-access}
+## Authorization Endpoint {#authorization-endpoint-request}
 
-The `AAuth-Access` response header carries a **session token** from a resource to an agent. The token is opaque to the agent — the resource wraps its internal authorization state (which MAY be an existing OAuth access token or other credential). It is the one AAuth credential a resource issues for its own consumption, and it names the continuing relationship the resource has established with this agent for this person. The agent passes the token back to the resource via the `Authorization` header on subsequent requests:
+A resource MAY publish an `authorization_endpoint` in its metadata (#resource-metadata). It lets an agent request access for a scope before calling the resource, instead of waiting for a challenge. The agent MUST present a person token (#person-tokens) via the `Signature-Key` header, and the resource MUST verify it (#person-token-verification). A request without one is answered per (#requirement-person-token).
+
+**Request parameters:**
+
+- `scope` (REQUIRED): A space-separated string of scope values the agent is requesting (#scopes).
+- `account` (OPTIONAL): A string identifying which account at the resource the authorization is for, drawn from the resource's own account namespace (#account-binding).
 
 ```http
-GET /api/data HTTP/1.1
+POST /authorize HTTP/1.1
 Host: resource.example
-Authorization: AAuth wrapped-session-token-value
-Signature-Input: sig=("@method" "@authority" "@path" \
-    "authorization" "signature-key");created=1730217600
-Signature: sig=:...signature bytes...:
-Signature-Key: sig=jwt;jwt="eyJhbGc..."
-```
-
-The agent MUST include `authorization` in the covered components of its HTTP signature, binding the session token to the signed request. The token MUST NOT be usable as a standalone bearer token: the resource wraps its internal authorization state so that the value is meaningless without a valid AAuth signature from the agent.
-
-A resource MAY return a new `AAuth-Access` header on any response, replacing the agent's current session token. This enables rolling refresh without an explicit refresh flow. When the agent receives a new `AAuth-Access` value, it MUST use the new value on subsequent requests.
-
-The `AAuth-Access` value, and the credential carried in `Authorization: AAuth`, is a `token68` ([@!RFC9110], Section 11.2). Recipients MUST reject empty values, values containing embedded whitespace or control characters, and responses carrying more than one credential.
-
-## Resource-Managed Authorization {#resource-managed-auth}
-
-When a resource manages authorization itself and requires user interaction, it returns a `202 Accepted` response with an interaction requirement:
-
-```http
-HTTP/1.1 202 Accepted
-Location: https://resource.example/pending/abc123
-Retry-After: 0
-Cache-Control: no-store
-AAuth-Requirement: requirement=interaction;
-    url="https://resource.example/interaction"; code="A1B2-C3D4"
 Content-Type: application/json
+Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
-  "status": "pending"
+  "scope": "data.read data.write"
 }
 ```
 
-The agent directs the user to the interaction URL (#user-interaction) and polls the `Location` URL per the deferred response pattern (#deferred-responses). When the interaction completes, the resource returns `200 OK` and MAY include an `AAuth-Access` header (#aauth-access) with a session token for subsequent calls.
+The resource answers in one of two ways: it handles authorization itself, or it issues a resource token.
 
-A resource MAY also authorize the agent based solely on its identity (from the agent token) without any interaction — for example, when the agent's key is already known or the agent's domain is trusted.
+### Response without Resource Token
 
-## Resource Token
+The resource handles authorization itself. If user interaction is needed, it returns a `202 Accepted` deferred response with `requirement=interaction`, as in (#resource-managed-auth). When authorization is complete, or can be granted immediately, it returns `200 OK` and MAY include an `AAuth-Access` header (#aauth-access):
 
-A resource MUST verify a person token (#person-token-verification) or an auth token (#auth-token-verification) on the request before it issues a resource token: the token's `ps`, `sub`, and `presented_jti` are copied from the token the request carried, and there is nothing to copy otherwise. On the authorization endpoint that token is a person token (#authorization-endpoint-request); on any other endpoint it is whichever the request carried. A resource that has verified neither MUST challenge with `requirement=person-token` (#requirement-person-token) rather than issue a resource token.
+```http
+HTTP/1.1 200 OK
+AAuth-Access: wrapped-session-token-value
+Content-Type: application/json
+
+{
+  "status": "authorized",
+  "scope": "data.read data.write"
+}
+```
+
+### Response with Resource Token
+
+The resource returns a resource token (#resource-token-structure), with `aud` set to its AS or to the PS that issued the person token, and `mission_s256` copied from the person token when it carried one:
+
+```json
+{
+  "resource_token": "eyJhbGc..."
+}
+```
+
+The agent sends the resource token to its PS's auth token endpoint (#ps-token-endpoint).
+
+### Authorization Endpoint Error Responses {#authorization-endpoint-error-responses}
+
+| Error | Status | Meaning |
+|-------|--------|---------|
+| `invalid_request` | 400 | Missing or invalid parameters |
+| `invalid_scope` | 400 | Requested scope not recognized by the resource |
+| `invalid_account` | 400 | The `account` named is not held by the person the person token identifies |
+| `server_error` | 500 | Internal error |
+
+Errors use the error response format (#error-response-format). A person token that fails verification is answered with `401` and `Signature-Error` (#verification), not with a code from this table.
+
+## Resource Token {#resource-token}
+
+A resource token is what a resource hands the agent to carry to the agent's PS. It binds the resource's identity, the person's identity, the agent's signing key, and the requested scope, so that the PS or AS issuing the auth token knows exactly what was asked, by whom, for whom.
+
+A resource MUST verify a person token (#person-token-verification) or an auth token (#auth-token-verification) on the request before it issues a resource token: the token's `ps`, `sub`, and `presented_jti` are copied from the token the request carried. On the authorization endpoint that is the person token; on any other endpoint it is whichever the request carried. A resource that has verified neither MUST challenge with `requirement=person-token` (#requirement-person-token) instead.
+
+The resource sets `aud` to the party that will redeem the token:
+
+- `aud` = the AS URL when the resource has its own access server (four-party)
+- `aud` = the `iss` of the person token the resource verified when it has none (three-party)
 
 ### Resource Token Structure
 
 A resource token is a JWT with `typ: aa-resource+jwt`. Its header and the claims `iss`, `dwk`, `jti`, `iat`, and `exp` are as defined in (#common-claims), with `iss` the resource URL and `dwk` `aauth-resource.json`. A resource token carries no `cnf`; `agent_jkt` binds it to the agent's key.
 
 Required payload claims specific to resource tokens:
-- `aud`: Token audience — the PS URL (when the resource delegates authorization to the agent's PS) or the AS URL (when the resource has its own access server)
-- `ps`: The person server whose namespace `sub` belongs to — the `iss` of the person token the request carried, or the `ps` of the auth token it carried
-- `sub`: The `sub` of the token the request carried, identifying the person this authorization is for
-- `presented_jti`: The `jti` of the token the request carried, whose verification established `ps` and `sub`: the person token on the first challenge of a grant, or the auth token on a step-up or per-call challenge. The resource names the token it just verified and keeps no record. The agent passes that token to the PS with its token request as `presented_token` (#ps-token-endpoint). Binding the resource token to one presented token by `jti` is what makes mission stripping detectable (#why-presented-jti)
-- `agent_jkt`: JWK Thumbprint ([@!RFC7638]) of the agent's current signing key
 
-A resource token carries no agent identifier. `agent_jkt` binds it to the agent's key, and the recipient learns the agent's identity from the agent token that signs the token request.
+- `aud`: The PS URL or the AS URL, as above.
+- `ps`: The person server whose namespace `sub` belongs to: the `iss` of the person token the request carried, or the `ps` of the auth token it carried.
+- `sub`: The `sub` of the token the request carried.
+- `presented_jti`: The `jti` of the token the request carried: the person token on the first challenge of a grant, or the auth token on a step-up or per-call challenge. The agent passes that token to the PS as `presented_token` (#ps-token-endpoint). Binding the resource token to one presented token is what makes mission stripping detectable (#why-presented-jti).
+- `agent_jkt`: JWK Thumbprint ([@!RFC7638]) of the agent's current signing key.
+
+A resource token carries no agent identifier. The recipient learns the agent's identity from the agent token that signs the token request.
 
 Optional payload claims:
-- `scope`: Requested scopes, as a space-separated string of scope values. Present unless a companion specification defines an authorization claim that replaces it, as R3 does ([@?I-D.hardt-aauth-r3]).
-- `account`: The account the authorization is for, echoing the `account` parameter of the request that produced this token (#account-binding).
-- `login_hint`: A hint about who the authorization is for, per [@!OpenID.Core] Section 3.1.2.1, for a resource that knows it — a resource asking for an identity claim about one particular person, such as `scope: email` for an address it already holds. The agent passes the value to its PS as the `login_hint` parameter of the token request (#ps-token-endpoint) and MUST NOT alter it. It is a hint: the PS MAY ignore it, and the person decides. A resource MUST check the claims in the auth token it receives against what it asked for rather than assuming the hint was honored.
+
+- `scope`: Requested scopes, as a space-separated string. Present unless a companion specification defines an authorization claim that replaces it, as R3 does ([@?I-D.hardt-aauth-r3]).
+- `account`: Echoes the `account` parameter of the request that produced this token (#account-binding).
+- `login_hint`: A hint about who the authorization is for, per [@!OpenID.Core] Section 3.1.2.1, for a resource that knows it. The agent passes the value to its PS as the `login_hint` parameter of the token request (#ps-token-endpoint) and MUST NOT alter it. The PS MAY ignore it. A resource MUST check the claims in the auth token it receives against what it asked for rather than assuming the hint was honored.
 - `mission_s256`: REQUIRED when the presented token carried one, copied unchanged.
 - `tenant`: Copied from the presented token when it carried one.
-- `interaction`: Present when the resource requires its own user-facing flow — for example, obtaining OAuth authorization from a third-party service — before the PS can issue an auth token. Contains:
-  - `url`: HTTPS URL of the resource's interaction endpoint
-  - `code`: Interaction code to present at that URL
+- `interaction`: Present when the resource requires its own user-facing flow, such as an OAuth authorization at a third-party service, before the PS can issue an auth token (#resource-initiated-interaction). Contains `url`, the HTTPS URL of the resource's interaction endpoint, and `code`, the interaction code to present there.
 
-Resource tokens SHOULD NOT have a lifetime exceeding 5 minutes. A resource token's lifetime is independent of any mission it names: the PS verifies that the mission is active when it acts on the token (#resource-token-verification), and only the PS issues tokens bounded by the mission's `expires_at` (#mission-approval). The `jti` claim provides an audit trail for token requests; ASes are not required to enforce replay detection on resource tokens. If a resource token expires before the PS presents it to the AS (e.g., because user interaction was required), the agent MUST obtain a fresh resource token from the resource and submit a new token request to the PS. The PS SHOULD remember prior consent decisions within a mission so the user is not re-prompted when the agent resubmits a request for the same resource and scope.
+Resource tokens SHOULD NOT have a lifetime exceeding 5 minutes. A resource token's lifetime is independent of any mission it names: the PS verifies that the mission is active when it acts on the token. If a resource token expires before it is redeemed, the agent MUST obtain a fresh one from the resource and submit a new token request. The PS SHOULD remember prior consent decisions within a mission so the user is not re-prompted for the same resource and scope. ASes are not required to enforce replay detection on resource tokens.
 
 ### Resource Token Verification
 
 Verify the resource token per (#common-verification), with `typ` `aa-resource+jwt` and `dwk` `aauth-resource.json`, then:
 
 1. Verify `aud` matches the recipient's own identifier (the PS in three-party, or the AS in four-party).
-2. Verify `agent_jkt` matches the JWK Thumbprint of the key used to sign the HTTP request.
-3. Verify the `presented_token` from the token request (#ps-token-endpoint, #ps-to-as-token-request) by its `typ`: a person token (`aa-person+jwt`) per (#person-token-verification), an auth token (`aa-auth+jwt`) per (#auth-token-verification), with two substitutions — `aud` MUST equal the resource token's `iss` rather than the verifier's own identifier, and `cnf.jwk` MUST match the resource token's `agent_jkt` rather than the key that signed the request — and without the resource's record check on `sub`. A token that fails is rejected with `invalid_presented_token`, or `expired_presented_token` when only `exp` fails. Then verify that the presented token's `jti` equals `presented_jti`, that its `iss` (person token) or `ps` (auth token) equals the resource token's `ps`, and that its `sub`, `mission_s256`, and `tenant` match the resource token's exactly, rejecting the resource token with `invalid_resource_token` on any mismatch or omission. A mismatch against a token that verifies is evidence of tampering, such as mission stripping, and SHOULD be surfaced to operators rather than only rejected. A PS MUST verify that `ps` names itself; an AS MUST verify that `ps` names the PS that sent the token request.
+2. Verify `agent_jkt` matches the JWK Thumbprint of the key used to sign the HTTP request. For a parent-mediated sub-agent authorization (#sub-agents), verify it against the `subagent_token`'s `cnf.jwk` instead, since the parent signs the request.
+3. Verify the `presented_token` from the token request (#ps-token-endpoint, #ps-to-as-token-request) by its `typ`: a person token (`aa-person+jwt`) per (#person-token-verification) or an auth token (`aa-auth+jwt`) per (#auth-token-verification), with two substitutions: `aud` MUST equal the resource token's `iss` rather than the verifier's own identifier, and `cnf.jwk` MUST match the resource token's `agent_jkt` rather than the key that signed the request. The resource's record check on `sub` does not apply. A token that fails is rejected with `invalid_presented_token`, or `expired_presented_token` when only `exp` fails. Then verify that the presented token's `jti` equals `presented_jti`, that its `iss` (person token) or `ps` (auth token) equals the resource token's `ps`, and that its `sub`, `mission_s256`, and `tenant` match the resource token's exactly, rejecting the resource token with `invalid_resource_token` on any mismatch or omission. A mismatch against a token that verifies is evidence of tampering and SHOULD be surfaced to operators. A PS MUST verify that `ps` names itself; an AS MUST verify that `ps` names the PS that sent the token request.
 4. If `mission_s256` is present, a PS MUST verify the mission is active and that the current time precedes its `expires_at` where one is set.
-
-For a parent-mediated sub-agent authorization (a `subagent_token` is present, see (#sub-agents)), step 2 instead verifies `agent_jkt` against the `subagent_token`'s `cnf.jwk` — the sub-agent's key — because the parent, not the sub-agent, signs the HTTP request.
 
 ### Resource Challenge Verification
 
-When an agent receives a `401` response with `AAuth-Requirement: requirement=auth-token`:
+When an agent receives `requirement=auth-token`:
 
 1. Extract the `resource-token` parameter.
 2. Decode and verify the resource token JWT.
@@ -882,37 +877,37 @@ When an agent receives a `401` response with `AAuth-Requirement: requirement=aut
 
 # Person Server {#person-server}
 
-This section defines what a person server serves to agents. Every PS endpoint is published in its metadata (#ps-metadata) and authenticates callers by HTTP Sig with an agent token (#http-message-signatures-profile); all use the same requirement response patterns (#requirement-responses).
+A person server represents the person to the rest of the protocol. This section defines what it serves to agents, in the order an agent meets them: the two token endpoints, the consent that issuing tokens may require, the endpoints an agent uses to reach the person or to be governed, and what an agent does when tokens expire.
 
-- **Person token endpoint** (`person_token_endpoint`, REQUIRED): issues a person token identifying the person to one resource (#person-token-endpoint).
-- **Auth token endpoint** (`auth_token_endpoint`, REQUIRED): takes a resource token and returns an auth token, directly or by federating with the resource's AS (#ps-token-endpoint).
-- **Mission endpoint** (`mission_endpoint`, OPTIONAL): where the agent proposes, updates, and completes its missions (#missions).
-- **Permission endpoint** (`permission_endpoint`, OPTIONAL): permission for actions not governed by a remote resource (#permission-endpoint).
-- **Audit endpoint** (`audit_endpoint`, OPTIONAL): a record of actions performed (#audit-endpoint).
-- **Interaction endpoint** (`interaction_endpoint`, OPTIONAL): the agent's channel to the person through the PS (#interaction-endpoint).
-- **Mission control endpoint** (`mission_control_endpoint`, OPTIONAL): the control plane for principals other than the owning agent; defined by a companion specification (#mission-management).
-- **Revocation endpoint** (`revocation_endpoint`, RECOMMENDED): where the agent provider revokes an agent token it issued, and where a resource revokes a resource token this PS holds (#token-revocation).
+Every PS endpoint is published in its metadata (#ps-metadata) and authenticates callers by HTTP Sig with an agent token (#http-message-signatures-profile); all use the same requirement responses (#requirement-responses) and deferred responses (#deferred-responses).
 
-The two REQUIRED endpoints, with `issuer` and `jwks_uri`, are the conformance floor stated in (#ps-metadata). The PS evaluates every request against the mission when one is in force, handles consent when it is needed, and issues tokens bounded by what it has verified.
+| Endpoint | Metadata field | Purpose |
+|---|---|---|
+| Person token (#person-token-endpoint) | `person_token_endpoint` (REQUIRED) | issues a person token identifying the person to one resource |
+| Auth token (#ps-token-endpoint) | `auth_token_endpoint` (REQUIRED) | takes a resource token and returns an auth token, directly or by federating with the resource's AS |
+| Interaction (#interaction-endpoint) | `interaction_endpoint` (OPTIONAL) | the agent's channel to the person through the PS |
+| Permission (#permission-endpoint) | `permission_endpoint` (OPTIONAL) | permission for actions not governed by a remote resource |
+| Audit (#audit-endpoint) | `audit_endpoint` (OPTIONAL) | a record of actions performed |
+| Mission (#missions) | `mission_endpoint` (OPTIONAL) | where the agent proposes, updates, and completes its missions |
+| Mission control (#mission-management) | `mission_control_endpoint` (OPTIONAL) | the control plane for principals other than the owning agent; defined by a companion specification |
+| Revocation (#token-revocation) | `revocation_endpoint` (RECOMMENDED) | where an agent provider revokes an agent token, and a resource a resource token this PS holds |
+
+The two REQUIRED endpoints, with `issuer` and `jwks_uri`, are the conformance floor (#ps-metadata). The PS evaluates every request against the mission when one is in force, handles consent when it is needed, and issues tokens bounded by what it has verified.
 
 ## Person Token Endpoint {#person-token-endpoint}
 
-Every PS MUST publish a `person_token_endpoint` in its metadata (#ps-metadata) and MUST issue person tokens from it.
+The first thing an agent needs from its PS is a person token for a resource (#person-tokens). Every PS MUST publish a `person_token_endpoint` in its metadata and MUST issue person tokens from it.
 
 The agent MUST make a signed POST with an HTTP Sig (#http-message-signatures-profile), presenting its agent token via the `Signature-Key` header under the `jwt` scheme.
 
 **Request parameters:**
 
-- `resource` (REQUIRED): The HTTPS URL of the resource the person token is for, conforming to the Server Identifier requirements (#server-identifiers). Becomes the `aud` of the issued token. The PS MUST validate it against those requirements.
+- `resource` (REQUIRED): The HTTPS URL of the resource the person token is for, conforming to the server identifier requirements (#server-identifiers). Becomes the `aud` of the issued token. The PS MUST validate it against those requirements.
 - `mission_s256` (OPTIONAL): The mission the agent is operating under (#missions). The PS MUST verify the mission exists, is active, and belongs to this agent, and MUST reject the request otherwise. When present, the PS includes it in the issued token. Not sent with `upstream_token`, which carries the mission itself.
 - `subagent_token` (OPTIONAL): A sub-agent's agent token, present when a parent agent obtains a person token on behalf of one of its sub-agents (#sub-agents). The signing agent MUST be named by the `subagent_token`'s `parent_agent`. The issued token's `cnf` is the sub-agent's key.
 - `upstream_token` (OPTIONAL): The person token or auth token the calling agent presented to the requester, present when a resource acting as an agent needs a person token for a downstream resource (#call-chaining). The PS MUST verify it per (#upstream-token-verification).
 
-The request also takes the OPTIONAL parameters of the auth token request (#ps-token-endpoint), with the same definitions: `capabilities`, `login_hint`, `tenant`, `domain_hint`, `prompt`, `justification`, `platform`, and `device`. They matter here before they matter anywhere else, because this is where a PS first decides which person the agent acts for and whether it has to reach them. `capabilities` is how the PS learns that the agent can drive an interaction; without it a PS that must reach the person has no signal to act on and answers `user_unreachable` (#token-endpoint-error-codes), a terminal error, on a request the agent could have completed. Within a mission the PS uses the capabilities captured at mission approval (#mission-approval) when `capabilities` is omitted. `login_hint`, `tenant`, and `domain_hint` choose among the bindings the PS holds for the agent, or name the account when there is none. `prompt` and `justification` shape the interaction the endpoint MAY require. `platform` and `device` name the agent's runtime for the consent screen and the person's connected-agents dashboard.
-
-Without `upstream_token` the PS issues for the person bound to the requesting agent (#agent-person-binding). With it, the PS issues for the person the upstream token was issued for. The upstream token MUST name this PS — as `iss` in a person token, as `ps` in an auth token — and its `sub` is the directed identifier this PS minted for the person at the upstream token's `aud` (#directed-identifiers): a person token carries it as the PS issued it, and an auth token carries it copied from the resource token, which the resource copied from a person token this PS issued. The PS resolves the person from its own record for that resource and `sub`. A PS that holds no such record MUST reject the request. When the upstream token carries `mission_s256`, the PS evaluates the request against that mission (#call-chaining) and copies `mission_s256` into the person token it issues, so the resource token and auth token downstream carry it too and the mission's `expires_at` and termination reach the chain. The mission belongs to the calling agent, not to the intermediary, and the intermediary does not send `mission_s256` of its own.
-
-A PS SHOULD rate-limit the number of distinct `resource` values it accepts from one agent; each obliges it to derive and retain a directed `sub` (#directed-identifiers).
+The request also takes the OPTIONAL parameters of the auth token request (#ps-token-endpoint), with the same definitions: `capabilities`, `login_hint`, `tenant`, `domain_hint`, `prompt`, `justification`, `platform`, and `device`. This is where a PS first decides which person the agent acts for and whether it has to reach them, so these matter here first. `capabilities` tells the PS whether the agent can drive an interaction; without it, a PS that must reach the person answers `user_unreachable` (#token-endpoint-error-codes). Within a mission the PS uses the capabilities captured at approval (#mission-approval) when `capabilities` is omitted.
 
 ```http
 POST /person HTTP/1.1
@@ -936,33 +931,29 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 }
 ```
 
-The PS MAY require user interaction before issuing and return a `202 Accepted` deferred response with `requirement=interaction` (#requirement-responses). Because a resource MAY serve requests on identity alone, the question put to the person is whether this agent may act at the resource as them, not merely whether it may name them. A PS SHOULD fetch the resource's metadata (#resource-metadata) before issuing for a resource the person has not used, and present its `name`, `description`, and `access_mode` so that the person is answering the question the resource will actually apply.
+The PS MAY require user interaction before issuing and return a `202 Accepted` deferred response with `requirement=interaction` (#interaction-required). Because a resource MAY serve requests on identity alone, the question put to the person is whether this agent may act at the resource as them, not merely whether it may name them. A PS SHOULD fetch the resource's metadata (#resource-metadata) before issuing for a resource the person has not used, and present its `name`, `description`, and `access_mode`.
 
-Errors use the token endpoint error codes (#token-endpoint-error-codes); `invalid_request` covers a missing or malformed `resource` or `mission_s256` value.
+Errors use the token endpoint error codes (#token-endpoint-error-codes); `invalid_request` covers a missing or malformed `resource` or `mission_s256`.
 
-Issuing a person token creates a retention obligation, for revocation rather than for verification (#token-revocation). A PS MUST record, for each person token it issues, the `jti`, the `aud`, and the `exp`, and, once it has presented the token to an access server (#ps-to-as-token-request), which one, and MUST keep the record until the token's `exp` plus clock skew. The PS does not need the token itself to verify a resource token that names it: the agent presents the token with its token request (#ps-token-endpoint).
+**Which person.** Without `upstream_token` the PS issues for the person bound to the requesting agent (#agent-person-binding). With it, the PS issues for the person the upstream token was issued for. The upstream token MUST name this PS (as `iss` in a person token, as `ps` in an auth token), and its `sub` is the directed identifier this PS minted for that person at the upstream token's `aud` (#directed-identifiers). The PS resolves the person from its own record for that resource and `sub`; a PS that holds no such record MUST reject the request. When the upstream token carries `mission_s256`, the PS evaluates the request against that mission (#call-chaining) and copies `mission_s256` into the person token it issues, so the mission's `expires_at` and termination reach the chain. The intermediary does not send `mission_s256` of its own.
 
-An agent SHOULD cache a person token for a resource until it expires rather than requesting one per call. A person token is scoped to one resource and, when it carries `mission_s256`, to one mission, so an agent working across several resources or several concurrent missions holds one per combination. All of them bind the same key through `cnf`, so an agent that rotates its signing key invalidates all of them at once; the agent SHOULD re-request lazily, on next use of each resource, rather than re-minting the whole set.
+**Retention.** A PS MUST record, for each person token it issues, the `jti`, the `aud`, and the `exp`, and, once it has presented the token to an access server (#ps-to-as-token-request), which one, and MUST keep the record until the token's `exp` plus clock skew. The record serves revocation (#token-revocation), not verification. A PS SHOULD rate-limit the number of distinct `resource` values it accepts from one agent, since each obliges it to derive and retain a directed `sub`.
+
+**Caching.** An agent SHOULD cache a person token for a resource until it expires rather than requesting one per call. A person token is scoped to one resource and, when it carries `mission_s256`, to one mission, so an agent holds one per combination. Rotating the signing key invalidates all of them, since each binds the key through `cnf`; the agent SHOULD re-request lazily, on next use of each resource.
 
 ## Auth Token Endpoint {#ps-token-endpoint}
 
-The PS's `auth_token_endpoint` is where agents send token requests. The PS evaluates the request, handles user consent if needed, and either issues the auth token directly or federates with the resource's AS.
-
-### Token Endpoint Modes
+Once a resource has issued a resource token, the agent brings it here. The PS evaluates the request, handles user consent if needed, and either issues the auth token itself or federates with the resource's AS (#ps-as-federation). The resource token's `aud` decides which.
 
 | Mode | Key Parameters | Use Case |
 |------|----------------|----------|
 | PS authorization | `resource_token` (`aud` = PS) | PS asserts identity and consent; resource applies its own policy (three-party) |
 | AS-federated | `resource_token` (`aud` = AS) | PS federates with the resource's AS, which evaluates resource policy (four-party) |
-| Call chaining | `resource_token` + `upstream_token` | Resource acting as agent |
-
-### Concurrent Token Requests
-
-An agent MAY have multiple token requests pending at the PS simultaneously — for example, when a mission requires access to several resources. Each request has its own pending URL and lifecycle. The PS MUST handle concurrent requests independently. Some requests may be resolved without user interaction (e.g., within existing mission scope), while others may require consent. The PS is responsible for managing concurrent user interactions — for example, by batching consent prompts or serializing them.
+| Call chaining | `resource_token` + `upstream_token` | Resource acting as agent (#call-chaining) |
 
 ### Auth Token Request
 
-The agent MUST make a signed POST to the PS's `auth_token_endpoint`. The request MUST include an HTTP Sig (#http-message-signatures-profile) and the agent MUST present its agent token via the `Signature-Key` header under the `jwt` scheme.
+The agent MUST make a signed POST to the PS's `auth_token_endpoint` with an HTTP Sig (#http-message-signatures-profile), presenting its agent token via the `Signature-Key` header under the `jwt` scheme.
 
 **Request parameters:**
 
@@ -970,16 +961,17 @@ The agent MUST make a signed POST to the PS's `auth_token_endpoint`. The request
 - `presented_token` (REQUIRED): The token the agent presented to the resource that issued `resource_token`, whose `jti` the resource token's `presented_jti` names (#resource-token-structure): the person token on the first challenge of a grant, or the auth token on a step-up or per-call challenge. The PS verifies it against the resource token (#resource-token-verification) and, in four-party, passes it to the AS (#ps-to-as-token-request). Its `exp` bounds the auth token issued (#auth-token-structure).
 - `upstream_token` (OPTIONAL): The person token or auth token the calling agent presented to the requester, used in call chaining (#call-chaining). The PS MUST verify it per (#upstream-token-verification).
 - `subagent_token` (OPTIONAL): A sub-agent's agent token, present when a parent agent requests authorization on behalf of one of its sub-agents (#sub-agents). The signing agent (the parent) MUST be named by the `subagent_token`'s `parent_agent`.
-- `justification` (OPTIONAL): A Markdown string declaring why access is being requested. The PS SHOULD present this value to the user during consent, and MUST present it as agent-asserted content (#consent-presentation). The PS MUST sanitize the Markdown before rendering to users. The PS MAY log the `justification` for audit and monitoring purposes. This document does not yet define a section structure for the value (#terminology). The justification states why the agent wants the access; what the access does is stated by the resource, and the person weighs the one against the other. It is also the text the user's clarification questions are asked about (#clarification-chat).
-- `login_hint` (OPTIONAL): Hint about who to authorize, per [@!OpenID.Core] Section 3.1.2.1. When the resource token carries a `login_hint` (#resource-token-structure) the agent sends that value here unchanged.
+- `justification` (OPTIONAL): A Markdown string declaring why access is being requested. The PS SHOULD present it to the user during consent, MUST present it as agent-asserted content (#consent-presentation), and MUST sanitize it before rendering. The PS MAY log it. It is also the text the user's clarification questions are asked about (#clarification-chat). This document does not yet define a section structure for the value (#terminology).
+- `login_hint` (OPTIONAL): Hint about who to authorize, per [@!OpenID.Core] Section 3.1.2.1. When the resource token carries a `login_hint` (#resource-token-structure) the agent sends that value unchanged.
 - `tenant` (OPTIONAL): Tenant identifier, per OpenID Connect Enterprise Extensions 1.0 [@OpenID.Enterprise].
 - `domain_hint` (OPTIONAL): Domain hint, per OpenID Connect Enterprise Extensions 1.0 [@OpenID.Enterprise].
 - `prompt` (OPTIONAL): Space-delimited, case-sensitive list of values specifying whether the PS prompts the user for reauthentication and consent, per [@!OpenID.Core] Section 3.1.2.1. Defined values: `none`, `login`, `consent`, `select_account`.
-- `platform` (OPTIONAL): Identifier for the runtime platform the agent runs on. The value MUST be from the AAuth Platform Value Registry (#aauth-platform-value-registry). Describes the runtime context (where the agent runs) but does not by itself convey what security measures were applied within that context. Used for display at the PS consent screen and the PS's connected-agents dashboard. Agent-attested.
-- `device` (OPTIONAL): Short human-readable string identifying the specific device or browser, intended for display so users can distinguish entries in their connected-agents dashboard (e.g., `Chrome on macOS`, `Pixel 8 (App)`). The string is opaque to receivers — they display it but do not parse it. The string MUST consist of UTF-8 printable characters only (no control characters) and MUST NOT exceed 64 characters. Agents MUST NOT include personally identifying information beyond what the user has chosen (e.g., user-supplied nicknames). Agent-attested.
-- `capabilities` (OPTIONAL): An array of capability values (#aauth-capabilities) the agent can handle for this request — the request-body equivalent of the `AAuth-Capabilities` header, which is not used on PS endpoints. Without a mission, this is how the PS learns the agent's capabilities (for example, whether the agent can drive `requirement=interaction`). Within a mission, `capabilities` is OPTIONAL: if omitted, the PS uses the values captured at mission approval (#mission-approval); if present, it refreshes them for this request.
+- `platform` (OPTIONAL): Identifier for the runtime platform the agent runs on. The value MUST be from the AAuth Platform Value Registry (#aauth-platform-value-registry). Describes where the agent runs, not what security measures apply there. For display at the consent screen and the connected-agents dashboard. Agent-attested.
+- `device` (OPTIONAL): Short human-readable string identifying the device or browser, for display so users can distinguish entries in their connected-agents dashboard (e.g., `Chrome on macOS`, `Pixel 8 (App)`). Opaque to receivers. MUST consist of UTF-8 printable characters only and MUST NOT exceed 64 characters. Agents MUST NOT include personally identifying information beyond what the user has chosen. Agent-attested.
+- `capabilities` (OPTIONAL): An array of capability values (#aauth-capabilities) the agent can handle for this request, the body equivalent of the `AAuth-Capabilities` header, which is not used on PS endpoints. Within a mission, if omitted, the PS uses the values captured at approval (#mission-approval); if present, it refreshes them for this request.
 
 **Example request:**
+
 ```http
 POST /token HTTP/1.1
 Host: ps.example
@@ -996,9 +988,10 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 ### PS Response
 
-The resource token's `aud` decides whether the PS issues the auth token itself or federates with the resource's AS (#ps-as-federation). In both cases, the PS handles user consent if needed and returns one of:
+The PS returns one of:
 
 **Direct grant response** (`200`):
+
 ```json
 {
   "auth_token": "eyJhbGc...",
@@ -1006,47 +999,40 @@ The resource token's `aud` decides whether the PS issues the auth token itself o
 }
 ```
 
-**User interaction required response** (`202`): a deferred response with `requirement=interaction` (#interaction-required), of the same shape as (#resource-managed-auth).
+**User interaction required** (`202`): a deferred response with `requirement=interaction` (#interaction-required), of the same shape as (#resource-managed-auth). In four-party mode the PS may also pass a clarification from the AS through to the agent this way (#as-token-endpoint).
 
-In four-party mode, the PS may also pass through a clarification from the AS to the agent via the `202` response (#as-token-endpoint).
+An agent MAY have several token requests pending at the PS at once, for example when a mission needs several resources. Each has its own pending URL and lifecycle, and the PS MUST handle them independently. How the PS manages concurrent user interactions, by batching consent prompts or serializing them, is its own choice.
 
 ### Resource-Initiated Interaction {#resource-initiated-interaction}
 
-When the resource token contains an `interaction` claim, the resource requires its own user-facing flow — typically an OAuth authorization from a third-party service — before authorization can proceed. The PS coordinates this by chaining the resource's flow with its own consent step.
+When the resource token carries an `interaction` claim (#resource-token-structure), the resource needs its own user-facing flow, typically an OAuth authorization at a third-party service, before the PS can issue an auth token. The PS resolves the resource's interaction before presenting its own consent: if the user declines at the resource, PS consent is moot.
 
-The PS resolves the resource interaction before presenting its own consent: if the user declines the resource's underlying authorization, the PS authorization is vacuous, so it makes no sense to ask for PS consent first.
-
-**Flow:**
-
-1. The PS returns `202` to the agent with its own interaction URL — the same as for any consent interaction.
-2. The user arrives at the PS's interaction page. The PS shows an interstitial informing the user that the resource requires additional permissions before the PS can authorize access.
+1. The PS returns `202` to the agent with its own interaction URL, as for any consent interaction.
+2. The user arrives at the PS's interaction page. The PS shows an interstitial explaining that the resource requires additional permissions.
 3. The PS redirects the user to the resource's interaction endpoint using the standard callback pattern, where `ps_callback_url` is a PS-generated, per-flow URL: `{interaction.url}?code={interaction.code}&callback={ps_callback_url}`
-4. The resource completes its own OAuth or permission flow. The resource MUST redirect the user to the `callback` URL when its flow completes — either successfully or with an error per (#interaction-callback-errors).
-5. The PS receives the callback redirect. If the callback contains an `error` parameter, the PS abandons the authorization and returns the mapped polling error to the agent. Otherwise it continues with its own consent step.
-6. Upon user approval, the PS issues the auth token and resolves the agent's pending request.
+4. The resource completes its own flow. The resource MUST redirect the user to the `callback` URL when its flow completes, successfully or with an error per (#interaction-callback-errors).
+5. If the callback carries an `error` parameter, the PS abandons the authorization and returns the mapped polling error to the agent. Otherwise it continues with its own consent step.
+6. On user approval, the PS issues the auth token and resolves the agent's pending request.
 
-A resource's interaction endpoint MUST support the standard `?code=...&callback=...` pattern regardless of whether the redirect comes from an agent or from a PS in a chained flow — the endpoint cannot and need not distinguish callers.
+A resource's interaction endpoint MUST support the `?code=...&callback=...` pattern whether the redirect comes from an agent or from a PS; it need not distinguish the two. The `interaction.url` MUST be an HTTPS URL; the PS MUST validate this before redirecting and MUST apply its egress admission policy to it.
 
-The `interaction.url` MUST be an HTTPS URL. The PS MUST validate this before constructing the redirect and MUST apply its egress admission policy to the URL.
+## User Interaction {#user-interaction}
 
-## User Interaction
+Issuing a token may require the person. When a server responds with `202` and `requirement=interaction`, the agent directs the user to the interaction `url` with the `code`, optionally relaying through its PS first, using the mechanics defined in (#interaction-required) and (#interaction-relay). Two details apply when the agent directs the user itself.
 
-When a server responds with `202` and `AAuth-Requirement: requirement=interaction`, the agent directs the user to the interaction `url`/`code` — optionally relaying through its PS first — using the mechanics defined in (#requirement-responses) and (#interaction-relay). Two details specific to the agent directing the user itself:
+When the agent has a browser, it MAY append a `callback` parameter, constructed from its `callback_endpoint` metadata:
 
-When the agent has a browser, it MAY append a `callback` parameter:
 ```
 {url}?code={code}&callback={callback_url}
 ```
 
-The `callback` URL is constructed from the agent's `callback_endpoint` metadata. When present, the server redirects the user's browser to the `callback` URL after the user completes the action. If no `callback` parameter is provided, the server displays a completion page and the agent relies on polling to detect completion.
+When present, the server redirects the user's browser to the `callback` URL after the user completes the action. Without it, the server displays a completion page and the agent relies on polling.
 
-The `code` parameter is single-use: once the user arrives at the URL with a valid code, the code is consumed and cannot be reused. The server hosting the interaction URL MAY instead complete the interaction over a channel it already controls — a notification the person taps, a message they approve — without the person visiting `url` or presenting `code`; the code is consumed at that completion, and the pending URL returns the terminal response (#deferred-responses). Only the host of `url` can complete an interaction this way: a resource-hosted interaction is not completable by the PS.
-
-When the interaction completes with an error, the server redirects to the `callback` URL with an `error` query parameter instead of signaling success. See (#interaction-callback-errors).
+The `code` is single-use: once the user arrives with a valid code, it is consumed. The server hosting the interaction URL MAY instead complete the interaction over a channel it already controls, such as a notification the person taps, without the person visiting `url` or presenting `code`; the code is consumed at that completion, and the pending URL returns the terminal response (#deferred-responses). Only the host of `url` can complete an interaction this way.
 
 ### Interaction Callback Errors {#interaction-callback-errors}
 
-When an interaction cannot be completed successfully, the server MUST redirect to the `callback` URL with an `error` query parameter:
+When an interaction cannot be completed, the server MUST redirect to the `callback` URL with an `error` query parameter:
 
 ```
 {callback_url}?error={error_code}
@@ -1055,40 +1041,34 @@ When an interaction cannot be completed successfully, the server MUST redirect t
 | Error | Meaning |
 |---|---|
 | `access_denied` | The user explicitly declined the interaction. |
-| `user_abandoned` | The user opened the interaction but did not complete it — no explicit decision was made. |
+| `user_abandoned` | The user opened the interaction but did not complete it. |
 | `server_error` | The party handling the interaction encountered an internal failure. |
 | `temporarily_unavailable` | The interaction service is temporarily unavailable; the caller MAY retry. |
 | `interaction_expired` | The interaction session expired before the user completed the flow. |
 
-Recipients of a callback with an `error` parameter MUST NOT treat the pending request as completable and MUST surface the error to the caller. In the resource-initiated interaction flow (#resource-initiated-interaction), the PS maps the received callback error to a polling error returned to the agent: `access_denied` maps to `denied`; `user_abandoned` maps to `abandoned`; `interaction_expired` maps to `expired`; `server_error` and `temporarily_unavailable` map to `server_error`.
+Recipients of a callback with an `error` parameter MUST NOT treat the pending request as completable and MUST surface the error to the caller. In the resource-initiated interaction flow (#resource-initiated-interaction), the PS maps the callback error to a polling error (#polling-error-codes): `access_denied` to `denied`, `user_abandoned` to `abandoned`, `interaction_expired` to `expired`, and `server_error` and `temporarily_unavailable` to `server_error`.
 
 ## Consent Presentation {#consent-presentation}
 
-A consent surface carries content from two sources, and the person deciding cannot weigh it without knowing which is which.
+A consent surface carries content from two sources, and the person deciding needs to know which is which.
 
-**Resource-asserted** content comes from the party that will carry out the access: the `name`, `description`, `logo_uri`, and `scope_descriptions` in the resource's metadata (#resource-metadata), any claim in the resource token the agent presented (#resource-tokens), and the `display` section of an R3 document ([@?I-D.hardt-aauth-r3]).
+**Resource-asserted** content comes from the party that will carry out the access: the `name`, `description`, `logo_uri`, and `scope_descriptions` in the resource's metadata (#resource-metadata), any claim in the resource token (#resource-tokens), and the `display` section of an R3 document ([@?I-D.hardt-aauth-r3]).
 
-**Agent-asserted** content comes from the party asking for the access: the `justification`, `platform`, and `device` parameters of the token request (#ps-token-endpoint), and the agent's clarification responses (#clarification-chat).
+**Agent-asserted** content comes from the party asking for the access: the `justification`, `platform`, and `device` parameters of the token request (#ps-token-endpoint), and the agent's clarification responses (#clarification-chat). The agent chooses the words and gains from being believed.
 
-The two carry different weight. What the resource asserts describes what the access does, and reaches the PS either signed by the resource or fetched from it. What the agent asserts is the agent's account of why it wants the access: the agent chooses the words and gains from being believed. An agent writing into an undifferentiated consent screen can describe an operation as something other than what the resource says it is, and the person has no way to tell the two apart.
+A PS MUST visually distinguish resource-asserted content from agent-asserted content when rendering a consent surface, and MUST attribute agent-asserted content to the agent. A PS MUST NOT base an authorization decision solely on agent-asserted content where resource-asserted content covering the same operation is available.
 
-A PS MUST visually distinguish resource-asserted content from agent-asserted content when rendering a consent surface, and MUST attribute agent-asserted content to the agent.
+Neither requirement suppresses the justification: it is presented, as the agent's claim. Where the Supervisor (#roles) is a supervision server rather than a person reading a screen, the PS MUST convey the same distinction in whatever form that context takes.
 
-A PS MUST NOT base an authorization decision solely on agent-asserted content where resource-asserted content covering the same operation is available.
+## Clarification Chat {#clarification-chat}
 
-Neither requirement suppresses the justification. It is what the person asks clarification questions about (#clarification-chat) and what the PS evaluates against the mission (#missions-overview); it is presented, and presented as the agent's claim.
+During consent, the user may ask questions about the agent's stated justification. The PS delivers the question to the agent and the agent responds, giving the person a consent dialog without the agent needing a direct channel to them.
 
-Where the Supervisor (#roles) is not the Person reading a screen — a supervision server evaluating on their behalf — the PS MUST convey the same distinction in whatever form that context takes.
-
-## Clarification Chat
-
-During user consent, the user may ask questions about the agent's stated justification. The PS delivers these questions to the agent, and the agent responds. This enables a consent dialog without requiring the agent to have a direct channel to the user.
-
-Agents that support clarification chat declare this via the `AAuth-Capabilities` request header (#aauth-capabilities) by including the `clarification` capability value.
+Agents that support clarification chat declare it with the `clarification` capability (#aauth-capabilities).
 
 ### Clarification Required {#requirement-clarification}
 
-A server MUST use `requirement=clarification` with a `202 Accepted` response when it needs the recipient to answer a question before proceeding. The response body MUST include a `clarification` field containing the question and MAY include `timeout` and `options` fields.
+A server MUST use `requirement=clarification` with a `202 Accepted` response when it needs the recipient to answer a question before proceeding. The body MUST include a `clarification` field containing the question and MAY include `timeout` and `options`.
 
 ```http
 HTTP/1.1 202 Accepted
@@ -1111,21 +1091,19 @@ Body fields:
 - `timeout` (OPTIONAL): Seconds until the server times out the request. The recipient MUST respond before this deadline.
 - `options` (OPTIONAL): An array of string values when the question has discrete choices.
 
-The recipient MUST respond with one of the actions defined in (#agent-response-to-clarification): a clarification response, an updated request, or a cancellation. This requirement is used by both PSes (delivering user questions to agents) and ASes (requesting clarification from PSes).
+The recipient MUST respond with one of the actions in (#agent-response-to-clarification). This requirement is used by PSes (delivering user questions to agents) and by ASes (requesting clarification from PSes).
 
-### Agent Response to Clarification
+### Agent Response to Clarification {#agent-response-to-clarification}
 
 The agent MUST respond to a clarification with one of:
 
 1. **Clarification response**: POST an `action` of `clarification_response` to the pending URL.
-2. **Updated request**: POST an `action` of `updated_request` with a new `resource_token` to the pending URL, replacing the original request with updated scope or parameters.
-3. **Cancel request**: DELETE the pending URL to withdraw the request.
+2. **Updated request**: POST an `action` of `updated_request` with a new `resource_token` to the pending URL.
+3. **Cancel request**: DELETE the pending URL.
 
-A POST body MUST include an `action` member identifying the response type. A server MUST reject a POST with a missing or unrecognized `action` value with `400 Bad Request`. The `action` member makes each POST self-describing and keeps the pending route extensible for future response types.
+A POST body MUST include an `action` member. A server MUST reject a POST with a missing or unrecognized `action` with `400 Bad Request`.
 
 #### Clarification Response
-
-The agent responds by POSTing JSON with an `action` of `clarification_response` to the pending URL:
 
 ```http
 POST /pending/abc123 HTTP/1.1
@@ -1141,11 +1119,11 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 }
 ```
 
-The `clarification_response` value is a Markdown string: the agent's answer to the question, presented as agent-asserted content (#consent-presentation). After posting, the agent resumes polling with `GET`.
+The `clarification_response` value is a Markdown string, presented as agent-asserted content (#consent-presentation). After posting, the agent resumes polling with `GET`.
 
 #### Updated Request
 
-The agent MAY obtain a new resource token from the resource (e.g., with reduced scope) and POST it to the pending URL, with the same headers as a clarification response, together with the `presented_token` it used at the resource to obtain it — the same token as the original request or a fresh one:
+The agent MAY obtain a new resource token from the resource, for example with reduced scope, and POST it to the pending URL together with the `presented_token` it used at the resource to obtain it:
 
 ```json
 {
@@ -1156,32 +1134,94 @@ The agent MAY obtain a new resource token from the resource (e.g., with reduced 
 }
 ```
 
-`presented_token` is REQUIRED: an updated request replaces the pending request, and the PS verifies the new `resource_token` and `presented_token` together per (#resource-token-verification), including step 3, before replacing it, with the errors of that section. The new resource token MUST have the same `iss`, `ps`, `sub`, `agent_jkt`, `mission_s256`, and `tenant` as the original; its `presented_jti` MAY differ, and MUST equal the `jti` of the `presented_token` sent with it. The PS presents the updated request to the user. A PS answering an AS clarification (#requirement-clarification) with `updated_request` sends the same body — the new resource token and its presented token — to the AS pending URL, and the AS verifies the pair the same way (#ps-to-as-token-request). A `justification` is OPTIONAL but RECOMMENDED to explain the change to the user.
+`presented_token` is REQUIRED. The PS verifies the pair per (#resource-token-verification), including step 3, before replacing the pending request, with the errors of that section. The new resource token MUST have the same `iss`, `ps`, `sub`, `agent_jkt`, `mission_s256`, and `tenant` as the original; its `presented_jti` MAY differ, and MUST equal the `jti` of the `presented_token` sent with it. The PS presents the updated request to the user. A PS answering an AS clarification with `updated_request` sends the same body to the AS pending URL, and the AS verifies the pair the same way (#ps-to-as-token-request). A `justification` is OPTIONAL but RECOMMENDED.
 
 #### Cancel Request
 
-The agent MAY cancel the request by sending a signed `DELETE` to the pending URL. The PS terminates the consent session and informs the user that the agent withdrew its request. Subsequent requests to the pending URL return `410 Gone`.
+The agent MAY cancel by sending a signed `DELETE` to the pending URL. The PS terminates the consent session and informs the user that the agent withdrew its request. Subsequent requests to the pending URL return `410 Gone`.
 
 ### Clarification Limits
 
-PSes MUST enforce a maximum number of clarification rounds; five is RECOMMENDED. Clarification responses from agents are untrusted input and MUST be sanitized before display to the user.
+PSes MUST enforce a maximum number of clarification rounds; five is RECOMMENDED. Clarification responses are untrusted input and MUST be sanitized before display (#untrusted-input).
+
+## Interaction Endpoint {#interaction-endpoint}
+
+The interaction endpoint lets the agent reach the user through the PS, which may have a better channel to them (an active session, a registered app) than the agent has. The agent uses it to relay interaction requirements from resources (#interaction-relay), to relay payment approvals, and to ask the user questions. Proposing mission completion is not among these; it belongs at the `mission_endpoint` (#mission-completion). The endpoint MAY be used with or without a mission.
+
+### Interaction Request
+
+The agent MUST make a signed POST to the PS's `interaction_endpoint` with an HTTP Sig (#http-message-signatures-profile), presenting its agent token via the `Signature-Key` header.
+
+**Request parameters:**
+
+- `type` (REQUIRED): One of `interaction`, `payment`, or `question`.
+- `description` (OPTIONAL): A Markdown string providing context for the user.
+- `url` (OPTIONAL): The interaction URL to relay to the user (`interaction` and `payment` types).
+- `code` (OPTIONAL): The interaction code associated with the URL.
+- `max_wait` (OPTIONAL): Maximum seconds the PS SHOULD hold the relay's deferred response before resolving it (`interaction` and `payment` types). When the interaction URL is resource-hosted, the PS resolves once the user has engaged or this window elapses, whichever comes first (#interaction-response-poll-authority). Absent `max_wait`, the PS resolves when the user has engaged or it can make no further progress.
+- `question` (OPTIONAL): A Markdown string containing a question for the user (`question` type).
+- `mission_s256` (OPTIONAL): The mission this request belongs to.
+
+```http
+POST /interaction HTTP/1.1
+Host: ps.example
+Content-Type: application/json
+Signature-Key: sig=jwt;jwt="eyJhbGc..."
+
+{
+  "type": "interaction",
+  "description": "The booking service needs you to confirm payment",
+  "url": "https://booking.example/confirm",
+  "code": "X7K2-M9P4",
+  "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+}
+```
+
+### Interaction Response {#interaction-response-poll-authority}
+
+For `interaction` and `payment` types, the PS relays the interaction to the user and returns a deferred response (#deferred-responses).
+
+When the interaction URL is hosted by the **PS itself**, the PS's deferred response is authoritative: the agent polls it until the user completes the interaction.
+
+When the interaction URL is hosted by a **resource**, the user completes the interaction at the resource, and the agent holds two pending URLs: the resource's original `Location` and the PS's relay `Location`. The **resource's** pending URL is authoritative. The PS's relay reports only that the relay reached the user: it returns `status: "interacting"` once the user has engaged, and a terminal response when the PS has done all it can. The agent MUST treat the resource's pending URL as the signal that the interaction is complete, and continues polling it after the PS relay resolves.
+
+If the PS has no channel available to relay this interaction, it returns `interaction_unavailable` (#interaction-endpoint-errors), and the agent falls back to directing the user itself (#interaction-relay). If the PS cannot reach the user and the agent did not declare the `interaction` capability, it returns `user_unreachable` (#token-endpoint-error-codes), which is terminal.
+
+For `question` type, the PS delivers the question to the user and returns the answer:
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "answer": "Yes, go ahead with the refundable option."
+}
+```
+
+If the mission is no longer active, the PS returns a mission status error (#mission-status-errors). The PS SHOULD record all interaction requests and responses; within a mission it records them in the mission log.
+
+### Interaction Endpoint Errors {#interaction-endpoint-errors}
+
+Errors use the error response format (#error-response-format).
+
+| Error | Status | Meaning |
+|-------|--------|---------|
+| `interaction_unavailable` | 424 | The PS has no channel available to relay this `interaction` or `payment` to the user. Non-terminal: the agent directs the user to the `url`/`code` itself (#interaction-relay). Distinct from the terminal `user_unreachable` (#token-endpoint-error-codes). |
 
 ## Permission Endpoint {#permission-endpoint}
 
-The permission endpoint enables agents to request permission from the PS for actions not governed by a remote resource — for example, executing tool calls, writing files, or sending messages on behalf of the user. This enables governance before any resources support AAuth. The permission endpoint MAY be used with or without a mission.
-
-When a mission is active, the mission approval MAY include a list of pre-approved tools in the `approved_tools` field. The agent calls the permission endpoint only for actions not covered by pre-approved tools.
+The permission endpoint lets an agent ask the PS before an action no remote resource governs: a tool call, a file write, a message sent on the user's behalf. It gives the person governance over the agent before any resource supports AAuth. It MAY be used with or without a mission. When a mission is active, its approval MAY list pre-approved tools in `approved_tools` (#mission-approval); the agent calls the permission endpoint only for actions not covered by them.
 
 ### Permission Request
 
-The agent MUST make a signed POST to the PS's `permission_endpoint`. The request MUST include an HTTP Sig (#http-message-signatures-profile) and the agent MUST present its agent token via the `Signature-Key` header.
+The agent MUST make a signed POST to the PS's `permission_endpoint` with an HTTP Sig (#http-message-signatures-profile), presenting its agent token via the `Signature-Key` header.
 
 **Request parameters:**
 
 - `action` (REQUIRED): A string identifying the action the agent wants to perform (e.g., a tool name).
 - `description` (OPTIONAL): A Markdown string describing what the action will do and why.
 - `parameters` (OPTIONAL): A JSON object containing the parameters the agent intends to pass to the action.
-- `mission_s256` (OPTIONAL): The mission this request belongs to. When present, the PS evaluates the request against the mission context and log history.
+- `mission_s256` (OPTIONAL): The mission this request belongs to. When present, the PS evaluates the request against the mission and its log.
 
 ```http
 POST /permission HTTP/1.1
@@ -1216,21 +1256,17 @@ Content-Type: application/json
 The `permission` field is one of:
 
 - `granted`: The agent MAY proceed with the action.
-- `denied`: The agent MUST NOT proceed. The response MAY include a `reason` field with a Markdown string explaining why.
+- `denied`: The agent MUST NOT proceed. The response MAY include a `reason` field with a Markdown string.
 
-If the mission is no longer active, the PS returns a mission status error (#mission-status-errors).
-
-If the PS requires user input, it returns a deferred response (#deferred-responses) using the same pattern as other AAuth endpoints. The agent polls until the PS returns a final response.
-
-The PS SHOULD record all permission requests and responses. When a mission is present, the PS records the permission request and response in the mission log.
+If the PS requires user input, it returns a deferred response (#deferred-responses) and the agent polls until a final response. If the mission is no longer active, the PS returns a mission status error (#mission-status-errors). The PS SHOULD record all permission requests and responses; within a mission it records them in the mission log.
 
 ## Audit Endpoint {#audit-endpoint}
 
-The audit endpoint enables agents to log actions they have performed, providing the PS with a record for governance and monitoring. The agent sends a signed POST to the PS's `audit_endpoint` after performing an action. The audit endpoint requires a mission — there is no audit outside a mission context.
+The audit endpoint lets an agent log an action after performing it, so the PS has a complete record of the mission. It requires a mission; there is no audit outside a mission context.
 
 ### Audit Request
 
-The agent MUST make a signed POST to the PS's `audit_endpoint`. The request MUST include an HTTP Sig (#http-message-signatures-profile) and the agent MUST present its agent token via the `Signature-Key` header.
+The agent MUST make a signed POST to the PS's `audit_endpoint` with an HTTP Sig (#http-message-signatures-profile), presenting its agent token via the `Signature-Key` header.
 
 **Request parameters:**
 
@@ -1268,101 +1304,25 @@ The PS returns `201 Created` to acknowledge the record:
 HTTP/1.1 201 Created
 ```
 
-The audit endpoint is fire-and-forget — the agent SHOULD NOT block on the response. The PS records the audit entry in the mission log. The PS MAY use audit records to detect anomalous behavior, alert the user, or revoke the mission.
-
-If the mission is no longer active, the PS returns a mission status error (#mission-status-errors).
-
-## Interaction Endpoint {#interaction-endpoint}
-
-The interaction endpoint enables the agent to reach the user through the PS. The agent uses this endpoint to forward interaction requirements from resources that it cannot handle directly, to ask the user questions, and to relay payment approvals. Each is something the agent cannot do itself and needs the person for. Proposing mission completion is not among them: it is a mission lifecycle transition and belongs at the `mission_endpoint` (#mission-completion), alongside the proposal that started the mission. The `interaction_endpoint` URL is published in the PS's well-known metadata (#ps-metadata). The interaction endpoint MAY be used with or without a mission.
-
-### Interaction Request
-
-The agent MUST make a signed POST to the PS's `interaction_endpoint`. The request MUST include an HTTP Sig (#http-message-signatures-profile) and the agent MUST present its agent token via the `Signature-Key` header.
-
-**Request parameters:**
-
-- `type` (REQUIRED): The type of interaction. One of `interaction`, `payment`, or `question`.
-- `description` (OPTIONAL): A Markdown string providing context for the user.
-- `url` (OPTIONAL): The interaction URL to relay to the user (for `interaction` and `payment` types).
-- `code` (OPTIONAL): The interaction code associated with the URL.
-- `max_wait` (OPTIONAL): Maximum seconds the PS SHOULD hold the relay's deferred response before resolving it (for `interaction` and `payment` types). When the interaction URL is resource-hosted, the PS resolves its deferred response once the user has engaged or when this window elapses, whichever comes first; the agent then relies on the resource's pending URL for completion (#interaction-response-poll-authority). Absent `max_wait`, the PS resolves the relay when the user has engaged or it can make no further progress.
-- `question` (OPTIONAL): A Markdown string containing a question for the user (for `question` type).
-- `mission_s256` (OPTIONAL): The mission this request belongs to.
-
-**Relay interaction example:**
-
-```http
-POST /interaction HTTP/1.1
-Host: ps.example
-Content-Type: application/json
-Signature-Key: sig=jwt;jwt="eyJhbGc..."
-
-{
-  "type": "interaction",
-  "description": "The booking service needs you to confirm payment",
-  "url": "https://booking.example/confirm",
-  "code": "X7K2-M9P4",
-  "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
-}
-```
-
-### Interaction Response {#interaction-response-poll-authority}
-
-For `interaction` and `payment` types, the PS relays the interaction to the user and returns a deferred response (#deferred-responses).
-
-When the interaction URL is hosted by the **PS itself**, the PS's deferred response is authoritative for completion: the agent polls it until the user completes the interaction.
-
-When the interaction URL is hosted by a **resource** — the common case for a relayed `interaction`, such as a proxy's OAuth bootstrap page or a merchant's payment-confirmation page — the user completes the interaction at the resource, not at the PS. The agent then holds two pending URLs: the resource's original `Location` (from the resource's `202`) and the PS's relay `Location`. The **resource's** pending URL is authoritative for completion. The PS's relay deferred response reports only that the relay reached the user: it returns `status: "interacting"` (#deferred-responses) once the user has engaged, and a terminal response when the PS has done all it can — the user engaged, the agent's `max_wait` window elapsed, or the PS can make no further progress. The agent MUST treat the resource's pending URL as the signal that the interaction is complete, and continues polling it after the PS relay resolves.
-
-If the PS has no channel available to relay an `interaction` or `payment` to the user, it returns `interaction_unavailable` (#interaction-endpoint-errors). This is the PS declining to relay this specific interaction; the agent falls back to directing the user to the `url`/`code` itself (#interaction-relay). It is distinct from `user_unreachable`: `interaction_unavailable` is non-terminal — the agent can still drive the interaction — whereas `user_unreachable` (#token-endpoint-error-codes) is terminal, meaning no party can reach the user.
-
-For `question` type, the PS delivers the question to the user and returns the answer:
-
-```http
-HTTP/1.1 200 OK
-Content-Type: application/json
-
-{
-  "answer": "Yes, go ahead with the refundable option."
-}
-```
-
-If the PS cannot reach the user and the agent does not have the `interaction` capability, the PS returns `user_unreachable` (#token-endpoint-error-codes) — a terminal error, since no party can reach the user. If the mission is no longer active, the PS returns a mission status error (#mission-status-errors). The PS SHOULD record all interaction requests and responses. When a mission is active, the PS records the interaction in the mission log.
-
-### Interaction Endpoint Errors {#interaction-endpoint-errors}
-
-Errors use the error response format (#error-response-format).
-
-| Error | Status | Meaning |
-|-------|--------|---------|
-| `interaction_unavailable` | 424 | The PS has no channel available to relay this `interaction` or `payment` to the user. Non-terminal: the agent falls back to directing the user to the `url`/`code` itself (#interaction-relay). Distinct from the terminal `user_unreachable` (#token-endpoint-error-codes). |
+The audit endpoint is fire-and-forget; the agent SHOULD NOT block on the response. The PS records the entry in the mission log and MAY use audit records to detect anomalous behavior, alert the user, or revoke the mission. If the mission is no longer active, the PS returns a mission status error (#mission-status-errors).
 
 ## Re-authorization {#re-authorization}
 
-AAuth does not have a separate refresh token or refresh flow. When an auth token expires, the agent obtains a fresh resource token from the resource's authorization endpoint and submits it to the PS's token endpoint — the same flow as the initial authorization. This gives the resource a voice in every re-authorization: the resource can adjust scope, require step-up authorization, or deny access based on current policy. A separate refresh token would bypass the resource, and is unnecessary when the standard flow is a single additional request.
+AAuth has no refresh token. When an auth token expires, the agent obtains a fresh resource token from the resource and submits it to the PS, the same flow as the initial authorization. This gives the resource a voice in every re-authorization: it can adjust scope, require step-up, or deny on current policy.
 
-When an agent rotates its signing key, all existing auth tokens are bound to the old key and can no longer be used. The agent MUST re-authorize by obtaining fresh resource tokens and submitting them to the PS.
+When an agent rotates its signing key, every auth token bound to the old key stops working. The agent MUST re-authorize by obtaining fresh resource tokens and submitting them to the PS.
 
-An agent refreshes its agent token, and the tokens obtained with it, within the margin of (#refresh-margin). Auth tokens MUST NOT have an `exp` value that exceeds the `exp` of the agent token used to obtain them.
+Auth tokens MUST NOT have an `exp` later than the agent token used to obtain them. An agent refreshes its agent token, and the tokens obtained with it, within the margin below.
 
 ### Expiry and the Refresh Margin {#refresh-margin}
 
-A verifier judges `exp` against its own clock. This document defines no tolerance for clock skew on `exp`: a token is expired the moment the verifier's clock passes it, at every party that verifies it. `iat` is REQUIRED on every token this document defines, and it is not a validity check. A verifier MAY reject a token whose `iat` is too far in the future by its own policy — an issuer whose clock is badly wrong, or a claim that was never true — but an `iat` a few seconds ahead of the verifier's clock is ordinary skew, not a defect. This is the same skew the verifier already allows on a signature's `created` (#freshness-and-replay), so a verifier that applies such a bound SHOULD use that validity window — 60 seconds by default — rather than a bound of its own. The five-minute refresh margin above is not the number here: it covers the life of a token across several verifiers, while a future `iat` is only two clocks disagreeing at one moment.
+A token is expired the moment a verifier's clock passes its `exp`, at every party that verifies it (#common-verification). A person token or auth token that a resource names in `presented_jti` is verified by the resource, then by the PS, and in four-party by the AS, with a possible interaction in between, so a token valid at the resource can be expired by the time the AS sees it. And expiry propagates downward: a person token cannot outlive the agent token presented when it was requested, and an auth token cannot outlive the presented token (#auth-token-structure), so a token presented with thirty seconds left buys a thirty-second token.
 
-A verifier that refuses for this reason answers `clock_skew`: in the body for a token carried as a request parameter (#token-endpoint-error-codes), and as `Signature-Error: error=clock_skew` ([@!I-D.hardt-httpbis-signature-key]) for the token in the `Signature-Key` header or a signature whose `created` is ahead of the verifier's clock by more than the window. The code is distinct from `invalid_` and `expired_` because the remedy is different: those say "get a fresh token", and a fresh token from an issuer whose clock is ahead carries the same skew. A future `iat` becomes acceptable with time, so the agent MAY wait and present the same token again; the `Date` header on the response is the verifier's clock, and `iat` minus `Date` minus the window is how long to wait. A difference of minutes is an issuer to report, not a wait to sit through. `iat` is kept for what it does do. It is what neighbouring profiles expect to find — [@!RFC9068] and [@!OpenID.Core] both require it — so AAuth tokens read like other JWTs to the libraries and log pipelines that handle them. It is the issuance time an audit record, a person's dashboard, or an operator's log reports. It lets a verifier check an issuer's lifetime ceiling without a clock: `exp` minus `iat` MUST NOT exceed the one-hour ceiling of a person token (#person-token-structure) or an auth token (#auth-token-structure), and SHOULD NOT exceed the recommended lifetime of an agent token (#agent-tokens) or a resource token (#resource-token-structure); each is a consistency check on the issuer rather than a freshness check on the token. And a verifier MAY use it to bound the age of a token by its own policy, as [@!OpenID.Core] Section 3.1.3.7 does for ID Tokens; this document defines no bound in either direction.
+The agent is the party to absorb this: it holds every token in the chain. An agent SHOULD refresh an agent, person, or auth token when fewer than five minutes remain before its `exp`, and SHOULD NOT present one inside that margin. The margin does not apply to a resource token, whose recommended lifetime is five minutes or less (#resource-token-structure) and which the agent redeems at once. Five minutes is RECOMMENDED because it equals the recommended maximum lifetime of a resource token: a presented token with five minutes left is still valid whenever a resource token issued against it is redeemed.
 
-Clock skew is therefore the agent's to absorb, and the agent is the right party: it verifies nothing, and it is the only party that holds every token in the chain. An agent SHOULD refresh an agent, person, or auth token when fewer than five minutes remain before its `exp`, and SHOULD NOT present one inside that margin. The margin does not apply to a resource token: its recommended lifetime is five minutes or less (#resource-token-structure), the agent redeems it at once, and no later party names it. Three things make the margin worth its cost:
+Refresh runs from the top of the chain: the agent token first (#agent-tokens), then the person token (#person-token-endpoint), then the resource token and auth token against it. Refreshing in the other order produces a token capped by one about to expire.
 
-- **One token is verified at several places, in sequence.** A person token or auth token that a resource names in `presented_jti` is verified by the resource, then by the PS, and in four-party access by the AS, with network time, a possible deferred interaction, and the PS's polling of the AS in between (#ps-as-federation). A token that was valid at the resource can be expired by the time the AS sees it. The margin makes every party reach the same answer.
-- **Expiry propagates downward.** A person token cannot outlive the agent token presented when it was requested (#person-token-structure), and an auth token cannot outlive either the agent token or the presented token (#auth-token-structure). A token presented with thirty seconds left buys a thirty-second token. The margin keeps what is issued worth having.
-- **Skew becomes invisible.** Real clock skew is seconds; a five-minute margin covers it without any party having to reason about another's clock.
-
-Five minutes is RECOMMENDED because it is the recommended maximum lifetime of a resource token (#resource-token-structure). A resource token names the token the request carried; if that token had at least five minutes left when the resource token was issued, it is still valid when a resource token of recommended lifetime is redeemed, however late within that lifetime the agent submits it. The number is tied to something the protocol already fixes rather than chosen on its own.
-
-Because expiry propagates downward, refresh runs from the top of the chain: the agent token first (#agent-tokens), then the person token (#person-token-endpoint), then the resource token and auth token against it. Refreshing in the other order produces a token capped by one about to expire.
-
-Refresh is not required when the agent will present the token no further — a completed task, a finished mission, a resource the agent is done with. Refreshing a person token for a resource the agent will not use again spends a request, and where consent is not on file may put a question to the person for nothing. An agent MAY also renew reactively — presenting an auth token until the resource answers `401` with `expired_jwt` ([@!I-D.hardt-httpbis-signature-key]), then re-authorizing — for a request that is idempotent and can bear the extra round trip, since the auth token is presented only to the resource, which verifies it there and then. The margin matters most for a token another party will name and pass on: a person token or auth token that will become `presented_jti` is verified again after the resource, and presenting it inside the margin risks `expired_presented_token` downstream (#token-endpoint-error-codes) after the resource has already accepted it.
+Refresh is not required when the agent will present the token no further. An agent MAY also renew reactively, presenting an auth token until the resource answers `401` with `expired_jwt` ([@!I-D.hardt-httpbis-signature-key]) and then re-authorizing, for a request that is idempotent and can bear the extra round trip. The margin matters most for a token another party will name and pass on: presenting one inside the margin risks `expired_presented_token` downstream (#token-endpoint-error-codes) after the resource has already accepted it.
 
 # Mission {#missions}
 
@@ -1999,663 +1959,7 @@ Because every sub-agent authorization passes through the parent, the parent reta
 
 # Protocol Primitives {#protocol-primitives}
 
-This section defines the common mechanisms used across all AAuth endpoints: requirement responses, capabilities, deferred responses, error responses, scopes, token revocation, HTTP message signatures, key discovery, identifiers, and metadata documents.
-
-## AAuth-Capabilities Request Header {#aauth-capabilities}
-
-Agents use the `AAuth-Capabilities` request header to declare which protocol capabilities they can handle. This allows resources and PSes to tailor their responses — for example, a resource that sees `interaction` in the capabilities knows it can send `requirement=interaction`, whereas a resource that does not see `interaction` knows it must use an alternative path (such as issuing a resource token for three-party mode).
-
-The `AAuth-Capabilities` header field is a List ([@!RFC9651], Section 3.1) of Tokens.
-
-```http
-AAuth-Capabilities: interaction, clarification, payment
-```
-
-This specification defines the following capability values:
-
-| Value | Meaning |
-|-------|---------|
-| `interaction` | Agent can get a user to a URL — either directly (user is present) or via its PS's interaction endpoint |
-| `clarification` | Agent can engage in back-and-forth clarification chat |
-| `payment` | Agent can handle `402` payment flows — either directly or via its PS's interaction endpoint |
-
-The agent determines its capabilities by combining what it can do directly with what its PS can do on its behalf. When the agent has a PS and has created a mission, the mission approval response MAY include a `capabilities` array listing what the PS can handle for this user/session (#mission-approval). When present, the agent unions those capabilities with its own to produce the `AAuth-Capabilities` header value.
-
-Agents SHOULD include the `AAuth-Capabilities` header on signed requests to resources. The header is not used on requests to PS endpoints: on the person token endpoint (#person-token-endpoint) and the auth token endpoint (#ps-token-endpoint) the agent conveys capabilities via the `capabilities` request parameter, and within a mission the PS also has the capabilities captured at mission approval (#mission-approval). Recipients MUST ignore unrecognized capability values. When the header is absent, recipients MUST NOT assume any capabilities — the agent may not support interaction, clarification, or payment flows.
-
-Capability values are Tokens and currently carry no parameters. A future capability value MAY define parameters; recipients MUST ignore parameters they do not recognize on a capability item rather than rejecting the header.
-
-This is AAuth's general posture: recipients ignore what they do not recognize, and no document carries a version or schema identifier that a recipient must understand before processing it. Where a future extension defines a member that changes the meaning of what surrounds it, that extension states the must-understand requirement and the behaviour on failure, rather than relying on a general mechanism.
-
-## Scopes {#scopes}
-
-Scopes define what an agent is authorized to do at a resource. AAuth uses two categories of scope values:
-
-- **Resource scopes**: Resource-specific authorization grants (e.g., `data.read`, `data.write`, `data.delete`). Each resource defines its own scope values and publishes human-readable descriptions in its metadata (`scope_descriptions`). Resources that already define OAuth scopes SHOULD use the same scope values in AAuth.
-- **Identity scopes**: Requests for user identity claims following [@!OpenID.Core] (e.g., `openid`, `profile`, `email`, `address`, `phone`). When identity scopes are present, the auth token includes the corresponding identity claims. Enterprise extensions include the `tenant` claim from [@OpenID.Enterprise] and the `groups` and `roles` claims from [@!RFC9068] (originally defined by SCIM [@RFC7643]).
-
-A resource token MUST only include resource scopes that the resource has defined in its `scope_descriptions` metadata, and identity scopes that the PS has declared in its `scopes_supported` metadata. This ensures all parties can interpret and present the requested scopes.
-
-Scopes appear in three places in the protocol:
-
-1. **Resource token** (`scope`): The scope the resource is willing to grant, as determined by the resource based on the agent's request at the authorization endpoint.
-2. **Auth token** (`scope`): The scope actually granted. The auth token's scope MUST NOT be broader than the resource token's scope.
-3. **Authorization endpoint request** (`scope`): The scope the agent is requesting from the resource.
-
-The PS evaluates requested scopes against mission context (if present) and user consent. The AS evaluates scopes against resource policy. Either party may narrow the granted scope.
-
-## Account Binding {#account-binding}
-
-A resource may hold more than one account for the same person — an AAuth-to-OAuth proxy where a user has connected several accounts at the upstream service, a SaaS product where someone belongs to several workspaces. Scope says what the agent may do; it does not say which of those accounts it may do it to.
-
-The OPTIONAL `account` parameter of the authorization endpoint request (#authorization-endpoint-request) binds an authorization to one of them. Its value is a string from the resource's own account namespace — an email address, a workspace identifier, a tenant id, whatever the resource already uses. This specification gives it no structure and no meaning; only the resource interprets it.
-
-When the request carried `account`, the resource echoes it as the `account` claim of the resource token, the PS or AS copies it into the auth token, and the resource enforces per-account access directly from the token it receives. Different accounts yield different auth tokens, so an auth token for one account grants nothing at another, and the audit trail records which account each authorization covered.
-
-The parameter selects; it does not hint. It is not `login_hint` ([@!OpenID.Core], Section 3.1.2.1), which is a hint about who to authenticate at the party receiving it. Nobody is being authenticated here — the account is already connected at the resource — and the value has to survive into the issued tokens as a claim rather than being consumed during a login. Overloading `login_hint` would also conflate the person logging in at their PS with the account being acted on at the resource, which are different things and may belong to different namespaces entirely.
-
-## Requirement Responses {#requirement-responses}
-
-Servers use the `AAuth-Requirement` response header to indicate protocol-level requirements to agents. The header MAY be sent with `401 Unauthorized` or `202 Accepted` responses. A `401` response indicates that authorization is required. A `202` response indicates that the request is pending and additional action is required — user interaction (`requirement=interaction`), third-party approval (`requirement=approval`), a clarification answer (`requirement=clarification`), or identity claims (`requirement=claims`).
-
-`AAuth-Requirement` and `WWW-Authenticate` are independent header fields; a response MAY include both. A client that understands AAuth processes `AAuth-Requirement`; a legacy client processes `WWW-Authenticate`. Neither header's presence invalidates the other. AAuth never conveys its own requirements via `WWW-Authenticate`; a resource's existing `WWW-Authenticate` challenges (e.g., `Bearer`, `Payment`) therefore remain fully available alongside `AAuth-Requirement`.
-
-The header MAY also be sent with `402 Payment Required` when a server requires both authorization and payment. The `AAuth-Requirement` conveys the authorization requirement; the payment requirement is conveyed by a separate mechanism such as x402 [@x402] or the Payment scheme ([@?I-D.ryan-httpauth-payment]).
-
-### AAuth-Requirement Header Structure
-
-The `AAuth-Requirement` header field is a Dictionary ([@!RFC9651], Section 3.2). It MUST contain the following member:
-
-- `requirement`: A Token ([@!RFC9651], Section 3.3.4) indicating the requirement type.
-
-Requirement-specific data are conveyed as parameters on the `requirement` member (for example, `resource-token`, `url`, `code`). Recipients MUST ignore unknown parameters.
-
-Example:
-
-```http
-AAuth-Requirement: requirement=auth-token; resource-token="eyJ..."
-```
-
-### Requirement Values
-
-The `requirement` value is an extension point. This document defines the following values:
-
-| Value | Status Code | Meaning | Resource | PS | AS |
-|-------|-------------|---------|:--------:|:--:|:--:|
-| `agent-token` | `401` | AAuth agent token required for identity-only access | Y | | |
-| `person-token` | `401` | Person token required to identify the person | Y | | |
-| `auth-token` | `401` | Auth token required for resource access | Y | | |
-| `interaction` | `202` | User action required at an interaction endpoint | Y | Y | Y |
-| `approval` | `202` | Approval pending, poll for result | Y | Y | Y |
-| `clarification` | `202` | Question posed to the recipient | Y | Y | Y |
-| `claims` | `202` | Identity claims required | | | Y |
-
-The `agent-token` requirement is defined in (#requirement-agent-token); the `person-token` requirement in (#requirement-person-token); the `auth-token` requirement in (#requirement-auth-token); the `interaction` and `approval` requirements are defined in this section;  `clarification` in (#requirement-clarification); and `claims` in (#requirement-claims).
-
-An agent that does not recognize the `requirement` value MUST NOT treat the response as satisfiable. It surfaces the unsupported requirement to the caller as an error. For a `202` response with an unrecognized `requirement`, the agent MAY continue polling the `Location` URL in case a later response carries a requirement value it does understand, rather than immediately abandoning the request.
-
-### Interaction Required {#interaction-required}
-
-When a server requires user action — such as authentication, consent, payment approval, or any decision requiring a human in the loop — it returns a `202 Accepted` response:
-
-```http
-HTTP/1.1 202 Accepted
-AAuth-Requirement:
-    requirement=interaction;
-    url="https://example.com/interact";
-    code="A1B2-C3D4"
-Location: /pending/f7a3b9c
-Retry-After: 0
-```
-
-The `AAuth-Requirement` header MUST include the following parameters:
-
-- `url` (String): The interaction URL where the user completes the required action. MUST use the `https` scheme and MUST NOT contain query or fragment components.
-- `code` (String): An interaction code that links the agent's pending request to the user's session at the interaction URL. Generated and compared per (#interaction-code-format).
-
-The response MUST also include:
-
-- `Location`: A URL the agent polls (with GET) for a terminal response.
-- `Retry-After`: Recommended polling interval in seconds.
-
-#### Interaction Code Format {#interaction-code-format}
-
-The `code` is a Structured Field String ([@!RFC9651], Section 3.3.3). The user reads it out of band — the agent displays it (or renders it in a QR code) and the user visually compares it against the code shown on the interaction page — so it MUST be both unguessable and unambiguous to a human. Servers and agents MUST follow these rules.
-
-**Alphabet.** The code MUST be generated from Crockford base32 ([@?I-D.crockford-davis-base32-for-humans]) — the symbol set `0123456789ABCDEFGHJKMNPQRSTVWXYZ`, which omits the visually ambiguous letters `I`, `L`, `O`, and `U`. Every symbol is URL-safe, so the code requires no escaping when appended as `{url}?code={code}`. Servers MUST NOT emit codes containing characters outside this set (other than the optional grouping hyphen below).
-
-**Entropy and length.** A code MUST carry at least 40 bits of entropy — at least 8 Crockford base32 symbols, drawn from a cryptographically secure random source. Servers MAY use longer codes for higher-value interactions.
-
-**Hyphens.** A server MAY insert hyphen (`-`) characters into the displayed code purely for visual grouping (for example, `A1B2-C3D4`). The hyphen is presentational only: it carries no entropy and is not part of the code's value. Before comparison, both the server and any party validating the code MUST strip all hyphens.
-
-**Case.** Comparison MUST be case-insensitive. A server MUST accept the code regardless of the case the user enters, and on input MUST fold the Crockford decode aliases (`I`/`L` → `1`, `O` → `0`) before comparison so that a user who transcribes an ambiguous glyph still matches.
-
-**Correlation only.** The code is a correlation identifier — it ties the user's browser session to the pending interaction so the server can look up the correct request. It is NOT an authorization credential. The person's approve/deny decision MUST be recorded via an authenticated channel at the PS; how the PS authenticates the person is outside the scope of this specification. Because the agent relays the interaction URL and code to the user, the code is visible to the agent — the code alone MUST NOT authorize the decision.
-
-**Single use.** A code MUST be single-use. Once the user arrives at the interaction URL with a valid code and the code is consumed, the server MUST reject any later presentation of the same code, returning `invalid_code` (#polling-error-codes). A code consumed by out-of-band completion (#user-interaction) is rejected the same way.
-
-**Rate-limiting.** Because the code guards access to the interaction page, the server MUST rate-limit code-validation attempts at the interaction URL. After a small number of failed attempts the server MUST treat the pending interaction as terminally failed and return `invalid_code` (#polling-error-codes) on subsequent attempts, bounding the brute-force window to far fewer guesses than the code's entropy would otherwise allow.
-
-**Lifetime.** A code MUST expire no later than the pending interaction it is bound to (#deferred-responses). Once the pending request has expired, presenting the code MUST fail with `expired` (#polling-error-codes); the agent MAY initiate a fresh request to obtain a new code.
-
-#### Relaying Through the Person Server {#interaction-relay}
-
-When the agent has a PS, it SHOULD relay the interaction to the PS's `interaction_endpoint` (#interaction-endpoint) before directing the user itself. The PS may have a lower-friction channel to the user — an active web session, a registered mobile app — than the agent opening a browser or rendering a QR code.
-
-To relay, the agent POSTs `{ "type": "interaction", "url": "...", "code": "..." }` to the PS's `interaction_endpoint` (#interaction-endpoint). The PS attempts to reach the user through its own channels and responds:
-
-- **PS can relay**: it returns a `202` deferred response, and the agent polls for completion as described in (#interaction-endpoint).
-- **PS cannot relay**: it returns `interaction_unavailable` (#interaction-endpoint-errors). This is non-terminal — the agent falls back to directing the user itself.
-
-The agent directs the user itself — using the methods below — when it has no PS, or when the PS returns `interaction_unavailable`.
-
-To direct the user, the agent constructs a user-facing URL by appending the code as a query parameter: `{url}?code={code}`. The agent then directs the user to this URL using one of:
-
-- **Browser redirect**: The agent opens the URL in the user's browser.
-- **Display code**: The agent displays the `url` and `code` for the user to enter manually. The agent MAY also render the constructed URL as a QR code for the user to scan with their phone.
-
-After directing the user, the agent polls the `Location` URL with GET requests, respecting the `Retry-After` interval. A `202` response means the request is still pending. A non-`202` response is terminal — `200` indicates success, `403` indicates denial, and `408` indicates timeout.
-
-~~~ ascii-art
-Agent                        User                         Server
-  |                            |                             |
-  |  202 Accepted                                            |
-  |  AAuth-Requirement:                                      |
-  |    requirement=interaction;                              |
-  |    url="..."; code="..."                                 |
-  |  Location: /pending/...                                  |
-  |<---------------------------------------------------------|
-  |                            |                             |
-  |  open {url}?code={code}    |                             |
-  |  (or display code / QR)    |                             |
-  |--------------------------->|                             |
-  |                            |                             |
-  |                            |  {url}?code={code}          |
-  |                            |---------------------------->|
-  |                            |                             |
-  |                            |  user completes action      |
-  |                            |<----------------------------|
-  |                            |                             |
-  |  GET /pending/...                                        |
-  |--------------------------------------------------------->|
-  |                            |                             |
-  |  200 OK                                                  |
-  |<---------------------------------------------------------|
-~~~
-
-**Use cases:** User login, consent, payment confirmation, document review, CAPTCHA, any workflow requiring human action.
-
-### Approval Pending
-
-When a server is obtaining approval from another party without requiring the agent to direct a user — for example, via push notification, email, or administrator review:
-
-```http
-HTTP/1.1 202 Accepted
-AAuth-Requirement: requirement=approval
-Location: /pending/f7a3b9c
-Retry-After: 30
-```
-
-The response MUST include `Location` and `Retry-After`. The agent polls the `Location` URL with GET requests until a terminal response is received. No user action is required at the agent side. The same terminal response codes apply as for `interaction`.
-
-**Use cases:** Administrator approval, resource owner consent, compliance review, direct user authorization via established communication channel.
-
-## Deferred Responses {#deferred-responses}
-
-Any endpoint in AAuth — whether a PS token endpoint, AS token endpoint, or resource endpoint — MAY return a `202 Accepted` response ([@!RFC9110]) when it cannot immediately resolve a request. This is a first-class protocol primitive, not a special case. Agents MUST handle `202` responses regardless of the nature of the original request.
-
-### Initial Request
-
-The agent makes a request and signals its willingness to wait using the `Prefer` header ([@!RFC7240]):
-
-```http
-POST /token HTTP/1.1
-Host: auth.example
-Content-Type: application/json
-Prefer: wait=45
-Signature-Key: sig=jwt;jwt="eyJhbGc..."
-
-{
-  "resource_token": "eyJhbGc..."
-}
-```
-
-### Pending Response
-
-When the server cannot resolve the request within the wait period:
-
-```http
-HTTP/1.1 202 Accepted
-Location: /pending/f7a3b9c
-Retry-After: 0
-Cache-Control: no-store
-Content-Type: application/json
-
-{
-  "status": "pending"
-}
-```
-
-Headers:
-
-- `Location` (REQUIRED): The pending URL. The `Location` URL MUST be on the same origin as the responding server.
-- `Retry-After` (REQUIRED): Seconds the agent SHOULD wait before polling. `0` means retry immediately.
-- `Cache-Control: no-store` (REQUIRED): Prevents caching of pending responses.
-- `AAuth-Requirement` (OPTIONAL): Present when user interaction or approval is required. The `url` and `code` parameters are defined in (#requirement-responses).
-
-Body fields:
-
-- `status` (REQUIRED): `"pending"` while the request is waiting. `"interacting"` when the user has arrived at the interaction endpoint. Agents MUST treat unrecognized `status` values as `"pending"` and continue polling.
-
-Additional body fields may be present depending on the `AAuth-Requirement` value — for example, `clarification` and `timeout` with `requirement=clarification`, or `required_claims` with `requirement=claims`. See the specific requirement definitions for details.
-
-### Polling with GET
-
-After receiving a `202`, the agent switches to `GET` for all subsequent requests to the `Location` URL. The agent does NOT resend the original request body. **Exception**: During clarification chat, the agent uses `POST` to deliver a clarification response.
-
-The agent MUST respect `Retry-After` values. If a `Retry-After` header is not present, the default polling interval is 5 seconds. If the server responds with `429 Too Many Requests`, the agent MUST increase its polling interval by 5 seconds (linear backoff, following the pattern in [@RFC8628], Section 3.5). The `Prefer: wait=N` header ([@!RFC7240]) MAY be included on polling requests to signal the agent's willingness to wait for a long-poll response.
-
-### Deferred Response State Machine
-
-The following state machine applies to any AAuth endpoint that returns a `202 Accepted` response — including PS token endpoints, AS token endpoints, and resource endpoints during call chaining. A non-`202` response terminates polling.
-
-```
-Initial request (with Prefer: wait=N)
-    |
-    +-- 200 --> done — process response body
-    +-- 202 --> note Location URL, check requirement/code
-    +-- 400 --> invalid request — check error field, fix and retry
-    +-- 401 --> invalid signature — check credentials;
-    |           obtain auth token if resource challenge
-    +-- 402 --> payment required (settle payment, poll Location)
-    +-- 500 --> server error — start over
-    +-- 502 --> as_unreachable — fresh resource token, retry after backoff
-    +-- 503 --> back off per Retry-After, retry
-               |
-               GET Location (with Prefer: wait=N)
-               |
-               +-- 200 --> done — process response body
-               +-- 202 --> continue polling (check status/clarification)
-               |           status=interacting → stop prompting user
-               +-- 403 --> denied or abandoned — surface to user
-               +-- 408 --> expired — MAY initiate a fresh request
-               +-- 410 --> gone — MUST NOT retry
-               +-- 429 --> slow down — increase interval by 5s
-               +-- 500 --> server error — start over
-               +-- 502 --> as_unreachable — fresh resource token, retry after backoff
-               +-- 503 --> temporarily unavailable
-                           back off per Retry-After
-```
-
-## Error Responses {#error-responses}
-
-### Authentication Errors
-
-A `401` response from any AAuth endpoint uses the `Signature-Error` header as defined in ([@!I-D.hardt-httpbis-signature-key]). The header, not the response body, is the machine-readable carrier; agents MUST NOT depend on the body for signature error handling.
-
-A server returning `unsupported_scheme` SHOULD include `Accept-Signature-Scheme`, and one returning `unsupported_algorithm` SHOULD include `Accept-Signature-Alg` (#verification). The error names what went wrong; the header names what would succeed. Because AAuth fixes the scheme (#keying-material) and requires `Ed25519` support of every party (#signature-algorithms), a conformant agent does not reach either error — the headers exist so that an agent preferring another algorithm, or a client arriving from outside AAuth, can recover in one round trip rather than by trial.
-
-### Error Response Format {#error-response-format}
-
-Error response bodies use the HTTP problem details format ([@!RFC9457]) with `Content-Type: application/problem+json`. The body is a JSON object with the following members:
-
-- `error` (REQUIRED): String. A single error code, as defined by the endpoint returning the error. This is an RFC 9457 extension member; receivers MUST determine how to proceed from this member.
-- `detail` (OPTIONAL): String. A human-readable explanation specific to this occurrence of the error.
-
-Other RFC 9457 members (`type`, `title`, `status`, `instance`) MAY be present with their RFC 9457 semantics. AAuth does not define problem type URIs; receivers MUST NOT rely on `type` to identify AAuth errors.
-
-### Token Endpoint Error Codes {#token-endpoint-error-codes}
-
-| Error | Status | Meaning |
-|-------|--------|---------|
-| `invalid_request` | 400 | Malformed JSON, missing required fields |
-| `invalid_resource_token` | 400 | Resource token malformed or signature verification failed |
-| `expired_resource_token` | 400 | Resource token has expired |
-| `revoked_resource_token` | 400 | The resource that issued the resource token has withdrawn it (#token-revocation). Terminal for that token: the agent MUST NOT resubmit it, and MAY call the resource again, which decides afresh whether to issue another. |
-| `invalid_presented_token` | 400 | Presented token malformed, signature verification failed, or its `typ` is neither a person token nor an auth token (#resource-token-verification) |
-| `expired_presented_token` | 400 | The presented token has expired. Returned by a PS, and by an AS (#ps-to-as-token-request). The agent obtains a fresh person token, then a fresh resource token. |
-| `revoked_presented_token` | 400 | The presented token has been revoked by the server that issued it (#token-revocation). Returned by a PS, and by an AS holding the revocation. The agent obtains a fresh person token, then a fresh resource token. |
-| `invalid_upstream_token` | 400 | Upstream token malformed, signature verification failed, or its `aud` is not the requesting intermediary (#upstream-token-verification) |
-| `expired_upstream_token` | 400 | The upstream token has expired. The intermediary cannot renew it; the calling agent must re-authorize at the intermediary. |
-| `revoked_upstream_token` | 400 | The upstream token has been revoked by the server that issued it, or the PS has revoked the calling agent's agent token or its binding to the person (#token-revocation, #upstream-token-verification). Terminal for that token. |
-| `invalid_subagent_token` | 400 | Sub-agent token malformed, signature verification failed, its `parent_agent` does not name the signing agent, or its `iss` is not the signing agent's (#sub-agents) |
-| `expired_subagent_token` | 400 | The sub-agent token has expired. The parent obtains a fresh one for the sub-agent. |
-| `revoked_subagent_token` | 400 | The sub-agent token has been revoked by its agent provider (#token-revocation). Terminal for that token. |
-| `clock_skew` | 400 | A token carried as a request parameter has an `iat` further ahead of the verifier's clock than the signature validity window (#refresh-margin). Nothing about the token is wrong; the issuer's clock and the verifier's disagree. A fresh token from the same issuer carries the same skew, so the agent does not refresh; it MAY present the same token again once its `iat` is within the window — the response's `Date` header says how far the clocks are apart — or surfaces the error. |
-| `user_unreachable` | 403 | Terminal. The PS has no channel to reach the user and the agent did not declare the `interaction` capability, so the user cannot be reached at all. The non-terminal "user action is needed" case uses a `202` with `requirement=interaction` (#requirement-responses), not this error. |
-| `as_unreachable` | 502 | PS token endpoint only. The PS could not obtain an auth token from the access server named by the resource token's `aud`: connection failure, timeout, a malformed response, or an auth token that fails delivery verification (#auth-token-delivery). The agent MAY retry with a fresh resource token after a backoff. Distinct from an AS denial, which the PS relays. |
-| `server_error` | 500 | Internal error |
-
-The token that signs the request — the agent token in the `Signature-Key` header — has no codes in this table. When it fails, the signature fails, and the response is `401` with `Signature-Error` (#verification). Token-specific codes exist only for tokens carried as request parameters, where more than one token is in the request and the code says which failed. They follow one pattern, `<invalid|expired|revoked>_<parameter>_token`, and a future parameter carrying a token follows it.
-
-Example — the resource token presented to the token endpoint has expired:
-
-```http
-HTTP/1.1 400 Bad Request
-Content-Type: application/problem+json
-
-{
-  "error": "expired_resource_token",
-  "detail": "The resource token expired; obtain a new
-    resource token from the resource and retry."
-}
-```
-
-### Polling Error Codes {#polling-error-codes}
-
-| Error | Status | Meaning |
-|-------|--------|---------|
-| `denied` | 403 | User or approver explicitly denied the request |
-| `abandoned` | 403 | Interaction code was used but user did not complete |
-| `expired` | 408 | Timed out |
-| `revoked` | 403 | A token the pending request depends on was revoked (#token-revocation): the resource token it was started for, the upstream token of a chained request (#call-chaining), or the agent token of the agent that started it. `detail` SHOULD say which |
-| `invalid_code` | 410 | Interaction code not recognized or already consumed |
-| `slow_down` | 429 | Polling too frequently — increase interval by 5 seconds |
-| `server_error` | 500 | Internal error |
-
-Example — the user denied the pending request:
-
-```http
-HTTP/1.1 403 Forbidden
-Content-Type: application/problem+json
-
-{
-  "error": "denied",
-  "detail": "The user declined the request."
-}
-```
-
-## Token Revocation {#token-revocation}
-
-A PS and an AS SHOULD provide a revocation endpoint, and so SHOULD a resource that accepts person tokens. A resource that accepts only agent tokens receives no revocations — the PS is the only recipient of an agent token revocation, as below — and has no use for one. A server without a revocation endpoint honors a revoked token until its `exp`: up to an hour for an auth token or a person token, and the agent token's lifetime for an agent. The endpoint accepts a signed POST carrying `jti` and `exp`, both REQUIRED. `jti` identifies the token within the caller's namespace; no token type is needed, since a `jti` is unique within an issuer. `exp` is the revoked token's own expiration, which bounds how long the recipient has to remember the revocation.
-
-**A caller revokes only its own tokens.** The issuer is not a request parameter: the recipient takes it from the identity it verified on the signature (#http-message-signatures-profile) and keys the revocation under that. A caller cannot name an issuer it cannot sign for, so revoking another issuer's token is not something a recipient refuses — it is unreachable.
-
-Agent tokens, person tokens, auth tokens, and resource tokens are revocable, each at the party that acts on it:
-
-- An **agent token** is revoked only at a PS, by the agent provider that issued it. A resource that accepts an agent token directly under identity-based access (#requirement-agent-token) has no revocation path: the agent provider holds no record of which resources an agent presents its token to, so it has nothing to call. That access is bounded by the agent token's lifetime alone, which is why an agent token SHOULD NOT live longer than 24 hours (#agent-tokens).
-- A **person token** is revoked by the PS that issued it, at the resource named in its `aud`, and at the AS the PS presented it to where the authorization was federated (#ps-to-as-token-request).
-- An **auth token** is revoked at the resource it was issued for, by the PS (three-party) or AS (four-party) that issued it. A PS that federated to an AS did not issue that auth token and cannot revoke it; it revokes the person token at the AS, and the AS revokes what it issued.
-- A **resource token** is revoked by the resource that issued it, at the party named in its `aud` — the PS in three-party, the AS in four-party — and, in four-party, at the `ps` as well, which received the token from the agent and may be holding a pending consent for it.
-
-A `jti` is unique only within the namespace of the issuer that minted it. A revocation endpoint receives tokens from many issuers — a resource holds auth tokens from every PS and AS its callers use — so a `jti` alone does not identify a token unambiguously and invites cross-issuer collision, revoking the wrong token or silently failing to revoke the right one. Recipients maintaining revocation state MUST key it by `(iss, jti)`, where `iss` is the verified identity of the caller.
-
-A revocation entry only has to outlive the token it names. Once the current time is past the token's `exp` the token is refused on expiry alone, and the entry is dead weight; a recipient maintaining revocation state MAY discard it once the current time is past `exp` plus its clock skew tolerance. Carrying `exp` in the request discloses nothing: the caller issued the token or holds it already, and so does the agent presenting it. A recipient MAY reject a revocation whose `exp` is further in the future than the longest lifetime it accepts for any token, since it would refuse such a token on presentation anyway.
-
-**Request:**
-
-```http
-POST /revoke HTTP/1.1
-Host: resource.example
-Content-Type: application/json
-Signature-Key: sig=jwks_uri;id="https://ps.example";
-    dwk="aauth-person.json";kid="key-1"
-
-{
-  "jti": "unique-token-identifier",
-  "exp": 1788727813
-}
-```
-
-The caller signs as a server (#keying-material), so the recipient resolves the `id` parameter — `https://ps.example`, the `iss` of every token that PS mints — from the signature alone. The signature MUST cover `content-digest` and `content-type` along with the base components (#covered-components), at a resource's revocation endpoint as much as a PS's or an AS's: the body is what says which token to revoke and for how long to remember it, and a resource's freedom to set its own coverage through `additional_signature_components` is about its API, not about this endpoint.
-
-**Response:** `200 OK` once the recipient has recorded the revocation and every downstream revocation it makes is terminal, as below. Whether it holds a record of the token does not enter into it. A recipient that verifies tokens statelessly — fetching the issuer's JWKS, checking the signature and claims locally, and keeping nothing — has no record to match and still answers `200 OK`: it has recorded the pair and will refuse the token. There is no "not found" response. A recipient cannot distinguish a token it never saw from one it saw and no longer holds, and an answer that varied with what it holds would disclose that.
-
-**A recipient answers once its cascade is terminal.** A PS receiving an agent token revocation and an AS receiving a person token revocation each revoke downstream what they issued from the revoked token (the scenarios below). The recipient records the revocation before it calls anyone, so its own refusal of the token never waits on a downstream party, then makes every downstream revocation it is going to make, and answers only when each has a terminal outcome. If that takes longer than the recipient will hold the connection — the caller MAY say how long it will wait with `Prefer: wait` ([@!RFC7240]) — or a downstream recipient itself answered `202`, the recipient returns a `202 Accepted` deferred response (#deferred-responses) and the caller polls the pending URL, which returns the terminal response. A `200` therefore says that the cascade is finished, not that it was started. A recipient with nothing downstream — a resource, or a PS or AS receiving a resource token revocation — answers at once.
-
-A downstream revocation is terminal when it was recorded there, or when it ended in one of two ways:
-
-- `revocation_unsupported`: the downstream party publishes no `revocation_endpoint`, or answered `unsupported_iss`. Nothing to retry: that party honors the tokens until their `exp`.
-- `revocation_unavailable`: the downstream party did not respond, timed out, or returned a `5xx` or a malformed response. The caller MAY revoke again later, as below.
-
-**Who learns the outcome.** An AS reports it to the PS: its `200` carries a `downstream` array with one entry per resource it revoked at, each with `recipient`, the resource identifier, and `error` carrying one of the two values above when the revocation there did not succeed, absent when it did. The PS already knows the resource, which is the person token's `aud`, so the report discloses nothing. A PS does not report to the agent provider: its `200` to an AP carries an empty body once its cascade is terminal. Any report, even a count, would tell the AP which resources the person uses through that agent, which is what the PS exists to keep from it. A recipient with nothing downstream answers with an empty body.
-
-**The person learns the outcome.** The rule above keeps the per-recipient outcome from the agent provider because it would say which resources the person uses. It does not keep it from the person, who is the party that rule protects. A PS MAY report the outcome of a revocation the person initiated to that person, per recipient, naming the resources that recorded it, those that answered `revocation_unsupported` and will honor the tokens until they expire, and those that were `revocation_unavailable`. The honest answer to "did you cut off the agent" is not the same at every resource, and a person deciding whether to change a password or call a provider needs the difference.
-
-```http
-HTTP/1.1 200 OK
-Content-Type: application/json
-
-{
-  "downstream": [
-    {
-      "recipient": "https://resource.example",
-      "error": "revocation_unavailable"
-    }
-  ]
-}
-```
-
-**The body of a `200`.** A `200` MAY carry no body, and then carries no `Content-Type`; a recipient with nothing downstream answers that way, and so does a PS answering an agent provider. A non-empty body MUST be `application/json` and MUST be a JSON object, whose `downstream` member is OPTIONAL. A caller reads an absent body as the revocation recorded with nothing reported, and a non-empty body it cannot parse as `revocation_unavailable`, the same as a `5xx` — it has no terminal outcome to record, and the recipient may not have one either.
-
-**How long a recipient holds.** Absent `Prefer: wait`, the recipient chooses how long to hold the connection, and SHOULD hold at least long enough for one round trip to each downstream party it will call — for a PS or an AS, whose cascade is one level deep, on the order of 20 seconds. A recipient MAY hold for less than the caller asked for: an idle timeout it does not control is a hard ceiling, commonly 60 seconds. It answers `202` at its own cap, and the caller learns the cap from the `202` arriving before the wait it asked for elapsed.
-
-**Polling a deferred revocation.** The `202` is a deferred response (#deferred-responses) with one difference: the poller is a server rather than an agent. It polls the pending URL with a signed `GET`, signing as a server (#keying-material) under the same identity that made the revocation, and sends no body. The recipient MUST verify that identity and MUST answer `404` to a poll from any other, since the pending record belongs to the caller whose tokens it names. `Retry-After` and `Prefer: wait` apply as on any other pending URL. The terminal response is exactly what the synchronous path would have returned — for an AS, the `200` carrying `downstream` — or an error from the table below. No `AAuth-Requirement` is used: nothing about a revocation waits on a person. A recipient with nothing downstream MUST NOT answer `202`; it has nothing to wait for, and has recorded the revocation before it answers.
-
-**Revoking again.** Revocation is idempotent. A recipient answering a repeated revocation for the same `(iss, jti)` records nothing new, re-attempts each downstream revocation that did not succeed, and reports the current outcome. A PS that received `revocation_unavailable` MAY therefore revoke the person token at the AS again later. A recipient retries a downstream party for as long as it is willing to hold its `202`, and owes nothing after it answers.
-
-Errors use the format in (#error-response-format):
-
-| Error | Status | Meaning |
-|-------|--------|---------|
-| `invalid_request` | 400 | Malformed JSON, or a missing or malformed `jti` or `exp` |
-| `unsupported_iss` | 403 | The recipient does not accept revocations from this caller — it holds nothing issued under that identity, or the caller is not a party it exchanges tokens with |
-| `rate_limited` | 429 | The caller has sent more revocations than the recipient will accept from it for now. `Retry-After` is REQUIRED. Distinct from polling `slow_down` (#polling-error-codes), which asks for a longer polling interval rather than refusing work |
-| `server_error` | 500 | Internal error |
-
-A request whose signature does not verify is answered with `401` and the `Signature-Error` header (#error-responses); the caller's identity is established before the body is examined.
-
-**What a recipient will accept.** Any server that publishes metadata and a JWKS can sign a revocation, so any such server can add entries to a recipient's revocation state under its own `iss`, each held until the `exp` it names — up to the longest lifetime that recipient accepts. A recipient MAY restrict revocations to issuers it holds tokens from, or has a record of exchanging tokens with, and answer `unsupported_iss` to the rest. A recipient that accepts any verified issuer SHOULD bound what one issuer can hold, in entries and in rate, and answer `rate_limited` beyond either. Nothing is lost by refusing: a revocation is a caller asking a recipient to refuse a token it would otherwise accept, and a recipient that holds nothing from that issuer would refuse the token anyway.
-
-Revocation provides real-time termination of access. The following revocation scenarios are supported:
-
-- **PS revokes an auth token it issued** (three-party): The PS calls the resource's revocation endpoint.
-- **PS terminates access it federated** (four-party): The AS issued the auth token, so the PS cannot revoke it. The PS revokes the person token it presented with the token request (#ps-to-as-token-request) instead, and the AS cascades to the auth tokens it issued against that person token, as below.
-- **AS revokes an auth token it issued**: The AS calls the resource's revocation endpoint.
-- **PS revokes a person token it issued**: The PS calls the revocation endpoint of the resource named in the token's `aud`, and of every AS it presented that person token to (#ps-to-as-token-request). The resource MUST refuse subsequent requests presenting the person token and MUST NOT issue a resource token naming it. The AS MUST NOT issue further auth tokens against it, and MUST revoke the auth tokens it already issued against it by calling the revocation endpoint of the resource each names in `aud`. The PS MUST NOT present a revoked person token to an AS, and rejects a token request whose `presented_token` is one with `revoked_presented_token` (#token-endpoint-error-codes). The AS answers the PS once its revocation at the resource is terminal, reporting the outcome in `downstream`. Where the revoked person token, or an auth token issued against it, was later presented as an `upstream_token` (#call-chaining), the PS SHOULD revoke the person tokens it issued from it in the same cascade, at their resources and at the ASes it presented them to, so that an intermediary does not keep access downstream to a person who has withdrawn the grant that started the chain. The PS finds them in its own records, as below; the AS holds no part of the chain beyond the person token it was presented.
-- **Resource revokes a resource token it issued**: The resource calls the revocation endpoint of the party named in the token's `aud`, and in four-party that of the `ps` as well. The recipient MUST NOT issue an auth token against that resource token and rejects a token request naming it with `revoked_resource_token` (#token-endpoint-error-codes), and SHOULD terminate a pending request it started for it, which the agent reads as `revoked` (#polling-error-codes). In four-party the `ps` is commonly a party that has not seen the token and never will: the agent takes a resource token to its PS, and a resource that withdraws one before the agent gets there revokes at a PS with no record of it. The recipient records the `(iss, jti)` regardless, as it does for any revocation, or it would accept the token a moment later. The five-minute resource token lifetime (#resource-tokens) bounds that state, and the entry MAY be discarded once the current time is past the `exp` the revocation named plus clock skew. The window is five minutes at most (#resource-tokens), but it spans the wait for user interaction, which is when a resource is most likely to withdraw a request it has already challenged for.
-- **PS revokes a mission**: The PS marks the mission as revoked. All subsequent token requests referencing that mission's `s256` are denied. The PS SHOULD revoke outstanding auth tokens issued under the mission.
-- **Agent provider revokes an agent token it issued**: On learning that an agent can no longer be trusted, the agent provider calls the PS's revocation endpoint. The PS MUST deny subsequent requests presenting that agent token, and SHOULD revoke the person tokens and auth tokens it issued for that agent, and terminate what it federated by the four-party path above. The cascade is by agent identity, not by the named token: the agent provider has said that the agent can no longer be trusted, so the PS revokes every person token and auth token it issued to that agent's `sub`, whichever agent token the agent presented when it asked. An agent holds a sequence of agent tokens over a day, and what the PS issued under an earlier one is still live. The revocation does not alter the agent-person binding (#agent-person-binding): the binding is the person's decision, and the agent provider already controls whether the agent gets another agent token. An agent token the same provider issues later is verified on its own terms. The PS is the only recipient of an agent token revocation: under identity-based access (#requirement-agent-token) the agent presents its agent token to the resource directly, and the agent provider has no record of which resources those are, so that access is bounded by the agent token lifetime alone. The PS answers the agent provider with an empty `200` once its cascade is terminal, reporting nothing of what it revoked or where.
-- **Agent provider stops issuing agent tokens**: The agent provider decides not to issue new agent tokens to the agent. Existing agent tokens expire naturally. This is part of the regular token lifecycle — all tokens have limited lifetimes and require periodic re-issuance, which provides a natural policy re-evaluation point.
-
-Revocation endpoints are advertised in server metadata as `revocation_endpoint`. Recipients of revocation requests MUST verify the caller's identity via HTTP Message Signatures.
-
-Revoking downstream means knowing what was issued downstream, so the parties that cascade a revocation retain what they issued. A revocation from an agent provider names an agent token by `jti`, while a PS keeps its records under the agent's `sub`, so a PS records, for each agent token it accepts, that token's `(iss, jti)` and the `sub` it carried, and keeps the pair until the agent token's `exp` plus clock skew. Without it the PS cannot resolve the revocation to an agent at all. A PS records each person token it issues (#person-token-endpoint); to revoke what followed from one it also needs, for each auth token it issued or federated against that person token, the `jti`, the resource it was for, and the `exp`. An AS needs the same for each auth token it issues, along with the `presented_jti` it was issued against, which on a step-up names an earlier auth token rather than the person token, so the AS follows its own records back to the person token. An auth token carries no reference to the person token, so revoking the person token at the resource does not by itself invalidate auth tokens already there.
-
-A chain adds one link, held by the PS alone. A person token issued with an `upstream_token` (#person-token-endpoint) is issued for the person the upstream token was issued for, and the PS records the upstream token's `(iss, jti)` with the entry. Every hop of a chain routes to the same PS — the PS the upstream token names (#call-chaining) — and the PS already knows the upstream token: a person token it issued, or an auth token it issued or federated against an earlier person token. A revocation of that earlier person token walks from it, through the auth token when there is one, to the person tokens issued downstream from it without any new record elsewhere. An AS records nothing of the chain: the auth token it issues to an intermediary is issued against the person token the PS presented, the same `presented_jti` as any other, and the `upstream_token` beside it is evidence for the policy decision, not the token the auth token is issued against.
-
-Neither record is a durable ledger. An entry is useful only while the token it names could still be presented, so it MAY be discarded once the current time is past that token's `exp` plus clock skew — the same bound revocation entries use, and at most one hour for an auth token or a person token.
-
-**Presenting a revoked token.** A revoked token is otherwise sound: it verifies, it has not expired, its `aud` is right, its claims are intact. An error saying it is malformed or expired would be false, and would leave the caller with no reason not to present it again. A recipient MUST therefore say that the token was revoked, and where it says so depends on how the token was carried.
-
-- **Agent, person, or auth token** — the token in the `Signature-Key` header: `401` with `Signature-Error: error=revoked_jwt` ([@!I-D.hardt-httpbis-signature-key]). The agent presented exactly one token there, so the code needs no token type to be unambiguous. A resource refusing a revoked auth token SHOULD also include `AAuth-Requirement: requirement=person-token` (#requirement-person-token), so one response says both why the token failed and how to recover. It MUST NOT answer with `requirement=auth-token` and a resource token: a resource token names the token the request carried as `presented_jti`, and the PS or AS rejects one naming a revoked token with `revoked_presented_token` (#token-endpoint-error-codes). The agent obtains a fresh person token, presents it, and takes the resource token it receives to its PS, which decides afresh and denies terminally if the grant is gone. For a revoked agent token no requirement repairs it — the agent obtains a fresh one from its provider, which is the party that revoked.
-- **A token carried as a request parameter** — a resource token, or the presented token an agent passes to a PS and a PS passes on to an AS (#ps-token-endpoint, #ps-to-as-token-request): the signature verified, so this is not a `401`. The recipient returns `revoked_<token>_token` in the response body, beside the `invalid_` and `expired_` codes the same parameter already has: `revoked_resource_token` from the PS or AS the agent presented the resource token to, `revoked_presented_token` from the PS or the AS (#token-endpoint-error-codes). A pending request already started against a withdrawn resource token terminates with `revoked` (#polling-error-codes), as does one whose upstream token or whose agent's agent token is revoked while it waits: in each case a token the request depends on is gone, and the agent learns which from `detail`. A sub-agent's agent token, carried as `subagent_token`, is answered `revoked_subagent_token` by the PS, which is where its agent provider revoked it (#token-revocation).
-
-Naming revocation to the agent that holds the token discloses nothing: the revocation is of its own token, and it is the party that most needs to stop using it. This is distinct from the revocation endpoint's response to a calling server (#token-revocation), which says that the revocation was recorded and, to a PS, how far it cascaded, but not whether the recipient held the token, because there the caller is asking about tokens that are not its own.
-
-Verifying an auth token does not ask the issuer about that token. A resource fetches the issuer's JWKS to obtain the verification key and caches it across many tokens, then checks the signature and claims locally; nothing in that path reports that a particular token has been revoked. A resource therefore learns of a revocation only when one reaches its revocation endpoint, and a party that no revocation request reaches is bounded by token lifetime alone — at most one hour for an auth token (#auth-tokens) or a person token (#person-token-structure), five minutes for a resource token (#resource-tokens), and, for an agent token presented directly to a resource, the 24 hours an agent token SHOULD NOT exceed (#agent-tokens). Revocation shortens exposure; it does not eliminate it, and deployments requiring immediate termination should issue shorter-lived tokens rather than relying on revocation reaching every holder.
-
-## AAuth Tokens {#aauth-tokens}
-
-Agent tokens (#agent-tokens), person tokens (#person-tokens), resource tokens (#resource-tokens), and auth tokens (#auth-tokens) are JWTs ([@!RFC7519]) that share the header and claims below. Each token's own section states the values these take for it and the claims specific to it.
-
-### Common JWT Claims {#common-claims}
-
-Header:
-
-- `alg`: Signing algorithm, per (#signature-algorithms). A fully-specified identifier is REQUIRED; `Ed25519` is RECOMMENDED. Implementations MUST NOT accept `none`, the polymorphic `EdDSA` identifier, or any symmetric algorithm.
-- `typ`: The token type, `aa-<type>+jwt`. A recipient MUST check `typ` before acting on any AAuth JWT (#person-token-not-authorization).
-- `kid`: Key identifier of the issuer's signing key in its JWKS.
-
-Payload:
-
-- `iss`: The issuer's server identifier (#server-identifiers).
-- `dwk`: The issuer's well-known metadata document name, for key discovery ([@!I-D.hardt-httpbis-signature-key]).
-- `jti`: Unique token identifier for replay detection, audit, and revocation (#token-revocation).
-- `iat`: Issued-at timestamp. REQUIRED, and not a validity check; see (#refresh-margin) for its uses and the one bound a verifier MAY apply.
-- `exp`: Expiration timestamp. Lifetime limits are stated per token type.
-- `cnf`: Confirmation claim ([@!RFC7800]) with `jwk` containing the public key the token is bound to. The JWK MUST carry a fully-specified `alg` member (#signature-algorithms). A resource token carries `agent_jkt` in place of `cnf` (#resource-token-structure).
-
-### Common JWT Verification {#common-verification}
-
-Verify per [@!RFC7515] and [@!RFC7519]:
-
-1. Decode the JWT header. Verify `typ` is the expected type.
-2. Verify `dwk` is the expected metadata document name. Discover the issuer's JWKS via `{iss}/.well-known/{dwk}` per the HTTP Signature Keys specification ([@!I-D.hardt-httpbis-signature-key]) and (#jwks-discovery). Locate the key matching the JWT header `kid` and verify the JWT signature.
-3. Verify `exp` is in the future, judged by the verifier's own clock (#refresh-margin). `iat` is not a validity check; a verifier MAY refuse an `iat` further ahead of its clock than the signature validity window, answering `clock_skew`.
-4. Verify `iss` is a valid server identifier (#server-identifiers).
-
-The token's own section adds the checks specific to it. A token presented in the `Signature-Key` header that fails any of these steps is a signature failure and is answered per (#verification); a token carried as a request parameter that fails is answered with the parameter's own error code (#token-endpoint-error-codes).
-
-## HTTP Message Signatures Profile {#http-message-signatures-profile}
-
-This section profiles HTTP Message Signatures ([@!RFC9421]) for use with AAuth. Signing requirements (what the agent does) and verification requirements (what the server does) are specified separately.
-
-### Signature Algorithms {#signature-algorithms}
-
-Every party — agents, resources, person servers, access servers, and agent providers — MUST support `Ed25519` ([@!RFC8032]) and SHOULD support `ES256`. Algorithm identifiers are values from the IANA "JSON Web Signature and Encryption Algorithms" registry [@!IANA.JOSE.Algorithms], and the `alg` member of the JWK ([@!RFC7517]) carries the identifier.
-
-Every key AAuth conveys or references is subject to the Algorithm Determination rules of the HTTP Signature Keys specification ([@!I-D.hardt-httpbis-signature-key]). In particular:
-
-- The `alg` member MUST be present and MUST be a fully-specified identifier — one that determines the signature operation completely, including curve and hash where applicable. A verifier MUST reject a key whose `alg` is absent.
-- The polymorphic `EdDSA` identifier MUST NOT be used. Use `Ed25519` (or `Ed448`), which [@!RFC9864] registered as its fully-specified replacements when it deprecated `EdDSA`.
-- `none`, any algorithm whose JOSE Implementation Requirement is `Prohibited`, and symmetric algorithms (the `oct` key type and the `HS256`, `HS384`, and `HS512` identifiers) MUST NOT be used.
-- A verifier MUST reject a key whose `kty` or, where present, `crv` disagrees with its `alg`.
-
-Naming `Ed25519` rather than `EdDSA` with the curve pinned separately in prose is what makes the requirement testable: a verifier reading only the `alg` value cannot distinguish Ed25519 from Ed448, and [@!RFC9864] deprecates exactly that pattern. `ES256` is likewise already fully specified, and its use is RECOMMENDED where a platform's keys are ECDSA on P-256 — notably hardware-backed keys on devices whose secure enclave does not offer Ed25519.
-
-Post-quantum algorithms need no special treatment here: the ML-DSA identifiers registered by [@!RFC9964] are fully specified and are used directly as the `alg` value.
-
-### Keying Material {#keying-material}
-
-The signing key is conveyed in the `Signature-Key` header ([@!I-D.hardt-httpbis-signature-key]). Because every AAuth agent holds an agent token (#agent-tokens), AAuth uses the **identity** `jwt` scheme: the agent presents a token carrying its public key in a `cnf` claim, and the key is taken from there. Agents MUST use the `jwt` scheme; agents MUST NOT use the `jwks_uri` or `hwk` scheme for AAuth resource, PS, or AS requests.
-
-Which token the agent presents depends on what the recipient needs to know. All three carry the same key in `cnf`, so signature verification is identical in each case.
-
-| Token | Presented to | Asserts |
-|---|---|---|
-| Agent token (#agent-tokens) | the PS and the AP always; a resource for agent identity and resource-managed access | which agent |
-| Person token (#person-tokens) | a resource, at its authorization endpoint | which person |
-| Auth token (#auth-tokens) | a resource, once it has authorized the agent | what is authorized |
-
-A PS, AS, AP, or resource making a signed AAuth request in its own right — a PS-to-AS token request (#ps-to-as-token-request), a revocation (#token-revocation), or any other server-to-server call — MUST use the `jwks_uri` scheme. The `id` parameter MUST be the server's `issuer` as published in its metadata (#metadata-documents), and `dwk` MUST be that metadata document's well-known name: `aauth-person.json`, `aauth-access.json`, `aauth-agent.json`, or `aauth-resource.json`.
-
-```http
-Signature-Key: sig=jwks_uri;id="https://ps.example";
-    dwk="aauth-person.json";kid="key-1"
-```
-
-The recipient resolves `id` to the caller's identity, and that identity is the `iss` of every token the server mints — the metadata check binds the two (#metadata-documents). A server-to-server request therefore identifies its caller without carrying an issuer parameter, which is what lets a revocation name a token by `jti` alone (#token-revocation).
-
-A resource that acts as an agent to reach a downstream resource (#multi-hop) is signing as an agent, not as a server: it presents its own agent token under the `jwt` scheme, as any agent does.
-
-The Signature-Key specification also defines pseudonymous schemes (`hwk` for a bare inline public key, `jkt-jwt` for hardware-key delegation). AAuth does not use bare `hwk` access — the agent token is the minimum AAuth credential. The `jkt-jwt` scheme is used only in the agent provider's key-refresh ceremony (see [@?I-D.hardt-aauth-bootstrap]), not for protocol access to resources, PSes, or ASes.
-
-See the Signature-Key specification ([@!I-D.hardt-httpbis-signature-key]) for scheme definitions, key discovery, and verification procedures.
-
-### Signing (Agent)
-
-The agent creates an HTTP Message Signature ([@!RFC9421]) on each request, including the following headers:
-
-- `Signature-Key`: Public key or key reference for signature verification
-- `Signature-Input`: Signature metadata including covered components
-- `Signature`: The HTTP message signature
-
-#### Covered Components {#covered-components}
-
-The signature MUST cover the following derived components and header fields:
-
-- `@method`: The HTTP request method ([@!RFC9421], Section 2.2.1)
-- `@authority`: The target host ([@!RFC9421], Section 2.2.3)
-- `@path`: The request path ([@!RFC9421], Section 2.2.6)
-- `signature-key`: The Signature-Key header value
-
-These four are mandated rather than advisory because each closes a request-substitution attack and all four are derivable by the agent at signing time on every platform, including browsers: `@method` prevents a captured signature from being replayed with a different method (a signed `GET` reused as a `DELETE`); `@authority` binds the signature to the target host, preventing cross-host replay; `@path` binds it to the specific endpoint; and `signature-key` binds the signature to the presented key material, preventing key substitution. Omitting any one would let a captured signature be replayed against a different method, host, path, or key.
-
-On a request carrying a body to a PS or AS endpoint, or to any revocation endpoint (#token-revocation), the signature MUST additionally cover:
-
-- `content-digest`: The Content-Digest header value ([@!RFC9530])
-- `content-type`: The Content-Type header value
-
-Without them a request body is not integrity-protected, and PS and AS requests carry members that decide what is authorized — `justification`, `mission_s256`, `resource`, `sub`, and the mission proposal itself. Only the tokens among those members are self-protecting; the rest are plain JSON. The requirement is unconditional at these endpoints because every one of them takes a JSON body of known shape, so computing a digest costs the sender nothing it was not already doing.
-
-Resources are different: they serve arbitrary APIs, including bodyless requests, streamed uploads, and payloads large enough that digesting them is a real cost. A resource therefore declares what it needs through `additional_signature_components` (#resource-metadata) rather than the protocol mandating it. Its revocation endpoint is the exception, which is why the requirement above names the endpoint rather than the role: that endpoint is defined by this document, not by the resource's API, and takes a body of two members that select a token and add to retained state. The same rule applies wherever it is deployed. Servers MAY require further covered components; the agent learns about them from server metadata or from an `invalid_input` error response that includes `required_input`.
-
-The following example shows a fully bound request combining a session token and an HTTP Message Signature. Token and key values are illustrative placeholders, not parseable test vectors. `Authorization: AAuth` carries the session token; `Signature-Key` carries the agent token, whose `cnf.jwk` is the signing key. A valid signature over these components proves request-component integrity; authorization still depends on auth-token claims and resource enforcement.
-
-```http
-GET /api/documents HTTP/1.1
-Host: resource.example
-Authorization: AAuth session-token-placeholder
-Signature-Input: sig=("@method" "@authority" "@path"
-    "authorization" "signature-key");created=1730217600
-Signature: sig=:BASE64URL-SIGNATURE-PLACEHOLDER:
-Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtYWdlbnQrand0Iiwia2lkIjoiYXAta2V5LTEifQ.PLACEHOLDER.PLACEHOLDER"
-```
-
-#### Signature Parameters
-
-The `Signature-Input` header ([@!RFC9421], Section 4.1) MUST include the following parameters:
-
-- `created`: Signature creation timestamp as an Integer (Unix time). The agent MUST set this to the current time.
-
-Agents MUST NOT include the `alg` signature parameter, and verifiers MUST ignore it if present, per [@!RFC9421], Section 3.3.7: under the JOSE signing algorithms this profile uses, the algorithm is signaled by the key rather than requested on the wire, and JWA identifiers are not registered in the HTTP Signature Algorithms registry. The algorithm is determined per (#signature-algorithms).
-
-Agents SHOULD NOT include the `keyid` parameter ([@!RFC9421], Section 5.1); the key is identified by the `Signature-Key` header. If `keyid` is present for a label that also appears in `Signature-Key`, the two MUST identify the same key, and the verifier MUST take the key from `Signature-Key`.
-
-### Verification (Server) {#verification}
-
-When a server receives a signed request, it MUST perform the following steps. Any failure MUST result in a `401` response with the appropriate `Signature-Error` header ([@!I-D.hardt-httpbis-signature-key]).
-
-1. Extract the `Signature`, `Signature-Input`, and `Signature-Key` headers. If any are missing, return `invalid_signature`.
-2. Verify that the `Signature-Input` covers the required components defined in (#covered-components). If the server requires additional components, verify those are covered as well. If not, return `invalid_input` with `required_input`.
-3. Verify the `created` parameter is present and within the server's signature validity window of the server's current time. The default window is 60 seconds. Servers MAY advertise a different window via their metadata (e.g., `signature_window` in resource metadata). Reject with `invalid_signature` if `created` is older than the window, and with `clock_skew` if it is further ahead of the server's clock than the window (#refresh-margin). Servers and agents SHOULD synchronize their clocks using NTP ([@RFC5905]).
-4. Select the `Signature-Key` dictionary member for the label being verified and read its scheme. If the scheme is not one the server implements — including any scheme this profile does not use (#keying-material) and any unregistered value — return `unsupported_scheme` with an `Accept-Signature-Scheme` header naming the schemes the server accepts. A server MUST NOT fail in a scheme-specific or undefined manner on an unrecognized scheme.
-5. Obtain the public key from the `Signature-Key` header according to the scheme, as specified in ([@!I-D.hardt-httpbis-signature-key]). Return `invalid_key` if the key cannot be parsed, `unknown_key` if the key is not found at the `jwks_uri`, `invalid_jwt` if a JWT scheme fails verification, `expired_jwt` if the JWT has expired, `clock_skew` if the server applies the OPTIONAL bound on `iat` (#refresh-margin) and its `iat` is further ahead of the server's clock than the validity window, `revoked_jwt` if the JWT verifies and is unexpired but the server holds a revocation for it (#token-revocation), or `issuer_missing` / `issuer_mismatch` if the issuer's metadata document fails the checks in (#metadata-documents).
-6. Determine the signature algorithm from the `alg` member of the obtained key, per (#signature-algorithms). Return `unsupported_algorithm` if `alg` is absent, is a polymorphic identifier, or names an algorithm or key type the server does not implement, and include an `Accept-Signature-Alg` header naming the algorithms the server accepts. Return `invalid_key` if the key's `kty` or `crv` disagrees with its `alg`.
-7. Verify the HTTP Message Signature ([@!RFC9421]) using the obtained public key and determined algorithm. Return `invalid_signature` if verification fails.
-
-Steps 5 and 6 are ordered so that the algorithm is read from the key the scheme resolved to. Under the `jwt` scheme the key is the `cnf.jwk` of the presented token, which the server does not hold until the assertion has been verified.
-
-An `Accept-Signature-Alg` header names exactly the algorithms the server accepts, neither a subset nor a superset, so an agent that selects an algorithm from that list and presents a key carrying it is assured of clearing step 6. A server MAY omit either `Accept-Signature-*` header where enumerating what it accepts to an unauthenticated caller is judged a disclosure risk, accepting that agents then have to discover the sets by trial or out of band.
-
-This profile pins the response status to `401` for every signature failure, where the HTTP Signature Keys specification uses `400` for most of them and permits `401` for the recoverable ones. AAuth requests are authenticated by their signature, so a signature that does not verify is an authentication failure rather than a malformed request, and a single status keeps agent retry logic uniform.
-
-A `403` response denies access after the signature verified — authentication succeeded and authorization did not. Per ([@!I-D.hardt-httpbis-signature-key]), such a response MUST NOT include a `Signature-Error`, `Accept-Signature-Scheme`, or `Accept-Signature-Alg` header. This applies to the AAuth errors returned with `403` (#token-endpoint-error-codes, #polling-error-codes).
-
-#### Signature-Key Scheme Rejection {#scheme-rejection}
-
-AAuth requires the `jwt` scheme (#keying-material), so a request presenting any other scheme is rejected under step 4 above:
-
-```http
-HTTP/1.1 401 Unauthorized
-Signature-Error: error=unsupported_scheme
-Accept-Signature-Scheme: jwt
-```
-
-A resource that also serves clients outside AAuth — signing per ([@!I-D.hardt-httpbis-signature-key]) without an AAuth agent token — MAY accept further schemes and MUST then list all of them. `Accept-Signature-Scheme` states what the server accepts from any caller; `AAuth-Requirement: requirement=agent-token` (#requirement-agent-token) is the narrower statement that an AAuth agent token in particular is required, and a server challenging an AAuth agent uses that rather than `Accept-Signature-Scheme`.
-
-#### Freshness and Replay {#freshness-and-replay}
-
-The `created` parameter is the primary replay defense: the server rejects signatures whose `created` is outside the validity window (default 60 seconds), so a captured signature becomes unusable once the window closes. `expires` is OPTIONAL; servers MUST honor it when present and MUST reject requests where `expires` is in the past.
-
-Within the validity window, a captured signature could in principle be replayed. For state-changing requests where this matters, a verifier MAY maintain a short-lived cache keyed by `(signing-key-thumbprint, created, @method, @authority, @path)` for the duration of the window, rejecting duplicate tuples. `@authority` is included because it is a mandated covered component (#covered-components) and distinguishes requests across virtual hosts or tenants sharing the same path. PSes and ASes are NOT required to maintain replay caches for resource tokens (#resource-tokens), which are consumed in a single token request. This profile defines no nonce mechanism.
-
-The validity window governs online verification, where the verifier sees the request as it is made. A verifier that first sees a signed artifact after a delay — queued consumption, a batch pipeline, store-and-forward — uses the signed `created` as the signing-time anchor instead: it verifies that the presented token was valid at `created`, and applies its own policy for how much `created`-to-verification skew it accepts. A replay cache at such a verifier MUST span the skew it accepts, since the window that would otherwise bound replay no longer applies.
-
-## JWKS Discovery and Caching {#jwks-discovery}
-
-All AAuth token verification — agent, person, resource, and auth tokens — requires discovering the issuer's signing keys via the `{iss}/.well-known/{dwk}` pattern defined in the HTTP Signature Keys specification ([@!I-D.hardt-httpbis-signature-key]).
-
-Every key an AAuth server publishes at its `jwks_uri` MUST carry a fully-specified `alg` member (#signature-algorithms). A JWKS is the only channel through which the algorithm of a discovered key is conveyed — the `Signature-Key` header carries `id`, `dwk`, and `kid`, which identify a key rather than describe it — so a published key that omits `alg` cannot be used, even though [@!RFC7517] makes the member OPTIONAL. Deployments reusing an existing JWKS need only ensure that the keys AAuth selects by `kid` carry `alg`; other members of the same document are never resolved.
-
-A verifier MUST select the key matching `kid` without requiring any other member of the JWKS to be usable, and MUST NOT fail because an unselected member names a key type or algorithm it does not implement. Without this an issuer could not add a post-quantum key alongside a classical one — doing so would break every verifier that does not implement the new key type, including those that were only ever going to use the classical key.
-
-Implementations MUST cache JWKS responses and SHOULD respect HTTP cache headers (`Cache-Control`, `Expires`) returned by the JWKS endpoint. When an implementation encounters an unknown `kid` in a JWT header, it SHOULD refresh the cached JWKS for that issuer to support key rotation. To prevent abuse, implementations MUST NOT fetch a given issuer's JWKS more frequently than once per minute. If a JWKS fetch fails, implementations SHOULD use the cached JWKS if available and SHOULD retry with exponential backoff. Cached JWKS entries SHOULD be discarded after a maximum of 24 hours regardless of cache headers, to ensure removed keys are no longer trusted.
-
-If a cached key matching the JWT `kid` fails signature verification, the verifier SHOULD refresh the issuer's JWKS once and retry before returning `unknown_key` (if the key is then absent from the refreshed JWKS) or `invalid_jwt` (if verification still fails), subject to the once-per-minute floor above. This covers silent re-keying where the issuer replaces key material under the same `kid` without changing the identifier.
-
-Before fetching any issuer metadata or `jwks_uri`, verifiers MUST apply egress admission per ([@!I-D.hardt-httpbis-signature-key]).
+This section is the normative reference for the mechanisms the preceding sections use: identifiers, metadata documents, HTTP message signatures, key discovery, the common JWT profile, requirement responses, capabilities, deferred responses, error responses, scopes, account binding, and token revocation. Context for each is given where it is first used.
 
 ## Identifiers {#identifiers-and-discovery}
 
@@ -2692,19 +1996,17 @@ One exception: when `localhost_callback_allowed` is `true` in the agent's metada
 
 ## Metadata Documents {#metadata-documents}
 
-Participants publish metadata at well-known URLs ([@!RFC8615]) to enable discovery.
+Participants publish metadata at well-known URLs ([@!RFC8615]).
 
-When fetching a metadata document, implementations MUST verify that it contains an `issuer` member, and that the `issuer` value matches the URL the document was retrieved from (the URL minus the `/.well-known/{dwk}` suffix), compared by byte equality as presented. A document with no `issuer` MUST be rejected with `issuer_missing`; one whose `issuer` does not match MUST be rejected with `issuer_mismatch` ([@!I-D.hardt-httpbis-signature-key]). This is the check [@!RFC8414], Section 3.3 requires of authorization server metadata.
-
-This check prevents host-poisoned metadata: an attacker hosting a metadata document at one domain that claims an `issuer` of a different domain. Without it, a permissive verifier following the `jwks_uri` in such a document could end up trusting attacker-controlled keys for tokens claiming the impersonated issuer.
+When fetching a metadata document, implementations MUST verify that it contains an `issuer` member, and that the `issuer` value matches the URL the document was retrieved from (the URL minus the `/.well-known/{dwk}` suffix), compared by byte equality. A document with no `issuer` MUST be rejected with `issuer_missing`; one whose `issuer` does not match MUST be rejected with `issuer_mismatch` ([@!I-D.hardt-httpbis-signature-key]). This is the check [@!RFC8414], Section 3.3 requires of authorization server metadata, and it prevents a document hosted at one domain from claiming the `issuer` of another.
 
 The following fields are defined identically across all four metadata documents (`aauth-agent.json`, `aauth-resource.json`, `aauth-person.json`, `aauth-access.json`):
 
 | Field | Requirement | Description |
 |-------|-------------|-------------|
-| `issuer` | REQUIRED | The server's HTTPS URL. MUST match the URL the document was fetched from. Placed in the `iss` claim of JWTs issued by this server. Required by any Signature-Key verifier to confirm the document belongs to the claimed signer ([@!I-D.hardt-httpbis-signature-key]). |
+| `issuer` | REQUIRED | The server's HTTPS URL. MUST match the URL the document was fetched from. Placed in the `iss` claim of JWTs issued by this server. |
 | `jwks_uri` | REQUIRED (see per-role) | URL to the server's JSON Web Key Set. |
-| `accept_signature_algs` | OPTIONAL | JSON array of fully-specified JWS algorithm identifiers the server's verifier accepts — exactly the set, neither a subset nor a superset. Semantics identical to the `Accept-Signature-Alg` response header ([@!I-D.hardt-httpbis-signature-key]), advertised before first contact rather than after a failure. One list per server, covering every endpoint. Since `Ed25519` is REQUIRED of every party (#signature-algorithms), the list's value is naming the additional algorithms. A server MAY omit it for the same disclosure reasons it MAY omit the header. |
+| `accept_signature_algs` | OPTIONAL | JSON array of fully-specified JWS algorithm identifiers the server's verifier accepts, exactly the set. Same semantics as the `Accept-Signature-Alg` response header ([@!I-D.hardt-httpbis-signature-key]). One list per server, covering every endpoint. A server MAY omit it. |
 | `name` | OPTIONAL | Human-readable display name. |
 | `description` | OPTIONAL | Markdown string describing the server, for display at consent screens or dashboards. Implementations MUST sanitize before rendering. |
 | `logo_uri` | OPTIONAL | URL to the server's logo. MUST use `https`. |
@@ -2713,9 +2015,9 @@ The following fields are defined identically across all four metadata documents 
 | `tos_uri` | OPTIONAL | URL to terms of service. MUST use `https`. |
 | `policy_uri` | OPTIONAL | URL to privacy policy. MUST use `https`. |
 
-AAuth intentionally diverges from RFC 9728 on two points: AAuth uses `issuer` (not `resource`) as the primary identifier field so that a generic Signature-Key verifier can extract the signer identity uniformly from any dwk document without knowing which role it represents; and AAuth uses unprefixed field names (`name`, `tos_uri`, `policy_uri`, `documentation_uri`) rather than the `resource_`-prefixed forms in RFC 9728, for consistency across all four roles.
+AAuth uses `issuer` rather than the `resource` field of RFC 9728, and unprefixed field names rather than RFC 9728's `resource_`-prefixed forms (#why-issuer-not-resource).
 
-The per-role sections below show the common fields in their examples and list only role-specific fields and role-specific requirement differences (for example, `jwks_uri` is conditionally REQUIRED for resources).
+The per-role sections below list role-specific fields and role-specific requirement differences.
 
 ### Agent Provider Metadata {#agent-provider-metadata}
 
@@ -2738,11 +2040,11 @@ Published at `/.well-known/aauth-agent.json`:
 }
 ```
 
-Role-specific fields, after the common fields of (#metadata-documents):
+Role-specific fields:
 
-- `issuer` (REQUIRED): The agent provider's HTTPS URL (the `domain` in agent identifiers it issues). This is the value placed in the `iss` claim of agent tokens.
-- `jwks_uri` (REQUIRED): URL to the agent provider's JSON Web Key Set
-- `callback_endpoint` (OPTIONAL): The agent's HTTPS callback endpoint URL
+- `issuer` (REQUIRED): The agent provider's HTTPS URL (the `domain` in agent identifiers it issues). Placed in the `iss` claim of agent tokens.
+- `jwks_uri` (REQUIRED): URL to the agent provider's JSON Web Key Set.
+- `callback_endpoint` (OPTIONAL): The agent's HTTPS callback endpoint URL (#user-interaction).
 - `event_endpoint` (OPTIONAL): HTTPS URL at which the AP receives event tokens from resources. Required if the AP supports AAuth Events ([@?I-D.hardt-aauth-events]).
 - `localhost_callback_allowed` (OPTIONAL): Boolean. Default: `false`.
 
@@ -2771,22 +2073,22 @@ Published at `/.well-known/aauth-person.json`:
 }
 ```
 
-Role-specific fields, after the common fields of (#metadata-documents):
+Role-specific fields:
 
-- `issuer` (REQUIRED): The PS's HTTPS URL. MUST match the URL used to fetch the metadata document. This is the value placed in the `iss` claim of JWTs issued by the PS.
-- `auth_token_endpoint` (REQUIRED): URL where agents send token requests
-- `person_token_endpoint` (REQUIRED): URL where agents request a person token for a resource (#person-token-endpoint)
-- `mission_endpoint` (OPTIONAL): URL where an agent proposes, updates, and completes the missions it owns (#missions). Present when the PS supports missions. A mission's own URL is `{mission_endpoint}/{mission_s256}`.
-- `permission_endpoint` (OPTIONAL): URL where agents request permission for actions not governed by a remote resource (#permission-endpoint)
-- `audit_endpoint` (OPTIONAL): URL where agents log actions performed (#audit-endpoint)
-- `interaction_endpoint` (OPTIONAL): URL where agents relay interactions to the user through the PS (#interaction-endpoint)
-- `mission_control_endpoint` (OPTIONAL): URL of the PS's mission control plane — where parties other than the owning agent read and manage missions: the person, an organization's administrator, or a management service. `mission_endpoint` is the agent's surface and authenticates callers by agent token; this endpoint serves principals AAuth does not define, so its authentication model, operations, and responses are out of scope for this document (#mission-management). **Editor's note:** a mission control companion specification is TBD. A PS MAY also use it for a deployment's human-facing administrative interface.
-- `revocation_endpoint` (RECOMMENDED): URL where an agent provider revokes an agent token it issued, so that the PS denies the agent token and revokes what it issued for that agent, and where a resource revokes a resource token this PS holds (#token-revocation). A PS is the only recipient of an agent token revocation.
-- `jwks_uri` (REQUIRED): URL to the PS's JSON Web Key Set
-- `scopes_supported` (RECOMMENDED): Array of scope values the PS supports, including identity scopes (e.g., `openid`, `profile`, `email`) and enterprise scopes (e.g., `tenant`, `groups`, `roles`)
-- `claims_supported` (RECOMMENDED): Array of identity claim names the PS can provide (e.g., `sub`, `email`, `name`, `tenant`)
+- `issuer` (REQUIRED): The PS's HTTPS URL. Placed in the `iss` claim of JWTs issued by the PS.
+- `jwks_uri` (REQUIRED): URL to the PS's JSON Web Key Set.
+- `auth_token_endpoint` (REQUIRED): URL where agents send token requests (#ps-token-endpoint).
+- `person_token_endpoint` (REQUIRED): URL where agents request a person token for a resource (#person-token-endpoint).
+- `mission_endpoint` (OPTIONAL): URL where an agent proposes, updates, and completes the missions it owns (#missions). A mission's own URL is `{mission_endpoint}/{mission_s256}`.
+- `permission_endpoint` (OPTIONAL): URL where agents request permission for actions not governed by a remote resource (#permission-endpoint).
+- `audit_endpoint` (OPTIONAL): URL where agents log actions performed (#audit-endpoint).
+- `interaction_endpoint` (OPTIONAL): URL where agents relay interactions to the user through the PS (#interaction-endpoint).
+- `mission_control_endpoint` (OPTIONAL): URL of the PS's mission control plane, where parties other than the owning agent read and manage missions (#mission-management). Its authentication model, operations, and responses are out of scope for this document. A PS MAY also use it for a deployment's human-facing administrative interface. **Editor's note:** a mission control companion specification is TBD.
+- `revocation_endpoint` (RECOMMENDED): URL where an agent provider revokes an agent token it issued, and where a resource revokes a resource token this PS holds (#token-revocation).
+- `scopes_supported` (RECOMMENDED): Array of scope values the PS supports, including identity scopes (e.g., `openid`, `profile`, `email`) and enterprise scopes (e.g., `tenant`, `groups`, `roles`).
+- `claims_supported` (RECOMMENDED): Array of identity claim names the PS can provide (e.g., `sub`, `email`, `name`, `tenant`).
 
-The four REQUIRED fields — `issuer`, `auth_token_endpoint`, `person_token_endpoint`, and `jwks_uri` — are the whole of what a conformant PS publishes. A PS that issues person tokens and auth tokens, and runs whatever consent it needs at the `url` it returns in `requirement=interaction` (#requirement-responses), is conformant with those four. The OPTIONAL endpoints add missions, permission checks, audit, and the agent's relay channel to the person (#interaction-endpoint); they do not add conformance.
+The four REQUIRED fields (`issuer`, `jwks_uri`, `auth_token_endpoint`, `person_token_endpoint`) are the whole of what a conformant PS publishes. The OPTIONAL endpoints add missions, permission checks, audit, and the relay channel to the person; they do not add conformance.
 
 ### Access Server Metadata {#access-server-metadata}
 
@@ -2807,16 +2109,16 @@ Published at `/.well-known/aauth-access.json`:
 }
 ```
 
-Role-specific fields, after the common fields of (#metadata-documents):
+Role-specific fields:
 
-- `issuer` (REQUIRED): The AS's HTTPS URL. MUST match the URL used to fetch the metadata document. This is the value placed in the `iss` claim of auth tokens.
-- `auth_token_endpoint` (REQUIRED): URL where PSes send token requests
-- `revocation_endpoint` (RECOMMENDED): URL where a PS revokes a person token it presented to this AS, and where a resource revokes a resource token whose `aud` is this AS (#token-revocation)
-- `jwks_uri` (REQUIRED): URL to the AS's JSON Web Key Set
+- `issuer` (REQUIRED): The AS's HTTPS URL. Placed in the `iss` claim of auth tokens.
+- `jwks_uri` (REQUIRED): URL to the AS's JSON Web Key Set.
+- `auth_token_endpoint` (REQUIRED): URL where PSes send token requests (#as-token-endpoint).
+- `revocation_endpoint` (RECOMMENDED): URL where a PS revokes a person token it presented to this AS, and where a resource revokes a resource token whose `aud` is this AS (#token-revocation).
 
 ### Resource Metadata {#resource-metadata}
 
-Published at `/.well-known/aauth-resource.json`. A resource MAY publish this document to be discoverable, and SHOULD point agents at it from pages they reach first (#resource-metadata-link); one that publishes none can still verify identity-based access, and issue resource tokens and interaction requirements via `401` responses.
+Published at `/.well-known/aauth-resource.json`. A resource MAY publish this document, and SHOULD point agents at it from pages they reach first (#resource-metadata-link). A resource that publishes none can still verify identity-based access and issue resource tokens and interaction requirements via `401` responses.
 
 ```json
 {
@@ -2840,20 +2142,20 @@ Published at `/.well-known/aauth-resource.json`. A resource MAY publish this doc
 }
 ```
 
-Role-specific fields, after the common fields of (#metadata-documents):
+Role-specific fields:
 
-- `issuer` (REQUIRED): The resource's HTTPS URL. This is the value placed in the `iss` claim of resource tokens.
-- `jwks_uri` (REQUIRED when the resource issues resource tokens or makes signed calls): URL to the resource's JSON Web Key Set. A resource that only verifies agent signatures for identity-based access — issuing no resource tokens and making no signed requests of its own (e.g., as an agent in multi-hop, #multi-hop) — has no keys to publish and MAY omit `jwks_uri`.
-- `access_mode` (OPTIONAL): The credential flow the resource expects, letting an agent plan its first call without a speculative challenge. This document defines `agent-token` (identity-only — the agent signs with its agent token), `person-token` (the resource authorizes on the person's identity alone — the agent signs with a person token), `session-token` (resource-managed — the agent completes the resource's interaction/consent flow and receives a session token via `AAuth-Access`), and `auth-token` (the agent obtains an auth token from its PS using a resource token; the initial call MUST present a person token). Extensions MAY define further values, which are recorded in the AAuth Access Mode Value Registry (#aauth-access-mode-value-registry); R3 ([@?I-D.hardt-aauth-r3]) defines `per-call`, for a resource that authorizes each invocation individually against that call's parameters. An agent that does not recognize a declared value proceeds as it would with no declaration, calling the resource and reading the `AAuth-Requirement` it gets back. Default: `agent-token`. The declaration is advisory: a resource MAY return any `AAuth-Requirement` at runtime regardless of the declared mode (#requirement-responses), and MAY apply different modes to different endpoints — a resource advertising an R3 vocabulary states the mode for an individual operation there ([@?I-D.hardt-aauth-r3]), and otherwise an agent learns of any variation from the runtime requirement. An agent MAY use `access_mode` to skip resources its setup cannot satisfy — for example, a PS-less agent (no `ps` claim in its agent token) cannot complete the `auth-token` flow.
-- `authorization_endpoint` (OPTIONAL): URL where agents request authorization (#authorization-endpoint-request). When absent, the resource issues resource tokens and interaction requirements via `401` responses (#requirement-auth-token, #resource-managed-auth).
-- `scope_descriptions` (OPTIONAL): Object mapping scope values to Markdown strings for consent display. Scope values are resource-specific; resources that already define OAuth scopes SHOULD use the same scope values in AAuth. Identity-related scopes (e.g., `openid`, `profile`, `email`) follow [@!OpenID.Core].
-- `signature_window` (OPTIONAL): Integer. The signature validity window in seconds for the `created` timestamp. Default: 60. Resources serving agents with poor clock synchronization (mobile, IoT) MAY advertise a larger value. High-security resources MAY advertise a smaller value.
-- `additional_signature_components` (OPTIONAL): Array of HTTP message component identifiers ([@!RFC9421]) that agents MUST include in the `Signature-Input` covered components when signing requests to this resource, in addition to the base components this document's HTTP Message Signatures profile requires (#covered-components)
-- `revocation_endpoint` (RECOMMENDED for a resource that accepts person tokens): URL where the issuer of an auth token or person token for this resource revokes it (#token-revocation). A resource that accepts only agent tokens receives no revocations and need not publish one. Without it, a revoked person token or auth token is honored until its `exp`.
+- `issuer` (REQUIRED): The resource's HTTPS URL. Placed in the `iss` claim of resource tokens.
+- `jwks_uri` (REQUIRED when the resource issues resource tokens or makes signed calls): URL to the resource's JSON Web Key Set. A resource that only verifies agent signatures has no keys to publish and MAY omit it.
+- `access_mode` (OPTIONAL): The credential flow the resource expects, so an agent can plan its first call. Values defined by this document: `agent-token` (the agent signs with its agent token), `person-token` (the agent signs with a person token), `session-token` (the agent completes the resource's interaction flow and receives a session token via `AAuth-Access`), and `auth-token` (the agent obtains an auth token from its PS using a resource token; the initial call MUST present a person token). Default: `agent-token`. Extensions MAY define further values, recorded in the AAuth Access Mode Value Registry (#aauth-access-mode-value-registry); R3 ([@?I-D.hardt-aauth-r3]) defines `per-call`. An agent that does not recognize a value proceeds as with no declaration. The declaration is advisory: a resource MAY return any `AAuth-Requirement` at runtime (#requirement-responses) and MAY apply different modes to different endpoints. An agent MAY use `access_mode` to skip resources its setup cannot satisfy, for example a PS-less agent and `auth-token`.
+- `authorization_endpoint` (OPTIONAL): URL where agents request authorization (#authorization-endpoint-request). When absent, the resource issues resource tokens and interaction requirements via `401` responses.
+- `scope_descriptions` (OPTIONAL): Object mapping scope values to Markdown strings for consent display (#scopes).
+- `signature_window` (OPTIONAL): Integer. The signature validity window in seconds for the `created` timestamp (#verification). Default: 60. A resource MAY advertise a larger value for agents with poor clock synchronization, or a smaller one.
+- `additional_signature_components` (OPTIONAL): Array of HTTP message component identifiers ([@!RFC9421]) that agents MUST include in the `Signature-Input` covered components when signing requests to this resource, in addition to the base components (#covered-components).
+- `revocation_endpoint` (RECOMMENDED for a resource that accepts person tokens): URL where the issuer of an auth token or person token for this resource revokes it (#token-revocation). A resource that accepts only agent tokens receives no revocations and need not publish one.
 
 ### Resource Metadata Link Relation {#resource-metadata-link}
 
-Well-known discovery starts from a resource identifier. An agent that does not have one yet — it has landed on a developer portal, or on an API served from a host other than the resource identifier — has nothing to append `/.well-known/aauth-resource.json` to. The `aauth-resource` link relation ([@!RFC8288]) closes that gap: it lets any HTTP response, and any HTML page, name the resource metadata document that governs what the response describes.
+The `aauth-resource` link relation ([@!RFC8288]) lets any HTTP response, and any HTML page, name the resource metadata document that governs what the response describes. It serves an agent that has reached a developer portal or an API host and does not yet have the resource identifier to append `/.well-known/aauth-resource.json` to.
 
 A server MAY include a `Link` header field in any response:
 
@@ -2869,11 +2171,620 @@ An HTML document MAY carry the same relation as a `link` element in its `head`:
       href="https://api.example/.well-known/aauth-resource.json">
 ```
 
-The target MUST be the resource's well-known metadata URL: a server identifier (#server-identifiers) followed by `/.well-known/aauth-resource.json`. An agent MUST NOT fetch a target of any other form. Having fetched it, the agent verifies the document as it verifies any metadata document (#metadata-documents): its `issuer` MUST equal the target minus the well-known suffix. The link is a pointer, not a source of authority. It can direct an agent to a resource's own statement about itself and to nothing else.
+The target MUST be a server identifier (#server-identifiers) followed by `/.well-known/aauth-resource.json`. An agent MUST NOT fetch a target of any other form. Having fetched it, the agent verifies the document as any metadata document (#metadata-documents): its `issuer` MUST equal the target minus the well-known suffix.
 
-A resource SHOULD include the relation on the page at its `documentation_uri`, which is where an agent sent to read about the resource arrives first. A response MAY carry more than one `aauth-resource` link when it describes several resources — a developer portal for a service with sandbox, staging, and production deployments names all three, each a resource identifier of its own, as an OpenAPI document lists them under `servers`. The relation says nothing about the response that carries it beyond which resource it belongs to: a `401` from a resource endpoint still carries its requirement in `AAuth-Requirement` (#requirement-responses), and an agent MUST NOT treat the link as a substitute for it.
+A resource SHOULD include the relation on the page at its `documentation_uri`. A response MAY carry more than one `aauth-resource` link when it describes several resources, each a resource identifier of its own. The relation says nothing about the response that carries it: a `401` from a resource endpoint still carries its requirement in `AAuth-Requirement`, and an agent MUST NOT treat the link as a substitute for it.
 
 Verifiers do not use this relation. A party verifying a token or a signature discovers keys from the signer's `iss` and `dwk` ([@!I-D.hardt-httpbis-signature-key]), never from a link in content (#link-relation-security).
+
+## HTTP Message Signatures Profile {#http-message-signatures-profile}
+
+This section profiles HTTP Message Signatures ([@!RFC9421]) for AAuth. Signing requirements (the agent's) and verification requirements (the server's) are specified separately.
+
+### Signature Algorithms {#signature-algorithms}
+
+Every party MUST support `Ed25519` ([@!RFC8032]) and SHOULD support `ES256`. Algorithm identifiers are values from the IANA "JSON Web Signature and Encryption Algorithms" registry [@!IANA.JOSE.Algorithms], carried in the `alg` member of the JWK ([@!RFC7517]).
+
+Every key AAuth conveys or references is subject to the Algorithm Determination rules of the HTTP Signature Keys specification ([@!I-D.hardt-httpbis-signature-key]). In particular:
+
+- The `alg` member MUST be present and MUST be a fully-specified identifier, one that determines the signature operation completely, including curve and hash. A verifier MUST reject a key whose `alg` is absent.
+- The polymorphic `EdDSA` identifier MUST NOT be used. Use `Ed25519` (or `Ed448`), which [@!RFC9864] registered as its fully-specified replacements.
+- `none`, any algorithm whose JOSE Implementation Requirement is `Prohibited`, and symmetric algorithms (the `oct` key type and the `HS256`, `HS384`, and `HS512` identifiers) MUST NOT be used.
+- A verifier MUST reject a key whose `kty` or, where present, `crv` disagrees with its `alg`.
+
+`ES256` is RECOMMENDED where a platform's keys are ECDSA on P-256, such as hardware-backed keys whose secure enclave does not offer Ed25519. The ML-DSA identifiers registered by [@!RFC9964] are fully specified and are used directly as the `alg` value.
+
+### Keying Material {#keying-material}
+
+The signing key is conveyed in the `Signature-Key` header ([@!I-D.hardt-httpbis-signature-key]). Agents MUST use the `jwt` scheme, presenting a token that carries their public key in `cnf`; agents MUST NOT use the `jwks_uri` or `hwk` scheme for AAuth resource, PS, or AS requests. Which token the agent presents depends on what the recipient needs to know. All three carry the same key in `cnf`, so signature verification is identical.
+
+| Token | Presented to | Asserts |
+|---|---|---|
+| Agent token (#agent-tokens) | the PS and the AP always; a resource for agent identity and resource-managed access | which agent |
+| Person token (#person-tokens) | a resource, at its authorization endpoint or where it requires the person's identity | which person |
+| Auth token (#auth-tokens) | a resource, once it has authorized the agent | what is authorized |
+
+A PS, AS, AP, or resource making a signed AAuth request in its own right, such as a PS-to-AS token request (#ps-to-as-token-request) or a revocation (#token-revocation), MUST use the `jwks_uri` scheme. The `id` parameter MUST be the server's `issuer` as published in its metadata (#metadata-documents), and `dwk` MUST be that metadata document's well-known name: `aauth-person.json`, `aauth-access.json`, `aauth-agent.json`, or `aauth-resource.json`.
+
+```http
+Signature-Key: sig=jwks_uri;id="https://ps.example";
+    dwk="aauth-person.json";kid="key-1"
+```
+
+The recipient resolves `id` to the caller's identity, which is the `iss` of every token that server mints. A resource that acts as an agent to reach a downstream resource (#multi-hop) signs as an agent: it presents its own agent token under the `jwt` scheme.
+
+AAuth does not use the `hwk` scheme; the agent token is the minimum AAuth credential. The `jkt-jwt` scheme is used only in the agent provider's key-refresh ceremony ([@?I-D.hardt-aauth-bootstrap]).
+
+### Signing (Agent)
+
+The agent creates an HTTP Message Signature ([@!RFC9421]) on each request, including the `Signature-Key`, `Signature-Input`, and `Signature` headers.
+
+#### Covered Components {#covered-components}
+
+The signature MUST cover the following derived components and header fields:
+
+- `@method`: The HTTP request method ([@!RFC9421], Section 2.2.1)
+- `@authority`: The target host ([@!RFC9421], Section 2.2.3)
+- `@path`: The request path ([@!RFC9421], Section 2.2.6)
+- `signature-key`: The Signature-Key header value
+
+On a request carrying a body to a PS or AS endpoint, or to any revocation endpoint (#token-revocation), the signature MUST additionally cover:
+
+- `content-digest`: The Content-Digest header value ([@!RFC9530])
+- `content-type`: The Content-Type header value
+
+A resource declares any further components it requires through `additional_signature_components` (#resource-metadata). Servers MAY require further covered components; the agent learns of them from server metadata or from an `invalid_input` error response that includes `required_input`. See (#why-covered-components).
+
+The following example shows a fully bound request carrying a session token. Token and key values are placeholders.
+
+```http
+GET /api/documents HTTP/1.1
+Host: resource.example
+Authorization: AAuth session-token-placeholder
+Signature-Input: sig=("@method" "@authority" "@path"
+    "authorization" "signature-key");created=1730217600
+Signature: sig=:BASE64URL-SIGNATURE-PLACEHOLDER:
+Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtYWdlbnQrand0Iiwia2lkIjoiYXAta2V5LTEifQ.PLACEHOLDER.PLACEHOLDER"
+```
+
+#### Signature Parameters
+
+The `Signature-Input` header ([@!RFC9421], Section 4.1) MUST include:
+
+- `created`: Signature creation timestamp as an Integer (Unix time). The agent MUST set this to the current time.
+
+Agents MUST NOT include the `alg` signature parameter, and verifiers MUST ignore it if present, per [@!RFC9421], Section 3.3.7; the algorithm is determined from the key (#signature-algorithms).
+
+Agents SHOULD NOT include the `keyid` parameter ([@!RFC9421], Section 5.1). If `keyid` is present for a label that also appears in `Signature-Key`, the two MUST identify the same key, and the verifier MUST take the key from `Signature-Key`.
+
+### Verification (Server) {#verification}
+
+When a server receives a signed request, it MUST perform the following steps. Any failure MUST result in a `401` response with the appropriate `Signature-Error` header ([@!I-D.hardt-httpbis-signature-key]).
+
+1. Extract the `Signature`, `Signature-Input`, and `Signature-Key` headers. If any are missing, return `invalid_signature`.
+2. Verify that the `Signature-Input` covers the required components (#covered-components) and any additional components the server requires. If not, return `invalid_input` with `required_input`.
+3. Verify the `created` parameter is present and within the server's signature validity window of the server's current time. The default window is 60 seconds; servers MAY advertise a different window via metadata (`signature_window` in resource metadata). Return `invalid_signature` if `created` is older than the window, and `clock_skew` if it is further ahead of the server's clock than the window. Servers and agents SHOULD synchronize their clocks using NTP ([@RFC5905]).
+4. Select the `Signature-Key` dictionary member for the label being verified and read its scheme. If the scheme is not one the server implements, including any scheme this profile does not use (#keying-material) and any unregistered value, return `unsupported_scheme` with an `Accept-Signature-Scheme` header naming the schemes the server accepts. A server MUST NOT fail in a scheme-specific or undefined manner on an unrecognized scheme.
+5. Obtain the public key from the `Signature-Key` header according to the scheme ([@!I-D.hardt-httpbis-signature-key]). Return `invalid_key` if the key cannot be parsed, `unknown_key` if the key is not found at the `jwks_uri`, `invalid_jwt` if a JWT scheme fails verification, `expired_jwt` if the JWT has expired, `clock_skew` if the server applies the OPTIONAL bound on `iat` (#common-verification) and the JWT's `iat` is further ahead of the server's clock than the validity window, `revoked_jwt` if the JWT verifies and is unexpired but the server holds a revocation for it (#token-revocation), or `issuer_missing` / `issuer_mismatch` if the issuer's metadata document fails the checks in (#metadata-documents).
+6. Determine the signature algorithm from the `alg` member of the obtained key (#signature-algorithms). Return `unsupported_algorithm` if `alg` is absent, is a polymorphic identifier, or names an algorithm or key type the server does not implement, and include an `Accept-Signature-Alg` header naming the algorithms the server accepts. Return `invalid_key` if the key's `kty` or `crv` disagrees with its `alg`.
+7. Verify the HTTP Message Signature ([@!RFC9421]) using the obtained public key and determined algorithm. Return `invalid_signature` if verification fails.
+
+An `Accept-Signature-Alg` header names exactly the algorithms the server accepts. A server MAY omit either `Accept-Signature-*` header where enumerating what it accepts to an unauthenticated caller is judged a disclosure risk.
+
+This profile uses `401` for every signature failure, where the HTTP Signature Keys specification uses `400` for most of them (#why-401-signature-failures). A `403` response denies access after the signature verified. Per ([@!I-D.hardt-httpbis-signature-key]), such a response MUST NOT include a `Signature-Error`, `Accept-Signature-Scheme`, or `Accept-Signature-Alg` header. This applies to the AAuth errors returned with `403` (#token-endpoint-error-codes, #polling-error-codes).
+
+#### Signature-Key Scheme Rejection {#scheme-rejection}
+
+AAuth requires the `jwt` scheme of agents (#keying-material), so a request presenting any other scheme is rejected under step 4:
+
+```http
+HTTP/1.1 401 Unauthorized
+Signature-Error: error=unsupported_scheme
+Accept-Signature-Scheme: jwt
+```
+
+A resource that also serves clients outside AAuth MAY accept further schemes and MUST then list all of them. `Accept-Signature-Scheme` states what the server accepts from any caller; `AAuth-Requirement: requirement=agent-token` (#requirement-agent-token) states that an AAuth agent token in particular is required.
+
+#### Freshness and Replay {#freshness-and-replay}
+
+The `created` parameter is the primary replay defense: a captured signature becomes unusable once the validity window closes. `expires` is OPTIONAL; servers MUST honor it when present and MUST reject requests where `expires` is in the past.
+
+Within the validity window, a verifier MAY maintain a short-lived cache keyed by `(signing-key-thumbprint, created, @method, @authority, @path)` for the duration of the window, rejecting duplicate tuples. PSes and ASes are NOT required to maintain replay caches for resource tokens (#resource-tokens), which are consumed in a single token request. This profile defines no nonce mechanism.
+
+A verifier that first sees a signed artifact after a delay, such as a batch pipeline or store-and-forward, uses the signed `created` as the signing-time anchor: it verifies that the presented token was valid at `created`, and applies its own policy for how much `created`-to-verification skew it accepts. A replay cache at such a verifier MUST span the skew it accepts.
+
+## JWKS Discovery and Caching {#jwks-discovery}
+
+All AAuth token verification requires discovering the issuer's signing keys via the `{iss}/.well-known/{dwk}` pattern defined in the HTTP Signature Keys specification ([@!I-D.hardt-httpbis-signature-key]).
+
+Every key an AAuth server publishes at its `jwks_uri` MUST carry a fully-specified `alg` member (#signature-algorithms), even though [@!RFC7517] makes the member OPTIONAL; the `Signature-Key` header identifies a key without describing it, so the JWKS is the only channel for the algorithm. Deployments reusing an existing JWKS need only ensure that the keys AAuth selects by `kid` carry `alg`.
+
+A verifier MUST select the key matching `kid` without requiring any other member of the JWKS to be usable, and MUST NOT fail because an unselected member names a key type or algorithm it does not implement.
+
+Implementations MUST cache JWKS responses and SHOULD respect HTTP cache headers (`Cache-Control`, `Expires`). On an unknown `kid` in a JWT header, an implementation SHOULD refresh the cached JWKS for that issuer. Implementations MUST NOT fetch a given issuer's JWKS more frequently than once per minute. If a JWKS fetch fails, implementations SHOULD use the cached JWKS if available and SHOULD retry with exponential backoff. Cached JWKS entries SHOULD be discarded after a maximum of 24 hours regardless of cache headers.
+
+If a cached key matching the JWT `kid` fails signature verification, the verifier SHOULD refresh the issuer's JWKS once and retry before returning `unknown_key` (if the key is then absent) or `invalid_jwt` (if verification still fails), subject to the once-per-minute floor.
+
+Before fetching any issuer metadata or `jwks_uri`, verifiers MUST apply egress admission per ([@!I-D.hardt-httpbis-signature-key]).
+
+## AAuth Tokens {#aauth-tokens}
+
+Agent tokens (#agent-tokens), person tokens (#person-tokens), resource tokens (#resource-tokens), and auth tokens (#auth-tokens) are JWTs ([@!RFC7519]) that share the header and claims below. Each token's own section states the values these take for it and the claims specific to it.
+
+### Common JWT Claims {#common-claims}
+
+Header:
+
+- `alg`: Signing algorithm, per (#signature-algorithms). A fully-specified identifier is REQUIRED; `Ed25519` is RECOMMENDED. Implementations MUST NOT accept `none`, the polymorphic `EdDSA` identifier, or any symmetric algorithm.
+- `typ`: The token type, `aa-<type>+jwt`. A recipient MUST check `typ` before acting on any AAuth JWT (#person-token-not-authorization).
+- `kid`: Key identifier of the issuer's signing key in its JWKS.
+
+Payload:
+
+- `iss`: The issuer's server identifier (#server-identifiers).
+- `dwk`: The issuer's well-known metadata document name, for key discovery ([@!I-D.hardt-httpbis-signature-key]).
+- `jti`: Unique token identifier for replay detection, audit, and revocation (#token-revocation).
+- `iat`: Issued-at timestamp. REQUIRED. Not a validity check (#common-verification).
+- `exp`: Expiration timestamp. Lifetime limits are stated per token type.
+- `cnf`: Confirmation claim ([@!RFC7800]) with `jwk` containing the public key the token is bound to. The JWK MUST carry a fully-specified `alg` member (#signature-algorithms). A resource token carries `agent_jkt` in place of `cnf` (#resource-token-structure).
+
+### Common JWT Verification {#common-verification}
+
+Verify per [@!RFC7515] and [@!RFC7519]:
+
+1. Decode the JWT header. Verify `typ` is the expected type.
+2. Verify `dwk` is the expected metadata document name. Discover the issuer's JWKS via `{iss}/.well-known/{dwk}` per the HTTP Signature Keys specification ([@!I-D.hardt-httpbis-signature-key]) and (#jwks-discovery). Locate the key matching the JWT header `kid` and verify the JWT signature.
+3. Verify `exp` is in the future, judged by the verifier's own clock. This document defines no tolerance for clock skew on `exp`.
+4. Verify `iss` is a valid server identifier (#server-identifiers).
+
+`iat` is not a validity check. A verifier MAY refuse a token whose `iat` is ahead of its clock by its own policy; the bound SHOULD be its signature validity window (#verification), 60 seconds by default. A verifier that refuses answers `clock_skew`: in the body for a token carried as a request parameter (#token-endpoint-error-codes), and as `Signature-Error: error=clock_skew` ([@!I-D.hardt-httpbis-signature-key]) for the token in the `Signature-Key` header. A verifier MAY use `iat` to bound the age of a token by its own policy; this document defines no such bound. `exp` minus `iat` MUST NOT exceed the one-hour ceiling of a person token (#person-token-structure) or an auth token (#auth-token-structure), and SHOULD NOT exceed the recommended lifetime of an agent token (#agent-tokens) or a resource token (#resource-token-structure).
+
+The token's own section adds the checks specific to it. A token presented in the `Signature-Key` header that fails any of these steps is a signature failure and is answered per (#verification); a token carried as a request parameter that fails is answered with the parameter's own error code (#token-endpoint-error-codes).
+
+## Requirement Responses {#requirement-responses}
+
+Servers use the `AAuth-Requirement` response header to tell an agent what the request needs before it can be served. The header MAY be sent with `401 Unauthorized`, `202 Accepted`, or `402 Payment Required`. A `401` says authorization is required. A `202` says the request is pending and further action is required. A `402` says authorization and payment are both required; the payment requirement is conveyed separately, by x402 [@x402] or the Payment scheme ([@?I-D.ryan-httpauth-payment]).
+
+`AAuth-Requirement` and `WWW-Authenticate` are independent header fields; a response MAY include both, and neither invalidates the other. AAuth never conveys its own requirements via `WWW-Authenticate`.
+
+### AAuth-Requirement Header Structure
+
+The `AAuth-Requirement` header field is a Dictionary ([@!RFC9651], Section 3.2). It MUST contain the following member:
+
+- `requirement`: A Token ([@!RFC9651], Section 3.3.4) indicating the requirement type.
+
+Requirement-specific data are conveyed as parameters on the `requirement` member (for example, `resource-token`, `url`, `code`). Recipients MUST ignore unknown parameters.
+
+```http
+AAuth-Requirement: requirement=auth-token; resource-token="eyJ..."
+```
+
+### Requirement Values {#requirement-values}
+
+The `requirement` value is an extension point. This document defines the following values:
+
+| Value | Status Code | Meaning | Resource | PS | AS |
+|-------|-------------|---------|:--------:|:--:|:--:|
+| `agent-token` | `401` | AAuth agent token required (#requirement-agent-token) | Y | | |
+| `person-token` | `401` | Person token required (#requirement-person-token) | Y | | |
+| `auth-token` | `401` | Auth token required (#requirement-auth-token) | Y | | |
+| `interaction` | `202` | User action required at an interaction URL (#interaction-required) | Y | Y | Y |
+| `approval` | `202` | Approval pending, poll for result (#approval-pending) | Y | Y | Y |
+| `clarification` | `202` | Question posed to the recipient (#requirement-clarification) | Y | Y | Y |
+| `claims` | `202` | Identity claims required (#requirement-claims) | | | Y |
+
+An agent that does not recognize the `requirement` value MUST NOT treat the response as satisfiable, and surfaces the unsupported requirement to the caller as an error. For a `202` response with an unrecognized `requirement`, the agent MAY continue polling the `Location` URL in case a later response carries a requirement it does understand.
+
+### Interaction Required {#interaction-required}
+
+When a server requires user action, such as authentication, consent, or payment approval, it returns a `202 Accepted` response:
+
+```http
+HTTP/1.1 202 Accepted
+AAuth-Requirement:
+    requirement=interaction;
+    url="https://example.com/interact";
+    code="A1B2-C3D4"
+Location: /pending/f7a3b9c
+Retry-After: 0
+```
+
+The `AAuth-Requirement` header MUST include the following parameters:
+
+- `url` (String): The interaction URL where the user completes the required action. MUST use the `https` scheme and MUST NOT contain query or fragment components.
+- `code` (String): An interaction code that links the agent's pending request to the user's session at the interaction URL. Generated and compared per (#interaction-code-format).
+
+The response MUST also include:
+
+- `Location`: A URL the agent polls (with GET) for a terminal response.
+- `Retry-After`: Recommended polling interval in seconds.
+
+#### Interaction Code Format {#interaction-code-format}
+
+The `code` is a Structured Field String ([@!RFC9651], Section 3.3.3). The user reads it out of band and compares it against the code shown on the interaction page, so it MUST be both unguessable and unambiguous to a human.
+
+**Alphabet.** The code MUST be generated from Crockford base32 ([@?I-D.crockford-davis-base32-for-humans]), the symbol set `0123456789ABCDEFGHJKMNPQRSTVWXYZ`. Every symbol is URL-safe, so the code requires no escaping when appended as `{url}?code={code}`. Servers MUST NOT emit codes containing characters outside this set, other than the optional grouping hyphen.
+
+**Entropy and length.** A code MUST carry at least 40 bits of entropy, at least 8 Crockford base32 symbols, drawn from a cryptographically secure random source. Servers MAY use longer codes for higher-value interactions.
+
+**Hyphens.** A server MAY insert hyphen (`-`) characters into the displayed code for visual grouping (for example, `A1B2-C3D4`). The hyphen carries no entropy and is not part of the code's value. Before comparison, both the server and any party validating the code MUST strip all hyphens.
+
+**Case.** Comparison MUST be case-insensitive. A server MUST accept the code regardless of the case the user enters, and on input MUST fold the Crockford decode aliases (`I`/`L` → `1`, `O` → `0`) before comparison.
+
+**Correlation only.** The code is a correlation identifier that ties the user's browser session to the pending interaction. It is NOT an authorization credential. The person's approve/deny decision MUST be recorded via an authenticated channel at the PS; how the PS authenticates the person is out of scope. Because the agent relays the code to the user, the code is visible to the agent, and the code alone MUST NOT authorize the decision.
+
+**Single use.** A code MUST be single-use. Once the user arrives at the interaction URL with a valid code and the code is consumed, the server MUST reject any later presentation of the same code with `invalid_code` (#polling-error-codes). A code consumed by out-of-band completion (#user-interaction) is rejected the same way.
+
+**Rate-limiting.** The server MUST rate-limit code-validation attempts at the interaction URL. After a small number of failed attempts the server MUST treat the pending interaction as terminally failed and return `invalid_code` (#polling-error-codes) on subsequent attempts.
+
+**Lifetime.** A code MUST expire no later than the pending interaction it is bound to (#deferred-responses). Once the pending request has expired, presenting the code MUST fail with `expired` (#polling-error-codes); the agent MAY initiate a fresh request to obtain a new code.
+
+#### Relaying Through the Person Server {#interaction-relay}
+
+When the agent has a PS, it SHOULD relay the interaction to the PS's `interaction_endpoint` (#interaction-endpoint) before directing the user itself. To relay, the agent POSTs `{ "type": "interaction", "url": "...", "code": "..." }` to the interaction endpoint. The PS responds:
+
+- **PS can relay**: it returns a `202` deferred response, and the agent polls for completion as described in (#interaction-endpoint).
+- **PS cannot relay**: it returns `interaction_unavailable` (#interaction-endpoint-errors). This is non-terminal; the agent falls back to directing the user itself.
+
+The agent directs the user itself when it has no PS, or when the PS returns `interaction_unavailable`. It constructs a user-facing URL by appending the code as a query parameter, `{url}?code={code}`, and directs the user to it by one of:
+
+- **Browser redirect**: The agent opens the URL in the user's browser.
+- **Display code**: The agent displays the `url` and `code` for the user to enter manually. The agent MAY also render the constructed URL as a QR code.
+
+After directing the user, the agent polls the `Location` URL with GET requests, respecting the `Retry-After` interval. A `202` response means the request is still pending. A non-`202` response is terminal: `200` indicates success, `403` denial, and `408` timeout.
+
+~~~ ascii-art
+Agent                        User                         Server
+  |                            |                             |
+  |  202 Accepted                                            |
+  |  AAuth-Requirement:                                      |
+  |    requirement=interaction;                              |
+  |    url="..."; code="..."                                 |
+  |  Location: /pending/...                                  |
+  |<---------------------------------------------------------|
+  |                            |                             |
+  |  open {url}?code={code}    |                             |
+  |  (or display code / QR)    |                             |
+  |--------------------------->|                             |
+  |                            |                             |
+  |                            |  {url}?code={code}          |
+  |                            |---------------------------->|
+  |                            |                             |
+  |                            |  user completes action      |
+  |                            |<----------------------------|
+  |                            |                             |
+  |  GET /pending/...                                        |
+  |--------------------------------------------------------->|
+  |                            |                             |
+  |  200 OK                                                  |
+  |<---------------------------------------------------------|
+~~~
+
+### Approval Pending {#approval-pending}
+
+When a server is obtaining approval from another party without requiring the agent to direct a user, for example via push notification, email, or administrator review:
+
+```http
+HTTP/1.1 202 Accepted
+AAuth-Requirement: requirement=approval
+Location: /pending/f7a3b9c
+Retry-After: 30
+```
+
+The response MUST include `Location` and `Retry-After`. The agent polls the `Location` URL with GET requests until a terminal response is received. No user action is required at the agent side. The same terminal response codes apply as for `interaction`.
+
+## AAuth-Capabilities Request Header {#aauth-capabilities}
+
+Agents use the `AAuth-Capabilities` request header to declare which protocol capabilities they can handle, so a resource knows which requirements it can raise. The header field is a List ([@!RFC9651], Section 3.1) of Tokens.
+
+```http
+AAuth-Capabilities: interaction, clarification, payment
+```
+
+This specification defines the following capability values:
+
+| Value | Meaning |
+|-------|---------|
+| `interaction` | Agent can get a user to a URL, either directly or via its PS's interaction endpoint |
+| `clarification` | Agent can engage in clarification chat (#clarification-chat) |
+| `payment` | Agent can handle `402` payment flows, either directly or via its PS's interaction endpoint |
+
+The agent's capabilities are the union of what it can do directly and what its PS can do on its behalf. When a mission approval response includes a `capabilities` array (#mission-approval), the agent unions those with its own.
+
+Agents SHOULD include the `AAuth-Capabilities` header on signed requests to resources. The header is not used on requests to PS endpoints, which take a `capabilities` request parameter instead (#person-token-endpoint, #ps-token-endpoint). Recipients MUST ignore unrecognized capability values. When the header is absent, recipients MUST NOT assume any capabilities.
+
+Capability values are Tokens and currently carry no parameters. A future capability value MAY define parameters; recipients MUST ignore parameters they do not recognize rather than rejecting the header. Recipients ignore what they do not recognize throughout AAuth, and no document carries a version or schema identifier. An extension that defines a member a recipient must understand states that requirement, and the behaviour on failure, itself.
+
+## Deferred Responses {#deferred-responses}
+
+Any AAuth endpoint MAY return a `202 Accepted` response ([@!RFC9110]) when it cannot immediately resolve a request. Agents MUST handle `202` responses regardless of the nature of the original request.
+
+### Initial Request
+
+The agent makes a request and signals its willingness to wait using the `Prefer` header ([@!RFC7240]):
+
+```http
+POST /token HTTP/1.1
+Host: auth.example
+Content-Type: application/json
+Prefer: wait=45
+Signature-Key: sig=jwt;jwt="eyJhbGc..."
+
+{
+  "resource_token": "eyJhbGc..."
+}
+```
+
+### Pending Response
+
+When the server cannot resolve the request within the wait period:
+
+```http
+HTTP/1.1 202 Accepted
+Location: /pending/f7a3b9c
+Retry-After: 0
+Cache-Control: no-store
+Content-Type: application/json
+
+{
+  "status": "pending"
+}
+```
+
+Headers:
+
+- `Location` (REQUIRED): The pending URL. MUST be on the same origin as the responding server.
+- `Retry-After` (REQUIRED): Seconds the agent SHOULD wait before polling. `0` means retry immediately.
+- `Cache-Control: no-store` (REQUIRED).
+- `AAuth-Requirement` (OPTIONAL): Present when user interaction or approval is required (#requirement-responses).
+
+Body fields:
+
+- `status` (REQUIRED): `"pending"` while the request is waiting. `"interacting"` when the user has arrived at the interaction endpoint. Agents MUST treat unrecognized `status` values as `"pending"` and continue polling.
+
+Additional body fields may be present depending on the `AAuth-Requirement` value, for example `clarification` and `timeout` with `requirement=clarification`, or `required_claims` with `requirement=claims`.
+
+### Polling with GET
+
+After receiving a `202`, the agent switches to `GET` for all subsequent requests to the `Location` URL and does not resend the original request body. **Exception**: during clarification chat, the agent uses `POST` to deliver a clarification response (#agent-response-to-clarification).
+
+The agent MUST respect `Retry-After` values. If a `Retry-After` header is not present, the default polling interval is 5 seconds. If the server responds with `429 Too Many Requests`, the agent MUST increase its polling interval by 5 seconds (linear backoff, following [@RFC8628], Section 3.5). The `Prefer: wait=N` header ([@!RFC7240]) MAY be included on polling requests.
+
+### Deferred Response State Machine
+
+The following state machine applies to any AAuth endpoint that returns `202 Accepted`. A non-`202` response terminates polling.
+
+```
+Initial request (with Prefer: wait=N)
+    |
+    +-- 200 --> done — process response body
+    +-- 202 --> note Location URL, check requirement/code
+    +-- 400 --> invalid request — check error field, fix and retry
+    +-- 401 --> invalid signature — check credentials;
+    |           obtain auth token if resource challenge
+    +-- 402 --> payment required (settle payment, poll Location)
+    +-- 500 --> server error — start over
+    +-- 502 --> as_unreachable — fresh resource token, retry after backoff
+    +-- 503 --> back off per Retry-After, retry
+               |
+               GET Location (with Prefer: wait=N)
+               |
+               +-- 200 --> done — process response body
+               +-- 202 --> continue polling (check status/clarification)
+               |           status=interacting → stop prompting user
+               +-- 403 --> denied or abandoned — surface to user
+               +-- 408 --> expired — MAY initiate a fresh request
+               +-- 410 --> gone — MUST NOT retry
+               +-- 429 --> slow down — increase interval by 5s
+               +-- 500 --> server error — start over
+               +-- 502 --> as_unreachable — fresh resource token, retry after backoff
+               +-- 503 --> temporarily unavailable
+                           back off per Retry-After
+```
+
+## Error Responses {#error-responses}
+
+### Authentication Errors
+
+A `401` response from any AAuth endpoint uses the `Signature-Error` header as defined in ([@!I-D.hardt-httpbis-signature-key]). The header, not the response body, is the machine-readable carrier; agents MUST NOT depend on the body for signature error handling. A server returning `unsupported_scheme` SHOULD include `Accept-Signature-Scheme`, and one returning `unsupported_algorithm` SHOULD include `Accept-Signature-Alg` (#verification).
+
+### Error Response Format {#error-response-format}
+
+Error response bodies use the HTTP problem details format ([@!RFC9457]) with `Content-Type: application/problem+json`. The body is a JSON object with the following members:
+
+- `error` (REQUIRED): String. A single error code, as defined by the endpoint returning the error. This is an RFC 9457 extension member; receivers MUST determine how to proceed from this member.
+- `detail` (OPTIONAL): String. A human-readable explanation specific to this occurrence of the error.
+
+Other RFC 9457 members (`type`, `title`, `status`, `instance`) MAY be present with their RFC 9457 semantics. AAuth does not define problem type URIs; receivers MUST NOT rely on `type` to identify AAuth errors.
+
+### Token Endpoint Error Codes {#token-endpoint-error-codes}
+
+| Error | Status | Meaning |
+|-------|--------|---------|
+| `invalid_request` | 400 | Malformed JSON, missing required fields |
+| `invalid_resource_token` | 400 | Resource token malformed or signature verification failed |
+| `expired_resource_token` | 400 | Resource token has expired |
+| `revoked_resource_token` | 400 | The resource that issued the resource token has withdrawn it (#token-revocation). Terminal for that token: the agent MUST NOT resubmit it, and MAY call the resource again. |
+| `invalid_presented_token` | 400 | Presented token malformed, signature verification failed, or its `typ` is neither a person token nor an auth token (#resource-token-verification) |
+| `expired_presented_token` | 400 | The presented token has expired. The agent obtains a fresh person token, then a fresh resource token. |
+| `revoked_presented_token` | 400 | The presented token has been revoked by the server that issued it (#token-revocation). The agent obtains a fresh person token, then a fresh resource token. |
+| `invalid_upstream_token` | 400 | Upstream token malformed, signature verification failed, or its `aud` is not the requesting intermediary (#upstream-token-verification) |
+| `expired_upstream_token` | 400 | The upstream token has expired. The calling agent must re-authorize at the intermediary. |
+| `revoked_upstream_token` | 400 | The upstream token has been revoked, or the PS has revoked the calling agent's agent token or its binding to the person (#upstream-token-verification). Terminal for that token. |
+| `invalid_subagent_token` | 400 | Sub-agent token malformed, signature verification failed, its `parent_agent` does not name the signing agent, or its `iss` is not the signing agent's (#sub-agents) |
+| `expired_subagent_token` | 400 | The sub-agent token has expired. The parent obtains a fresh one. |
+| `revoked_subagent_token` | 400 | The sub-agent token has been revoked by its agent provider (#token-revocation). Terminal for that token. |
+| `clock_skew` | 400 | A token carried as a request parameter has an `iat` further ahead of the verifier's clock than the signature validity window (#common-verification). A fresh token from the same issuer carries the same skew, so the agent does not refresh; it MAY present the same token again once its `iat` is within the window, using the response's `Date` header to judge, or surfaces the error. |
+| `user_unreachable` | 403 | Terminal. The PS has no channel to reach the user and the agent did not declare the `interaction` capability. |
+| `as_unreachable` | 502 | PS token endpoint only. The PS could not obtain an auth token from the access server named by the resource token's `aud`: connection failure, timeout, a malformed response, or an auth token that fails delivery verification (#auth-token-delivery). The agent MAY retry with a fresh resource token after a backoff. Distinct from an AS denial, which the PS relays. |
+| `server_error` | 500 | Internal error |
+
+Token-specific codes exist only for tokens carried as request parameters, and follow the pattern `<invalid|expired|revoked>_<parameter>_token`. The token in the `Signature-Key` header has no codes in this table: when it fails, the response is `401` with `Signature-Error` (#verification).
+
+Example:
+
+```http
+HTTP/1.1 400 Bad Request
+Content-Type: application/problem+json
+
+{
+  "error": "expired_resource_token",
+  "detail": "The resource token expired; obtain a new
+    resource token from the resource and retry."
+}
+```
+
+### Polling Error Codes {#polling-error-codes}
+
+| Error | Status | Meaning |
+|-------|--------|---------|
+| `denied` | 403 | User or approver explicitly denied the request |
+| `abandoned` | 403 | Interaction code was used but user did not complete |
+| `expired` | 408 | Timed out |
+| `revoked` | 403 | A token the pending request depends on was revoked (#token-revocation): the resource token it was started for, the upstream token of a chained request (#call-chaining), or the agent token of the agent that started it. `detail` SHOULD say which |
+| `invalid_code` | 410 | Interaction code not recognized or already consumed |
+| `slow_down` | 429 | Polling too frequently; increase interval by 5 seconds |
+| `server_error` | 500 | Internal error |
+
+Example:
+
+```http
+HTTP/1.1 403 Forbidden
+Content-Type: application/problem+json
+
+{
+  "error": "denied",
+  "detail": "The user declined the request."
+}
+```
+
+## Scopes {#scopes}
+
+Scopes define what an agent is authorized to do at a resource. AAuth uses two categories of scope values:
+
+- **Resource scopes**: Resource-specific authorization grants (e.g., `data.read`, `data.write`, `data.delete`). Each resource defines its own scope values and publishes human-readable descriptions in its metadata (`scope_descriptions`). Resources that already define OAuth scopes SHOULD use the same scope values in AAuth.
+- **Identity scopes**: Requests for user identity claims following [@!OpenID.Core] (e.g., `openid`, `profile`, `email`, `address`, `phone`). When identity scopes are present, the auth token includes the corresponding identity claims. Enterprise extensions include the `tenant` claim from [@OpenID.Enterprise] and the `groups` and `roles` claims from [@!RFC9068] (originally defined by SCIM [@RFC7643]).
+
+A resource token MUST only include resource scopes that the resource has defined in its `scope_descriptions` metadata, and identity scopes that the PS has declared in its `scopes_supported` metadata.
+
+Scopes appear in three places:
+
+1. **Authorization endpoint request** (`scope`): The scope the agent is requesting from the resource.
+2. **Resource token** (`scope`): The scope the resource is willing to grant.
+3. **Auth token** (`scope`): The scope actually granted. MUST NOT be broader than the resource token's scope.
+
+The PS evaluates requested scopes against mission context (if present) and user consent. The AS evaluates scopes against resource policy. Either party may narrow the granted scope.
+
+## Account Binding {#account-binding}
+
+A resource may hold more than one account for the same person: an AAuth-to-OAuth proxy where a user has connected several accounts, a SaaS product where someone belongs to several workspaces. Scope says what the agent may do; `account` says which account it may do it to.
+
+The OPTIONAL `account` parameter of the authorization endpoint request (#authorization-endpoint-request) binds an authorization to one account. Its value is a string from the resource's own account namespace, such as an email address, a workspace identifier, or a tenant id. This specification gives it no structure and no meaning; only the resource interprets it.
+
+When the request carried `account`, the resource echoes it as the `account` claim of the resource token, the PS or AS copies it into the auth token, and the resource enforces per-account access from the token it receives. Different accounts yield different auth tokens. `account` is not `login_hint` (#why-account-not-login-hint).
+
+## Token Revocation {#token-revocation}
+
+A PS and an AS SHOULD provide a revocation endpoint, and so SHOULD a resource that accepts person tokens. A resource that accepts only agent tokens receives no revocations. Revocation endpoints are advertised in server metadata as `revocation_endpoint`. A server without one honors a revoked token until its `exp`.
+
+### Revocation Request
+
+The endpoint accepts a signed POST. The caller signs as a server (#keying-material), and recipients MUST verify the caller's identity via HTTP Message Signatures. The signature MUST cover `content-digest` and `content-type` along with the base components (#covered-components), at a resource's revocation endpoint as much as a PS's or an AS's.
+
+```http
+POST /revoke HTTP/1.1
+Host: resource.example
+Content-Type: application/json
+Signature-Key: sig=jwks_uri;id="https://ps.example";
+    dwk="aauth-person.json";kid="key-1"
+
+{
+  "jti": "unique-token-identifier",
+  "exp": 1788727813
+}
+```
+
+- `jti` (REQUIRED): The token to revoke, within the caller's namespace.
+- `exp` (REQUIRED): The revoked token's own expiration, which bounds how long the recipient has to remember the revocation.
+
+The issuer is not a request parameter. The recipient takes it from the identity it verified on the signature: a caller revokes only its own tokens. Recipients maintaining revocation state MUST key it by `(iss, jti)`, where `iss` is the verified identity of the caller. A recipient MAY discard an entry once the current time is past `exp` plus its clock skew tolerance, and MAY reject a revocation whose `exp` is further in the future than the longest lifetime it accepts for any token.
+
+### Who Revokes What
+
+| Token | Revoked by | At |
+|---|---|---|
+| Agent token | the agent provider that issued it | the PS only. A resource that accepts an agent token directly has no revocation path; that access is bounded by the agent token's lifetime, which is why it SHOULD NOT exceed 24 hours (#agent-tokens). |
+| Person token | the PS that issued it | the resource named in its `aud`, and each AS the PS presented it to (#ps-to-as-token-request) |
+| Auth token | the PS (three-party) or AS (four-party) that issued it | the resource it was issued for. A PS that federated to an AS revokes the person token at the AS instead, and the AS revokes what it issued. |
+| Resource token | the resource that issued it | the party named in its `aud`, and in four-party the `ps` as well |
+
+### Revocation Response
+
+The recipient records the revocation before it calls anyone, then makes every downstream revocation it is going to make (#revocation-cascade), and answers `200 OK` once each has a terminal outcome. A `200` says the cascade is finished, not that it was started. Whether the recipient holds a record of the token does not enter into it: a recipient that verifies tokens statelessly still answers `200 OK`, having recorded the pair. There is no "not found" response (#why-revocation-no-not-found). A recipient with nothing downstream, such as a resource, or a PS or AS receiving a resource token revocation, answers at once.
+
+A downstream revocation is terminal when it was recorded there, or when it ended in one of two ways:
+
+- `revocation_unsupported`: the downstream party publishes no `revocation_endpoint`, or answered `unsupported_iss`. That party honors the tokens until their `exp`.
+- `revocation_unavailable`: the downstream party did not respond, timed out, or returned a `5xx` or a malformed response. The caller MAY revoke again later.
+
+**Body.** An AS reports to the PS: its `200` carries a `downstream` array with one entry per resource it revoked at, each with `recipient` (the resource identifier) and `error` (one of the two values above when the revocation there did not succeed, absent when it did). A PS does not report to the agent provider: its `200` to an AP carries an empty body (#why-ps-reports-nothing-to-ap). A recipient with nothing downstream answers with an empty body. A PS MAY report the outcome of a revocation the person initiated to that person, per recipient.
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "downstream": [
+    {
+      "recipient": "https://resource.example",
+      "error": "revocation_unavailable"
+    }
+  ]
+}
+```
+
+A `200` MAY carry no body, and then carries no `Content-Type`. A non-empty body MUST be `application/json` and MUST be a JSON object, whose `downstream` member is OPTIONAL. A caller reads an absent body as the revocation recorded with nothing reported, and a non-empty body it cannot parse as `revocation_unavailable`.
+
+**Deferred completion.** If the cascade takes longer than the recipient will hold the connection, or a downstream recipient itself answered `202`, the recipient returns a `202 Accepted` deferred response (#deferred-responses) and the caller polls the pending URL for the terminal response. The caller MAY say how long it will wait with `Prefer: wait` ([@!RFC7240]). Absent `Prefer: wait`, the recipient SHOULD hold at least long enough for one round trip to each downstream party it will call, on the order of 20 seconds for a PS or an AS. A recipient MAY hold for less than the caller asked for and answer `202` at its own cap.
+
+The poller is a server: it polls the pending URL with a signed `GET`, signing under the same identity that made the revocation, and sends no body. The recipient MUST verify that identity and MUST answer `404` to a poll from any other. `Retry-After` and `Prefer: wait` apply as on any other pending URL. The terminal response is what the synchronous path would have returned, or an error from the table below. No `AAuth-Requirement` is used. A recipient with nothing downstream MUST NOT answer `202`.
+
+**Idempotence.** A recipient answering a repeated revocation for the same `(iss, jti)` records nothing new, re-attempts each downstream revocation that did not succeed, and reports the current outcome. A PS that received `revocation_unavailable` MAY therefore revoke the person token at the AS again later.
+
+**Errors** use the format in (#error-response-format):
+
+| Error | Status | Meaning |
+|-------|--------|---------|
+| `invalid_request` | 400 | Malformed JSON, or a missing or malformed `jti` or `exp` |
+| `unsupported_iss` | 403 | The recipient does not accept revocations from this caller |
+| `rate_limited` | 429 | The caller has sent more revocations than the recipient will accept from it for now. `Retry-After` is REQUIRED. Distinct from polling `slow_down` (#polling-error-codes) |
+| `server_error` | 500 | Internal error |
+
+A request whose signature does not verify is answered with `401` and the `Signature-Error` header (#error-responses).
+
+**What a recipient will accept.** A recipient MAY restrict revocations to issuers it holds tokens from, or has a record of exchanging tokens with, and answer `unsupported_iss` to the rest. A recipient that accepts any verified issuer SHOULD bound what one issuer can hold, in entries and in rate, and answer `rate_limited` beyond either.
+
+### Revocation Cascade {#revocation-cascade}
+
+- **PS revokes an auth token it issued** (three-party): The PS calls the resource's revocation endpoint.
+- **AS revokes an auth token it issued**: The AS calls the resource's revocation endpoint.
+- **PS terminates access it federated** (four-party): The PS revokes the person token it presented with the token request (#ps-to-as-token-request), and the AS cascades to the auth tokens it issued against that person token.
+- **PS revokes a person token it issued**: The PS calls the revocation endpoint of the resource named in the token's `aud`, and of every AS it presented that person token to. The resource MUST refuse subsequent requests presenting the person token and MUST NOT issue a resource token naming it. The AS MUST NOT issue further auth tokens against it, and MUST revoke the auth tokens it already issued against it by calling the revocation endpoint of the resource each names in `aud`. The PS MUST NOT present a revoked person token to an AS, and rejects a token request whose `presented_token` is one with `revoked_presented_token` (#token-endpoint-error-codes). Where the revoked person token, or an auth token issued against it, was later presented as an `upstream_token` (#call-chaining), the PS SHOULD revoke the person tokens it issued from it in the same cascade, at their resources and at the ASes it presented them to.
+- **Resource revokes a resource token it issued**: The resource calls the revocation endpoint of the party named in the token's `aud`, and in four-party that of the `ps` as well. The recipient MUST NOT issue an auth token against that resource token, rejects a token request naming it with `revoked_resource_token` (#token-endpoint-error-codes), and SHOULD terminate a pending request it started for it, which the agent reads as `revoked` (#polling-error-codes). The recipient records the `(iss, jti)` whether or not it has seen the token, and MAY discard the entry once the current time is past the `exp` the revocation named plus clock skew.
+- **PS revokes a mission**: The PS marks the mission as revoked. All subsequent token requests referencing that mission's `s256` are denied. The PS SHOULD revoke outstanding auth tokens issued under the mission.
+- **Agent provider revokes an agent token it issued**: The agent provider calls the PS's revocation endpoint. The PS MUST deny subsequent requests presenting that agent token, and SHOULD revoke the person tokens and auth tokens it issued for that agent, and terminate what it federated by the four-party path above. The cascade is by agent identity: the PS revokes every person token and auth token it issued to that agent's `sub`, whichever agent token the agent presented when it asked. The revocation does not alter the agent-person binding (#agent-person-binding). An agent token the same provider issues later is verified on its own terms. The PS answers the agent provider with an empty `200` once its cascade is terminal.
+- **Agent provider stops issuing agent tokens**: Existing agent tokens expire naturally.
+
+**Records.** The parties that cascade retain what they issued. A PS records, for each agent token it accepts, that token's `(iss, jti)` and the `sub` it carried, until the agent token's `exp` plus clock skew. A PS records each person token it issues (#person-token-endpoint), and for each auth token it issued or federated against that person token, the `jti`, the resource it was for, and the `exp`. An AS records the same for each auth token it issues, along with the `presented_jti` it was issued against. A person token issued with an `upstream_token` is recorded with the upstream token's `(iss, jti)`, so a revocation of the earlier person token walks the chain from the PS's own records; an AS records nothing of the chain. An entry MAY be discarded once the current time is past the token's `exp` plus clock skew.
+
+### Presenting a Revoked Token
+
+A recipient MUST say that a revoked token was revoked, not that it is malformed or expired. Where it says so depends on how the token was carried:
+
+- **Agent, person, or auth token in the `Signature-Key` header**: `401` with `Signature-Error: error=revoked_jwt` ([@!I-D.hardt-httpbis-signature-key]). A resource refusing a revoked auth token SHOULD also include `AAuth-Requirement: requirement=person-token` (#requirement-person-token). It MUST NOT answer with `requirement=auth-token` and a resource token, since the PS or AS would reject a resource token naming a revoked token with `revoked_presented_token`. For a revoked agent token no requirement repairs it; the agent obtains a fresh one from its provider.
+- **A token carried as a request parameter**: the signature verified, so this is not a `401`. The recipient returns `revoked_<parameter>_token` in the response body (#token-endpoint-error-codes). A pending request already started against a withdrawn resource token, or whose upstream token or agent's agent token is revoked while it waits, terminates with `revoked` (#polling-error-codes), with `detail` saying which.
+
+Verifying a token does not ask the issuer about that token, so a resource learns of a revocation only when one reaches its revocation endpoint. A party that no revocation reaches is bounded by token lifetime alone: at most one hour for an auth token or a person token, five minutes for a resource token, and 24 hours for an agent token presented directly to a resource. Deployments requiring immediate termination should issue shorter-lived tokens rather than rely on revocation reaching every holder.
 
 # Incremental Adoption {#incremental-adoption}
 
@@ -3309,6 +3220,7 @@ The following implementations are known:
 *Note: This section is to be removed before publishing as an RFC.*
 
 - draft-hardt-oauth-aauth-protocol-11
+  - Readability restructure. Resource Access (Section 7) is ordered by what an agent encounters, from the `agent-token` requirement through resource-managed authorization and the session token, the `person-token` and `auth-token` requirements, the authorization endpoint, and the resource token; the authorization endpoint's request and responses are one section. Person Server (Section 8) is ordered by the agent's path: the person token endpoint, the auth token endpoint, user interaction, consent presentation, and clarification chat, then the interaction, permission, and audit endpoints, then re-authorization. Protocol Primitives (Section 12) is the normative reference and is stated without rationale, ordered from identifiers and metadata through signatures, key discovery, and the common JWT profile to requirement responses, capabilities, deferred responses, errors, scopes, account binding, and revocation; the `exp` and `iat` verification rules moved there from the refresh margin, and Token Revocation is split into request, who revokes what, response, cascade, and presenting a revoked token. Rationale that section 12 carried moved to the Design Rationale appendix. Each normative statement is made once and referenced elsewhere.
   - A signature on a revocation request MUST cover `content-digest` and `content-type` whatever the recipient's role. The requirement was written for PS and AS endpoints, while a resource declares its own coverage through `additional_signature_components`, so it was unclear whether a resource's revocation endpoint followed the role or the endpoint. It follows the endpoint: that endpoint is defined here rather than by the resource's API, and its body selects a token and adds to retained state. Issue #165.
   - Token Revocation: the agent token cascade, what a recipient records, what it will accept, and who learns the outcome. A PS cascades an agent token revocation by agent identity — every person token and auth token it issued to that `sub`, whichever agent token was presented, since an agent holds a sequence of them over a day and what was issued under an earlier one was still live — records each agent token's `(iss, jti)` with the `sub` it carried so that a revocation naming a `jti` resolves to an agent at all, and leaves the agent-person binding alone, which is the person's decision. A recipient records the `(iss, jti)` of a revoked resource token whether or not it has seen the token, which in four-party is the common case for the `ps`, and the five-minute lifetime bounds the state. A recipient MAY restrict revocations to issuers it holds tokens from and SHOULD bound what one issuer can hold, with a new `rate_limited` (429) error, since any server that can publish a JWKS could otherwise grow a recipient's state without bound. The polling `revoked` code covers any token the pending request depends on — the resource token, a chained request's upstream token, or the agent's agent token — rather than the withdrawn resource token alone, with `detail` saying which. A PS MAY report a person-initiated revocation's per-recipient outcome to the person, who is the party the rule against reporting to the agent provider protects. Issues #178, #179, #180, #182, #185.
   - Token Revocation says how a `202` is polled, what a `200` body may be, and how long a recipient holds the connection. The `202` pointed at Deferred Responses, which is written for an agent polling with an agent token for a token or a problem; a revocation `202` is polled by a server. It is now stated that the poller signs as a server under the same identity that made the revocation, that the recipient answers `404` to any other identity, that the terminal response is exactly what the synchronous path would have returned, that no `AAuth-Requirement` is used, and that a recipient with nothing downstream MUST NOT answer `202`. A `200` MAY carry no body; a non-empty body MUST be a JSON object with an OPTIONAL `downstream`, and one the caller cannot parse is `revocation_unavailable` — the text categorized a malformed response that way but did not say an empty body was well-formed, so a caller had to tell one from the other with no rule to go on. Absent `Prefer: wait` the recipient chooses, holding at least one round trip per downstream party, and MAY cap the wait below what the caller asked and answer `202` at its cap, since an idle timeout it does not control is a hard ceiling. Issues #181, #183, #184.
@@ -3618,6 +3530,32 @@ AAuth well-known metadata URIs use the `.json` extension (e.g., `/.well-known/aa
 ### Why No Authorization Code
 
 AAuth eliminates authorization codes entirely. OAuth authorization codes require PKCE ([@RFC7636]) to prevent interception attacks, adding complexity for both clients and servers. AAuth avoids the problem: the user redirect carries only the callback URL, which has no security value to an attacker. The auth token is delivered exclusively via polling, authenticated by the agent's HTTP Message Signature.
+
+### Why `issuer` Rather Than `resource` in Metadata {#why-issuer-not-resource}
+
+AAuth diverges from RFC 9728 on two points. It uses `issuer` as the primary identifier field in every metadata document so that a generic Signature-Key verifier can extract the signer identity uniformly from any `dwk` document without knowing which role it represents. And it uses unprefixed field names (`name`, `tos_uri`, `policy_uri`, `documentation_uri`) rather than the `resource_`-prefixed forms, for consistency across all four roles.
+
+### Why These Covered Components {#why-covered-components}
+
+The four mandated components each close a request-substitution attack, and all four are derivable by the agent at signing time on every platform, including browsers. `@method` prevents a captured signature from being replayed with a different method; `@authority` prevents cross-host replay; `@path` binds it to the endpoint; `signature-key` prevents key substitution.
+
+`content-digest` and `content-type` are mandated at PS and AS endpoints because their request bodies carry members that decide what is authorized (`justification`, `mission_s256`, `resource`, the mission proposal itself), and every such endpoint takes a JSON body of known shape, so a digest costs the sender nothing. Resources serve arbitrary APIs, including bodyless requests and streamed uploads, so they declare what they need through `additional_signature_components` instead. A resource's revocation endpoint is the exception because it is defined by this document, not by the resource's API, and its body selects a token and adds to retained state.
+
+### Why `401` for Every Signature Failure {#why-401-signature-failures}
+
+The HTTP Signature Keys specification uses `400` for most signature failures and permits `401` for the recoverable ones. AAuth requests are authenticated by their signature, so a signature that does not verify is an authentication failure rather than a malformed request, and a single status keeps agent retry logic uniform.
+
+### Why `account` Is Not `login_hint` {#why-account-not-login-hint}
+
+`account` selects; it does not hint. `login_hint` ([@!OpenID.Core], Section 3.1.2.1) is a hint about who to authenticate at the party receiving it, and is consumed during a login. Nobody is being authenticated by `account`: the account is already connected at the resource, and the value has to survive into the issued tokens as a claim. Overloading `login_hint` would also conflate the person logging in at their PS with the account being acted on at the resource, which may belong to different namespaces entirely.
+
+### Why a Revocation Has No "Not Found" {#why-revocation-no-not-found}
+
+A recipient cannot distinguish a token it never saw from one it saw and no longer holds, and an answer that varied with what it holds would disclose that. A `200` says the revocation is recorded and the token will be refused; that is true whether or not the recipient ever held it.
+
+### Why a PS Reports Nothing to the Agent Provider {#why-ps-reports-nothing-to-ap}
+
+Any report to the agent provider, even a count of downstream revocations, would tell it which resources the person uses through that agent, which is what the PS exists to keep from it. The AS's report to the PS discloses nothing, since the PS already knows the resource as the person token's `aud`. The person is the party the rule protects, so a PS MAY report the per-recipient outcome to them.
 
 ### In Brief
 
