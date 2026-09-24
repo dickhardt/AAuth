@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                       22 September 2026
-Expires: 26 March 2027
+Intended status: Standards Track                       24 September 2026
+Expires: 28 March 2027
 
 
                              AAuth Protocol
@@ -50,7 +50,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 26 March 2027.
+   This Internet-Draft will expire on 28 March 2027.
 
 Copyright Notice
 
@@ -1616,24 +1616,24 @@ Table of Contents
        authorization Section 11.2, verify it against the
        subagent_token's cnf.jwk instead, since the parent signs the
        request.
-   3.  Verify the presented_token from the token request (#ps-token-
-       endpoint, #ps-to-as-token-request) by its typ: a person token
-       (aa-person+jwt) per Section 6.3 or an auth token (aa-auth+jwt)
-       per Section 10.4.3, with two substitutions: aud MUST equal the
-       resource token's iss rather than the verifier's own identifier,
-       and cnf.jwk MUST match the resource token's agent_jkt rather than
-       the key that signed the request.  The resource's record check on
-       sub does not apply.  A token that fails is rejected with
-       invalid_presented_token, or expired_presented_token when only exp
-       fails.  Then verify that the presented token's jti equals
-       presented_jti, that its iss (person token) or ps (auth token)
-       equals the resource token's ps, and that its sub, mission_s256,
-       and tenant match the resource token's exactly, rejecting the
-       resource token with invalid_resource_token on any mismatch or
-       omission.  A mismatch against a token that verifies is evidence
-       of tampering and SHOULD be surfaced to operators.  A PS MUST
-       verify that ps names itself; an AS MUST verify that ps names the
-       PS that sent the token request.
+   3.  Verify the presented_token from the token request Section 8.2 and
+       Section 10.1.1 by its typ: a person token (aa-person+jwt) per
+       Section 6.3 or an auth token (aa-auth+jwt) per Section 10.4.3,
+       with two substitutions: aud MUST equal the resource token's iss
+       rather than the verifier's own identifier, and cnf.jwk MUST match
+       the resource token's agent_jkt rather than the key that signed
+       the request.  The resource's record check on sub does not apply.
+       A token that fails is rejected with invalid_presented_token, or
+       expired_presented_token when only exp fails.  Then verify that
+       the presented token's jti equals presented_jti, that its iss
+       (person token) or ps (auth token) equals the resource token's ps,
+       and that its sub, mission_s256, and tenant match the resource
+       token's exactly, rejecting the resource token with
+       invalid_resource_token on any mismatch or omission.  A mismatch
+       against a token that verifies is evidence of tampering and SHOULD
+       be surfaced to operators.  A PS MUST verify that ps names itself;
+       an AS MUST verify that ps names the PS that sent the token
+       request.
    4.  If mission_s256 is present, a PS MUST verify the mission is
        active and that the current time precedes its expires_at where
        one is set.
@@ -2641,10 +2641,10 @@ Table of Contents
       completed or revoked.  Every PS decision path that acts on a
       mission MUST compare the current time to expires_at and MUST treat
       a mission past it as terminated Section 9.8.  The PS caps the
-      person tokens and auth tokens it issues at expires_at (#person-
-      token-structure, #auth-token-structure), and the presented token
-      carries that bound to an AS Section 10.1.1; a resource token's
-      lifetime is independent of it Section 7.7.1.
+      person tokens and auth tokens it issues at expires_at Section 6.1
+      and Section 10.4.1, and the presented token carries that bound to
+      an AS Section 10.1.1; a resource token's lifetime is independent
+      of it Section 7.7.1.
    *  approved_tools: Array of tool objects (each with name and
       description) that the agent may use without per-call permission at
       the PS's permission endpoint Section 8.7.  Nothing in the protocol
@@ -3274,14 +3274,13 @@ Table of Contents
    *  exp: Auth tokens MUST NOT have a lifetime exceeding 1 hour, MUST
       NOT expire later than the agent token used to obtain them
       Section 8.9, and MUST NOT expire later than the presented_token of
-      the token request (#ps-token-endpoint, #ps-to-as-token-request) —
-      a person token, which the PS capped at the mission's expires_at
-      when mission_s256 is present Section 6.1, or an auth token bounded
-      the same way in its turn.  When the token request carried
-      upstream_token Section 11.1.1, the auth token MUST NOT expire
-      later than that token either.  A PS-issued auth token carrying
-      mission_s256 MUST NOT expire later than the mission's expires_at
-      Section 9.2.
+      the token request Section 8.2 and Section 10.1.1 — a person token,
+      which the PS capped at the mission's expires_at when mission_s256
+      is present Section 6.1, or an auth token bounded the same way in
+      its turn.  When the token request carried upstream_token
+      Section 11.1.1, the auth token MUST NOT expire later than that
+      token either.  A PS-issued auth token carrying mission_s256 MUST
+      NOT expire later than the mission's expires_at Section 9.2.
 
    Required payload claims specific to auth tokens: - aud: The URL of
    the resource the agent is authorized to access. - ps: The person
@@ -3512,9 +3511,9 @@ Table of Contents
    The sub of an auth token is a directed identifier: a PS SHOULD issue
    a pairwise pseudonymous value per resource, so that two resources
    serving the same person cannot correlate them by comparing tokens
-   (#auth-tokens, #directed-identifiers).  Identity is the pair (iss,
-   sub) — a sub minted by one issuer for one audience carries no meaning
-   under a different issuer for a different audience.
+   Section 10.4 and Section 15.1.  Identity is the pair (iss, sub) — a
+   sub minted by one issuer for one audience carries no meaning under a
+   different issuer for a different audience.
 
    A downstream issuer sees the upstream sub in the upstream_token it is
    handed.  It MUST NOT carry that value forward:
@@ -4245,8 +4244,7 @@ Table of Contents
    verified.  Per ([I-D.hardt-httpbis-signature-key]), such a response
    MUST NOT include a Signature-Error, Accept-Signature-Scheme, or
    Accept-Signature-Alg header.  This applies to the AAuth errors
-   returned with 403 (#token-endpoint-error-codes, #polling-error-
-   codes).
+   returned with 403 Section 12.9.3 and Section 12.9.4.
 
 12.3.4.1.  Signature-Key Scheme Rejection
 
@@ -4650,9 +4648,9 @@ Table of Contents
    Agents SHOULD include the AAuth-Capabilities header on signed
    requests to resources.  The header is not used on requests to PS
    endpoints, which take a capabilities request parameter instead
-   (#person-token-endpoint, #ps-token-endpoint).  Recipients MUST ignore
-   unrecognized capability values.  When the header is absent,
-   recipients MUST NOT assume any capabilities.
+   Section 8.1 and Section 8.2.  Recipients MUST ignore unrecognized
+   capability values.  When the header is absent, recipients MUST NOT
+   assume any capabilities.
 
    Capability values are Tokens and currently carry no parameters.  A
    future capability value MAY define parameters; recipients MUST ignore
@@ -7210,15 +7208,15 @@ Appendix B.  A Minimal Person Server
 
    *Consent without a consent page.* The PS answers any request that
    needs the person with a 202 deferred response carrying
-   requirement=interaction, a url, and a code (#requirement-responses,
-   #deferred-responses).  The url can be a page the PS serves, but it
-   need not be visited: the PS MAY complete the interaction over a
-   channel it already has — a notification the person taps, a message
-   they reply to — and the code is consumed at that completion
-   Section 8.3.  The pending URL then returns the terminal response on
-   the agent's next poll.  A queue of pending decisions, each resolved
-   by one tap, is the whole of the consent surface; the Consent
-   Presentation rules Section 8.4 apply to what the tap shows.
+   requirement=interaction, a url, and a code Section 12.6 and
+   Section 12.8.  The url can be a page the PS serves, but it need not
+   be visited: the PS MAY complete the interaction over a channel it
+   already has — a notification the person taps, a message they reply to
+   — and the code is consumed at that completion Section 8.3.  The
+   pending URL then returns the terminal response on the agent's next
+   poll.  A queue of pending decisions, each resolved by one tap, is the
+   whole of the consent surface; the Consent Presentation rules
+   Section 8.4 apply to what the tap shows.
 
    *Long waits.* The person may not answer for hours.  The pending
    record lives as long as the PS chooses Section 14.2; the resource
