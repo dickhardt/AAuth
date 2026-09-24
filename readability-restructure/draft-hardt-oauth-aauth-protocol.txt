@@ -87,13 +87,13 @@ Table of Contents
      4.4.  Policy Evaluation Points
      4.5.  Agent Governance
        4.5.1.  Missions
-   5.  Agents and Agent Providers
+   5.  Agents
      5.1.  Agent Identifiers
-     5.2.  Agent Token
-       5.2.1.  Agent Token Acquisition
-       5.2.2.  Agent Token Structure
-       5.2.3.  Agent Token Usage
-       5.2.4.  Agent Token Verification
+     5.2.  Agent Provider
+     5.3.  Agent Token
+       5.3.1.  Agent Token Structure
+       5.3.2.  Agent Token Usage
+       5.3.3.  Agent Token Verification
    6.  Resource Access
      6.1.  Agent Token Required
      6.2.  Resource-Managed Authorization
@@ -456,7 +456,7 @@ Table of Contents
 
    *  *Agent Token*: Issued by an agent provider to establish the
       agent's identity.  MAY declare the agent's person server
-      Section 5.2.
+      Section 5.3.
    *  *Person Token*: Issued by a PS to identify the person an agent
       acts for, to one resource, before any authorization exists.
       Carries identity and no authorization Section 7.1.1.
@@ -528,7 +528,7 @@ Table of Contents
 
    The agent generates a signing key pair, proves its identity to its
    agent provider through a platform-specific mechanism, and receives an
-   agent token binding the key to its identifier Section 5.2.  The agent
+   agent token binding the key to its identifier Section 5.3.  The agent
    token MAY carry a ps claim naming the agent's person server.
    Acquisition is platform-dependent; see [I-D.hardt-aauth-bootstrap]
    for common patterns.
@@ -601,7 +601,7 @@ Table of Contents
                 Figure 1: Protocol Parties and Relationships
 
    *  *Agent Provider → Agent*: Issues an agent token binding the
-      agent's signing key to its identity Section 5.2.
+      agent's signing key to its identity Section 5.3.
    *  *Agent ↔ Resource*: Agent sends signed requests; the resource
       returns responses, or a resource token when authorization is
       needed Section 6.
@@ -861,7 +861,7 @@ Table of Contents
    An agent with a person server can be governed by it: through
    missions, and through the PS's permission, audit, and interaction
    endpoints Section 7.  An agent that has a person server MUST carry
-   the ps claim in its agent token Section 5.2.2; it is how a resource
+   the ps claim in its agent token Section 5.3.1; it is how a resource
    learns that a person token can be asked for.
 
    Governance of resource access rides on the person token.  The agent
@@ -882,18 +882,19 @@ Table of Contents
    accepts the agent's completion proposal.  Missions are OPTIONAL.
    Section Section 8 defines them.
 
-5.  Agents and Agent Providers
+5.  Agents
 
-   This section defines agent identity — how agents are identified and
-   how that identity is bound to signing keys via agent tokens.  Agent
-   identity is the foundation of AAuth: the agent token binds the
-   agent's identifier to its signing key, and every other token the
-   agent obtains (resource tokens, auth tokens) is issued in response to
-   a request signed by that key.  When an agent presents an auth token
-   to a resource, the auth token's cnf claim binds it to the same key —
-   so the agent's identity, established by the agent token, ultimately
-   authorizes every signed request whether the Signature-Key header
-   carries the agent token or an auth token.
+   This section defines agents: how they are identified, the agent
+   provider that issues their identity, and the agent token that binds
+   that identity to a signing key.  Agent identity is the foundation of
+   AAuth: the agent token binds the agent's identifier to its signing
+   key, and every other token the agent obtains (resource tokens, auth
+   tokens) is issued in response to a request signed by that key.  When
+   an agent presents an auth token to a resource, the auth token's cnf
+   claim binds it to the same key — so the agent's identity, established
+   by the agent token, ultimately authorizes every signed request
+   whether the Signature-Key header carries the agent token or an auth
+   token.
 
 5.1.  Agent Identifiers
 
@@ -933,26 +934,50 @@ Table of Contents
    aauth:agent@agent.example are different agents, and an implementation
    MUST NOT case-fold the local part.
 
-5.2.  Agent Token
+5.2.  Agent Provider
 
-5.2.1.  Agent Token Acquisition
+   An agent provider (AP) is the server that issues an agent its
+   identity.  Every agent identifier names its AP in the domain part,
+   and every agent token is signed by the AP named in its iss.  An AP is
+   identified by an HTTPS URL Section 11.1.1 and publishes metadata at
+   /.well-known/aauth-agent.json Section 11.2.1, where its jwks_uri
+   holds the keys that agent tokens are verified against.  A resource,
+   PS, or AS trusts an AP's agents by fetching that one JWKS, rather
+   than managing a key per agent Appendix C.1.2.
 
-   An agent MUST obtain an agent token from its agent provider before
-   participating in the AAuth protocol.  The acquisition process follows
-   these steps:
+   An AP does four things in the protocol:
 
-   1.  The agent generates a signing key pair (Ed25519 is RECOMMENDED).
-   2.  The agent proves its identity to the agent provider through a
-       platform-specific mechanism.
-   3.  The agent provider verifies the agent's identity and issues an
-       agent token binding the agent's public key to the agent's
-       identifier.
+   *  *Issues agent tokens.* An agent MUST obtain an agent token from
+      its agent provider before participating in the AAuth protocol.
+      The agent generates a signing key pair (Ed25519 is RECOMMENDED),
+      proves its identity to the AP through a platform-specific
+      mechanism, and the AP issues an agent token binding the agent's
+      public key to its identifier Section 5.3.1.  The mechanism for
+      proving identity is platform-dependent; see
+      [I-D.hardt-aauth-bootstrap] for common patterns, including self-
+      hosted agents, browser-based applications, and mobile
+      applications, and for the key-refresh ceremony.
+   *  *Issues sub-agent tokens.* An AP issues a sub-agent its own
+      identifier and agent token, marked with parent_agent, under the
+      rules in Section 10.2.
+   *  *Evaluates policy.* The AP decides whether to keep treating an
+      agent as authorized, and enforces that decision by issuing or
+      refusing fresh agent tokens Section 4.4.  Agent tokens SHOULD NOT
+      live longer than 24 hours Section 5.3.1, so the decision is
+      revisited at least that often.
+   *  *Revokes agent tokens.* When an agent can no longer be trusted,
+      the AP revokes its agent token at the agent's PS Section 11.12.
+      The PS is the only recipient of an agent token revocation.
 
-   The mechanism for proving identity is platform-dependent.  See
-   [I-D.hardt-aauth-bootstrap] for common patterns including self-hosted
-   agents, browser-based applications, and mobile applications.
+   An AP MAY be collocated with other roles: a self-hosted agent is its
+   own AP, and a resource that acts as an agent for downstream calls
+   MUST be its own AP Section 4.3.  An AP that supports AAuth Events
+   ([I-D.hardt-aauth-events]) also receives event tokens from resources
+   on behalf of its agents.
 
-5.2.2.  Agent Token Structure
+5.3.  Agent Token
+
+5.3.1.  Agent Token Structure
 
    An agent token is a JWT with typ: aa-agent+jwt.  Its header and the
    claims iss, dwk, jti, iat, exp, and cnf are as defined in
@@ -986,7 +1011,7 @@ Table of Contents
    assertions, or software publisher identity.  PSes and ASes MUST
    ignore unrecognized claims.
 
-5.2.3.  Agent Token Usage
+5.3.2.  Agent Token Usage
 
    Agents present agent tokens via the Signature-Key header
    ([I-D.hardt-httpbis-signature-key]) under the jwt scheme:
@@ -994,7 +1019,7 @@ Table of Contents
    Signature-Key: sig=jwt;
        jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtYWdlbnQrand0Iiwia2lkIjoiYXAta2V5LTEifQ..."
 
-5.2.4.  Agent Token Verification
+5.3.3.  Agent Token Verification
 
    Verify the agent token per Section 11.5.2, with typ aa-agent+jwt and
    dwk aauth-agent.json, then:
@@ -2334,7 +2359,7 @@ Table of Contents
    valid whenever a resource token issued against it is redeemed.
 
    Refresh runs from the top of the chain: the agent token first
-   Section 5.2, then the person token Section 7.1, then the resource
+   Section 5.3, then the person token Section 7.1, then the resource
    token and auth token against it.  Refreshing in the other order
    produces a token capped by one about to expire.
 
@@ -2875,7 +2900,7 @@ Table of Contents
    agent identifier.  A resource deploys an AS because it wants policy
    evaluated, and an agent token MAY carry claims bearing on that
    decision — software attestation, platform integrity, secure enclave
-   status, workload identity Section 5.2.2.  The resource enforces; the
+   status, workload identity Section 5.3.1.  The resource enforces; the
    AS evaluates; posture goes to the evaluator.
 
    *Example request:*
@@ -3547,7 +3572,7 @@ Table of Contents
        Section 7.2:
        *  It verifies the HTTP Message Signature against the parent's
           cnf.jwk.
-       *  It verifies the subagent_token Section 5.2.4 and that its
+       *  It verifies the subagent_token Section 5.3.3 and that its
           parent_agent names the parent — the agent that signed the
           request.
        *  It verifies the resource_token is bound to the sub-agent's
@@ -3987,7 +4012,7 @@ Table of Contents
      | Token        | Presented to                     | Asserts    |
      +==============+==================================+============+
      | Agent token  | the PS and the AP always; a      | which      |
-     | Section 5.2  | resource for agent identity and  | agent      |
+     | Section 5.3  | resource for agent identity and  | agent      |
      |              | resource-managed access          |            |
      +--------------+----------------------------------+------------+
      | Person token | a resource, at its authorization | which      |
@@ -4212,7 +4237,7 @@ Table of Contents
 
 11.5.  AAuth Tokens
 
-   Agent tokens Section 5.2, person tokens Section 7.1.1, resource
+   Agent tokens Section 5.3, person tokens Section 7.1.1, resource
    tokens Section 6, and auth tokens Section 9.4 are JWTs ([RFC7519])
    that share the header and claims below.  Each token's own section
    states the values these take for it and the claims specific to it.
@@ -4269,7 +4294,7 @@ Table of Contents
    the age of a token by its own policy; this document defines no such
    bound. exp minus iat MUST NOT exceed the one-hour ceiling of a person
    token Section 7.1.2 or an auth token Section 9.4.1, and SHOULD NOT
-   exceed the recommended lifetime of an agent token Section 5.2 or a
+   exceed the recommended lifetime of an agent token Section 5.3 or a
    resource token Section 6.7.1.
 
    The token's own section adds the checks specific to it.  A token
@@ -4956,7 +4981,7 @@ Initial request (with Prefer: wait=N)
     |          | issued it     | no revocation path; that access is  |
     |          |               | bounded by the agent token's        |
     |          |               | lifetime, which is why it SHOULD    |
-    |          |               | NOT exceed 24 hours Section 5.2.    |
+    |          |               | NOT exceed 24 hours Section 5.3.    |
     +----------+---------------+-------------------------------------+
     | Person   | the PS that   | the resource named in its aud, and  |
     | token    | issued it     | each AS the PS presented it to      |
@@ -5850,7 +5875,7 @@ Initial request (with Prefer: wait=N)
       encoded parts separated by period characters
    *  Security considerations: See Section 13
    *  Interoperability considerations: N/A
-   *  Published specification: This document, Section 5.2
+   *  Published specification: This document, Section 5.3
    *  Applications that use this media type: AAuth agents, PSes, and
       ASes
    *  Fragment identifier considerations: N/A
@@ -5907,7 +5932,7 @@ Initial request (with Prefer: wait=N)
             +=================+==============================+
             | Type Value      | Reference                    |
             +=================+==============================+
-            | aa-agent+jwt    | This document, Section 5.2   |
+            | aa-agent+jwt    | This document, Section 5.3   |
             +-----------------+------------------------------+
             | aa-person+jwt   | This document, Section 7.1.1 |
             +-----------------+------------------------------+
@@ -6197,19 +6222,22 @@ Initial request (with Prefer: wait=N)
          Standards" is "Built On", and the two paragraphs that belonged
          to "What AAuth Provides" moved there.  The Terminology no
          longer repeats how each server role is identified.  Agent
-         Identity is Agents and Agent Providers.  Person Token is no
-         longer its own section; its structure, usage, and verification
-         sit under the Person Token Endpoint.  Resource Access is
-         ordered by what an agent encounters, from the agent-token
-         requirement through resource-managed authorization and the
-         session token, the person-token and auth-token requirements,
-         the authorization endpoint, and the resource token.  Person
-         Server follows the agent's path: the person token endpoint, the
-         auth token endpoint, user interaction, consent presentation,
-         and clarification chat, then the interaction, permission, and
-         audit endpoints, then re-authorization.  Protocol Primitives is
-         the normative reference and is stated without rationale,
-         ordered from identifiers and metadata through signatures, key
+         Identity is Agents, with an Agent Provider subsection that
+         collects what an AP does: issues agent tokens and sub-agent
+         tokens, evaluates policy by reissuing or refusing them, and
+         revokes them at the PS.  Person Token is no longer its own
+         section; its structure, usage, and verification sit under the
+         Person Token Endpoint.  Resource Access is ordered by what an
+         agent encounters, from the agent-token requirement through
+         resource-managed authorization and the session token, the
+         person-token and auth-token requirements, the authorization
+         endpoint, and the resource token.  Person Server follows the
+         agent's path: the person token endpoint, the auth token
+         endpoint, user interaction, consent presentation, and
+         clarification chat, then the interaction, permission, and audit
+         endpoints, then re-authorization.  Protocol Primitives is the
+         normative reference and is stated without rationale, ordered
+         from identifiers and metadata through signatures, key
          discovery, and the common JWT profile to requirement responses,
          capabilities, deferred responses, errors, scopes, account
          binding, and revocation; the exp and iat verification rules
@@ -7607,7 +7635,7 @@ C.4.2.  Why Not DPoP?
    DPoP ([RFC9449]) binds an existing OAuth access token to a key,
    preventing token theft.  AAuth differs in that agents can establish
    identity from zero — no pre-existing token, no pre-registration.  The
-   agent signs with its own agent token Section 5.2, which it obtains
+   agent signs with its own agent token Section 5.3, which it obtains
    from its agent provider without any resource-side registration; no
    resource- or AS-issued token is needed to make the first identified
    call.  DPoP has a single mode (prove you hold the key bound to this

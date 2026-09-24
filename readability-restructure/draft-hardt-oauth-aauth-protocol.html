@@ -1205,25 +1205,25 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
             </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5">
-            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-agents-and-agent-providers" class="internal xref">Agents and Agent Providers</a></p>
+            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-agents" class="internal xref">Agents</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.1">
                 <p id="section-toc.1-1.5.2.1.1"><a href="#section-5.1" class="auto internal xref">5.1</a>.  <a href="#name-agent-identifiers" class="internal xref">Agent Identifiers</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.2">
-                <p id="section-toc.1-1.5.2.2.1"><a href="#section-5.2" class="auto internal xref">5.2</a>.  <a href="#name-agent-token" class="internal xref">Agent Token</a></p>
+                <p id="section-toc.1-1.5.2.2.1"><a href="#section-5.2" class="auto internal xref">5.2</a>.  <a href="#name-agent-provider" class="internal xref">Agent Provider</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.3">
+                <p id="section-toc.1-1.5.2.3.1"><a href="#section-5.3" class="auto internal xref">5.3</a>.  <a href="#name-agent-token" class="internal xref">Agent Token</a></p>
 <ul class="compact toc ulBare ulEmpty">
-<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.2.2.1">
-                    <p id="section-toc.1-1.5.2.2.2.1.1"><a href="#section-5.2.1" class="auto internal xref">5.2.1</a>.  <a href="#name-agent-token-acquisition" class="internal xref">Agent Token Acquisition</a></p>
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.3.2.1">
+                    <p id="section-toc.1-1.5.2.3.2.1.1"><a href="#section-5.3.1" class="auto internal xref">5.3.1</a>.  <a href="#name-agent-token-structure" class="internal xref">Agent Token Structure</a></p>
 </li>
-                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.2.2.2">
-                    <p id="section-toc.1-1.5.2.2.2.2.1"><a href="#section-5.2.2" class="auto internal xref">5.2.2</a>.  <a href="#name-agent-token-structure" class="internal xref">Agent Token Structure</a></p>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.3.2.2">
+                    <p id="section-toc.1-1.5.2.3.2.2.1"><a href="#section-5.3.2" class="auto internal xref">5.3.2</a>.  <a href="#name-agent-token-usage" class="internal xref">Agent Token Usage</a></p>
 </li>
-                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.2.2.3">
-                    <p id="section-toc.1-1.5.2.2.2.3.1"><a href="#section-5.2.3" class="auto internal xref">5.2.3</a>.  <a href="#name-agent-token-usage" class="internal xref">Agent Token Usage</a></p>
-</li>
-                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.2.2.4">
-                    <p id="section-toc.1-1.5.2.2.2.4.1"><a href="#section-5.2.4" class="auto internal xref">5.2.4</a>.  <a href="#name-agent-token-verification" class="internal xref">Agent Token Verification</a></p>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.3.2.3">
+                    <p id="section-toc.1-1.5.2.3.2.3.1"><a href="#section-5.3.3" class="auto internal xref">5.3.3</a>.  <a href="#name-agent-token-verification" class="internal xref">Agent Token Verification</a></p>
 </li>
                 </ul>
 </li>
@@ -2064,7 +2064,7 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
 <p id="section-3-4">Tokens:<a href="#section-3-4" class="pilcrow">¶</a></p>
 <ul class="compact">
 <li class="compact" id="section-3-5.1">
-          <strong>Agent Token</strong>: Issued by an agent provider to establish the agent's identity. MAY declare the agent's person server <a href="#agent-tokens" class="auto internal xref">Section 5.2</a>.<a href="#section-3-5.1" class="pilcrow">¶</a>
+          <strong>Agent Token</strong>: Issued by an agent provider to establish the agent's identity. MAY declare the agent's person server <a href="#agent-tokens" class="auto internal xref">Section 5.3</a>.<a href="#section-3-5.1" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-3-5.2">
           <strong>Person Token</strong>: Issued by a PS to identify the person an agent acts for, to one resource, before any authorization exists. Carries identity and no authorization <a href="#person-tokens" class="auto internal xref">Section 7.1.1</a>.<a href="#section-3-5.2" class="pilcrow">¶</a>
@@ -2119,7 +2119,7 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
         <h3 id="name-obtaining-an-agent-token">
 <a href="#section-4.1" class="section-number selfRef">4.1. </a><a href="#name-obtaining-an-agent-token" class="section-name selfRef">Obtaining an Agent Token</a>
         </h3>
-<p id="section-4.1-1">The agent generates a signing key pair, proves its identity to its agent provider through a platform-specific mechanism, and receives an agent token binding the key to its identifier <a href="#agent-tokens" class="auto internal xref">Section 5.2</a>. The agent token MAY carry a <code>ps</code> claim naming the agent's person server. Acquisition is platform-dependent; see <span>[<a href="#I-D.hardt-aauth-bootstrap" class="cite xref">I-D.hardt-aauth-bootstrap</a>]</span> for common patterns.<a href="#section-4.1-1" class="pilcrow">¶</a></p>
+<p id="section-4.1-1">The agent generates a signing key pair, proves its identity to its agent provider through a platform-specific mechanism, and receives an agent token binding the key to its identifier <a href="#agent-tokens" class="auto internal xref">Section 5.3</a>. The agent token MAY carry a <code>ps</code> claim naming the agent's person server. Acquisition is platform-dependent; see <span>[<a href="#I-D.hardt-aauth-bootstrap" class="cite xref">I-D.hardt-aauth-bootstrap</a>]</span> for common patterns.<a href="#section-4.1-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="resource-access-modes">
@@ -2219,7 +2219,7 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
 </div>
 <ul class="compact">
 <li class="compact" id="section-4.2-6.1">
-            <strong>Agent Provider → Agent</strong>: Issues an agent token binding the agent's signing key to its identity <a href="#agent-tokens" class="auto internal xref">Section 5.2</a>.<a href="#section-4.2-6.1" class="pilcrow">¶</a>
+            <strong>Agent Provider → Agent</strong>: Issues an agent token binding the agent's signing key to its identity <a href="#agent-tokens" class="auto internal xref">Section 5.3</a>.<a href="#section-4.2-6.1" class="pilcrow">¶</a>
 </li>
           <li class="compact" id="section-4.2-6.2">
             <strong>Agent ↔ Resource</strong>: Agent sends signed requests; the resource returns responses, or a resource token when authorization is needed <a href="#resource-tokens" class="auto internal xref">Section 6</a>.<a href="#section-4.2-6.2" class="pilcrow">¶</a>
@@ -2502,7 +2502,7 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
         <h3 id="name-agent-governance">
 <a href="#section-4.5" class="section-number selfRef">4.5. </a><a href="#name-agent-governance" class="section-name selfRef">Agent Governance</a>
         </h3>
-<p id="section-4.5-1">An agent with a person server can be governed by it: through missions, and through the PS's permission, audit, and interaction endpoints <a href="#person-server" class="auto internal xref">Section 7</a>. An agent that has a person server MUST carry the <code>ps</code> claim in its agent token <a href="#agent-token-structure" class="auto internal xref">Section 5.2.2</a>; it is how a resource learns that a person token can be asked for.<a href="#section-4.5-1" class="pilcrow">¶</a></p>
+<p id="section-4.5-1">An agent with a person server can be governed by it: through missions, and through the PS's permission, audit, and interaction endpoints <a href="#person-server" class="auto internal xref">Section 7</a>. An agent that has a person server MUST carry the <code>ps</code> claim in its agent token <a href="#agent-token-structure" class="auto internal xref">Section 5.3.1</a>; it is how a resource learns that a person token can be asked for.<a href="#section-4.5-1" class="pilcrow">¶</a></p>
 <p id="section-4.5-2">Governance of resource access rides on the person token. The agent names its mission when it obtains one, and <code>mission_s256</code> flows from there into the resource token and the auth token, so the PS evaluates every token request against the mission. That reaches the resource in the three modes where a person token is presented; in agent identity and resource-managed access the PS is not in the path. The permission and interaction endpoints do not depend on the mode, or on a mission.<a href="#section-4.5-2" class="pilcrow">¶</a></p>
 <div id="missions-overview">
 <section id="section-4.5.1">
@@ -2518,10 +2518,10 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
 </div>
 <div id="agent-identity">
 <section id="section-5">
-      <h2 id="name-agents-and-agent-providers">
-<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-agents-and-agent-providers" class="section-name selfRef">Agents and Agent Providers</a>
+      <h2 id="name-agents">
+<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-agents" class="section-name selfRef">Agents</a>
       </h2>
-<p id="section-5-1">This section defines agent identity — how agents are identified and how that identity is bound to signing keys via agent tokens. Agent identity is the foundation of AAuth: the agent token binds the agent's identifier to its signing key, and every other token the agent obtains (resource tokens, auth tokens) is issued in response to a request signed by that key. When an agent presents an auth token to a resource, the auth token's <code>cnf</code> claim binds it to the same key — so the agent's identity, established by the agent token, ultimately authorizes every signed request whether the <code>Signature-Key</code> header carries the agent token or an auth token.<a href="#section-5-1" class="pilcrow">¶</a></p>
+<p id="section-5-1">This section defines agents: how they are identified, the agent provider that issues their identity, and the agent token that binds that identity to a signing key. Agent identity is the foundation of AAuth: the agent token binds the agent's identifier to its signing key, and every other token the agent obtains (resource tokens, auth tokens) is issued in response to a request signed by that key. When an agent presents an auth token to a resource, the auth token's <code>cnf</code> claim binds it to the same key — so the agent's identity, established by the agent token, ultimately authorizes every signed request whether the <code>Signature-Key</code> header carries the agent token or an auth token.<a href="#section-5-1" class="pilcrow">¶</a></p>
 <div id="agent-identifiers">
 <section id="section-5.1">
         <h3 id="name-agent-identifiers">
@@ -2556,82 +2556,89 @@ Raw markdown source is at <a href="https://raw.githubusercontent.com/dickhardt/A
 <p id="section-5.1-7">Implementations MUST perform exact string comparison on agent identifiers (case-sensitive): <code>aauth:Agent@agent.example</code> and <code>aauth:agent@agent.example</code> are different agents, and an implementation MUST NOT case-fold the <code>local</code> part.<a href="#section-5.1-7" class="pilcrow">¶</a></p>
 </section>
 </div>
-<div id="agent-tokens">
+<div id="agent-provider">
 <section id="section-5.2">
-        <h3 id="name-agent-token">
-<a href="#section-5.2" class="section-number selfRef">5.2. </a><a href="#name-agent-token" class="section-name selfRef">Agent Token</a>
+        <h3 id="name-agent-provider">
+<a href="#section-5.2" class="section-number selfRef">5.2. </a><a href="#name-agent-provider" class="section-name selfRef">Agent Provider</a>
         </h3>
-<div id="agent-token-acquisition-overview">
-<section id="section-5.2.1">
-          <h4 id="name-agent-token-acquisition">
-<a href="#section-5.2.1" class="section-number selfRef">5.2.1. </a><a href="#name-agent-token-acquisition" class="section-name selfRef">Agent Token Acquisition</a>
-          </h4>
-<p id="section-5.2.1-1">An agent MUST obtain an agent token from its agent provider before participating in the AAuth protocol. The acquisition process follows these steps:<a href="#section-5.2.1-1" class="pilcrow">¶</a></p>
-<ol start="1" type="1" class="compact type-1" id="section-5.2.1-2">
-<li id="section-5.2.1-2.1">The agent generates a signing key pair (Ed25519 is RECOMMENDED).<a href="#section-5.2.1-2.1" class="pilcrow">¶</a>
+<p id="section-5.2-1">An agent provider (AP) is the server that issues an agent its identity. Every agent identifier names its AP in the <code>domain</code> part, and every agent token is signed by the AP named in its <code>iss</code>. An AP is identified by an HTTPS URL <a href="#server-identifiers" class="auto internal xref">Section 11.1.1</a> and publishes metadata at <code>/.well-known/aauth-agent.json</code> <a href="#agent-provider-metadata" class="auto internal xref">Section 11.2.1</a>, where its <code>jwks_uri</code> holds the keys that agent tokens are verified against. A resource, PS, or AS trusts an AP's agents by fetching that one JWKS, rather than managing a key per agent <a href="#why-agents-are-under-an-agent-provider" class="auto internal xref">Appendix C.1.2</a>.<a href="#section-5.2-1" class="pilcrow">¶</a></p>
+<p id="section-5.2-2">An AP does four things in the protocol:<a href="#section-5.2-2" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-5.2-3.1">
+            <strong>Issues agent tokens.</strong> An agent MUST obtain an agent token from its agent provider before participating in the AAuth protocol. The agent generates a signing key pair (Ed25519 is RECOMMENDED), proves its identity to the AP through a platform-specific mechanism, and the AP issues an agent token binding the agent's public key to its identifier <a href="#agent-token-structure" class="auto internal xref">Section 5.3.1</a>. The mechanism for proving identity is platform-dependent; see <span>[<a href="#I-D.hardt-aauth-bootstrap" class="cite xref">I-D.hardt-aauth-bootstrap</a>]</span> for common patterns, including self-hosted agents, browser-based applications, and mobile applications, and for the key-refresh ceremony.<a href="#section-5.2-3.1" class="pilcrow">¶</a>
 </li>
-            <li id="section-5.2.1-2.2">The agent proves its identity to the agent provider through a platform-specific mechanism.<a href="#section-5.2.1-2.2" class="pilcrow">¶</a>
+          <li class="compact" id="section-5.2-3.2">
+            <strong>Issues sub-agent tokens.</strong> An AP issues a sub-agent its own identifier and agent token, marked with <code>parent_agent</code>, under the rules in <a href="#sub-agents" class="auto internal xref">Section 10.2</a>.<a href="#section-5.2-3.2" class="pilcrow">¶</a>
 </li>
-            <li id="section-5.2.1-2.3">The agent provider verifies the agent's identity and issues an agent token binding the agent's public key to the agent's identifier.<a href="#section-5.2.1-2.3" class="pilcrow">¶</a>
+          <li class="compact" id="section-5.2-3.3">
+            <strong>Evaluates policy.</strong> The AP decides whether to keep treating an agent as authorized, and enforces that decision by issuing or refusing fresh agent tokens <a href="#policy-evaluation-points" class="auto internal xref">Section 4.4</a>. Agent tokens SHOULD NOT live longer than 24 hours <a href="#agent-token-structure" class="auto internal xref">Section 5.3.1</a>, so the decision is revisited at least that often.<a href="#section-5.2-3.3" class="pilcrow">¶</a>
 </li>
-          </ol>
-<p id="section-5.2.1-3">The mechanism for proving identity is platform-dependent. See <span>[<a href="#I-D.hardt-aauth-bootstrap" class="cite xref">I-D.hardt-aauth-bootstrap</a>]</span> for common patterns including self-hosted agents, browser-based applications, and mobile applications.<a href="#section-5.2.1-3" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-5.2-3.4">
+            <strong>Revokes agent tokens.</strong> When an agent can no longer be trusted, the AP revokes its agent token at the agent's PS <a href="#token-revocation" class="auto internal xref">Section 11.12</a>. The PS is the only recipient of an agent token revocation.<a href="#section-5.2-3.4" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-5.2-4">An AP MAY be collocated with other roles: a self-hosted agent is its own AP, and a resource that acts as an agent for downstream calls MUST be its own AP <a href="#roles" class="auto internal xref">Section 4.3</a>. An AP that supports AAuth Events (<span>[<a href="#I-D.hardt-aauth-events" class="cite xref">I-D.hardt-aauth-events</a>]</span>) also receives event tokens from resources on behalf of its agents.<a href="#section-5.2-4" class="pilcrow">¶</a></p>
 </section>
 </div>
+<div id="agent-tokens">
+<section id="section-5.3">
+        <h3 id="name-agent-token">
+<a href="#section-5.3" class="section-number selfRef">5.3. </a><a href="#name-agent-token" class="section-name selfRef">Agent Token</a>
+        </h3>
 <div id="agent-token-structure">
-<section id="section-5.2.2">
+<section id="section-5.3.1">
           <h4 id="name-agent-token-structure">
-<a href="#section-5.2.2" class="section-number selfRef">5.2.2. </a><a href="#name-agent-token-structure" class="section-name selfRef">Agent Token Structure</a>
+<a href="#section-5.3.1" class="section-number selfRef">5.3.1. </a><a href="#name-agent-token-structure" class="section-name selfRef">Agent Token Structure</a>
           </h4>
-<p id="section-5.2.2-1">An agent token is a JWT with <code>typ: aa-agent+jwt</code>. Its header and the claims <code>iss</code>, <code>dwk</code>, <code>jti</code>, <code>iat</code>, <code>exp</code>, and <code>cnf</code> are as defined in <a href="#common-claims" class="auto internal xref">Section 11.5.1</a>, with:<a href="#section-5.2.2-1" class="pilcrow">¶</a></p>
+<p id="section-5.3.1-1">An agent token is a JWT with <code>typ: aa-agent+jwt</code>. Its header and the claims <code>iss</code>, <code>dwk</code>, <code>jti</code>, <code>iat</code>, <code>exp</code>, and <code>cnf</code> are as defined in <a href="#common-claims" class="auto internal xref">Section 11.5.1</a>, with:<a href="#section-5.3.1-1" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-5.2.2-2.1">
-              <code>iss</code>: Agent provider URL<a href="#section-5.2.2-2.1" class="pilcrow">¶</a>
+<li class="compact" id="section-5.3.1-2.1">
+              <code>iss</code>: Agent provider URL<a href="#section-5.3.1-2.1" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-5.2.2-2.2">
-              <code>dwk</code>: <code>aauth-agent.json</code><a href="#section-5.2.2-2.2" class="pilcrow">¶</a>
+            <li class="compact" id="section-5.3.1-2.2">
+              <code>dwk</code>: <code>aauth-agent.json</code><a href="#section-5.3.1-2.2" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-5.2.2-2.3">
-              <code>cnf</code>: <code>jwk</code> is the agent's public key<a href="#section-5.2.2-2.3" class="pilcrow">¶</a>
+            <li class="compact" id="section-5.3.1-2.3">
+              <code>cnf</code>: <code>jwk</code> is the agent's public key<a href="#section-5.3.1-2.3" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-5.2.2-2.4">
-              <code>exp</code>: Agent tokens SHOULD NOT have a lifetime exceeding 24 hours.<a href="#section-5.2.2-2.4" class="pilcrow">¶</a>
+            <li class="compact" id="section-5.3.1-2.4">
+              <code>exp</code>: Agent tokens SHOULD NOT have a lifetime exceeding 24 hours.<a href="#section-5.3.1-2.4" class="pilcrow">¶</a>
 </li>
           </ul>
-<p id="section-5.2.2-3">Required payload claims specific to agent tokens:
-- <code>sub</code>: Agent identifier (stable across key rotations)<a href="#section-5.2.2-3" class="pilcrow">¶</a></p>
-<p id="section-5.2.2-4">Optional payload claims:
+<p id="section-5.3.1-3">Required payload claims specific to agent tokens:
+- <code>sub</code>: Agent identifier (stable across key rotations)<a href="#section-5.3.1-3" class="pilcrow">¶</a></p>
+<p id="section-5.3.1-4">Optional payload claims:
 - <code>ps</code>: The HTTPS URL of the agent's person server. Configured per agent instance. When present, it tells a resource that the agent has a person server and which one, before the resource has verified a person token — enough to decide whether to challenge for one. The PS of an issued authorization is the <code>iss</code> of the person token the resource verified <a href="#person-token-structure" class="auto internal xref">Section 7.1.2</a>, not this claim. This claim is distinct from <code>iss</code> (which identifies the agent provider that issued the token).
-- <code>parent_agent</code>: Sub-agent marker <a href="#sub-agents" class="auto internal xref">Section 10.2</a>. When present, the agent is a sub-agent and the value is the identifier of its parent agent. A sub-agent MUST NOT request authorization directly; its parent obtains auth tokens on its behalf <a href="#sub-agents" class="auto internal xref">Section 10.2</a>.<a href="#section-5.2.2-4" class="pilcrow">¶</a></p>
-<p id="section-5.2.2-5">Agent providers MAY include additional claims in the agent token. Companion specifications may define additional claims for use by PSes or ASes in policy evaluation — for example, software attestation, platform integrity, secure enclave status, workload identity assertions, or software publisher identity. PSes and ASes MUST ignore unrecognized claims.<a href="#section-5.2.2-5" class="pilcrow">¶</a></p>
+- <code>parent_agent</code>: Sub-agent marker <a href="#sub-agents" class="auto internal xref">Section 10.2</a>. When present, the agent is a sub-agent and the value is the identifier of its parent agent. A sub-agent MUST NOT request authorization directly; its parent obtains auth tokens on its behalf <a href="#sub-agents" class="auto internal xref">Section 10.2</a>.<a href="#section-5.3.1-4" class="pilcrow">¶</a></p>
+<p id="section-5.3.1-5">Agent providers MAY include additional claims in the agent token. Companion specifications may define additional claims for use by PSes or ASes in policy evaluation — for example, software attestation, platform integrity, secure enclave status, workload identity assertions, or software publisher identity. PSes and ASes MUST ignore unrecognized claims.<a href="#section-5.3.1-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="agent-token-usage">
-<section id="section-5.2.3">
+<section id="section-5.3.2">
           <h4 id="name-agent-token-usage">
-<a href="#section-5.2.3" class="section-number selfRef">5.2.3. </a><a href="#name-agent-token-usage" class="section-name selfRef">Agent Token Usage</a>
+<a href="#section-5.3.2" class="section-number selfRef">5.3.2. </a><a href="#name-agent-token-usage" class="section-name selfRef">Agent Token Usage</a>
           </h4>
-<p id="section-5.2.3-1">Agents present agent tokens via the <code>Signature-Key</code> header (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>) under the <code>jwt</code> scheme:<a href="#section-5.2.3-1" class="pilcrow">¶</a></p>
-<div class="lang-http sourcecode" id="section-5.2.3-2">
+<p id="section-5.3.2-1">Agents present agent tokens via the <code>Signature-Key</code> header (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>) under the <code>jwt</code> scheme:<a href="#section-5.3.2-1" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-5.3.2-2">
 <pre>Signature-Key: sig=jwt;
     jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtYWdlbnQrand0Iiwia2lkIjoiYXAta2V5LTEifQ..."
 
-</pre><a href="#section-5.2.3-2" class="pilcrow">¶</a>
+</pre><a href="#section-5.3.2-2" class="pilcrow">¶</a>
 </div>
 </section>
 </div>
 <div id="agent-token-verification">
-<section id="section-5.2.4">
+<section id="section-5.3.3">
           <h4 id="name-agent-token-verification">
-<a href="#section-5.2.4" class="section-number selfRef">5.2.4. </a><a href="#name-agent-token-verification" class="section-name selfRef">Agent Token Verification</a>
+<a href="#section-5.3.3" class="section-number selfRef">5.3.3. </a><a href="#name-agent-token-verification" class="section-name selfRef">Agent Token Verification</a>
           </h4>
-<p id="section-5.2.4-1">Verify the agent token per <a href="#common-verification" class="auto internal xref">Section 11.5.2</a>, with <code>typ</code> <code>aa-agent+jwt</code> and <code>dwk</code> <code>aauth-agent.json</code>, then:<a href="#section-5.2.4-1" class="pilcrow">¶</a></p>
-<ol start="1" type="1" class="compact type-1" id="section-5.2.4-2">
-<li id="section-5.2.4-2.1">Verify <code>cnf.jwk</code> matches the key used to sign the HTTP request.<a href="#section-5.2.4-2.1" class="pilcrow">¶</a>
+<p id="section-5.3.3-1">Verify the agent token per <a href="#common-verification" class="auto internal xref">Section 11.5.2</a>, with <code>typ</code> <code>aa-agent+jwt</code> and <code>dwk</code> <code>aauth-agent.json</code>, then:<a href="#section-5.3.3-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="compact type-1" id="section-5.3.3-2">
+<li id="section-5.3.3-2.1">Verify <code>cnf.jwk</code> matches the key used to sign the HTTP request.<a href="#section-5.3.3-2.1" class="pilcrow">¶</a>
 </li>
-            <li id="section-5.2.4-2.2">If <code>ps</code> is present, verify it is a valid HTTPS URL conforming to the Server Identifier requirements.<a href="#section-5.2.4-2.2" class="pilcrow">¶</a>
+            <li id="section-5.3.3-2.2">If <code>ps</code> is present, verify it is a valid HTTPS URL conforming to the Server Identifier requirements.<a href="#section-5.3.3-2.2" class="pilcrow">¶</a>
 </li>
-            <li id="section-5.2.4-2.3">If <code>parent_agent</code> is present, verify it is a valid agent identifier — the parent agent. Its presence marks this as a sub-agent's token <a href="#sub-agents" class="auto internal xref">Section 10.2</a>; the PS additionally enforces the single-level rule <a href="#sub-agents" class="auto internal xref">Section 10.2</a> when such a token signs a request.<a href="#section-5.2.4-2.3" class="pilcrow">¶</a>
+            <li id="section-5.3.3-2.3">If <code>parent_agent</code> is present, verify it is a valid agent identifier — the parent agent. Its presence marks this as a sub-agent's token <a href="#sub-agents" class="auto internal xref">Section 10.2</a>; the PS additionally enforces the single-level rule <a href="#sub-agents" class="auto internal xref">Section 10.2</a> when such a token signs a request.<a href="#section-5.3.3-2.3" class="pilcrow">¶</a>
 </li>
           </ol>
 </section>
@@ -3907,7 +3914,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
           </h4>
 <p id="section-7.9.1-1">A token is expired the moment a verifier's clock passes its <code>exp</code>, at every party that verifies it <a href="#common-verification" class="auto internal xref">Section 11.5.2</a>. A person token or auth token that a resource names in <code>presented_jti</code> is verified by the resource, then by the PS, and in four-party by the AS, with a possible interaction in between, so a token valid at the resource can be expired by the time the AS sees it. And expiry propagates downward: a person token cannot outlive the agent token presented when it was requested, and an auth token cannot outlive the presented token <a href="#auth-token-structure" class="auto internal xref">Section 9.4.1</a>, so a token presented with thirty seconds left buys a thirty-second token.<a href="#section-7.9.1-1" class="pilcrow">¶</a></p>
 <p id="section-7.9.1-2">The agent is the party to absorb this: it holds every token in the chain. An agent SHOULD refresh an agent, person, or auth token when fewer than five minutes remain before its <code>exp</code>, and SHOULD NOT present one inside that margin. The margin does not apply to a resource token, whose recommended lifetime is five minutes or less <a href="#resource-token-structure" class="auto internal xref">Section 6.7.1</a> and which the agent redeems at once. Five minutes is RECOMMENDED because it equals the recommended maximum lifetime of a resource token: a presented token with five minutes left is still valid whenever a resource token issued against it is redeemed.<a href="#section-7.9.1-2" class="pilcrow">¶</a></p>
-<p id="section-7.9.1-3">Refresh runs from the top of the chain: the agent token first <a href="#agent-tokens" class="auto internal xref">Section 5.2</a>, then the person token <a href="#person-token-endpoint" class="auto internal xref">Section 7.1</a>, then the resource token and auth token against it. Refreshing in the other order produces a token capped by one about to expire.<a href="#section-7.9.1-3" class="pilcrow">¶</a></p>
+<p id="section-7.9.1-3">Refresh runs from the top of the chain: the agent token first <a href="#agent-tokens" class="auto internal xref">Section 5.3</a>, then the person token <a href="#person-token-endpoint" class="auto internal xref">Section 7.1</a>, then the resource token and auth token against it. Refreshing in the other order produces a token capped by one about to expire.<a href="#section-7.9.1-3" class="pilcrow">¶</a></p>
 <p id="section-7.9.1-4">Refresh is not required when the agent will present the token no further. An agent MAY also renew reactively, presenting an auth token until the resource answers <code>401</code> with <code>expired_jwt</code> (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>) and then re-authorizing, for a request that is idempotent and can bear the extra round trip. The margin matters most for a token another party will name and pass on: presenting one inside the margin risks <code>expired_presented_token</code> downstream <a href="#token-endpoint-error-codes" class="auto internal xref">Section 11.9.3</a> after the resource has already accepted it.<a href="#section-7.9.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -4376,7 +4383,7 @@ Content-Type: application/problem+json
           </ul>
 <p id="section-9.1.1-4">The resource token carries the person's identity as <code>ps</code> and <code>sub</code> <a href="#resource-token-structure" class="auto internal xref">Section 6.7.1</a>, and the presented token carries the same identity under its issuer's signature, so the AS needs no separate identity parameter and <code>requirement=claims</code> <a href="#requirement-claims" class="auto internal xref">Section 9.2</a> is reserved for claims beyond it.<a href="#section-9.1.1-4" class="pilcrow">¶</a></p>
 <p id="section-9.1.1-5">The AS MUST verify <code>presented_token</code> against the resource token per step 3 of <a href="#resource-token-verification" class="auto internal xref">Section 6.7.2</a>, which is the same check the PS made. A person token's <code>iss</code> and an auth token's <code>ps</code> MUST be the PS that signed this request. The errors are those of that step: <code>invalid_presented_token</code>, <code>expired_presented_token</code>, and <code>invalid_resource_token</code> for a mismatch.<a href="#section-9.1.1-5" class="pilcrow">¶</a></p>
-<p id="section-9.1.1-6"><code>agent_token</code> remains REQUIRED even though the resource never sees an agent identifier. A resource deploys an AS because it wants policy evaluated, and an agent token MAY carry claims bearing on that decision — software attestation, platform integrity, secure enclave status, workload identity <a href="#agent-token-structure" class="auto internal xref">Section 5.2.2</a>. The resource enforces; the AS evaluates; posture goes to the evaluator.<a href="#section-9.1.1-6" class="pilcrow">¶</a></p>
+<p id="section-9.1.1-6"><code>agent_token</code> remains REQUIRED even though the resource never sees an agent identifier. A resource deploys an AS because it wants policy evaluated, and an agent token MAY carry claims bearing on that decision — software attestation, platform integrity, secure enclave status, workload identity <a href="#agent-token-structure" class="auto internal xref">Section 5.3.1</a>. The resource enforces; the AS evaluates; posture goes to the evaluator.<a href="#section-9.1.1-6" class="pilcrow">¶</a></p>
 <p id="section-9.1.1-7"><strong>Example request:</strong><a href="#section-9.1.1-7" class="pilcrow">¶</a></p>
 <div class="lang-http sourcecode" id="section-9.1.1-8">
 <pre>POST /token HTTP/1.1
@@ -4887,7 +4894,7 @@ An auth token carries no agent identifier and no delegation chain. <code>cnf</co
 <ul class="compact">
 <li class="compact" id="section-10.2.3-2.4.2.1">It verifies the HTTP Message Signature against the parent's <code>cnf.jwk</code>.<a href="#section-10.2.3-2.4.2.1" class="pilcrow">¶</a>
 </li>
-                <li class="compact" id="section-10.2.3-2.4.2.2">It verifies the <code>subagent_token</code> <a href="#agent-token-verification" class="auto internal xref">Section 5.2.4</a> and that its <code>parent_agent</code> names the parent — the agent that signed the request.<a href="#section-10.2.3-2.4.2.2" class="pilcrow">¶</a>
+                <li class="compact" id="section-10.2.3-2.4.2.2">It verifies the <code>subagent_token</code> <a href="#agent-token-verification" class="auto internal xref">Section 5.3.3</a> and that its <code>parent_agent</code> names the parent — the agent that signed the request.<a href="#section-10.2.3-2.4.2.2" class="pilcrow">¶</a>
 </li>
                 <li class="compact" id="section-10.2.3-2.4.2.3">It verifies the <code>resource_token</code> is bound to the sub-agent's key: <code>agent_jkt</code> matches the <code>subagent_token</code>'s <code>cnf.jwk</code>, not the signing key <a href="#resource-token-verification" class="auto internal xref">Section 6.7.2</a>.<a href="#section-10.2.3-2.4.2.3" class="pilcrow">¶</a>
 </li>
@@ -5350,7 +5357,7 @@ An auth token carries no agent identifier and no delegation chain. <code>cnf</co
             </thead>
             <tbody>
               <tr>
-                <td class="text-left" rowspan="1" colspan="1">Agent token <a href="#agent-tokens" class="auto internal xref">Section 5.2</a>
+                <td class="text-left" rowspan="1" colspan="1">Agent token <a href="#agent-tokens" class="auto internal xref">Section 5.3</a>
 </td>
                 <td class="text-left" rowspan="1" colspan="1">the PS and the AP always; a resource for agent identity and resource-managed access</td>
                 <td class="text-left" rowspan="1" colspan="1">which agent</td>
@@ -5519,7 +5526,7 @@ Accept-Signature-Scheme: jwt
         <h3 id="name-aauth-tokens">
 <a href="#section-11.5" class="section-number selfRef">11.5. </a><a href="#name-aauth-tokens" class="section-name selfRef">AAuth Tokens</a>
         </h3>
-<p id="section-11.5-1">Agent tokens <a href="#agent-tokens" class="auto internal xref">Section 5.2</a>, person tokens <a href="#person-tokens" class="auto internal xref">Section 7.1.1</a>, resource tokens <a href="#resource-tokens" class="auto internal xref">Section 6</a>, and auth tokens <a href="#auth-tokens" class="auto internal xref">Section 9.4</a> are JWTs (<span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>) that share the header and claims below. Each token's own section states the values these take for it and the claims specific to it.<a href="#section-11.5-1" class="pilcrow">¶</a></p>
+<p id="section-11.5-1">Agent tokens <a href="#agent-tokens" class="auto internal xref">Section 5.3</a>, person tokens <a href="#person-tokens" class="auto internal xref">Section 7.1.1</a>, resource tokens <a href="#resource-tokens" class="auto internal xref">Section 6</a>, and auth tokens <a href="#auth-tokens" class="auto internal xref">Section 9.4</a> are JWTs (<span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>) that share the header and claims below. Each token's own section states the values these take for it and the claims specific to it.<a href="#section-11.5-1" class="pilcrow">¶</a></p>
 <div id="common-claims">
 <section id="section-11.5.1">
           <h4 id="name-common-jwt-claims">
@@ -5576,7 +5583,7 @@ Accept-Signature-Scheme: jwt
             <li id="section-11.5.2-2.4">Verify <code>iss</code> is a valid server identifier <a href="#server-identifiers" class="auto internal xref">Section 11.1.1</a>.<a href="#section-11.5.2-2.4" class="pilcrow">¶</a>
 </li>
           </ol>
-<p id="section-11.5.2-3"><code>iat</code> is not a validity check. A verifier MAY refuse a token whose <code>iat</code> is ahead of its clock by its own policy; the bound SHOULD be its signature validity window <a href="#verification" class="auto internal xref">Section 11.3.4</a>, 60 seconds by default. A verifier that refuses answers <code>clock_skew</code>: in the body for a token carried as a request parameter <a href="#token-endpoint-error-codes" class="auto internal xref">Section 11.9.3</a>, and as <code>Signature-Error: error=clock_skew</code> (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>) for the token in the <code>Signature-Key</code> header. A verifier MAY use <code>iat</code> to bound the age of a token by its own policy; this document defines no such bound. <code>exp</code> minus <code>iat</code> MUST NOT exceed the one-hour ceiling of a person token <a href="#person-token-structure" class="auto internal xref">Section 7.1.2</a> or an auth token <a href="#auth-token-structure" class="auto internal xref">Section 9.4.1</a>, and SHOULD NOT exceed the recommended lifetime of an agent token <a href="#agent-tokens" class="auto internal xref">Section 5.2</a> or a resource token <a href="#resource-token-structure" class="auto internal xref">Section 6.7.1</a>.<a href="#section-11.5.2-3" class="pilcrow">¶</a></p>
+<p id="section-11.5.2-3"><code>iat</code> is not a validity check. A verifier MAY refuse a token whose <code>iat</code> is ahead of its clock by its own policy; the bound SHOULD be its signature validity window <a href="#verification" class="auto internal xref">Section 11.3.4</a>, 60 seconds by default. A verifier that refuses answers <code>clock_skew</code>: in the body for a token carried as a request parameter <a href="#token-endpoint-error-codes" class="auto internal xref">Section 11.9.3</a>, and as <code>Signature-Error: error=clock_skew</code> (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>) for the token in the <code>Signature-Key</code> header. A verifier MAY use <code>iat</code> to bound the age of a token by its own policy; this document defines no such bound. <code>exp</code> minus <code>iat</code> MUST NOT exceed the one-hour ceiling of a person token <a href="#person-token-structure" class="auto internal xref">Section 7.1.2</a> or an auth token <a href="#auth-token-structure" class="auto internal xref">Section 9.4.1</a>, and SHOULD NOT exceed the recommended lifetime of an agent token <a href="#agent-tokens" class="auto internal xref">Section 5.3</a> or a resource token <a href="#resource-token-structure" class="auto internal xref">Section 6.7.1</a>.<a href="#section-11.5.2-3" class="pilcrow">¶</a></p>
 <p id="section-11.5.2-4">The token's own section adds the checks specific to it. A token presented in the <code>Signature-Key</code> header that fails any of these steps is a signature failure and is answered per <a href="#verification" class="auto internal xref">Section 11.3.4</a>; a token carried as a request parameter that fails is answered with the parameter's own error code <a href="#token-endpoint-error-codes" class="auto internal xref">Section 11.9.3</a>.<a href="#section-11.5.2-4" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -6376,7 +6383,7 @@ Signature-Key: sig=jwks_uri;id="https://ps.example";
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">Agent token</td>
                 <td class="text-left" rowspan="1" colspan="1">the agent provider that issued it</td>
-                <td class="text-left" rowspan="1" colspan="1">the PS only. A resource that accepts an agent token directly has no revocation path; that access is bounded by the agent token's lifetime, which is why it SHOULD NOT exceed 24 hours <a href="#agent-tokens" class="auto internal xref">Section 5.2</a>.</td>
+                <td class="text-left" rowspan="1" colspan="1">the PS only. A resource that accepts an agent token directly has no revocation path; that access is bounded by the agent token's lifetime, which is why it SHOULD NOT exceed 24 hours <a href="#agent-tokens" class="auto internal xref">Section 5.3</a>.</td>
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">Person token</td>
@@ -7087,7 +7094,7 @@ Content-Type: application/json
 </li>
             <li class="compact" id="section-15.5.1-1.7">Interoperability considerations: N/A<a href="#section-15.5.1-1.7" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-15.5.1-1.8">Published specification: This document, <a href="#agent-tokens" class="auto internal xref">Section 5.2</a><a href="#section-15.5.1-1.8" class="pilcrow">¶</a>
+            <li class="compact" id="section-15.5.1-1.8">Published specification: This document, <a href="#agent-tokens" class="auto internal xref">Section 5.3</a><a href="#section-15.5.1-1.8" class="pilcrow">¶</a>
 </li>
             <li class="compact" id="section-15.5.1-1.9">Applications that use this media type: AAuth agents, PSes, and ASes<a href="#section-15.5.1-1.9" class="pilcrow">¶</a>
 </li>
@@ -7204,7 +7211,7 @@ Content-Type: application/json
               <td class="text-left" rowspan="1" colspan="1">
                 <code>aa-agent+jwt</code>
 </td>
-              <td class="text-left" rowspan="1" colspan="1">This document, <a href="#agent-tokens" class="auto internal xref">Section 5.2</a>
+              <td class="text-left" rowspan="1" colspan="1">This document, <a href="#agent-tokens" class="auto internal xref">Section 5.3</a>
 </td>
             </tr>
             <tr>
@@ -7629,7 +7636,7 @@ Content-Type: application/json
 <li class="normal" id="section-17-2.1">
           <p id="section-17-2.1.1">draft-hardt-oauth-aauth-protocol-11<a href="#section-17-2.1.1" class="pilcrow">¶</a></p>
 <ul class="compact normal">
-<li class="compact normal" id="section-17-2.1.2.1">Readability restructure. The Protocol Overview is an overview: it says how the parties fit together and points to the sections that define each part; the agent token comes first, the person-identity flow shows the person token being obtained and the three- and four-party flows start from presenting it, and the "orthogonal" framing of governance is gone, since missions reach a resource only in the modes where a person token is presented. The Introduction's "Relationship to Existing Standards" is "Built On", and the two paragraphs that belonged to "What AAuth Provides" moved there. The Terminology no longer repeats how each server role is identified. Agent Identity is Agents and Agent Providers. Person Token is no longer its own section; its structure, usage, and verification sit under the Person Token Endpoint. Resource Access is ordered by what an agent encounters, from the <code>agent-token</code> requirement through resource-managed authorization and the session token, the <code>person-token</code> and <code>auth-token</code> requirements, the authorization endpoint, and the resource token. Person Server follows the agent's path: the person token endpoint, the auth token endpoint, user interaction, consent presentation, and clarification chat, then the interaction, permission, and audit endpoints, then re-authorization. Protocol Primitives is the normative reference and is stated without rationale, ordered from identifiers and metadata through signatures, key discovery, and the common JWT profile to requirement responses, capabilities, deferred responses, errors, scopes, account binding, and revocation; the <code>exp</code> and <code>iat</code> verification rules moved there from the refresh margin, and Token Revocation is split into request, who revokes what, response, cascade, and presenting a revoked token. Rationale that Protocol Primitives carried moved to the Design Rationale appendix. Each normative statement is made once and referenced elsewhere.<a href="#section-17-2.1.2.1" class="pilcrow">¶</a>
+<li class="compact normal" id="section-17-2.1.2.1">Readability restructure. The Protocol Overview is an overview: it says how the parties fit together and points to the sections that define each part; the agent token comes first, the person-identity flow shows the person token being obtained and the three- and four-party flows start from presenting it, and the "orthogonal" framing of governance is gone, since missions reach a resource only in the modes where a person token is presented. The Introduction's "Relationship to Existing Standards" is "Built On", and the two paragraphs that belonged to "What AAuth Provides" moved there. The Terminology no longer repeats how each server role is identified. Agent Identity is Agents, with an Agent Provider subsection that collects what an AP does: issues agent tokens and sub-agent tokens, evaluates policy by reissuing or refusing them, and revokes them at the PS. Person Token is no longer its own section; its structure, usage, and verification sit under the Person Token Endpoint. Resource Access is ordered by what an agent encounters, from the <code>agent-token</code> requirement through resource-managed authorization and the session token, the <code>person-token</code> and <code>auth-token</code> requirements, the authorization endpoint, and the resource token. Person Server follows the agent's path: the person token endpoint, the auth token endpoint, user interaction, consent presentation, and clarification chat, then the interaction, permission, and audit endpoints, then re-authorization. Protocol Primitives is the normative reference and is stated without rationale, ordered from identifiers and metadata through signatures, key discovery, and the common JWT profile to requirement responses, capabilities, deferred responses, errors, scopes, account binding, and revocation; the <code>exp</code> and <code>iat</code> verification rules moved there from the refresh margin, and Token Revocation is split into request, who revokes what, response, cascade, and presenting a revoked token. Rationale that Protocol Primitives carried moved to the Design Rationale appendix. Each normative statement is made once and referenced elsewhere.<a href="#section-17-2.1.2.1" class="pilcrow">¶</a>
 </li>
             <li class="compact normal" id="section-17-2.1.2.2">A signature on a revocation request MUST cover <code>content-digest</code> and <code>content-type</code> whatever the recipient's role. The requirement was written for PS and AS endpoints, while a resource declares its own coverage through <code>additional_signature_components</code>, so it was unclear whether a resource's revocation endpoint followed the role or the endpoint. It follows the endpoint: that endpoint is defined here rather than by the resource's API, and its body selects a token and adds to retained state. Issue #165.<a href="#section-17-2.1.2.2" class="pilcrow">¶</a>
 </li>
@@ -8476,7 +8483,7 @@ Content-Type: application/json
           <h4 id="name-why-not-dpop">
 <a href="#appendix-C.4.2" class="section-number selfRef">C.4.2. </a><a href="#name-why-not-dpop" class="section-name selfRef">Why Not DPoP?</a>
           </h4>
-<p id="appendix-C.4.2-1">DPoP (<span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span>) binds an existing OAuth access token to a key, preventing token theft. AAuth differs in that agents can establish identity from zero — no pre-existing token, no pre-registration. The agent signs with its own agent token <a href="#agent-tokens" class="auto internal xref">Section 5.2</a>, which it obtains from its agent provider without any resource-side registration; no resource- or AS-issued token is needed to make the first identified call. DPoP has a single mode (prove you hold the key bound to this token), while AAuth supports progressive requirements from verified agent identity through authorized access with interactive consent. DPoP is the right choice for adding proof-of-possession to existing OAuth deployments.<a href="#appendix-C.4.2-1" class="pilcrow">¶</a></p>
+<p id="appendix-C.4.2-1">DPoP (<span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span>) binds an existing OAuth access token to a key, preventing token theft. AAuth differs in that agents can establish identity from zero — no pre-existing token, no pre-registration. The agent signs with its own agent token <a href="#agent-tokens" class="auto internal xref">Section 5.3</a>, which it obtains from its agent provider without any resource-side registration; no resource- or AS-issued token is needed to make the first identified call. DPoP has a single mode (prove you hold the key bound to this token), while AAuth supports progressive requirements from verified agent identity through authorized access with interactive consent. DPoP is the right choice for adding proof-of-possession to existing OAuth deployments.<a href="#appendix-C.4.2-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="why-not-extend-gnap">
