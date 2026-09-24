@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-09-22T00:09:19.202445+00:00",
+  "timestamp": "2026-09-24T00:08:28.536394+00:00",
   "repo": "dickhardt/AAuth",
   "labels": [
     {
@@ -5579,6 +5579,32 @@
       "mergeCommit": {
         "oid": "ff8eae334408c3427ea80a04c96f2be629024733"
       },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 197,
+      "id": "PR_kwDOQJKwSc8AAAABEkJJeQ",
+      "title": "Restructure sections 7, 8 and 12 for readability",
+      "url": "https://github.com/dickhardt/AAuth/pull/197",
+      "state": "OPEN",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Readability pass on the protocol spec, per the direction of 2026-09-22. The Kindle Scribe notes for -11 were not recoverable (no ink in the Drive export, no stroke files in the device sidecar, notes no longer visible on the device), so the ordering of sections 7 and 8 follows the stated principle rather than the notes: simple to complex, and what an agent encounters first before what it encounters later. Expect to adjust those two orders on review.\n\n**Principles applied**\n\n- Every normative statement is kept, made once, and cross-referenced elsewhere.\n- Short context on why, in the section where a mechanism is first met. No long explanations.\n- Section 12 is the normative reference and states things without rationale. Rationale it carried moved to Appendix C.\n\n**Section 7, Resource Access** (was 2985 words, now 2509)\n\nOpens with a table of the four requirements a resource can raise, then defines them in the order they ask more of the agent: `agent-token`, resource-managed authorization with the `AAuth-Access` session token, `person-token`, `auth-token` (401 and deferred 202). The authorization endpoint follows as one section (request, two response shapes, errors), then the resource token (structure, verification, challenge verification). The `invalid_signature` row left the authorization endpoint error table, since the paragraph under it already says a signature failure is answered with `401` and `Signature-Error`.\n\n**Section 8, Person Server** (was 6238 words, now 4654)\n\nOpens with an endpoint table. Then the agent's path: person token endpoint, auth token endpoint (request, response, resource-initiated interaction; the concurrent-requests subsection is now a paragraph of the response), user interaction and callback errors, consent presentation, clarification chat, then the interaction, permission, and audit endpoints, then re-authorization. Expiry and the Refresh Margin keeps the agent-side guidance (five-minute margin, refresh top-down, reactive renewal); the verifier-side `exp` and `iat` rules moved to Common JWT Verification in section 12.\n\n**Section 12, Protocol Primitives** (was 13446 words, now 9213)\n\nReordered to what an implementer needs first: Identifiers, Metadata Documents, HTTP Message Signatures Profile, JWKS Discovery, AAuth Tokens, Requirement Responses, AAuth-Capabilities, Deferred Responses, Error Responses, Scopes, Account Binding, Token Revocation. Token Revocation is split into Revocation Request, Who Revokes What (table), Revocation Response, Revocation Cascade, and Presenting a Revoked Token.\n\n**Appendix C, Design Rationale**\n\nSix new entries under Protocol Mechanics hold the rationale removed from section 12: why `issuer` rather than `resource` in metadata, why these covered components, why `401` for every signature failure, why `account` is not `login_hint`, why a revocation has no \"not found\", why a PS reports nothing to the agent provider.\n\n**Checks**\n\n- Every explicit anchor from the previous text is still defined; every `(#ref)` in the document resolves.\n- Builds clean with mmark and xml2rfc.\n- Document History has an entry describing the restructure.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01JE3rMBe49BhquEmfsFnJdJ\n",
+      "createdAt": "2026-09-22T11:07:52Z",
+      "updatedAt": "2026-09-22T11:07:52Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "ff8eae334408c3427ea80a04c96f2be629024733",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "readability-restructure",
+      "headRefOid": "02ff4b12c972bec597c40998f4df87558f74c1a2",
+      "closedAt": null,
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
       "comments": [],
       "reviews": []
     }
