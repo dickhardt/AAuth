@@ -830,7 +830,7 @@ Two things are counted, against different keys, and they are not the same requir
 
 **The cap the resource enforces is per auth token.** It is the `budget` claim of the token presented, and (#overshoot) states the invariant: committed consumption plus outstanding reservations against *that token* MUST NOT exceed *its* granted `amount`. A resource needs no cross-token arithmetic to enforce a budget.
 
-**The ledger the resource keeps is per person.** The resource MUST aggregate consumption against the key `(iss, sub, aud)` of the auth token, which is what the consumption record (#budget-consumed) and the usage counters (#usage-counters) report. `(iss, sub)` identifies the person — `sub` is unique within its issuer, and values from different issuers are different people — and `aud` is the resource itself. This document introduces no new identifier.
+**The ledger the resource keeps is per person.** The resource MUST aggregate consumption against the key `(ps, sub, aud)` of the auth token, which is what the consumption record (#budget-consumed) and the usage counters (#usage-counters) report. `(ps, sub)` identifies the person: `sub` is minted by the person server named in `ps`, and values from different person servers are different people. `aud` is the resource itself. In three-party access `ps` equals `iss`. In four-party access `iss` is the AS, which did not mint `sub`, so a key on `iss` would let two person servers behind one AS collide; `ps` is the person server the AS verified sent the token request ([@!I-D.hardt-oauth-aauth-protocol], PS-to-AS Token Request). This document introduces no new identifier.
 
 The ledger is not a second ceiling. A resource MUST NOT refuse a request that fits its token's budget because a per-person total has reached some figure the resource inferred; no party told it such a figure, and the budgets it was handed are what it was authorized to honor. Holding a person's spending across concurrent tokens within bounds is the PS's job (#concurrency), because the PS is the party that issues them and the only one that knows the ceiling (#ps-decision).
 
@@ -840,9 +840,9 @@ The ledger's key is the person, not the agent and not the mission. An auth token
 
 ## The Billing Account {#billing-account}
 
-A resource that meters usually charges someone for it, and the party it charges is an account in its own systems. Nothing in a budget names that account. The aggregation key above is `(iss, sub, aud)`, and `sub` is directed per person server — it identifies a person at one PS and carries no meaning at the resource beyond what the resource has learned about it.
+A resource that meters usually charges someone for it, and the party it charges is an account in its own systems. Nothing in a budget names that account. The aggregation key above is `(ps, sub, aud)`, and `sub` is directed per person server — it identifies a person at one PS and carries no meaning at the resource beyond what the resource has learned about it.
 
-For most resources that is sufficient and no mechanism is needed. The base protocol keys a person's relationship with a resource on `(iss, sub)` precisely so it survives a change of agent, and a resource holding one account per person looks the account up from that pair. `tenant` names the person's organization and is not part of the identifier ([@!I-D.hardt-oauth-aauth-protocol], Organization Identification). Consumption then meters against the account the resource already had.
+For most resources that is sufficient and no mechanism is needed. The base protocol keys a person's relationship with a resource on the person server and `sub` precisely so it survives a change of agent, and a resource holding one account per person looks the account up from `(ps, sub)`. `tenant` names the person's organization and is not part of the identifier ([@!I-D.hardt-oauth-aauth-protocol], Organization Identification). Consumption then meters against the account the resource already had.
 
 Beyond that, two different questions arise, and they compose rather than substitute. The first is asked once per person; the second on every authorization.
 
@@ -867,7 +867,7 @@ None of this is specific to budgets, and this document defines no new mechanism 
 An agent may hold several concurrent auth tokens at the same resource — the `mission_s256` claim means concurrent missions produce concurrent tokens, each with its own budget, for up to an hour. Handling this is mandatory, not optional:
 
 - A resource MUST apply the reserve-commit-release invariant of (#overshoot) atomically per auth token, so that concurrent requests presenting the same token cannot together exceed its budget.
-- A resource MUST post consumption to the `(iss, sub, aud)` ledger (#aggregation) atomically, so that concurrent requests across different tokens do not lose or double-count against the record and counters.
+- A resource MUST post consumption to the `(ps, sub, aud)` ledger (#aggregation) atomically, so that concurrent requests across different tokens do not lose or double-count against the record and counters.
 - A PS SHOULD size per-token budgets so that their sum stays within whatever standing ceiling it holds for the person at that resource. This is the only place the cross-token total is enforced; (#settlement) is how an issuer keeps that sum exact as allocations expire.
 
 The bound on over-issuance is the auth token lifetime multiplied by the number of concurrent tokens. A PS that issues *n* concurrent tokens of *X* each has authorized up to *nX* for as long as an hour, regardless of any standing figure it intended to hold.
@@ -913,6 +913,10 @@ The body carries at most one **scope key**, naming a claim value the resource ha
 and one OPTIONAL member:
 
 - **`jkts`**: An array of JWK Thumbprints ([@!RFC7638]), each naming a signing key the resource has seen present an auth token. Asks for what each of those keys consumed (#per-key).
+
+An access server names the person server whose values it is asking about:
+
+- **`ps`**: The person server whose namespace the scope key belongs to. REQUIRED when the caller is an access server and the request carries a scope key, since the tokens an AS issues carry values from every person server that federates with it. A person server omits it; it is the caller.
 
 A request MUST carry a scope key or `jkts`, and MAY carry both. At most one scope key may appear. A request with more than one scope key, or with neither a scope key nor `jkts`, is an error (#usage-authorization).
 
@@ -1024,13 +1028,13 @@ It is RECOMMENDED rather than REQUIRED because the figures are decision context 
 
 ## Authorization and Errors {#usage-authorization}
 
-The `id` parameter of the `Signature-Key` header is the caller's server identifier, and its `dwk` names the metadata document that says which role is calling — `aauth-person.json` for a person server, `aauth-access.json` for an access server ([@!I-D.hardt-oauth-aauth-protocol], Keying Material). That identifier is what the response carries as `aud` (#usage-response). A caller is a person server or an access server. The resource MUST only answer for values that have appeared in auth tokens it accepted whose `iss` or `ps` claim names the caller: for a PS, the tokens it issued in three-party access and the tokens carrying it as `ps` in four-party access; for an AS, the tokens it issued. This applies to thumbprints in `jkts` as much as to scope keys. `sub` is directed per PS, so one person server cannot even name another's subjects; `tenant`, `mission_s256`, and thumbprints are not directed, and this check is what stops a third party from querying them.
+The `id` parameter of the `Signature-Key` header is the caller's server identifier, and its `dwk` names the metadata document that says which role is calling — `aauth-person.json` for a person server, `aauth-access.json` for an access server ([@!I-D.hardt-oauth-aauth-protocol], Keying Material). That identifier is what the response carries as `aud` (#usage-response). A caller is a person server or an access server. The resource MUST only answer for values that have appeared in auth tokens it accepted whose `iss` or `ps` claim names the caller: for a PS, the tokens it issued in three-party access and the tokens carrying it as `ps` in four-party access; for an AS, the tokens it issued, and for a scope key only those whose `ps` is the request's `ps`. This applies to thumbprints in `jkts` as much as to scope keys. `sub` is directed per PS, so one person server cannot even name another's subjects; `tenant`, `mission_s256`, and thumbprints are not directed, and this check is what stops a third party from querying them.
 
 An AS is entitled because it sizes allocations against a ceiling of its own (#narrowing-chain) and is bound by (#unreported-allocations) for them. An AS operated by the resource may take the same figures from the resource directly; the endpoint is for the AS that is not.
 
 A query for a scope key the resource does not recognize returns `200` with `usage` omitted; "never seen" and "nothing consumed" are deliberately indistinguishable, so that a query cannot be used to discover whether a person holds an account. Unrecognized thumbprints are handled differently and for a stated reason (#per-key).
 
-`invalid_request`, using the error response format of ([@!I-D.hardt-oauth-aauth-protocol]), is returned for a body carrying more than one scope key, carrying neither a scope key nor `jkts`, or carrying a malformed value.
+`invalid_request`, using the error response format of ([@!I-D.hardt-oauth-aauth-protocol]), is returned for a body carrying more than one scope key, carrying neither a scope key nor `jkts`, carrying a scope key from an access server without `ps`, or carrying a malformed value.
 
 A resource MAY rate-limit the endpoint, using the `RateLimit` fields ([@?I-D.ietf-httpapi-ratelimit-headers]) as on any endpoint. A PS SHOULD poll no faster than its decisions require.
 
