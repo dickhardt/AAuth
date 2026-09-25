@@ -13,7 +13,6 @@ name = "Internet-Draft"
 value = "draft-hardt-aauth-bootstrap-latest"
 stream = "IETF"
 
-date = 2026-05-06T00:00:00Z
 
 [[author]]
 initials = "D."
@@ -100,7 +99,7 @@ This document is part of the AAuth specification family. Source for this draft a
 
 # Introduction
 
-The AAuth Protocol [@!I-D.hardt-oauth-aauth-protocol] establishes that every agent has its own cryptographic identity — an agent identifier of the form `aauth:local@domain`, bound to a signing key, and attested by an agent token issued by an agent provider (AP). The protocol defines the agent token format and how agents present that identity to person servers (PSes), resources, and access servers (ASes). It does not specify how an agent comes to hold an agent token in the first place. That step is **bootstrap**, and it is the subject of this document.
+The AAuth Protocol [@!I-D.hardt-oauth-aauth-protocol] establishes that every agent has its own cryptographic identity — an agent identifier of the form `aauth:local@domain`, bound to a signing key, and attested by an agent token issued by an agent provider (AP). The protocol defines the agent token format and where the agent presents it: always to its person server (PS), which passes it to an access server (AS) when it federates, and to a resource only in agent identity and resource-managed access ([@!I-D.hardt-oauth-aauth-protocol], Keying Material). It does not specify how an agent comes to hold an agent token in the first place. That step is **bootstrap**, and it is the subject of this document.
 
 ## What Bootstrapping Is
 
@@ -111,7 +110,7 @@ After bootstrap the agent can participate in AAuth: it can sign HTTP messages pe
 ## What Bootstrapping Is Not
 
 - **Not normative protocol.** This document is informational. The AAuth Protocol does not mandate a specific bootstrap ceremony, and conformance does not depend on the patterns described here. APs are free to use other approaches that produce a valid agent token.
-- **Not the user-to-agent binding.** Binding an agent to a person is performed by the PS, lazily, on the agent's first interaction with the PS per the AAuth Protocol. Bootstrap produces an agent identity; the PS attaches that identity to a user.
+- **Not the user-to-agent binding.** Binding an agent to a person is performed by the PS, lazily, on the agent's first interaction with the PS ([@!I-D.hardt-oauth-aauth-protocol], Agent-Person Binding). Bootstrap produces an agent identity; the PS attaches that identity to a user.
 - **Not authorization.** Bootstrap conveys no scope, no resource permission, and no user identity claims. Those are obtained through the flows defined in the AAuth Protocol after bootstrap.
 - **Not one-size-fits-all.** Web, mobile, and self-hosted agents have different threat models and different platform primitives available to them. This document offers patterns appropriate to each, not a single prescribed ceremony.
 
@@ -135,7 +134,7 @@ This document is informational guidance and uses no BCP 14 keywords. Normative r
 Terms defined in [@!I-D.hardt-oauth-aauth-protocol] are used here with the same meaning. In particular:
 
 - **Agent Provider (AP)** — issues agent tokens.
-- **Agent token** — JWT signed by the AP, carrying `iss`, `sub`, `cnf.jwk`, optionally `ps`, and other claims.
+- **Agent token** — JWT signed by the AP, binding the agent identifier in `sub` to the key in `cnf.jwk`. It carries `ps` when the agent has a person server ([@!I-D.hardt-oauth-aauth-protocol], Agent Token Structure).
 - **Person Server (PS)** — represents the person; binds agents to a person on first interaction.
 
 This document additionally uses:
@@ -182,6 +181,8 @@ A self-hosted agent runs under a domain the user controls. The agent publishes i
 
 Self-hosted agents act as their own AP — they self-issue agent tokens signed by the JWKS-published key. There is no separate AP to refresh against, so the two-key pattern does not apply: the JWKS-published key serves both as the AP signing key (signing self-issued agent tokens) and as the key whose public part appears in `agent_token.cnf.jwk` (signing HTTP messages). Because the trust anchor is a key the user controls and publishes, no platform attestation step exists. Other parties verify the agent token signature against the published JWKS, exactly as they would for any other AP.
 
+A resource that calls downstream resources for its callers is self-hosted in this sense. The protocol requires it to be its own AP: it publishes `/.well-known/aauth-agent.json` on its own origin with the same `issuer` as its resource metadata, and signs downstream requests with an agent token it issued to itself ([@!I-D.hardt-oauth-aauth-protocol], Intermediary Agent Identity). That agent token acts for every person whose requests the resource serves, so it is not bound to one person.
+
 ### Many Agents, One Operator {#many-agents-one-operator}
 
 The single-key description above assumes one agent per domain. The common self-hosted shape is one operator running several distinct agents under one domain — a planner, a researcher, one agent per lane of work — each with its own identity and its own signing key. The layout is:
@@ -190,7 +191,7 @@ The single-key description above assumes one agent per domain. The common self-h
 - **One agent token per agent, each with its own `sub` and its own `cnf` key.** The AP self-issues a token for each agent, naming it `aauth:planner@ops.example`, `aauth:research@ops.example`, and so on, and binding each to a key generated where that agent runs.
 - **Agent keys are not published.** An agent's key appears in exactly one place: the `cnf.jwk` of its agent token. Nothing about an agent key goes in the JWKS, and no party ever fetches an agent key; verifiers take it from the token, as they do for every AP. A reading of "each agent holds a signing key published at a well-known URL" is the one-agent case misapplied.
 
-This is the two-key pattern of (#per-platform-keys) in another shape. The AP key is the domain's durable key: it never signs an HTTP message to a PS, resource, or AS, only agent tokens. Each agent key is that agent's ephemeral key, and it can be rotated as often as the operator likes, because rotating it costs one self-issued token.
+This is the two-key pattern of (#per-platform-keys) in another shape. The AP key is the domain's durable key: it signs agent tokens and the revocations the AP sends to a PS under the `jwks_uri` scheme ([@!I-D.hardt-oauth-aauth-protocol], Keying Material), never an agent's request. Each agent key is that agent's ephemeral key, and it can be rotated as often as the operator likes, because rotating it costs one self-issued token.
 
 Custody follows the blast radius. The AP key belongs in hardware (Secure Enclave, TPM, StrongBox) or a keystore that only the token-issuing process can reach; compromise of it mints identities for the whole domain. An agent key belongs with the agent — in a per-lane signing proxy that signs on the agent process's behalf, in a per-process keystore, or in the process's own memory when the token is short-lived — and compromise of it is contained to that one `sub` for the token's lifetime. An operator that keeps every agent key in one place has collapsed the layout back to a single key and should treat that place as it would treat the AP key.
 
@@ -249,7 +250,7 @@ A practical rule of thumb:
 
 The agent token's `sub` is an `aauth:local@domain` identifier. The `domain` part is the AP. The `local` part identifies the agent install at the AP — it must be stable for the lifetime of the install so PSes and other parties can recognize a returning agent.
 
-APs are free to choose any opaque scheme for the local part: a random string assigned at enrollment, a deterministic derivation from the durable key's thumbprint, a sequential identifier, or a human-readable handle. When deriving from a thumbprint, use the durable key's thumbprint — the ephemeral key rotates on each refresh and is not a stable identifier. Receivers treat the identifier as opaque.
+APs are free to choose any opaque scheme for the local part: a random string assigned at enrollment, a deterministic derivation from the durable key's thumbprint, a sequential identifier, or a human-readable handle. When deriving from a thumbprint, use the durable key's thumbprint — the ephemeral key rotates on each refresh and is not a stable identifier. Whatever the scheme, the local part must meet the protocol's character and length rules, which allow uppercase letters and reserve `+` for sub-agents ([@!I-D.hardt-oauth-aauth-protocol], Agent Identifiers); a base64url-encoded thumbprint meets them as it stands. Receivers treat the identifier as opaque and compare it exactly, without case-folding.
 
 ## Per-Install Identity {#per-install-identity}
 
@@ -285,7 +286,9 @@ JWT payload:
 
 # Refresh Patterns {#refresh-patterns}
 
-Agent token lifetime is the AP's policy re-evaluation cadence — every refresh is the AP's chance to re-check device posture, attestation freshness, and account status before issuing a new token. A typical lifetime is **1 hour**, matching common practice for proof-of-possession-bound access tokens. APs may use shorter lifetimes (e.g., 5–15 minutes) for higher-assurance deployments where attestation must be refreshed often, or longer lifetimes up to the 24 hours the AAuth Protocol recommends as the maximum, for low-policy-churn deployments where refresh chattiness is undesirable.
+Agent token lifetime is the AP's policy re-evaluation cadence — every refresh is the AP's chance to re-check device posture, attestation freshness, and account status before issuing a new token. A typical lifetime is **1 hour**, matching common practice for proof-of-possession-bound access tokens. APs may use shorter lifetimes (e.g., 15–30 minutes) for higher-assurance deployments where attestation must be refreshed often, or longer lifetimes up to the 24 hours the AAuth Protocol recommends as the maximum, for low-policy-churn deployments where refresh chattiness is undesirable.
+
+The agent refreshes its agent token when fewer than five minutes remain, then the person tokens and auth tokens it obtained with it, which expire no later than the agent token ([@!I-D.hardt-oauth-aauth-protocol], Expiry and the Refresh Margin). A lifetime has to leave room for that margin: an agent token of five minutes or less is inside it when issued.
 
 ## Two-Key Refresh
 
@@ -311,7 +314,7 @@ Signature-Key: sig=jkt-jwt;jwt="eyJhbGc..."
 {}
 ```
 
-The `jwt` parameter value is a JWT signed by the durable key with payload including the ephemeral public key (typically as `cnf.jwk`) and a `jti` for replay protection. The HTTP signature is produced by the ephemeral key. The AP correlates the two keys via the naming JWT's payload.
+The `jwt` parameter value is a JWT signed by the durable key, carrying the ephemeral public key in `cnf.jwk` along with the other claims the `jkt-jwt` scheme requires [@!I-D.hardt-httpbis-signature-key], and a `jti` for replay protection. The HTTP signature is produced by the ephemeral key. The AP correlates the two keys via the naming JWT's payload.
 
 ## Single-Key Refresh
 
@@ -327,11 +330,11 @@ Self-hosted agents self-issue agent tokens. There is no separate refresh ceremon
 
 ## Key Rotation vs Token Refresh
 
-Refresh issues a new agent token bound to a fresh ephemeral key (or, in the single-key pattern, to the same durable key). **Durable key rotation** generates a new durable key and is a separate, rare event. Under the per-install identity model (#per-install-identity), a new durable key is a new agent — the PS treats it as new on first interaction, and any cross-device or cross-rotation continuity is handled at the PS by the user.
+Refresh issues a new agent token bound to a fresh ephemeral key (or, in the single-key pattern, to the same durable key). The agent replaces its person tokens and auth tokens after every refresh in either pattern (#refresh-patterns), so the new ephemeral key adds no work. **Durable key rotation** generates a new durable key and is a separate, rare event. Under the per-install identity model (#per-install-identity), a new durable key is a new agent — the PS treats it as new on first interaction, and any cross-device or cross-rotation continuity is handled at the PS by the user.
 
 # Sub-Agent Tokens {#sub-agent-tokens}
 
-The AAuth Protocol represents a sub-agent as an agent whose token carries a `parent_agent` claim naming its parent, with a `local` part formed from the parent's followed by `+` and a discriminator, its own `cnf` key, and no sub-agents of its own; a PS rejects token requests signed by a sub-agent, and the parent obtains person tokens and auth tokens on its behalf ([@!I-D.hardt-oauth-aauth-protocol], Sub-Agents). The protocol leaves how a sub-agent comes to hold that token to this document. Two cases.
+The AAuth Protocol represents a sub-agent as an agent whose token carries a `parent_agent` claim naming its parent, with a `local` part formed from the parent's followed by `+` and a discriminator, its own `cnf` key, the same `iss` as its parent's token, and no sub-agents of its own; a PS rejects token requests signed by a sub-agent, and the parent obtains person tokens and auth tokens on its behalf ([@!I-D.hardt-oauth-aauth-protocol], Sub-Agents). The protocol leaves how a sub-agent comes to hold that token to this document. Two cases.
 
 ## Self-Hosted Sub-Agents
 
@@ -357,16 +360,16 @@ The operator's self-hosted AP is the parent's AP, and it issues the sub-agent to
 - `ps` is copied from the parent's token. A sub-agent's person is its parent's person.
 - `exp` should not exceed the parent's current agent token `exp`. A sub-agent that outlives its parent's token has nothing to be a sub-agent of; issue for the task's expected duration, and re-issue through the same process if the task runs longer.
 
-The parent plays no protocol role in issuance here. The operator spawns the sub-agent, and the process that holds the AP key mints its token. What the parent does afterwards — obtain a person token for the sub-agent with `subagent_token`, pass it to the sub-agent, and later present the sub-agent's resource token with its own — is defined by the protocol.
+The parent plays no protocol role in issuance here. The operator spawns the sub-agent, and the process that holds the AP key mints its token. What the parent does afterwards — obtain a person token for the sub-agent with `subagent_token`, pass it to the sub-agent, and later exchange the resource token the sub-agent receives for an auth token — is defined by the protocol ([@!I-D.hardt-oauth-aauth-protocol], Parent-Mediated Authorization).
 
 ## Sub-Agents Under a Hosted AP
 
-When the parent's tokens come from an AP the operator does not run, the parent requests the sub-agent's token from that AP. This document defines no endpoint for it; the shape below is what any AP offering sub-agent issuance needs to cover, and an AP publishes how it does so in its own documentation.
+When the parent's tokens come from an AP the operator does not run, the parent requests the sub-agent's token from that AP; no other AP can issue it, since a PS rejects a sub-agent token whose `iss` differs from its parent's ([@!I-D.hardt-oauth-aauth-protocol], Sub-Agent Identity). This document defines no endpoint for it; the shape below is what any AP offering sub-agent issuance needs to cover, and an AP publishes how it does so in its own documentation.
 
 1. The sub-agent generates its key pair where it will run, and gives its public key to the parent. Where the parent spawns the sub-agent in a runtime it controls, it may generate the pair on the sub-agent's behalf and hand over the private key at spawn; the point is that the private key ends up with the sub-agent and nowhere else.
 2. The parent sends a signed request to the AP, signing with its own ephemeral key and presenting its own agent token under the `jwt` scheme ([@!I-D.hardt-httpbis-signature-key]). The body carries the sub-agent's public key and, if the parent wants to name it, a discriminator.
-3. The AP verifies the parent's signature and token, checks that the token carries no `parent_agent` (a sub-agent may not have sub-agents), and applies its policy: how many sub-agents this parent may have live, what lifetime they get, whether this parent may spawn at all.
-4. The AP issues the sub-agent token: `sub` formed from the parent's `local` part and the discriminator (its own if the parent offered none, or if the parent's collides), `parent_agent` naming the parent, `ps` copied from the parent's token, `cnf.jwk` the sub-agent's public key, `exp` no later than the parent's token. The AP returns it to the parent, which passes it to the sub-agent.
+3. The AP verifies the parent's signature and token ([@!I-D.hardt-oauth-aauth-protocol], Agent Token Verification), checks that the token carries no `parent_agent` (a sub-agent may not have sub-agents), and applies its policy: how many sub-agents this parent may have live, what lifetime they get, whether this parent may spawn at all.
+4. The AP issues the sub-agent token: `iss` the same as in the parent's token, `sub` formed from the parent's `local` part and the discriminator (its own if the parent offered none, or if the parent's collides), `parent_agent` naming the parent, `ps` copied from the parent's token, `cnf.jwk` the sub-agent's public key, `exp` no later than the parent's token. The AP returns it to the parent, which passes it to the sub-agent.
 
 The parent's durable key is not involved. Sub-agent issuance is a request the parent makes with its current ephemeral key and token, the same credentials it uses for every other signed request, and it needs nothing from the enrollment ceremony. Sub-agent tokens are not refreshed by the sub-agent: a sub-agent has no enrollment with the AP and no durable key. A sub-agent that needs a fresh token gets one through the parent, by the same request.
 
@@ -409,15 +412,17 @@ With several agents under the domain (#many-agents-one-operator), step 1 produce
 
 ## Trust in the AP
 
-Every AP-attested claim in the agent token is only as trustworthy as the AP that signed the token. Receivers should apply policy proportional to their trust in the AP. An unfamiliar AP making strong attestation claims may warrant additional caution at the PS consent screen.
+Every AP-attested claim in the agent token is only as trustworthy as the AP that signed the token. Receivers should apply policy proportional to their trust in the AP. The receivers are the PS and, when the PS federates, the AS; a resource reads the agent token only in agent identity and resource-managed access ([@!I-D.hardt-oauth-aauth-protocol], Why No Agent Identifier Reaches a Resource). An unfamiliar AP making strong attestation claims may warrant additional caution at the PS consent screen.
 
 ## Ephemeral Key Compromise
 
-An ephemeral-key leak — via memory disclosure, in-page attacker, side channel, or similar — exposes only the signatures the agent makes during the current agent token's lifetime. At the recommended 1-hour lifetime, the blast radius is bounded to roughly that window before natural expiry forces replacement. Agents that detect compromise can decline to refresh, aging out the ephemeral key without explicit revocation. This bounding is the primary security argument for the two-key pattern (#per-platform-keys).
+An ephemeral-key leak — via memory disclosure, in-page attacker, side channel, or similar — exposes only the signatures the agent makes during the current agent token's lifetime. At the recommended 1-hour lifetime, the blast radius is bounded to roughly that window before natural expiry forces replacement. The bound holds for the person tokens and auth tokens obtained with the key, since none expires later than the agent token (#refresh-patterns). Agents that detect compromise can decline to refresh, aging out the ephemeral key without explicit revocation. This bounding is the primary security argument for the two-key pattern (#per-platform-keys).
 
 ## Durable Key Compromise
 
 Compromise of the durable key compromises the install's agent identity for the durable key's lifetime. The durable key signs only at refresh and is presented only to the AP, so its attack surface is much narrower than the ephemeral key's — but a successful compromise lets the attacker mint refresh requests indefinitely until the AP revokes the enrollment. APs should detect anomalous refresh patterns and provide a way for users to revoke a durable enrollment.
+
+Revoking the enrollment stops further agent tokens but not the current one. The AP ends the current one by revoking it at the agent's PS, which then revokes every person token and auth token it issued to the agent's `sub` ([@!I-D.hardt-oauth-aauth-protocol], Token Revocation). A resource that accepted the agent token directly receives no revocation and honors the token until its `exp`.
 
 A non-extractable WebCrypto durable key cannot be exfiltrated by page-level attackers, but it can be used by them while they hold execution in the page. APs should pair WebCrypto-only enrollment with normal web hygiene (CSP, subresource integrity, dependency review) and should not treat the non-extractable property as a substitute for keeping the page's JavaScript clean. A hardware-backed durable key (Secure Enclave, StrongBox, TPM) cannot be exfiltrated at all, only used in-place — narrowing the threat to malicious code running in the agent application itself.
 
@@ -435,11 +440,11 @@ Where the domain runs several agents (#many-agents-one-operator), the two kinds 
 
 ## Identifier Stability and User Tracking
 
-An agent's `sub` is the same value at every PS the agent contacts, not a per-PS pairwise identifier. A stable `sub` lets each PS reliably re-identify the agent across sessions — that is the intended property — but it also means colluding PSes (or any party with cross-PS telemetry) can correlate the agent's activity across them. Under per-install identity (#per-install-identity), durable-key rotation produces a new `sub`, giving users a natural "fresh start" capability.
+An agent's `sub` is not a pairwise identifier. It is the same value at every party the agent token reaches: the agent's PS, any AS the PS federates with, and any resource the agent calls in agent identity or resource-managed access. A stable `sub` lets the PS reliably re-identify the agent across sessions — that is the intended property — but because an agent acts for one person, it is also a pseudonym for that person which any two of those resources can correlate. In the modes where the agent presents a person token, a resource sees a per-resource identifier instead ([@!I-D.hardt-oauth-aauth-protocol], Directed Identifiers). Under per-install identity (#per-install-identity), durable-key rotation produces a new `sub`, giving users a natural "fresh start" capability.
 
 ## AP Visibility Into Agent Activity
 
-The AP that issued an agent token does not see the agent's subsequent traffic to PSes, resources, or ASes (they verify against the AP's published JWKS, not by calling the AP). The AP's view is limited to enrollment and refresh requests. APs should document their data retention practices for those events.
+The AP that issued an agent token does not see the agent's subsequent traffic to PSes, resources, or ASes (they verify against the AP's published JWKS, not by calling the AP). The AP's view is limited to the requests made to it, such as enrollment, refresh, and sub-agent issuance. When the AP revokes an agent token, the PS reports nothing of what it revoked downstream ([@!I-D.hardt-oauth-aauth-protocol], Why a PS Reports Nothing to the Agent Provider). APs should document their data retention practices for those events.
 
 # IANA Considerations
 
@@ -463,6 +468,16 @@ TBD
   - Added Sub-Agent Tokens: the self-hosted case, where the operator's AP self-issues the sub-agent token with `parent_agent`, a `+` discriminator, the parent's `ps`, and a fresh `cnf` key; and the hosted-AP case, where the parent requests it with its own ephemeral key and token, and the AP checks the parent is top-level, applies policy, and returns the token. The protocol deferred acquisition here and nothing covered it.
   - Referenced the AAuth Protocol by its datatracker document URL, which tracks the latest revision.
   - Algorithm identifiers: `Ed25519` rather than the deprecated polymorphic `EdDSA`; the `cnf.jwk` example carries the `alg` member now required of every conveyed key.
+  - The Introduction, Trust in the AP, and Identifier Stability name where the agent token goes: always to the PS, to an AS through the PS, and to a resource only in agent identity and resource-managed access. An agent has one PS, so the `sub` correlation concern is at resources, not across PSes.
+  - The agent token carries `ps` whenever the agent has a person server.
+  - A resource that calls downstream is its own AP and self-issues its agent token, which is not bound to one person.
+  - The self-hosted AP key also signs the AP's revocations, under the `jwks_uri` scheme.
+  - The agent identifier's local part follows the protocol's rules, which allow uppercase, and is compared exactly.
+  - Refresh: the agent refreshes with five minutes left, then replaces its person tokens and auth tokens, so an agent-token lifetime must exceed that margin. The high-assurance example is 15–30 minutes, not 5–15.
+  - The `jkt-jwt` naming JWT carries the ephemeral key in `cnf.jwk`, which the scheme requires.
+  - A sub-agent token's `iss` equals its parent's, so only the parent's AP can issue it.
+  - An AP revokes a compromised agent's current token at the PS, which revokes what it issued to that agent's `sub`. The ephemeral-key bound covers the person tokens and auth tokens obtained with the key. The PS reports nothing of a revocation back to the AP.
+  - Protocol rules are cited by section name.
 
 - draft-hardt-aauth-bootstrap-01
   - Major rewrite. The document is now informational guidance for AP implementers. The previously-normative PS bootstrap protocol (PS `/bootstrap` endpoint, `bootstrap_token`, bootstrap announcement, agent server [now Agent Provider] `bootstrap_endpoint` / `refresh_endpoint` / `webauthn_endpoint`) has been removed. PS-side binding to a person now happens lazily on the agent's first interaction with the PS per the AAuth Protocol; the bootstrap document covers AP-side enrollment patterns only.
