@@ -12,8 +12,6 @@ name = "Internet-Draft"
 value = "draft-hardt-aauth-r3-latest"
 stream = "IETF"
 
-date = 2026-07-11T00:00:00Z
-
 [[author]]
 initials = "D."
 surname = "Hardt"
@@ -34,7 +32,7 @@ organization = "Hellō"
   </front>
 </reference>
 
-<reference anchor="I-D.hardt-aauth-events" target="https://github.com/dickhardt/AAuth">
+<reference anchor="I-D.hardt-aauth-events" target="https://datatracker.ietf.org/doc/draft-hardt-aauth-events">
   <front>
     <title>AAuth Events</title>
     <author initials="D." surname="Hardt" fullname="Dick Hardt">
@@ -44,7 +42,7 @@ organization = "Hellō"
   </front>
 </reference>
 
-<reference anchor="I-D.hardt-aauth-budgets" target="https://github.com/dickhardt/AAuth">
+<reference anchor="I-D.hardt-aauth-budgets" target="https://datatracker.ietf.org/doc/draft-hardt-aauth-budgets">
   <front>
     <title>AAuth Budgets</title>
     <author initials="D." surname="Hardt" fullname="Dick Hardt">
@@ -300,7 +298,7 @@ Annotations carry a credential requirement, not a consequence. What an operation
 
 ## Access Mode Annotation {#access-mode-annotation}
 
-The access mode annotation carries one of the `access_mode` values defined in AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]) and extended by (#resource-metadata-extensions):
+The access mode annotation carries one of the `access_mode` values defined in AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol], Resource Metadata) and extended by (#resource-metadata-extensions):
 
 | Value | What the agent presents |
 |---|---|
@@ -311,7 +309,7 @@ The access mode annotation carries one of the `access_mode` values defined in AA
 
 `session-token` MUST NOT appear in an annotation. A resource that manages its own authorization does so for the whole resource, and says so in `access_mode`.
 
-The first three values are ordered by increasing requirement, and a credential satisfying a later one satisfies an earlier one. An agent holding an auth token for a resource presents it on every request there, and a resource MUST have verified a person token before issuing the resource token that an auth token is obtained with ([@!I-D.hardt-oauth-aauth-protocol]). An agent holding an auth token may therefore call that resource's `person-token` and `agent-token` operations without obtaining anything further.
+The first three values are ordered by increasing requirement, and a credential satisfying a later one satisfies an earlier one. An agent holding an auth token for a resource presents it on every request there ([@!I-D.hardt-oauth-aauth-protocol], Auth Token Usage), and a resource issues the resource token that an auth token is obtained with only after verifying a person token or an earlier auth token ([@!I-D.hardt-oauth-aauth-protocol], Resource Token), so every auth token follows from a person token the resource verified. An agent holding an auth token may therefore call that resource's `person-token` and `agent-token` operations without obtaining anything further.
 
 `per-call` is not a fourth rung on that ladder. It says that no credential held in advance is sufficient: the resource challenges every invocation, builds a proposal from that call's parameters, and the grant that results is consumed by that one call. An agent planning unattended work uses `per-call` to identify the operations that will block on a person.
 
@@ -329,7 +327,7 @@ A budget is carried in the `budget` claim of an auth token, so an annotated oper
 
 **An annotation replaces the default rather than intersecting with it.** A `person-token` annotation on a resource declaring `access_mode: auth-token` lowers the requirement for that operation. This is what lets a metered resource serve balance and history calls without an authorization round trip.
 
-**Annotations are advisory.** As with `access_mode` itself ([@!I-D.hardt-oauth-aauth-protocol]), a resource MAY return any `AAuth-Requirement` at runtime regardless of what it published. An agent MUST be prepared for a `401` on any operation, including one annotated as needing no more than the agent already holds. Annotations let an agent plan; the runtime requirement is authoritative.
+**Annotations are advisory.** As with `access_mode` itself ([@!I-D.hardt-oauth-aauth-protocol], Resource Metadata), a resource MAY return any `AAuth-Requirement` at runtime regardless of what it published. An agent MUST be prepared for any operation to answer `401` or `202` with an `AAuth-Requirement`, including one annotated as needing no more than the agent already holds. Annotations let an agent plan; the runtime requirement is authoritative.
 
 **Annotations are not an enforcement surface.** A resource enforces `r3_granted` and `r3_per_call` from the auth token (#resource-enforcement). An annotation is a published expectation about what an operation needs, and a resource MUST NOT rely on an agent having read one.
 
@@ -388,7 +386,7 @@ R3 extends the authorization endpoint defined in AAuth Protocol ([@!I-D.hardt-oa
 
 ## Request
 
-The agent sends `r3_operations` in the authorization endpoint request, presenting a person token in `Signature-Key` as the protocol requires there ([@!I-D.hardt-oauth-aauth-protocol]):
+The agent sends `r3_operations` in the authorization endpoint request, presenting a person token in `Signature-Key` as the protocol requires there ([@!I-D.hardt-oauth-aauth-protocol], Authorization Endpoint):
 
 ```http
 POST /authorize HTTP/1.1
@@ -470,7 +468,7 @@ The document MUST be served over HTTPS. The resource MUST require a valid HTTP M
 
 **`operations`** (REQUIRED). An array of operations covered by this R3 document, using the vocabulary-specific structure defined in (#mcp-vocabulary) through (#odata-vocabulary). This is the same format used in the agent's `r3_operations` request and in the auth token's `r3_granted` and `r3_per_call` claims.
 
-**`account`** (OPTIONAL). Present when the authorization endpoint request carried an `account` parameter ([@!I-D.hardt-oauth-aauth-protocol]), carrying that same value. It identifies which account at the resource this authorization covers.
+**`account`** (OPTIONAL). Present when the authorization endpoint request carried an `account` parameter ([@!I-D.hardt-oauth-aauth-protocol], Account Binding), carrying that same value. It identifies which account at the resource this authorization covers.
 
 When `account` is present, the `display` section SHOULD name the account in terms the person recognises. The value itself is an identifier in the resource's namespace and may be opaque — a numeric company id, a workspace key — so a consent screen rendering it verbatim tells the person nothing about which of their accounts is being authorized. The resource holds the human-readable name and `display` is where it belongs; a PS renders `display` and is not expected to interpret `account`.
 
@@ -499,7 +497,7 @@ R3 extends the resource token defined in AAuth Protocol ([@!I-D.hardt-oauth-aaut
 The base claims are those of Resource Token Structure in AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]) and are not restated here. Note that `aud` is the PS URL in three-party access and the AS URL in four-party access, and that on a per-call challenge `presented_jti` names the auth token the request carried.
 
 R3 extension claims:
-- **`r3_uri`** (REQUIRED for R3): The URI where the AS can fetch the R3 document. The AS authenticates itself using an HTTP Message Signature.
+- **`r3_uri`** (REQUIRED for R3): The URI where the AS and the PS fetch the R3 document, with a signed request (#r3-document-access-restriction).
 - **`r3_s256`** (REQUIRED for R3): The SHA-256 hash of the R3 document at `r3_uri`, base64url-encoded without padding.
 
 ```json
@@ -533,7 +531,7 @@ Resource tokens MAY include both `scope` (as defined in AAuth Protocol ([@!I-D.h
 
 Both the PS and the AS fetch R3 documents, but for different purposes:
 
-- **The PS** fetches R3 to present the `display` section to the user during consent — summary, implications, data accessed, irreversibility. The PS uses this information to determine whether the request fits the mission scope and to obtain informed user consent.
+- **The PS** fetches R3 to present the `display` section to the user during consent — summary, implications, data accessed, irreversibility. The PS uses this information to determine whether the request fits the mission scope and to obtain informed user consent. `display` is resource-asserted content, which the PS visually distinguishes from the agent's `justification` ([@!I-D.hardt-oauth-aauth-protocol], Consent Presentation).
 - **The AS** fetches R3 to evaluate `operations` for policy decisions and to populate `r3_granted` and `r3_per_call` in the auth token.
 
 Both independently verify `r3_s256` against the fetched document. Because R3 documents are content-addressed, both can cache aggressively by hash.
@@ -542,16 +540,14 @@ Both independently verify `r3_s256` against the fetched document. Because R3 doc
 
 When the AS receives a resource token containing `r3_uri` and `r3_s256`, it MUST:
 
-1. Validate the resource token signature per AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]).
+1. Verify the resource token, and the `presented_token` sent with it, per ([@!I-D.hardt-oauth-aauth-protocol], Resource Token Verification).
 2. Fetch the R3 document at `r3_uri`. The AS MAY use a cached copy if the cache entry was stored with the same `r3_s256` value.
 3. Compute the SHA-256 hash of the bytes received and compare it to `r3_s256`. If the hashes do not match, the AS MUST reject the resource token.
 4. Record `r3_uri` and `r3_s256` in its audit log alongside the token issuance event, the timestamp, `ps` and `sub` from the resource token, `agent_jkt` from the resource token, and the agent identifier.
 5. Use the `operations` section for policy evaluation.
 6. Include `r3_uri`, `r3_s256`, `r3_granted`, and (if applicable) `r3_per_call` in the issued auth token.
 
-The agent identifier in step 4 does not come from the resource token. No token a resource issues carries one ([@!I-D.hardt-oauth-aauth-protocol]): the resource token binds to the agent's key through `agent_jkt` and names the person through `ps` and `sub`. The AS takes the agent identifier from the `sub` of the `agent_token`, which the PS is REQUIRED to send alongside the resource token on the PS-to-AS token request. Where the PS also sends a `subagent_token`, that token's `sub` is the agent the auth token is bound to and is the identifier the AS records; the `agent_token`'s `sub` is its parent, and an AS that distinguishes them SHOULD record both.
-
-An AS reached any other way than a PS-to-AS token request has no agent token and therefore no agent identifier. It can still record `agent_jkt`, which is what a later presentation of the auth token is checked against, but it MUST NOT infer an agent identity it was not given.
+The agent identifier in step 4 does not come from the resource token. No token a resource issues carries one ([@!I-D.hardt-oauth-aauth-protocol], Why No Agent Identifier Reaches a Resource): the resource token binds to the agent's key through `agent_jkt` and names the person through `ps` and `sub`. The AS takes the agent identifier from the `sub` of the `agent_token`, which the PS is REQUIRED to send alongside the resource token ([@!I-D.hardt-oauth-aauth-protocol], PS-to-AS Token Request). The PS is the only caller of an AS token endpoint ([@!I-D.hardt-oauth-aauth-protocol], PS-AS Federation), so the AS always has one. Where the PS also sends a `subagent_token`, that token's `sub` is the agent the auth token is bound to and is the identifier the AS records; the `agent_token`'s `sub` is its parent, and an AS that distinguishes them SHOULD record both.
 
 ## Caching
 
@@ -626,7 +622,7 @@ The resource matches each incoming API call against the auth token claims:
 
 No token introspection or R3 document fetch is needed at enforcement time. The resource uses the vocabulary it already understands.
 
-When `r3_operations` was not used (the agent received the resource token via a 401 rather than the authorization endpoint), the AS populates `r3_granted` and `r3_per_call` based on the operations defined in the R3 document and its own policy. The AS decides which operations to grant outright and which to make per-call.
+When `r3_operations` was not used (the agent received the resource token in a challenge rather than from the authorization endpoint), the AS populates `r3_granted` and `r3_per_call` based on the operations defined in the R3 document and its own policy. The AS decides which operations to grant outright and which to make per-call.
 
 # Per-Call Proposals {#per-call-proposals}
 
@@ -670,10 +666,10 @@ Its members are resource-defined. They describe the result in terms the AS can e
 
 ## Flow {#per-call-flow}
 
-1. **Per-call challenge.** The agent invokes an `r3_per_call` operation. The resource builds the proposal, persists it keyed by its `r3_s256`, and returns `AAuth-Requirement` with a resource token whose `r3_uri`/`r3_s256` reference the proposal — either as a `401` the agent retries, or as a `202 Accepted` deferred delivery that holds the invocation ([@!I-D.hardt-oauth-aauth-protocol]). A resource that can hold the invocation SHOULD use `202`: the parameters never leave its hands, so the verification in step 3 disappears and the agent never reconstructs the call. The token carries only the reference, not the parameters.
-2. **Approval.** The AS fetches the proposal and evaluates `parameters` per policy; the PS renders `display` for user consent. On approval, the AS issues a per-call auth token that echoes the proposal's `r3_uri`/`r3_s256` and lists the now-approved operation in `r3_granted`.
+1. **Per-call challenge.** The agent invokes an `r3_per_call` operation. The resource builds the proposal, persists it keyed by its `r3_s256`, and returns `AAuth-Requirement` with a resource token whose `r3_uri`/`r3_s256` reference the proposal — either as a `401` the agent retries, or as a `202 Accepted` deferred delivery that holds the invocation ([@!I-D.hardt-oauth-aauth-protocol], Deferred Delivery). A resource that can hold the invocation SHOULD use `202`: the parameters never leave its hands, so the verification in step 3 disappears and the agent never reconstructs the call. The token carries only the reference, not the parameters.
+2. **Approval.** The agent sends the resource token to its PS as for any challenge, with the auth token it presented on the call as `presented_token` ([@!I-D.hardt-oauth-aauth-protocol], Auth Token Request). The AS fetches the proposal and evaluates `parameters` per policy; the PS renders `display` for user consent. On approval, the AS issues a per-call auth token that echoes the proposal's `r3_uri`/`r3_s256` and lists the now-approved operation in `r3_granted`. It expires no later than the auth token presented on the call ([@!I-D.hardt-oauth-aauth-protocol], Auth Token Structure).
 3. **Enforced completion.** Under `202`, the resource executes the held call when a valid per-call auth token arrives at the pending URL; there are no parameters to verify, because the agent never re-sends the call. Under `401`, the agent retries the actual call with the per-call auth token, and the resource recovers the proposal from its store via `r3_s256` and MUST verify that the agent's actual parameters match the approved proposal: inline parameter values MUST be compared structurally (JSON value equality — member order and insignificant whitespace do not affect the result), and for any parameter represented as a digest the resource MUST verify that `BASE64URL(SHA-256(presented-value))` equals the stored `s256`, so the agent MUST present those values byte-identically. If anything differs, the resource MUST reject the call. An approval to email one recipient cannot be replayed against another.
-4. **Single use.** The grant is consumed by the call it approved, on either delivery. A resource MUST NOT execute more than one invocation under one per-call auth token: under `202`, completion consumes the pending record; under `401`, the resource MUST mark the stored proposal consumed when it executes the call. A repeated presentation of the same per-call auth token is answered from the retained result, keyed by the auth token's `jti`, per the Deferred Delivery rules of AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]).
+4. **Single use.** The grant is consumed by the call it approved, on either delivery. A resource MUST NOT execute more than one invocation under one per-call auth token: under `202`, completion consumes the pending record; under `401`, the resource MUST mark the stored proposal consumed when it executes the call. A repeated presentation of the same per-call auth token is answered from the retained result, keyed by the auth token's `jti`, per the Deferred Delivery rules of AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]). Under `202`, the pending URL answers from that record, not with `410 Gone`, until the retention ends ([@!I-D.hardt-oauth-aauth-protocol], Pending URL Security).
 
 ## Large and Sensitive Payloads {#large-and-sensitive-payloads}
 
@@ -722,10 +718,10 @@ A call whose execution is metered or billed is not a candidate for release gatin
 
 ## R3 Document Access Restriction {#r3-document-access-restriction}
 
-A party fetching `r3_uri` MUST authenticate itself with an HTTP Message Signature as defined in the AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]). The resource MUST reject any request that is not signed by a party entitled to that document. Two parties are:
+A party fetching `r3_uri` MUST sign the request with an HTTP Message Signature as a server in its own right, under the `jwks_uri` scheme with `id` set to its `issuer` ([@!I-D.hardt-oauth-aauth-protocol], Keying Material). The resource MUST verify the signature and MUST reject any request whose signer, identified by `id`, is not a party entitled to that document. Two parties are:
 
 - the AS named in the `aud` of a resource token carrying that `r3_uri`; and
-- the PS that issued the person token the resource verified before issuing that resource token, which is the `ps` claim of the resource token itself ([@!I-D.hardt-oauth-aauth-protocol]).
+- the PS named in the `ps` claim of that resource token: the issuer of the person token the resource verified before issuing it, or on a step-up or per-call challenge the `ps` of the auth token it verified ([@!I-D.hardt-oauth-aauth-protocol], Resource Token Structure).
 
 In three-party access these are the same party — `aud` is the PS. In four-party access both fetch, and for different reasons: the AS reads `operations` to evaluate policy, the PS reads `display` to render consent (#r3-processing). Any other signer MUST be rejected.
 
@@ -759,12 +755,12 @@ Resources MUST enforce `r3_granted` and `r3_per_call` claims in auth tokens. Ope
 
 This document requests registration of the following JWT claims in the IANA JSON Web Token Claims registry:
 
-| Claim | Description | Reference |
-|-------|-------------|-----------|
-| `r3_uri` | R3 document URI | This document |
-| `r3_s256` | R3 document SHA-256 hash | This document |
-| `r3_granted` | Fully authorized operations in vocabulary format | This document |
-| `r3_per_call` | Operations authorized in principle, requiring approval of each call | This document |
+| Claim Name | Claim Description | Change Controller | Reference |
+|---|---|---|---|
+| `r3_uri` | R3 document URI | IETF | This document |
+| `r3_s256` | R3 document SHA-256 hash | IETF | This document |
+| `r3_granted` | Fully authorized operations in vocabulary format | IETF | This document |
+| `r3_per_call` | Operations authorized in principle, requiring approval of each call | IETF | This document |
 
 ## AAuth Access Mode Value Registration
 
@@ -812,9 +808,10 @@ There are currently no known implementations.
 
 *Note: This section is to be removed before publishing as an RFC.*
 
-This document has not been submitted to the datatracker. Everything below is a change to the editor's copy, made while the design was being explored against implementations in progress. Earlier entries were logged under `-01` and `-02` before it was settled that the whole of this work becomes the first submission; they are one list here, which becomes `draft-hardt-aauth-r3-00`. Readers wanting the detail behind any entry will find it in the repository's history and pull requests.
+Everything below is a change to the editor's copy, made while the design was being explored against implementations in progress. Earlier entries were logged under `-01` and `-02` before it was settled that the whole of this work becomes the first submission; they are one list here, which is `draft-hardt-aauth-r3-00`. Readers wanting the detail behind any entry will find it in the repository's history and pull requests.
 
 - draft-hardt-aauth-r3-00
+  - Aligned with AAuth Protocol -11 as published. A party fetching an R3 document signs as a server under the `jwks_uri` scheme, and the entitled PS is the resource token's `ps`, which on a per-call challenge comes from the auth token the request carried, not a person token. The PS renders `display` as resource-asserted content per Consent Presentation. AS Processing verifies the resource token and its `presented_token` per Resource Token Verification, and no longer provides for an AS reached other than by a PS-to-AS token request, since the PS is the only caller. A per-call auth token expires no later than the auth token presented on the call, and under `202` its retained result is the pending URL's exception to `410 Gone`. The access-mode ladder rests on a resource verifying a person token or an auth token before issuing a resource token. A runtime requirement may arrive on a `202` as well as a `401`. The JWT claim registrations name a change controller.
   - Consistency pass against AAuth Protocol -11. The base-claim recitals in Resource Token Extensions and Auth Token Extensions are replaced by pointers to the protocol, since they had drifted twice; they also called the issuer an "Auth server", which is not a term. The access-mode ladder no longer rests on every request carrying an agent token, which -11 removed. The authorization endpoint example presents a person token. The single-use rule points at the protocol's Deferred Delivery rule for the retained result instead of restating it.
   - Resource token recital: `presented_jti` is the `jti` of the token the request carried, the person token or, on a per-call challenge, the auth token, and `ps` and `sub` are copied from that token. Follows AAuth Protocol -11, issue #152 there.
   - Rewrote Why Not RAR and the Comparison with RAR table. The argument led with directionality — RAR client-declared, R3 resource-declared — which is no longer the live counterposition: OAuth Transaction Authorization Challenge ([@?I-D.rosomakho-oauth-txn-challenge]) has the protected resource sign `authorization_details` in a challenge from which the AS derives the granted authorization details. The comparison is now against resource-declared RAR, and rests on content addressing, agent opacity, and carriage by reference. The complementary position is kept and restated.
