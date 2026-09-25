@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                       24 September 2026
-Expires: 28 March 2027
+Intended status: Standards Track                       25 September 2026
+Expires: 29 March 2027
 
 
                              AAuth Protocol
@@ -50,7 +50,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 28 March 2027.
+   This Internet-Draft will expire on 29 March 2027.
 
 Copyright Notice
 
@@ -88,8 +88,8 @@ Table of Contents
      4.5.  Agent Governance
        4.5.1.  Missions
    5.  Agents
-     5.1.  Agent Identifiers
-     5.2.  Agent Provider
+     5.1.  Agent Provider
+     5.2.  Agent Identifiers
      5.3.  Agent Token
        5.3.1.  Agent Token Structure
        5.3.2.  Agent Token Usage
@@ -427,7 +427,7 @@ Table of Contents
       actions.
    *  *Agent*: An HTTP client ([RFC9110], Section 3.5) acting on behalf
       of a person.  Identified by an agent identifier URI using the
-      aauth scheme, of the form aauth:local@domain Section 5.1.  An
+      aauth scheme, of the form aauth:local@domain Section 5.2.  An
       agent MAY have a person server, declared via the ps claim in the
       agent token.
    *  *Agent Provider (AP)*: A server that manages agent identity and
@@ -526,12 +526,11 @@ Table of Contents
 
 4.1.  Obtaining an Agent Token
 
-   The agent generates a signing key pair, proves its identity to its
-   agent provider through a platform-specific mechanism, and receives an
-   agent token binding the key to its identifier Section 5.3.  The agent
-   token MAY carry a ps claim naming the agent's person server.
-   Acquisition is platform-dependent; see [I-D.hardt-aauth-bootstrap]
-   for common patterns.
+   The agent generates a signing key pair and proves its identity to its
+   agent provider through a platform-specific mechanism
+   ([I-D.hardt-aauth-bootstrap]).  The agent provider issues an agent
+   token binding the key to the agent's identifier Section 5.3.  The
+   agent token MAY carry a ps claim naming the agent's person server.
 
 4.2.  Resource Access Modes
 
@@ -884,10 +883,10 @@ Table of Contents
 
 5.  Agents
 
-   This section defines agents: how they are identified, the agent
-   provider that issues their identity, and the agent token that binds
-   that identity to a signing key.  Agent identity is the foundation of
-   AAuth: the agent token binds the agent's identifier to its signing
+   This section defines agents: the agent provider that issues their
+   identity, the identifier it assigns, and the agent token that binds
+   that identifier to a signing key.  Agent identity is the foundation
+   of AAuth: the agent token binds the agent's identifier to its signing
    key, and every other token the agent obtains (resource tokens, auth
    tokens) is issued in response to a request signed by that key.  When
    an agent presents an auth token to a resource, the auth token's cnf
@@ -896,10 +895,53 @@ Table of Contents
    whether the Signature-Key header carries the agent token or an auth
    token.
 
-5.1.  Agent Identifiers
+5.1.  Agent Provider
 
-   Agent identifiers are URIs using the aauth scheme, of the form
-   aauth:local@domain where domain is the agent provider's domain.  The
+   An agent provider (AP) is the server that issues an agent its
+   identity.  An AP is identified by an HTTPS URL Section 11.1.1 and
+   publishes metadata at /.well-known/aauth-agent.json Section 11.2.1,
+   where its jwks_uri holds the keys that agent tokens are verified
+   against.  A resource, PS, or AS trusts an AP's agents by fetching
+   that one JWKS, rather than managing a key per agent Appendix C.1.2.
+
+   An AP does four things in the protocol:
+
+   *  *Issues agent tokens.* An agent MUST obtain an agent token from
+      its agent provider before participating in the AAuth protocol.
+      The agent generates a signing key pair (Ed25519 is RECOMMENDED),
+      proves its identity to the AP through a platform-specific
+      mechanism, and the AP issues an agent token binding the agent's
+      public key to its identifier Section 5.3.1.  The mechanism for
+      proving identity is platform-dependent; see
+      [I-D.hardt-aauth-bootstrap] for common patterns, including self-
+      hosted agents, browser-based applications, and mobile
+      applications, and for the key-refresh ceremony.
+   *  *Issues sub-agent tokens.* An AP issues a sub-agent its own
+      identifier and agent token, marked with parent_agent, under the
+      rules in Section 10.2.
+   *  *Evaluates policy.* The AP decides whether to keep treating an
+      agent as authorized, and enforces that decision by issuing or
+      refusing fresh agent tokens Section 4.4.  Agent tokens SHOULD NOT
+      live longer than 24 hours Section 5.3.1, so the decision is
+      revisited at least that often.
+   *  *Revokes agent tokens.* When an agent can no longer be trusted,
+      the AP revokes its agent token at the agent's PS Section 11.12.
+      The PS is the only recipient of an agent token revocation.
+
+   An AP MAY be collocated with other roles: a self-hosted agent is its
+   own AP, and a resource that acts as an agent for downstream calls
+   MUST be its own AP Section 4.3.  An AP that supports AAuth Events
+   ([I-D.hardt-aauth-events]) also receives event tokens from resources
+   on behalf of its agents.
+
+   An AP is named in both things it issues: the domain part of each
+   agent identifier it assigns Section 5.2, and the iss of each agent
+   token it signs Section 5.3.
+
+5.2.  Agent Identifiers
+
+   An AP assigns each agent an identifier: a URI using the aauth scheme,
+   of the form aauth:local@domain, where domain is the AP's domain.  The
    local part MUST consist of ASCII letters (A-Za-z), digits (0-9),
    hyphen (-), underscore (_), plus (+), and period (.).  The local part
    MUST NOT be empty and MUST NOT exceed 255 characters.  The domain
@@ -934,46 +976,8 @@ Table of Contents
    aauth:agent@agent.example are different agents, and an implementation
    MUST NOT case-fold the local part.
 
-5.2.  Agent Provider
-
-   An agent provider (AP) is the server that issues an agent its
-   identity.  Every agent identifier names its AP in the domain part,
-   and every agent token is signed by the AP named in its iss.  An AP is
-   identified by an HTTPS URL Section 11.1.1 and publishes metadata at
-   /.well-known/aauth-agent.json Section 11.2.1, where its jwks_uri
-   holds the keys that agent tokens are verified against.  A resource,
-   PS, or AS trusts an AP's agents by fetching that one JWKS, rather
-   than managing a key per agent Appendix C.1.2.
-
-   An AP does four things in the protocol:
-
-   *  *Issues agent tokens.* An agent MUST obtain an agent token from
-      its agent provider before participating in the AAuth protocol.
-      The agent generates a signing key pair (Ed25519 is RECOMMENDED),
-      proves its identity to the AP through a platform-specific
-      mechanism, and the AP issues an agent token binding the agent's
-      public key to its identifier Section 5.3.1.  The mechanism for
-      proving identity is platform-dependent; see
-      [I-D.hardt-aauth-bootstrap] for common patterns, including self-
-      hosted agents, browser-based applications, and mobile
-      applications, and for the key-refresh ceremony.
-   *  *Issues sub-agent tokens.* An AP issues a sub-agent its own
-      identifier and agent token, marked with parent_agent, under the
-      rules in Section 10.2.
-   *  *Evaluates policy.* The AP decides whether to keep treating an
-      agent as authorized, and enforces that decision by issuing or
-      refusing fresh agent tokens Section 4.4.  Agent tokens SHOULD NOT
-      live longer than 24 hours Section 5.3.1, so the decision is
-      revisited at least that often.
-   *  *Revokes agent tokens.* When an agent can no longer be trusted,
-      the AP revokes its agent token at the agent's PS Section 11.12.
-      The PS is the only recipient of an agent token revocation.
-
-   An AP MAY be collocated with other roles: a self-hosted agent is its
-   own AP, and a resource that acts as an agent for downstream calls
-   MUST be its own AP Section 4.3.  An AP that supports AAuth Events
-   ([I-D.hardt-aauth-events]) also receives event tokens from resources
-   on behalf of its agents.
+   An agent identifier is stable across key rotations.  The agent token
+   binds it to the agent's current signing key.
 
 5.3.  Agent Token
 
@@ -3404,7 +3408,7 @@ Table of Contents
    Section 11.2.4, and MUST sign downstream token requests with an agent
    token it issued to itself.  That agent token's iss is therefore the
    intermediary's resource identifier, and its sub is an agent
-   identifier whose domain is the intermediary's host Section 5.1.
+   identifier whose domain is the intermediary's host Section 5.2.
 
    This is how a recipient knows the intermediary is the party the
    calling agent presented the upstream token to.  The upstream token's
@@ -3511,7 +3515,7 @@ Table of Contents
       is the authoritative marker of sub-agent status.
    *  *Local-part naming*: the sub-agent's local part MUST be the
       parent's local part followed by + and a non-empty discriminator
-      Section 5.1 — for example
+      Section 5.2 — for example
       aauth:planner.7f3c+search1@vendor.example.  For protocol
       decisions, verifiers rely on parent_agent, not on parsing the
       local part; the naming is for operational readability (e.g.,
@@ -6161,7 +6165,7 @@ Initial request (with Prefer: wait=N)
    *  Applications/protocols that use this scheme: AAuth Protocol
    *  Contact: IETF
    *  Change controller: IETF
-   *  Reference: This document, Section 5.1
+   *  Reference: This document, Section 5.2
 
    The aauth URI scheme follows the pattern established by the acct
    scheme ([RFC7565]).  An aauth URI identifies an agent instance and
@@ -6211,533 +6215,160 @@ Initial request (with Prefer: wait=N)
 
    *  draft-hardt-oauth-aauth-protocol-11
 
-      -  Readability restructure.  The Protocol Overview is an overview:
-         it says how the parties fit together and points to the sections
-         that define each part; the agent token comes first, the person-
-         identity flow shows the person token being obtained and the
-         three- and four-party flows start from presenting it, and the
-         "orthogonal" framing of governance is gone, since missions
-         reach a resource only in the modes where a person token is
-         presented.  The Introduction's "Relationship to Existing
-         Standards" is "Built On", and the two paragraphs that belonged
-         to "What AAuth Provides" moved there.  The Terminology no
-         longer repeats how each server role is identified.  Agent
-         Identity is Agents, with an Agent Provider subsection that
-         collects what an AP does: issues agent tokens and sub-agent
-         tokens, evaluates policy by reissuing or refusing them, and
-         revokes them at the PS.  Person Token is no longer its own
-         section; its structure, usage, and verification sit under the
-         Person Token Endpoint.  Resource Access is ordered by what an
-         agent encounters, from the agent-token requirement through
-         resource-managed authorization and the session token, the
-         person-token and auth-token requirements, the authorization
-         endpoint, and the resource token.  Person Server follows the
-         agent's path: the person token endpoint, the auth token
-         endpoint, user interaction, consent presentation, and
-         clarification chat, then the interaction, permission, and audit
-         endpoints, then re-authorization.  Protocol Primitives is the
-         normative reference and is stated without rationale, ordered
-         from identifiers and metadata through signatures, key
-         discovery, and the common JWT profile to requirement responses,
-         capabilities, deferred responses, errors, scopes, account
-         binding, and revocation; the exp and iat verification rules
-         moved there from the refresh margin, and Token Revocation is
-         split into request, who revokes what, response, cascade, and
-         presenting a revoked token.  Rationale that Protocol Primitives
-         carried moved to the Design Rationale appendix.  Each normative
-         statement is made once and referenced elsewhere.
-      -  A signature on a revocation request MUST cover content-digest
-         and content-type whatever the recipient's role.  The
-         requirement was written for PS and AS endpoints, while a
-         resource declares its own coverage through
-         additional_signature_components, so it was unclear whether a
-         resource's revocation endpoint followed the role or the
-         endpoint.  It follows the endpoint: that endpoint is defined
-         here rather than by the resource's API, and its body selects a
-         token and adds to retained state.  Issue #165.
-      -  Token Revocation: the agent token cascade, what a recipient
-         records, what it will accept, and who learns the outcome.  A PS
-         cascades an agent token revocation by agent identity — every
-         person token and auth token it issued to that sub, whichever
-         agent token was presented, since an agent holds a sequence of
-         them over a day and what was issued under an earlier one was
-         still live — records each agent token's (iss, jti) with the sub
-         it carried so that a revocation naming a jti resolves to an
-         agent at all, and leaves the agent-person binding alone, which
-         is the person's decision.  A recipient records the (iss, jti)
-         of a revoked resource token whether or not it has seen the
-         token, which in four-party is the common case for the ps, and
-         the five-minute lifetime bounds the state.  A recipient MAY
-         restrict revocations to issuers it holds tokens from and SHOULD
-         bound what one issuer can hold, with a new rate_limited (429)
-         error, since any server that can publish a JWKS could otherwise
-         grow a recipient's state without bound.  The polling revoked
-         code covers any token the pending request depends on — the
-         resource token, a chained request's upstream token, or the
-         agent's agent token — rather than the withdrawn resource token
-         alone, with detail saying which.  A PS MAY report a person-
-         initiated revocation's per-recipient outcome to the person, who
-         is the party the rule against reporting to the agent provider
-         protects.  Issues #178, #179, #180, #182, #185.
-      -  Token Revocation says how a 202 is polled, what a 200 body may
-         be, and how long a recipient holds the connection.  The 202
-         pointed at Deferred Responses, which is written for an agent
-         polling with an agent token for a token or a problem; a
-         revocation 202 is polled by a server.  It is now stated that
-         the poller signs as a server under the same identity that made
-         the revocation, that the recipient answers 404 to any other
-         identity, that the terminal response is exactly what the
-         synchronous path would have returned, that no AAuth-Requirement
-         is used, and that a recipient with nothing downstream MUST NOT
-         answer 202.  A 200 MAY carry no body; a non-empty body MUST be
-         a JSON object with an OPTIONAL downstream, and one the caller
-         cannot parse is revocation_unavailable — the text categorized a
-         malformed response that way but did not say an empty body was
-         well-formed, so a caller had to tell one from the other with no
-         rule to go on.  Absent Prefer: wait the recipient chooses,
-         holding at least one round trip per downstream party, and MAY
-         cap the wait below what the caller asked and answer 202 at its
-         cap, since an idle timeout it does not control is a hard
-         ceiling.  Issues #181, #183, #184.
+      -  Restructured for readability: sections follow the order an
+         implementer meets them, each normative statement is made once,
+         and rationale moved from Protocol Primitives to the Design
+         Rationale appendix.  Agent Identity is now Agents, with an
+         Agent Provider subsection; Person Token moved under the Person
+         Token Endpoint.
+      -  A revocation request's signature MUST cover content-digest and
+         content-type at every recipient.  Issue #165.
+      -  Token Revocation: a PS cascades an agent token revocation by
+         agent identity; a recipient records revoked resource tokens it
+         has not seen; added rate_limited; the polling revoked code
+         covers any token a pending request depends on.  Issues #178,
+         #179, #180, #182, #185.
+      -  Token Revocation: defined polling of a 202, the 200 body, and
+         how long a recipient holds the connection.  Issues #181, #183,
+         #184.
       -  A resource token MAY carry login_hint, which the agent passes
-         to its PS as the login_hint parameter of the token request.  A
-         resource stepping up for an identity claim about one particular
-         person — scope: email for an address it already holds — knew
-         who it was asking about and had nothing to carry the value in,
-         so the agent had nothing to forward.  It is a hint: the PS MAY
-         ignore it, and a resource checks the claims it receives against
-         what it asked for.  Issue #163.
-      -  The Adoption Matrix names the auth token, not the person token,
-         in the Agent column of the PS authorization and Federated
-         authorization rows.  In both modes the person token is only
-         what the agent presents to have a resource token issued; the
-         credential the resource verifies and enforces is the auth
-         token, which is what the Agent column names in every other row.
-         The Person identity row is unchanged, since there the person
-         token is the credential.  Issue #161.
+         to its PS.  Issue #163.
+      -  Adoption Matrix: the Agent column names the auth token in the
+         PS authorization and federated authorization rows.  Issue #161.
       -  The person token request takes the OPTIONAL parameters of the
-         auth token request — capabilities, login_hint, tenant,
-         domain_hint, prompt, justification, platform, and device — and
-         the AAuth-Capabilities cross-reference names both PS endpoints
-         rather than only the auth token endpoint.  The endpoint listed
-         four parameters and no way to declare a capability, name a
-         tenant, or pass a hint, while the same section lets the PS
-         answer 202 with requirement=interaction and defines
-         user_unreachable as terminal when the agent did not declare the
-         interaction capability — which there was no conforming way to
-         do.  Two implementations diverged on it: an agent sent AAuth-
-         Capabilities, which the spec rules out on PS endpoints, a PS
-         read capabilities and tenant from the body as an extension, and
-         before that a first-contact request was answered
-         user_unreachable when the agent could in fact have driven the
-         interaction.  Issues #175, #177.
-      -  Call chaining accepts a person token as upstream_token, at the
-         person token endpoint, the auth token endpoint, and the PS-to-
-         AS request.  The upstream token is a token the calling agent
-         presented on a request the intermediary served, so an
-         intermediary that serves on identity alone can chain; before,
-         only an auth token was defined and such an intermediary had
-         nothing to present.  The PS used nothing an auth token adds
-         over a person token: it resolves the person from aud and sub,
-         reads mission_s256, and does not require downstream access to
-         be a subset of upstream scope.  Routing follows a person
-         token's iss or an auth token's ps.  Upstream Token Verification
-         branches on typ, and the revocation cascade walks from a person
-         token presented upstream as well.  The rule rejecting a person
-         token where an auth token is required does not apply to
-         upstream_token.  An intermediary MAY reuse an upstream token
-         until it expires, and downstream access does not outlive it: a
-         person token issued with upstream_token, and an auth token
-         issued on a request carrying one, expire no later than the
-         upstream token; a pending downstream request whose upstream
-         token expires ends with expired.  The PS copies the upstream
-         token's mission_s256 into the downstream person token, so the
-         mission reaches the chain; before, the PS evaluated against it
-         but no downstream token carried it.  The PS verifies an
-         upstream auth token's iss is itself or an AS it presented a
-         person token to for that aud and sub; the AS checks only that
-         the upstream token names the PS that signed the request.  The
-         PS rejects a chain whose calling agent's agent token or person
-         binding it has revoked, with revoked_upstream_token.  A sub-
-         agent's agent token iss MUST equal its parent's, checked with
-         invalid_subagent_token.
-      -  Intermediary Agent Identity: an intermediary MUST be its own
-         agent provider, with aauth-agent.json on its own origin, issuer
-         equal to its resource issuer, and a self-issued agent token.
-         This was stated only in the explanation of an upstream token
-         verification step.  It is what lets the recipient compare the
-         upstream token's aud with the signer: the agent token's iss is
-         the only resource-scoped identifier the request carries.
-         Upstream Token Verification names where the intermediary's
-         agent token is found: Signature-Key at the PS, the agent_token
-         parameter at the AS.  A request carrying upstream_token neither
-         uses nor establishes an agent-person binding.  Roles under a
-         shared origin share one identifier, distinguished by dwk.
-      -  A revocation recipient answers once its cascade is terminal.  A
-         PS receiving an agent token revocation and an AS receiving a
-         person token revocation record the revocation first, then
-         revoke downstream what they issued from it, and return 200 only
-         when every downstream revocation has a terminal outcome,
-         returning a 202 deferred response when that takes longer than
-         they will hold the connection or a downstream party itself
-         answered 202.  The 200 said only that the recipient had
-         recorded the revocation, so the initiator could not tell
-         whether the tokens issued from the revoked one were gone.  A
-         downstream revocation ends recorded, revocation_unsupported (no
-         revocation_endpoint, or unsupported_iss; the party honors the
-         tokens until exp), or revocation_unavailable (no response,
-         timeout, 5xx, malformed; retryable).  An AS reports the outcome
-         to the PS in a downstream array, one entry per resource, which
-         discloses nothing the PS did not know; a PS reports nothing to
-         the AP, since even a count would say which resources the person
-         uses through that agent.  Revocation is idempotent: a repeated
-         revocation re-attempts what did not succeed and reports the
-         current outcome.  The AS's cascade to the resource is now a
-         MUST, since the PS reads how far a revocation went from it.  A
-         revocation of a person token now also reaches a chain: the PS
-         records the upstream token's (iss, jti) on each person token it
-         issues with upstream_token, and SHOULD revoke those person
-         tokens when the earlier person token the upstream token was
-         issued against is revoked.  Every hop routes to the same PS, so
-         the link is in its own records; an AS records nothing of the
-         chain, since it issues against the presented person token as in
-         any other request.  Without it an intermediary kept access
-         downstream to a person who had withdrawn the upstream grant,
-         for up to an hour.  Addresses issue #173.
-      -  The agent identifier local part accepts uppercase ASCII
-         letters.  Comparison was already exact and case-sensitive, so
-         the lowercase-only rule protected nothing and excluded base62
-         identifiers such as a provider's own opaque ids; an
-         implementation MUST NOT case-fold the local part (issue #164).
-      -  Added the person token (aa-person+jwt): issued by a PS to
-         identify the person to one resource, presented in the
-         Signature-Key header in place of the agent token, lifetime
-         capped at one hour and at the mission's expires_at.  It carries
-         no authorization, but a resource MAY serve on identity alone,
-         so the consent question at first issuance is whether the agent
-         may act at the resource as the person.  Added
-         person_token_endpoint (REQUIRED) taking resource, mission_s256,
-         subagent_token, and upstream_token; requirement=person-token;
-         the invalid_account authorization endpoint error; the PS's
-         retention obligation for revocation (issue #87); and the
-         assurance floor — continuity, not identity proofing (issue
-         #97).
-      -  Five resource access modes: agent identity, resource-managed,
-         person identity, PS authorization, and federated authorization.
-         A resource MAY apply different modes to different endpoints and
-         states a per-operation mode through R3 annotations.
-         Established the AAuth Access Mode Value Registry (agent-token,
-         person-token, session-token, auth-token; R3 adds per-call).
-         Renamed token_endpoint to auth_token_endpoint and named the
-         credential of resource-managed access the session token.
+         auth token request.  Issues #175, #177.
+      -  Call chaining accepts a person token as upstream_token;
+         downstream tokens expire no later than the upstream token and
+         carry its mission_s256.  A sub-agent's agent token iss MUST
+         equal its parent's.
+      -  An intermediary MUST be its own agent provider.
+      -  A revocation recipient answers once its cascade is terminal,
+         and an AS reports the outcome to the PS in downstream.  A
+         person token revocation reaches call chains.  Issue #173.
+      -  The agent identifier local part accepts uppercase letters.
+         Issue #164.
+      -  Added the person token (aa-person+jwt), person_token_endpoint,
+         and requirement=person-token.  Issues #87, #97.
+      -  Five resource access modes and the AAuth Access Mode Value
+         Registry.  Renamed token_endpoint to auth_token_endpoint; the
+         resource-managed credential is the session token.
       -  A resource MUST verify a person token or auth token before
-         issuing a resource token, and answers a request carrying
-         neither with requirement=person-token.  The resource token
-         carries ps, sub, and presented_jti copied from the verified
-         token, and agent_jkt; no token a resource issues or reads
-         carries an agent identifier, and act is gone from auth tokens.
-         Auth tokens carry ps and a REQUIRED directed sub; sub is unique
-         within its issuer, (iss, sub) is the identifier, and tenant is
-         organizational context.  Resource policy keyed on the agent
-         identifier holds only in the two-party modes.
-      -  presented_jti names the token the request carried — the person
-         token on a first challenge, the auth token on a step-up or per-
-         call challenge — and the agent passes that token to the PS as
-         presented_token (REQUIRED), which the PS passes on to the AS.
-         PS and AS run one verification: signature against the issuer,
-         aud the resource, cnf.jwk against agent_jkt, jti against
-         presented_jti, and sub, mission_s256, and tenant against the
-         resource token, which makes mission stripping detectable.  An
-         auth token's exp is capped at the presented token's.
-         updated_request carries presented_token.  Errors:
-         invalid_presented_token, expired_presented_token,
-         revoked_presented_token.  Issues #95, #152.
-      -  Missions: replaced the mission object with mission_s256 in
-         person, resource, and auth tokens; removed the AAuth-Mission
-         header; the approval response carries the blob base64url-
-         encoded with s256 beside it, capabilities outside the blob, and
-         a person token for each of the resources the proposal named.
-         The blob gained approved_resources, MAY carry expires_at, and
-         lost approver: the PS is always the approver, and the mission
-         is identified by the PS and s256.  Member lists are a floor.
-         The mission endpoint is the owning agent's surface with three
-         operations of one shape — propose, action: update, action:
-         completion; an update appends to the log without changing the
-         blob; completion moved off the interaction endpoint.  Two
-         states, active and terminated, an open set of termination
-         reasons, and one error, mission_terminated, carrying
-         termination_reason.  Mission endpoint errors are
-         indistinguishable for a missing mission and one the agent does
-         not own (adopted from draft-mcguinness-mission-aauth-
-         management). mission_control_endpoint is the control plane for
-         other principals; its specification is TBD.
-      -  Call chaining routes on the auth token's ps claim.  The
-         intermediary obtains a person token downstream with
-         upstream_token, whose cnf is the calling agent's key; Upstream
-         Token Verification states its substitutions; errors
-         invalid_upstream_token, expired_upstream_token,
-         revoked_upstream_token.
-      -  Token Revocation reworked: the request is jti and exp; a caller
-         revokes only its own tokens and the recipient keys the entry
-         under the verified caller; agent tokens are revoked only at a
-         PS, person and auth tokens at the resource, resource tokens at
-         the party in aud; the four-party cascade runs through the
-         person token; 200 OK whether or not the recipient holds the
-         token; revocation_endpoint is RECOMMENDED for a PS, an AS, and
-         a resource accepting person tokens.  A revoked token in the
-         Signature-Key header is answered revoked_jwt, with
-         requirement=person-token beside it for a revoked auth token; a
-         revoked parameter token is answered revoked_<parameter>_token;
-         a pending request terminates with revoked.  Issues #146, #154.
-      -  Expiry and the Refresh Margin: exp is judged by the verifier's
-         clock with no tolerance; iat is REQUIRED and not a validity
-         check, with an OPTIONAL bound answered clock_skew; the agent
-         refreshes agent, person, and auth tokens with five minutes
-         left, from the top of the chain; exp minus iat is checked
-         against the one-hour ceiling of person and auth tokens.
-      -  Server-to-server signing pinned: a PS, AS, AP, or resource
-         signing in its own right uses the jwks_uri scheme with id its
-         metadata issuer and dwk that document's name; a resource acting
-         as an agent signs under the jwt scheme.  Requests with a body
-         to a PS or AS endpoint MUST cover content-digest and content-
-         type.  Added the OPTIONAL common metadata field
-         accept_signature_algs (issue #94).  A verifier that first sees
-         an artifact after a delay uses the signed created.
+         issuing a resource token.  No token a resource reads carries an
+         agent identifier; act removed.  Auth tokens carry ps and a
+         directed sub.
+      -  Added presented_jti and the presented_token parameter.  Issues
+         #95, #152.
+      -  Missions: mission_s256 replaces the mission object; AAuth-
+         Mission and approver removed; the mission endpoint takes
+         propose, update, and completion; added mission_terminated.
+      -  Call chaining routes on the auth token's ps claim.
+      -  Token Revocation reworked: the request is jti and exp, each
+         token type has one recipient, and a revoked token is answered
+         revoked_jwt or revoked_<parameter>_token.  Issues #146, #154.
+      -  Expiry: exp has no tolerance, iat is REQUIRED, and the agent
+         refreshes with five minutes left.
+      -  A server signing in its own right uses the jwks_uri scheme.
+         Requests with a body to a PS or AS MUST cover content-digest
+         and content-type.  Added accept_signature_algs.  Issue #94.
       -  Consent Presentation: resource-asserted and agent-asserted
-         content MUST be visually distinguished and attributed, and a PS
-         MUST NOT decide on agent-asserted content alone; Security
-         Considerations gained Agent Control of the Consent Surface.
-         Section structure for the Markdown-valued parameters is
-         deferred to one later definition (editor's note in
-         Terminology).
-      -  Named the Supervisor — the Person, or a supervision server the
-         PS delegates to under a companion specification that is TBD —
-         and distinguished supervision from governance.  Stated the PS
-         conformance floor (four REQUIRED metadata fields) and added the
-         informative appendix A Minimal Person Server.  Removed Third-
-         Party Login and login_endpoint (issue #155).
+         content MUST be visually distinguished.
+      -  Added the Supervisor role, the PS conformance floor, and the
+         Minimal Person Server appendix.  Removed Third-Party Login and
+         login_endpoint.  Issue #155.
       -  requirement=auth-token MAY be delivered as a 202 deferred
-         response holding the invocation; completion answers a repeated
-         presentation of the same auth token from the retained result,
-         keyed by jti (issue #92).  The host of an interaction URL MAY
-         complete the interaction over its own channel.  Added
-         as_unreachable (502) and relay of an AS's terminal error.
-         Added the aauth-resource link relation.  Corrected the JWT
-         Claims Registrations table: presented_jti, account, and
-         interaction added, agent removed, ps once.
-      -  Consistency pass across the family (2026-09-13): common JWT
-         claims and verification stated once Section 11.5 and referenced
-         from each token; typed error codes only for tokens carried as
-         parameters, the Signature-Key token failing generically
-         (invalid_person_token, invalid_agent_token, and
-         expired_agent_token removed; subagent_token codes added);
-         missing signature headers are invalid_signature; every party
-         MUST support Ed25519; scope in a resource token is OPTIONAL
-         where a companion claim replaces it; the localhost callback
-         exception stated; Accept-Signature-Scheme in place of the
-         removed sigkey parameter; RFC 9651 in place of RFC 8941; the
-         Payment scheme named by its draft's title; prose says "the jwt
-         scheme" and diagrams say HTTP Sig; example JWT placeholders
-         decode to Ed25519 and current typ values; the person-token
-         prerequisite, refresh guidance, step-up, routing, same-origin,
-         and PS-floor statements reduced to one normative statement
-         each; date removed from the front matter so the build stamps
-         it.
+         response.  Added as_unreachable and the aauth-resource link
+         relation.  Issue #92.
+      -  Consistency pass: common JWT claims and verification stated
+         once, typed error codes only for tokens passed as parameters,
+         and every party MUST support Ed25519.
 
    *  draft-hardt-oauth-aauth-protocol-10
 
-      -  Adopted the fully-specified Ed25519 of [RFC9864] in place of
-         the EdDSA it deprecates. alg is REQUIRED and MUST be fully
-         specified; EdDSA, none, and symmetric algorithms MUST NOT be
-         used; a verifier MUST reject a key whose kty or crv disagrees
-         with its alg.  Addresses issue #57.
-      -  A cnf JWK MUST carry a fully-specified alg, as MUST every key
-         at an AAuth server's jwks_uri.  A verifier MUST select the key
-         matching kid without requiring the other JWKS members to be
-         usable.
-      -  Aligned verification and error mapping with
-         [I-D.hardt-httpbis-signature-key]: added unsupported_scheme,
-         unsupported_algorithm, invalid_key, issuer_missing, and
-         issuer_mismatch; pinned signature failures to 401; a 403 MUST
-         NOT carry Signature-Error or either Accept-Signature-* header;
-         the alg signature parameter MUST NOT be used.
-      -  Revocation identifies a token by (iss, jti), and recipients key
-         revocation state by that pair.  An agent provider revokes an
-         agent token at the PS's revocation_endpoint.  Addresses issues
-         #59 and #60.
+      -  Adopted Ed25519 ([RFC9864]) in place of EdDSA; alg is REQUIRED
+         and fully specified.  Issue #57.
+      -  A cnf JWK and every key at an AAuth server's jwks_uri MUST
+         carry alg.
+      -  Aligned verification and error codes with
+         [I-D.hardt-httpbis-signature-key].
+      -  Revocation identifies a token by (iss, jti); an agent provider
+         revokes an agent token at the PS.  Issues #59, #60.
       -  A downstream issuer MUST NOT copy a directed sub from an
-         upstream token, MAY emit one only from its own authenticated
-         federation step, and MUST NOT place a person identifier in act.
-         Addresses issue #41.
-      -  Added the OPTIONAL account parameter on the authorization
-         endpoint request, echoed in the resource token and copied into
-         the auth token, binding an authorization to one of several
-         accounts a resource may hold for the same person.  Addresses
-         issue #52.
+         upstream token.  Issue #41.
+      -  Added the OPTIONAL account authorization endpoint parameter.
+         Issue #52.
 
    *  draft-hardt-oauth-aauth-protocol-09
 
-      -  Clarification chat: added a required action discriminator
-         (clarification_response / updated_request) to the agent's POST
-         responses on the pending URL, so the response type is explicit
-         rather than inferred from key presence.
-      -  Error responses: adopted RFC 9457 problem details — error
-         bodies use Content-Type: application/problem+json with the
-         AAuth error code as a required error extension member;
-         error_description replaced by the RFC 9457 detail member; added
-         token endpoint and polling error examples.
+      -  Clarification chat: added the action discriminator.
+      -  Errors use RFC 9457 problem details.
 
    *  draft-hardt-oauth-aauth-protocol-08
 
-      -  Call chaining: upstream token aud MUST equal the iss of the
-         intermediary's agent token; routing to PS or AS is derived from
-         the upstream auth token (mission.approver or iss), not the
-         calling agent's ps claim; PS MUST require a mission to remain
-         in the loop for four-party upstream chains.
-      -  Interaction code: added that the code is a correlation
-         identifier, not an authorization credential; the code alone
-         MUST NOT authorize the decision.
+      -  Call chaining: upstream token aud MUST equal the intermediary's
+         agent token iss; routing follows the upstream auth token.
+      -  The interaction code is a correlation identifier, not a
+         credential.
 
    *  draft-hardt-oauth-aauth-protocol-07
 
-      -  Added Interaction Callback Errors section defining the ?error=
-         wire format for callback redirects (access_denied,
-         user_abandoned, server_error, temporarily_unavailable,
-         interaction_expired) and the PS mapping to polling errors.
-         Updated Resource-Initiated Interaction to reference the new
-         section and specify PS behavior on error callbacks.  Added
-         Joshua Gay to Acknowledgments.
+      -  Added Interaction Callback Errors.  Added Joshua Gay to
+         Acknowledgments.
 
    *  draft-hardt-oauth-aauth-protocol-06
 
-      -  Implementation and interoperability clarity driven by feedback
-         from Joshua Gay (sidecat): mission reference dereference
-         boundary and approver/s256 syntax rules; agent keying material
-         restricted to the jwt scheme; AAuth-Requirement parameter shape
-         and unknown-value behavior; AAuth-Access token grammar
-         (token68); AAuth-Capabilities forward-compatibility; JWKS same-
-         kid refresh and egress admission; auth token verification split
-         into JWT trust and request-context binding with structured
-         cnf.jwk failure ordering; PS approval endpoint authentication
-         security consideration; freshness and replay policy subsection.
-         Interoperability demo profile extracted to a standalone non-
-         normative document.
+      -  Interoperability clarifications from Joshua Gay's feedback.
+         The interoperability demo profile moved to a separate document.
 
    *  draft-hardt-oauth-aauth-protocol-05
 
-      -  Auth tokens: act is OPTIONAL, absent in direct authorization;
-         act.agent identifies the immediate upstream agent (the
-         delegator), not the presenter; nesting records the full chain.
-         Updated verification steps, sub-agent issuance, PS upstream
-         token construction, and delegation chain examples accordingly.
-         Replaced the "sub-agent calls a chained resource" example with
-         "sub-agent inside a chain."
+      -  act is OPTIONAL; act.agent names the immediate upstream agent.
 
    *  draft-hardt-oauth-aauth-protocol-04
 
-      -  Auth tokens: replaced act.sub with act.agent within each act
-         node; see issue #47 (https://github.com/dickhardt/AAuth/
-         issues/47).
+      -  Replaced act.sub with act.agent.  Issue #47.
 
    *  draft-hardt-oauth-aauth-protocol-03
 
-      -  Metadata: added a common-fields table at the top of the
-         Metadata Documents section covering all four well-known files;
-         documented intentional RFC 9728 divergences (issuer not
-         resource; unprefixed field names).
-      -  Metadata: added documentation_uri to aauth-agent.json, aauth-
-         person.json, and aauth-access.json.
-      -  Interaction code: updated Crockford base32 citation to [@?I-
-         D.crockford-davis-base32-for-humans].
+      -  Metadata: added a common-fields table and documented the RFC
+         9728 divergences.
+      -  Metadata: added documentation_uri.
+      -  Updated the Crockford base32 citation.
 
    *  draft-hardt-oauth-aauth-protocol-02
 
-      -  Added sub-agents: agent token parent_agent claim, single-level
-         depth, parent-mediated authorization with a subagent_token
-         parameter, and the + sub-agent local-part delimiter; registered
-         parent_agent in the JWT Claims registry.
-      -  Renamed the terminal interaction_required error to
-         user_unreachable; added interaction_unavailable (424) and PS-
-         first interaction relay; clarified completion polling for
-         resource-hosted interactions; added the max_wait interaction
-         parameter.
-      -  Added capabilities and OIDC prompt request parameters to the PS
-         token endpoint.
-      -  Added requirement=agent-token (401); ordered the resource-
-         access challenge sections weakest-to-strongest.
-      -  Added an access_mode resource-metadata field, a "Drop-In
-         Replacement for API Keys and OAuth" section, and a "Consuming a
-         Resource End to End" walkthrough; relaxed jwks_uri to be
-         required only when the resource issues resource tokens or makes
-         signed calls.
-      -  Added an OPTIONAL Markdown description field to each well-known
-         metadata document.
-      -  Metadata: require the returned issuer to match the URL it was
-         fetched from.
-      -  Call chaining: clarified that the intermediary signs with its
-         own key and upstream_token is a body parameter.
-      -  Added rationale for the mandated covered components in the HTTP
-         Message Signatures profile.
+      -  Added sub-agents.
+      -  Renamed interaction_required to user_unreachable; added
+         interaction_unavailable and max_wait.
+      -  Added capabilities and prompt to the PS token endpoint.
+      -  Added requirement=agent-token.
+      -  Added the access_mode resource metadata field and two
+         walkthroughs.
+      -  Added a Markdown description to each metadata document.
+      -  The returned issuer MUST match the metadata URL.
+      -  Call chaining: the intermediary signs with its own key.
+      -  Added rationale for the mandated covered components.
       -  Added a Security Consideration on non-repudiation after key
-         rotation; clarified that the agent token is AAuth's minimum
-         credential (identity Signature-Key schemes only; pseudonym hwk/
-         jkt-jwt not an AAuth mode).
-      -  Bootstrapping: pointer to the AAuth Bootstrap document;
-         resources SHOULD publish access_mode and an R3 vocabulary.
-      -  Diagrams: use snake_case agent_token and auth_token.
-      -  Named the {approver, s256} pair the "mission reference" and
-         used it consistently for the mission claim in resource and auth
-         tokens, distinct from the full mission blob.
-      -  Stated that AAuth never conveys its own requirements via WWW-
-         Authenticate, leaving a resource's existing challenges
-         available alongside AAuth-Requirement.
-      -  Specified the interaction code format: Crockford base32
-         alphabet, ≥40 bits of entropy, presentational hyphens stripped
-         before case-insensitive comparison, single use, mandatory rate-
-         limiting, and expiry bound to the pending interaction;
-         documented the entropy/rate-limit rules as the brute-force
-         defense in Interaction Code Misdirection and made the four code
-         examples consistently hyphenated.
-      -  Editorial consistency pass: trimmed redundant mode
-         walkthroughs, removed the empty "Clarification Flow"
-         subsection, and added distinct anchors to the appendix flow
-         diagrams.
+         rotation.
+      -  Added a pointer to AAuth Bootstrap.
+      -  Diagrams use snake_case token names.
+      -  Named the mission reference.
+      -  AAuth never uses WWW-Authenticate.
+      -  Specified the interaction code format.
+      -  Editorial consistency pass.
 
    *  draft-hardt-oauth-aauth-protocol-01
 
-      -  Renamed PS-managed access to PS-asserted access throughout,
-         reflecting the trust posture: the resource accepts identity
-         claims and consent from the agent's PS while applying its own
-         access policy.
-      -  Renamed Agent Server to Agent Provider (AP) throughout,
-         including in agent identifier definition, well-known metadata,
-         and IANA registrations.
-      -  Added Roles section describing collocation patterns (PS+AS,
-         Resource+Agent, AP+Resource, Agent+AP, org-wide bundles).
-      -  Added Policy Evaluation Points section describing how AP, PS,
-         AS, and Resource each evaluate the agent from their own vantage
-         point.
-      -  Added PS-AS Collapse subsection distinguishing it from three-
-         party access.
-      -  Added Trust Posture in PS-Asserted Access security section.
-      -  Added optional platform request parameter (with new IANA AAuth
-         Platform Value Registry: web, mobile, desktop, workload, self-
-         hosted) and device request parameter at the PS token endpoint,
-         both agent-attested and used for display at the consent screen
-         and connected-agents dashboard.
-      -  Replaced ad hoc org references with the tenant claim from
-         OpenID Connect Enterprise Extensions; added tenant as an
-         optional auth token claim.
-      -  Consistency pass: identity-based access now requires an agent
-         token (collapsed agent adoption path from 4 to 3 steps);
-         audit's mission requirement no longer hidden by the "missions,
-         permissions, audit" shorthand; capabilities array on mission
-         approval is "MAY include"; ps claim in agent token is "MUST
-         include" for three-party and above; auth token usage clarified
-         (agent presents auth token, not agent token, on subsequent
-         requests to a resource).
-      -  Demoted the AAuth Bootstrap reference from normative to
-         informative.
+      -  Renamed PS-managed access to PS-asserted access.
+      -  Renamed Agent Server to Agent Provider.
+      -  Added Roles.
+      -  Added Policy Evaluation Points.
+      -  Added PS-AS Collapse.
+      -  Added Trust Posture in PS-Asserted Access.
+      -  Added the platform and device request parameters and the AAuth
+         Platform Value Registry.
+      -  Replaced org with the tenant claim.
+      -  Consistency pass.
+      -  The AAuth Bootstrap reference is informative.
 
    *  draft-hardt-oauth-aauth-protocol-00
 
