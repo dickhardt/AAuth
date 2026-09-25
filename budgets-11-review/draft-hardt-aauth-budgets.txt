@@ -1419,12 +1419,16 @@ Table of Contents
    cross-token arithmetic to enforce a budget.
 
    *The ledger the resource keeps is per person.* The resource MUST
-   aggregate consumption against the key (iss, sub, aud) of the auth
+   aggregate consumption against the key (ps, sub, aud) of the auth
    token, which is what the consumption record Section 7.1 and the usage
-   counters Section 15 report. (iss, sub) identifies the person — sub is
-   unique within its issuer, and values from different issuers are
-   different people — and aud is the resource itself.  This document
-   introduces no new identifier.
+   counters Section 15 report. (ps, sub) identifies the person: sub is
+   minted by the person server named in ps, and values from different
+   person servers are different people. aud is the resource itself.  In
+   three-party access ps equals iss.  In four-party access iss is the
+   AS, which did not mint sub, so a key on iss would let two person
+   servers behind one AS collide; ps is the person server the AS
+   verified sent the token request ([I-D.hardt-oauth-aauth-protocol],
+   PS-to-AS Token Request).  This document introduces no new identifier.
 
    The ledger is not a second ceiling.  A resource MUST NOT refuse a
    request that fits its token's budget because a per-person total has
@@ -1457,17 +1461,17 @@ Table of Contents
 
    A resource that meters usually charges someone for it, and the party
    it charges is an account in its own systems.  Nothing in a budget
-   names that account.  The aggregation key above is (iss, sub, aud),
-   and sub is directed per person server — it identifies a person at one
-   PS and carries no meaning at the resource beyond what the resource
-   has learned about it.
+   names that account.  The aggregation key above is (ps, sub, aud), and
+   sub is directed per person server — it identifies a person at one PS
+   and carries no meaning at the resource beyond what the resource has
+   learned about it.
 
    For most resources that is sufficient and no mechanism is needed.
-   The base protocol keys a person's relationship with a resource on
-   (iss, sub) precisely so it survives a change of agent, and a resource
-   holding one account per person looks the account up from that pair.
-   tenant names the person's organization and is not part of the
-   identifier ([I-D.hardt-oauth-aauth-protocol], Organization
+   The base protocol keys a person's relationship with a resource on the
+   person server and sub precisely so it survives a change of agent, and
+   a resource holding one account per person looks the account up from
+   (ps, sub). tenant names the person's organization and is not part of
+   the identifier ([I-D.hardt-oauth-aauth-protocol], Organization
    Identification).  Consumption then meters against the account the
    resource already had.
 
@@ -1538,7 +1542,7 @@ Table of Contents
       Section 14.8 atomically per auth token, so that concurrent
       requests presenting the same token cannot together exceed its
       budget.
-   *  A resource MUST post consumption to the (iss, sub, aud) ledger
+   *  A resource MUST post consumption to the (ps, sub, aud) ledger
       Section 14.5 atomically, so that concurrent requests across
       different tokens do not lose or double-count against the record
       and counters.
@@ -1656,6 +1660,15 @@ Table of Contents
    *  *jkts*: An array of JWK Thumbprints ([RFC7638]), each naming a
       signing key the resource has seen present an auth token.  Asks for
       what each of those keys consumed Section 15.2.2.
+
+   An access server names the person server whose values it is asking
+   about:
+
+   *  *ps*: The person server whose namespace the scope key belongs to.
+      REQUIRED when the caller is an access server and the request
+      carries a scope key, since the tokens an AS issues carry values
+      from every person server that federates with it.  A person server
+      omits it; it is the caller.
 
    A request MUST carry a scope key or jkts, and MAY carry both.  At
    most one scope key may appear.  A request with more than one scope
@@ -1853,11 +1866,12 @@ Table of Contents
    The resource MUST only answer for values that have appeared in auth
    tokens it accepted whose iss or ps claim names the caller: for a PS,
    the tokens it issued in three-party access and the tokens carrying it
-   as ps in four-party access; for an AS, the tokens it issued.  This
-   applies to thumbprints in jkts as much as to scope keys. sub is
-   directed per PS, so one person server cannot even name another's
-   subjects; tenant, mission_s256, and thumbprints are not directed, and
-   this check is what stops a third party from querying them.
+   as ps in four-party access; for an AS, the tokens it issued, and for
+   a scope key only those whose ps is the request's ps.  This applies to
+   thumbprints in jkts as much as to scope keys. sub is directed per PS,
+   so one person server cannot even name another's subjects; tenant,
+   mission_s256, and thumbprints are not directed, and this check is
+   what stops a third party from querying them.
 
    An AS is entitled because it sizes allocations against a ceiling of
    its own Section 4.2 and is bound by Section 14.4 for them.  An AS
@@ -1872,8 +1886,9 @@ Table of Contents
 
    invalid_request, using the error response format of
    ([I-D.hardt-oauth-aauth-protocol]), is returned for a body carrying
-   more than one scope key, carrying neither a scope key nor jkts, or
-   carrying a malformed value.
+   more than one scope key, carrying neither a scope key nor jkts,
+   carrying a scope key from an access server without ps, or carrying a
+   malformed value.
 
    A resource MAY rate-limit the endpoint, using the RateLimit fields
    ([I-D.ietf-httpapi-ratelimit-headers]) as on any endpoint.  A PS
