@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                       25 September 2026
-Expires: 29 March 2027
+Intended status: Standards Track                       28 September 2026
+Expires: 1 April 2027
 
 
                              AAuth Budgets
@@ -51,7 +51,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 29 March 2027.
+   This Internet-Draft will expire on 1 April 2027.
 
 Copyright Notice
 
@@ -99,7 +99,8 @@ Table of Contents
    13. Budget Exhaustion
      13.1.  The reason Parameter
      13.2.  Refusing a Request That Does Not Fit
-     13.3.  Boundaries
+     13.3.  Deferred Delivery
+     13.4.  Boundaries
    14. Enforcement
      14.1.  The Resource Enforces
      14.2.  Budgets Require Auth-Token Mode
@@ -141,7 +142,6 @@ Table of Contents
    22. Implementation Status
      22.1.  Implementations in Progress
    23. Document History
-     23.1.  Exploratory Changes
    24. Acknowledgments
    25. References
      25.1.  Normative References
@@ -470,7 +470,8 @@ Table of Contents
        { "unit": "USD", "decimals": 6, "max": 10000000 },
        { "unit": "tokens", "decimals": 0, "max": 5000000 }
      ],
-     "usage_endpoint": "https://inference.example/usage"
+     "usage_endpoint": "https://inference.example/usage",
+     "revocation_endpoint": "https://inference.example/revoke"
    }
 
    *budget_units* (OPTIONAL).  An array of objects, each declaring one
@@ -493,9 +494,15 @@ Table of Contents
    whose budget.unit is absent from the array, and MUST set
    budget.decimals to the value declared for that unit.
 
-   *usage_endpoint* (OPTIONAL).  The HTTPS URL where a person server
-   queries usage counters Section 15.  The URL MUST conform to the
-   Endpoint URL requirements of ([I-D.hardt-oauth-aauth-protocol]).
+   *usage_endpoint* (OPTIONAL).  The HTTPS URL where a person server or
+   access server queries usage counters Section 15.  The URL MUST
+   conform to the requirements the base protocol places on endpoint URLs
+   ([I-D.hardt-oauth-aauth-protocol], Endpoint and Other URLs).
+
+   The example also carries revocation_endpoint, which the base protocol
+   recommends for a resource that accepts person tokens, as a metered
+   resource does ([I-D.hardt-oauth-aauth-protocol], Resource Metadata).
+   Settlement of a revoked token depends on it Section 14.4.1.
 
    A PS or AS that receives a resource token carrying budget already
    fetches {iss}/.well-known/aauth-resource.json to discover the
@@ -524,7 +531,8 @@ Table of Contents
    }
 
    The agent presents a person token at the authorization endpoint, as
-   the base protocol requires.
+   the base protocol requires ([I-D.hardt-oauth-aauth-protocol],
+   Authorization Endpoint).
 
    *budget* (OPTIONAL).  The ceiling the agent is requesting.  All three
    members of the budget object are REQUIRED when budget is present.
@@ -567,16 +575,21 @@ Table of Contents
      "jti": "rt-4c81fa",
      "ps": "https://ps.example",
      "sub": "8f14e45fceea167a5a36dedd4bea2543",
-     "presented_jti": "pt-3ab910",
+     "presented_jti": "at-71b9d0",
      "agent_jkt": "NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs",
      "tenant": "corp",
      "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
      "scope": "inference.completions",
      "budget": { "amount": 5000000, "unit": "USD", "decimals": 6 },
      "budget_consumed": { "jti": "at-71b9d0", "consumed": 2000000 },
-     "iat": 1754611200,
-     "exp": 1754611500
+     "iat": 1754612400,
+     "exp": 1754612700
    }
+
+   This example is the resource token a resource issues on a challenge
+   to a request presenting the auth token of Section 10 once that
+   token's grant is spent, so presented_jti and the record both name
+   that token.
 
 7.1.  The Consumption Record
 
@@ -584,7 +597,9 @@ Table of Contents
    REQUIRED:
 
    *  *jti*: The jti claim of the auth token presented on the request
-      this resource token answers.
+      this resource token answers.  This is the value the resource token
+      carries as presented_jti ([I-D.hardt-oauth-aauth-protocol],
+      Resource Token Structure).
    *  *consumed*: What the resource has metered against that token's
       budget, as of this resource token's iat: a non-negative integer in
       the unit and decimals of the budget claim in the same resource
@@ -602,9 +617,9 @@ Table of Contents
    holds — and without it the issuer accounts for the allocation as
    fully consumed Section 14.4 when most of it may remain.  A resource
    issuing a resource token on a challenge to a request that carried an
-   auth token SHOULD include the record.  A resource issuing one to an
-   agent it has not authorized, or at its authorization endpoint with no
-   auth token presented, has nothing to report and omits the claim.  In
+   auth token SHOULD include the record.  A resource issuing one on a
+   person token, at its authorization endpoint or on the first challenge
+   of a grant, has no auth token to report on and omits the claim.  In
    four-party access the resource token travels to the AS inside the
    PS's token request, so the record reaches both issuers without a
    usage query.
@@ -644,8 +659,8 @@ Table of Contents
    An agent seeking a larger budget obtains a fresh resource token from
    the resource — stating the larger figure in the authorization
    endpoint request Section 6, or being handed one on a 401 Section 13 —
-   and SHOULD explain the need in the justification parameter of the PS
-   token request.
+   and SHOULD explain the need in the justification parameter of the
+   auth token request.
 
    When the PS issues the auth token itself (three-party), it applies
    the person's policy and issues per Section 10.  When it federates
@@ -742,6 +757,7 @@ Table of Contents
    HTTP/1.1 202 Accepted
    Location: /pending/abc123
    Retry-After: 0
+   Cache-Control: no-store
    AAuth-Requirement: requirement=clarification
    Content-Type: application/json
 
@@ -756,11 +772,12 @@ Table of Contents
    The agent's three replies are already defined and all three are
    useful here: a clarification_response explaining the spend, an
    updated_request carrying a fresh resource token for a smaller figure
-   with the token it presented to obtain it, or a DELETE withdrawing the
-   request.  The PS SHOULD enforce the base protocol's limit on
-   clarification rounds.  An agent that did not declare the
-   clarification capability cannot be asked, and the PS decides without
-   it.
+   with the presented_token it used to obtain it
+   ([I-D.hardt-oauth-aauth-protocol], Updated Request), or a DELETE
+   withdrawing the request.  The base protocol's limit on clarification
+   rounds applies ([I-D.hardt-oauth-aauth-protocol], Clarification
+   Limits).  An agent that did not declare the clarification capability
+   cannot be asked, and the PS decides without it.
 
    Asking the person is the same mechanism one step further out, and is
    the right response when the answer is the person's rather than the
@@ -781,7 +798,7 @@ Table of Contents
 9.  PS-to-AS Token Request Extensions
 
    This document extends the PS-to-AS token request
-   ([I-D.hardt-oauth-aauth-protocol], AS Token Endpoint) with one
+   ([I-D.hardt-oauth-aauth-protocol], PS-to-AS Token Request) with one
    parameter, used in four-party access only.
 
    *budget* (OPTIONAL): A budget object Section 4.5 carrying the ceiling
@@ -790,8 +807,10 @@ Table of Contents
    POST /token HTTP/1.1
    Host: as.inference.example
    Content-Type: application/json
-   Signature-Input: sig=("@method" "@authority"
-       "@path" "signature-key");created=1754611200
+   Content-Digest: sha-256=:...:
+   Signature-Input: sig=("@method" "@authority" "@path"
+       "content-type" "content-digest"
+       "signature-key");created=1754611200
    Signature: sig=:...signature bytes...:
    Signature-Key: sig=jwks_uri;id="https://ps.example";
        dwk="aauth-person.json";kid="key-1"
@@ -807,6 +826,19 @@ Table of Contents
    claim unchanged, and MUST NOT set amount higher than the resource
    token's budget.amount.  The AS MUST NOT issue a budget claim
    exceeding this parameter, and MAY lower it further.
+
+   When the AS returns an auth token, the PS MUST verify, along with the
+   checks of the base protocol's Auth Token Delivery, that the token
+   carries a budget claim when the PS sent a budget parameter, that the
+   claim has the unit and decimals of that parameter and an amount no
+   higher, and that the token carries no budget claim when the PS sent
+   no budget parameter.  A token without a budget claim would leave the
+   resource to apply its own default, which can exceed what the PS
+   allowed.  A token that fails is an auth token that fails delivery
+   verification, and the PS answers the agent as_unreachable
+   ([I-D.hardt-oauth-aauth-protocol], Auth Token Delivery).  This is the
+   budget counterpart of the base protocol's check that the AS's scope
+   is no broader than the resource token's.
 
    When the resource token carries budget and the PS omits this
    parameter, the AS MUST NOT issue a budget claim.  A PS that grants
@@ -835,6 +867,8 @@ Table of Contents
      "sub": "8f14e45fceea167a5a36dedd4bea2543",
      "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519",
                        "x": "NzbLsXh8uDCcd...", "alg": "Ed25519" } },
+     "tenant": "corp",
+     "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
      "scope": "inference.completions",
      "budget": { "amount": 2000000, "unit": "USD", "decimals": 6 },
      "iat": 1754611200,
@@ -878,8 +912,9 @@ Table of Contents
       scale, giving what is left of the budget on this auth token, net
       of reservations for requests in flight Section 14.8.  It is a
       floor — committed consumption will not exceed the grant — though
-      the figure may lag metering.  Exhaustion is signaled by the 401
-      Section 13, for which the agent stays prepared regardless.
+      the figure may lag metering.  Exhaustion is signaled by the
+      requirement=auth-token challenge, as a 401 or a 202 Section 13,
+      for which the agent stays prepared regardless.
    *  *cost* (OPTIONAL): A non-negative Integer, in the granted scale,
       giving what *this request* cost.  A resource sends it in the
       header when it knows the figure as it writes the response, in a
@@ -924,8 +959,8 @@ Table of Contents
 
    A resource that granted a budget SHOULD include AAuth-Budget on every
    response to a request bearing that auth token — success, error, and
-   the 401 challenge, where it reads remaining=0 beside the AAuth-
-   Requirement header Section 13.
+   the challenge, 401 or 202 Section 13.3, where it reads remaining=0
+   beside the AAuth-Requirement header Section 13.
 
    This is SHOULD rather than MUST because the failing layer may sit
    below the metering layer: a gateway timeout, a crashed worker, or a
@@ -1084,24 +1119,34 @@ Table of Contents
 
 13.  Budget Exhaustion
 
-   *Auth token expired.* The budget expires with the token, and an
-   expired token is not presented.  If it is, the resource answers
-   expired_jwt and issues no resource token; the agent re-authorizes
-   with a person token at the authorization endpoint
-   ([I-D.hardt-oauth-aauth-protocol], Re-authorization).  No consumption
-   record rides on that path, and an allocation that expired unreported
-   settles from the usage reading Section 14.4.1.
+   *Auth token expired.* The budget expires with the token.  The base
+   protocol has the agent refresh an auth token when fewer than five
+   minutes remain and not present it inside that margin
+   ([I-D.hardt-oauth-aauth-protocol], Expiry and the Refresh Margin).
+   An expired token presented anyway is answered 401 with Signature-
+   Error: error=expired_jwt, and the resource issues no resource token.
+   Either way the agent re-authorizes with a person token at the
+   authorization endpoint ([I-D.hardt-oauth-aauth-protocol], Re-
+   authorization).  No consumption record rides on that path, and an
+   allocation that expired unreported settles from the usage reading
+   Section 14.4.1.
 
    *Budget exhausted, token still valid.* 401 with AAuth-Requirement:
    requirement=auth-token; resource-token="...".  The base protocol
    already permits a resource to return requirement=auth-token with a
    new resource token to a request that already carries an auth token,
-   when the request requires higher authorization than the current token
-   provides, and requires agents to be prepared for step-up at any time.
-   Budget exhaustion is that case, and the agent's action is the same as
-   for any step-up: take the fresh resource token to its PS.  The
-   resource token's consumption record Section 7.1 is the exhausted
-   token's spend to date.
+   when the request needs more authorization than the token provides,
+   and requires agents to be prepared for this step-up at any time
+   ([I-D.hardt-oauth-aauth-protocol], Auth Token Required).  Budget
+   exhaustion is that case, and the agent's action is the same as for
+   any step-up: take the fresh resource token to its PS, with the
+   exhausted auth token as presented_token.  The resource token's
+   consumption record Section 7.1 is the exhausted token's spend to
+   date.  The auth token issued against it expires no later than the
+   exhausted one ([I-D.hardt-oauth-aauth-protocol], Auth Token
+   Structure), so a step-up renews the allocation but not the token's
+   lifetime.  A full-length token comes from re-authorizing with a fresh
+   person token.
 
    *Request exceeds the remainder.* The budget has remainder, but this
    request's maximum cost exceeds it Section 14.8.  The same 401
@@ -1182,7 +1227,8 @@ Table of Contents
    No new requirement value is minted.  The base protocol says an agent
    that does not recognize a requirement value MUST NOT treat the
    response as satisfiable and surfaces it as an error, while recipients
-   MUST ignore unknown _parameters_ on the requirement member.  A new
+   MUST ignore unknown _parameters_ on the requirement member
+   ([I-D.hardt-oauth-aauth-protocol], Requirement Responses).  A new
    value would hard-fail every budget-unaware agent on a condition that
    plain auth-token resolves correctly.  That asymmetry — unknown values
    fail, unknown parameters are ignored — is why this extension extends
@@ -1195,7 +1241,79 @@ Table of Contents
    at all.  An agent that understands neither ignores the parameter and
    re-authorizes, which is always correct.
 
-13.3.  Boundaries
+13.3.  Deferred Delivery
+
+   A resource MAY deliver either refusal as a 202 deferred response
+   rather than a 401, holding the invocation
+   ([I-D.hardt-oauth-aauth-protocol], Deferred Delivery).  The AAuth-
+   Requirement header is the same, reason included, and so is the
+   enclosed resource token with its consumption record Section 7.1.
+   What differs is what becomes of the request.  Under the 401 the
+   resource holds nothing, and the agent sends the request again.  Under
+   the 202 the resource holds the invocation, and the agent does not
+   send it again: it obtains an auth token and polls the pending URL,
+   and the resource executes the held invocation on the first poll that
+   presents a valid auth token.
+
+   HTTP/1.1 202 Accepted
+   Location: /pending/f7a3b9c
+   Retry-After: 5
+   Cache-Control: no-store
+   AAuth-Requirement: requirement=auth-token;
+       resource-token="eyJ..."; reason=budget-exhausted
+   AAuth-Budget: remaining=0, unit="USD", decimals=6
+   Content-Type: application/json
+
+   {
+     "status": "pending"
+   }
+
+   A resource holding an invocation under this section follows four
+   rules:
+
+   1.  *Nothing is reserved while it is held.* For the held invocation,
+       the resource MUST NOT reserve against or meter to the token
+       presented on the original request.  For that token the 202 is a
+       refusal like the 401, and any remainder it has stays available to
+       the agent's other requests.
+   2.  *It meters against the completing token.* The held invocation is
+       metered against the auth token presented on the poll that
+       completes it.  The resource applies Section 14.8 to that token
+       before executing: it reserves the invocation's maximum cost
+       against that token's remainder, serves, and commits.
+   3.  *A completing token that does not fit does not complete it.* If
+       the invocation's maximum cost exceeds the remainder of the token
+       presented on the poll, the resource does not execute it.  It
+       answers the poll with another 202 carrying requirement=auth-
+       token, reason=insufficient-budget, and a fresh resource token
+       whose presented_jti names that token, and continues to hold the
+       invocation.
+   4.  *A replay is not metered again.* A resource answering a repeated
+       presentation of the completing token from the stored result, as
+       the base protocol requires, MUST NOT meter the invocation a
+       second time.  The AAuth-Budget on the replay reports that token's
+       current remaining, so that the figure is still a floor, with the
+       invocation's cost where the resource has it and no reserved.
+
+   AAuth-Budget on the 202 reports what it would report on the 401: the
+   remaining of the token presented on the request, required under
+   insufficient-budget Section 13.2, and unit and decimals.  It carries
+   no cost and no reserved, because nothing was served or held against
+   that grant.  A later 202 answering a poll that bore an auth token
+   reports on that token the same way Section 11.1.  The response to the
+   completing poll carries AAuth-Budget for the completing token, as any
+   response to a request bearing it does.
+
+   Under insufficient-budget, the agent's other move — lower the
+   request's bound and retry on the token it already holds Section 13 —
+   abandons the pending URL.  The agent sends a new request with the
+   smaller bound and does not poll the pending URL again.  The held
+   invocation is never executed, and since nothing was reserved for it
+   (rule 1), abandoning it costs the grant nothing.  The resource
+   discards it when the pending URL's lifetime ends
+   ([I-D.hardt-oauth-aauth-protocol], Pending URL Security).
+
+13.4.  Boundaries
 
    429 Too Many Requests is not used by this document.  The base
    protocol gives it two meanings already — slow_down on a pending URL,
@@ -1221,18 +1339,20 @@ Table of Contents
 14.2.  Budgets Require Auth-Token Mode
 
    A budget is carried in the budget claim of an auth token, so a
-   resource can enforce one only where it issues auth tokens.  A
+   resource can enforce one only where it requires auth tokens.  A
    resource that declares access_mode: person-token and serves requests
    on the person's identity alone ([I-D.hardt-oauth-aauth-protocol],
    Person Identity Access) has no auth token to read a budget from, and
    neither does a resource operating in agent-token or session-token
    mode.
 
-   A metered resource therefore declares access_mode: auth-token for the
-   endpoints it meters.  It MAY continue to serve unmetered endpoints on
-   a person token; access modes apply per endpoint.  A resource MUST NOT
-   rely on this extension for an endpoint it serves without an auth
-   token.
+   A metered resource therefore requires an auth token on the endpoints
+   it meters (access_mode: auth-token).  It MAY continue to serve
+   unmetered endpoints on a person token, since a resource MAY apply
+   different modes to different endpoints
+   ([I-D.hardt-oauth-aauth-protocol], Resource Access Modes).  A
+   resource MUST NOT rely on this extension for an endpoint it serves
+   without an auth token.
 
    Where the resource holds the authorization state itself rather than
    reading it from a signed claim, there is nothing for the person
@@ -1247,35 +1367,43 @@ Table of Contents
    budget that survived it would be a standing grant the PS no longer
    sizes.
 
-   The budget is revoked with the token.  A PS and an AS SHOULD provide
-   a revocation endpoint, and revoking an auth token by (iss, jti)
-   ([I-D.hardt-oauth-aauth-protocol], Token Revocation) ends its budget
-   along with the rest of its authorization.  Consumption already
-   committed is unaffected — a budget is a ceiling on spending, not a
-   claim on what was spent — and a request already in flight completes,
-   because revocation stops a token being used again rather than
-   interrupting a call.  This document adds nothing to that mechanism;
-   it is named here because a person hitting stop expects the money to
-   stop, and expiry alone bounds that at an hour.  What a revocation
-   means for the issuer's own accounting — when the allocation it
-   reserved can be released — is Section 14.4.1.
+   The budget is revoked with the token.  Revoking an auth token at its
+   resource ends its budget along with the rest of its authorization.
+   In three-party access the PS revokes it there; in four-party access
+   the PS revokes the person token at the AS, and the AS revokes the
+   auth tokens it issued against it ([I-D.hardt-oauth-aauth-protocol],
+   Token Revocation).  A resource without a revocation endpoint honors a
+   revoked token until its exp.  Consumption already committed is
+   unaffected — a budget is a ceiling on spending, not a claim on what
+   was spent — and a request already in flight completes, because
+   revocation stops a token being used again rather than interrupting a
+   call.  This document adds nothing to that mechanism; it is named here
+   because a person hitting stop expects the money to stop, and expiry
+   alone bounds that at an hour.  What a revocation means for the
+   issuer's own accounting — when the allocation it reserved can be
+   released — is Section 14.4.1.
 
    Two conditions return the agent to the PS, and either is sufficient.
-   The auth token expires, which the base protocol caps at one hour.  Or
-   its budget is exhausted Section 13, which happens after however much
-   work it took to spend.  Expiry is proportional to time and exhaustion
-   is proportional to spend, so the supervision interval tracks
-   whichever is moving faster: a mission running cheaply reports on the
-   hour, one running expensively reports in minutes, and no party
+   The auth token nears its exp: the base protocol caps an auth token at
+   one hour and has the agent refresh it when fewer than five minutes
+   remain ([I-D.hardt-oauth-aauth-protocol], Expiry and the Refresh
+   Margin).  Or its budget is exhausted Section 13, which happens after
+   however much work it took to spend.  Expiry is proportional to time
+   and exhaustion is proportional to spend, so the supervision interval
+   tracks whichever is moving faster: a mission running cheaply reports
+   on the hour, one running expensively reports in minutes, and no party
    configures the difference.
 
 14.4.  Unreported Allocations
 
-   An allocation can expire before its issuer sees a figure for it: the
-   agent that would have carried its consumption record back has crashed
-   or been abandoned, and the next usage query has not happened.  The
-   issuer then knows a grant was live and nothing about what it consumed
-   — the true figure is anywhere from zero to the full amount.
+   An allocation can expire before its issuer sees a figure for it.  A
+   consumption record comes back only on a challenge to a request that
+   presented the token Section 7.1.  A token the agent retires by
+   refreshing it, as the base protocol has it do inside the refresh
+   margin Section 13, is never named in one, and neither is a token held
+   by an agent that has crashed or been abandoned.  Until the next usage
+   query, the issuer knows a grant was live and nothing about what it
+   consumed — the true figure is anywhere from zero to the full amount.
 
    Until a figure arrives, the issuer MUST account for the allocation as
    fully consumed.  The error modes are not symmetric: an issuer that
@@ -1334,10 +1462,10 @@ Table of Contents
    what was spent still arrives with the next reading.  What it does is
    move the moment after which no more can be spent, and the issuer
    learns whether that moment exists from the revocation's own answer: a
-   recipient answers once its cascade is terminal, and an AS reports
-   each resource's outcome in downstream
-   ([I-D.hardt-oauth-aauth-protocol], Token Revocation).  Three
-   outcomes, three answers:
+   recipient answers 200 once its cascade is terminal, directly or at
+   the pending URL of a 202, and an AS reports each resource's outcome
+   in downstream ([I-D.hardt-oauth-aauth-protocol], Revocation
+   Response).  Three outcomes, three answers:
 
    *  *Recorded at the resource.* Nothing further can be spent on that
       token.  The allocation is settled by the first usage reading whose
@@ -1378,12 +1506,16 @@ Table of Contents
    cross-token arithmetic to enforce a budget.
 
    *The ledger the resource keeps is per person.* The resource MUST
-   aggregate consumption against the key (iss, sub, aud) of the auth
+   aggregate consumption against the key (ps, sub, aud) of the auth
    token, which is what the consumption record Section 7.1 and the usage
-   counters Section 15 report. (iss, sub) identifies the person — sub is
-   unique within its issuer, and values from different issuers are
-   different people — and aud is the resource itself.  This document
-   introduces no new identifier.
+   counters Section 15 report. (ps, sub) identifies the person: sub is
+   minted by the person server named in ps, and values from different
+   person servers are different people. aud is the resource itself.  In
+   three-party access ps equals iss.  In four-party access iss is the
+   AS, which did not mint sub, so a key on iss would let two person
+   servers behind one AS collide; ps is the person server the AS
+   verified sent the token request ([I-D.hardt-oauth-aauth-protocol],
+   PS-to-AS Token Request).  This document introduces no new identifier.
 
    The ledger is not a second ceiling.  A resource MUST NOT refuse a
    request that fits its token's budget because a per-person total has
@@ -1416,17 +1548,18 @@ Table of Contents
 
    A resource that meters usually charges someone for it, and the party
    it charges is an account in its own systems.  Nothing in a budget
-   names that account.  The aggregation key above is (iss, sub, aud),
-   and sub is directed per person server — it identifies a person at one
-   PS and carries no meaning at the resource beyond what the resource
-   has learned about it.
+   names that account.  The aggregation key above is (ps, sub, aud), and
+   sub is directed per person server — it identifies a person at one PS
+   and carries no meaning at the resource beyond what the resource has
+   learned about it.
 
    For most resources that is sufficient and no mechanism is needed.
-   The base protocol keys a person's relationship with a resource on
-   (iss, sub) precisely so it survives a change of agent, and a resource
-   holding one account per person looks the account up from that pair,
-   or from (iss, tenant, sub) where the person belongs to an
-   organization.  Consumption then meters against the account the
+   The base protocol keys a person's relationship with a resource on the
+   person server and sub precisely so it survives a change of agent, and
+   a resource holding one account per person looks the account up from
+   (ps, sub). tenant names the person's organization and is not part of
+   the identifier ([I-D.hardt-oauth-aauth-protocol], Organization
+   Identification).  Consumption then meters against the account the
    resource already had.
 
    Beyond that, two different questions arise, and they compose rather
@@ -1449,7 +1582,7 @@ Table of Contents
 
    In four-party access the AS asks, returning 202 with
    requirement=interaction to the person server's token request
-   ([I-D.hardt-oauth-aauth-protocol], Access Server Federation).  This
+   ([I-D.hardt-oauth-aauth-protocol], PS-AS Trust Establishment).  This
    is the same one-time binding the AS already performs to establish
    trust with a person server, answering a second question at the moment
    it is already asking the person who they are.
@@ -1496,7 +1629,7 @@ Table of Contents
       Section 14.8 atomically per auth token, so that concurrent
       requests presenting the same token cannot together exceed its
       budget.
-   *  A resource MUST post consumption to the (iss, sub, aud) ledger
+   *  A resource MUST post consumption to the (ps, sub, aud) ledger
       Section 14.5 atomically, so that concurrent requests across
       different tokens do not lose or double-count against the record
       and counters.
@@ -1552,20 +1685,25 @@ Table of Contents
    A budget is not delegable.  Each auth token carries its own budget,
    and consumption through a delegated token draws down that token's
    budget alone.  Both delegation paths — call chaining and sub-agent
-   authorization ([I-D.hardt-oauth-aauth-protocol]) — obtain each
-   downstream auth token from the person server, so the PS sizes every
-   grant in a chain, and Section 14.7 already governs their sum.  No
-   sub-budget or draw-down-from-parent mechanism is defined.
+   authorization ([I-D.hardt-oauth-aauth-protocol], Agent Delegation) —
+   obtain each downstream auth token through the person server, so the
+   PS sizes every grant in a chain, and Section 14.7 already governs
+   their sum.  No sub-budget or draw-down-from-parent mechanism is
+   defined.
 
 14.11.  Mission Attribution
 
    Consumption is attributed to a mission using the mission_s256 claim
-   of the auth token.  That claim is PS-asserted throughout: the person
-   server validated the mission when it issued the person token, the
-   resource copied it into the resource token, and the person server
-   bound the resource token to the person token it had issued.  No party
-   in the chain takes the mission on the agent's word, which is what
-   makes a resource's per-mission figures worth reading.
+   of the auth token, beside its ps claim: a mission is identified by
+   the PS that approved it together with mission_s256
+   ([I-D.hardt-oauth-aauth-protocol], Mission Identifier). mission_s256
+   is PS-asserted throughout: the person server validated the mission
+   when it issued the person token, the resource copied it into the
+   resource token, and the person server, and in four-party access the
+   AS, verified that it matches the presented token's
+   ([I-D.hardt-oauth-aauth-protocol], Resource Token Verification).  No
+   party in the chain takes the mission on the agent's word, which is
+   what makes a resource's per-mission figures worth reading.
 
 15.  Usage Counters
 
@@ -1587,11 +1725,13 @@ Table of Contents
 15.1.  Usage Request
 
    The caller — a person server, or in four-party access an access
-   server — MUST make a signed POST to the usage_endpoint,
-   authenticating exactly as a PS does at an AS auth_token_endpoint
-   ([I-D.hardt-oauth-aauth-protocol]): an HTTP Sig under the jwks_uri
-   scheme, with the signature additionally covering content-type and
-   content-digest.
+   server — MUST make a signed POST to the usage_endpoint, signing as a
+   server in its own right: an HTTP Sig under the jwks_uri scheme, with
+   id its issuer and dwk its metadata document
+   ([I-D.hardt-oauth-aauth-protocol], Keying Material), and the
+   signature additionally covering content-type and content-digest, as
+   on a request with a body to a PS or AS
+   ([I-D.hardt-oauth-aauth-protocol], Covered Components).
 
    The body carries at most one *scope key*, naming a claim value the
    resource has seen in auth tokens:
@@ -1607,6 +1747,15 @@ Table of Contents
    *  *jkts*: An array of JWK Thumbprints ([RFC7638]), each naming a
       signing key the resource has seen present an auth token.  Asks for
       what each of those keys consumed Section 15.2.2.
+
+   An access server names the person server whose values it is asking
+   about:
+
+   *  *ps*: The person server whose namespace the scope key belongs to.
+      REQUIRED when the caller is an access server and the request
+      carries a scope key, since the tokens an AS issues carry values
+      from every person server that federates with it.  A person server
+      omits it; it is the caller.
 
    A request MUST carry a scope key or jkts, and MAY carry both.  At
    most one scope key may appear.  A request with more than one scope
@@ -1804,11 +1953,12 @@ Table of Contents
    The resource MUST only answer for values that have appeared in auth
    tokens it accepted whose iss or ps claim names the caller: for a PS,
    the tokens it issued in three-party access and the tokens carrying it
-   as ps in four-party access; for an AS, the tokens it issued.  This
-   applies to thumbprints in jkts as much as to scope keys. sub is
-   directed per PS, so one person server cannot even name another's
-   subjects; tenant, mission_s256, and thumbprints are not directed, and
-   this check is what stops a third party from querying them.
+   as ps in four-party access; for an AS, the tokens it issued, and for
+   a scope key only those whose ps is the request's ps.  This applies to
+   thumbprints in jkts as much as to scope keys. sub is directed per PS,
+   so one person server cannot even name another's subjects; tenant,
+   mission_s256, and thumbprints are not directed, and this check is
+   what stops a third party from querying them.
 
    An AS is entitled because it sizes allocations against a ceiling of
    its own Section 4.2 and is bound by Section 14.4 for them.  An AS
@@ -1823,8 +1973,9 @@ Table of Contents
 
    invalid_request, using the error response format of
    ([I-D.hardt-oauth-aauth-protocol]), is returned for a body carrying
-   more than one scope key, carrying neither a scope key nor jkts, or
-   carrying a malformed value.
+   more than one scope key, carrying neither a scope key nor jkts,
+   carrying a scope key from an access server without ps, or carrying a
+   malformed value.
 
    A resource MAY rate-limit the endpoint, using the RateLimit fields
    ([I-D.ietf-httpapi-ratelimit-headers]) as on any endpoint.  A PS
@@ -1852,9 +2003,10 @@ Table of Contents
    AAuth-Budget header, and the reason values Section 13.1 — SHOULD
    include budget in its AAuth-Capabilities request header, and in the
    capabilities parameter of its person token and auth token requests
-   ([I-D.hardt-oauth-aauth-protocol]).  The person token request is
-   where a budget-aware agent first reaches its PS about a resource, so
-   it is where the declaration first matters:
+   ([I-D.hardt-oauth-aauth-protocol], AAuth-Capabilities Request
+   Header).  The person token request is where a budget-aware agent
+   first reaches its PS about a resource, so it is where the declaration
+   first matters:
 
    AAuth-Capabilities: interaction, clarification, budget
 
@@ -1932,6 +2084,15 @@ Table of Contents
    agent's move is a fresh resource token at that figure Section 6 and a
    new token request, with the usual consent and policy evaluation.
 
+   In four-party access an AS's suggested_budget reaches the PS, not the
+   agent.  The PS relays it in the problem+json body with which it
+   relays the AS's error to the agent ([I-D.hardt-oauth-aauth-protocol],
+   Auth Token Delivery), with unit and decimals unchanged and amount
+   lowered to what the PS would itself currently accept for the person
+   where that is lower.  That figure never exceeds the ceiling the PS
+   holds Section 8.1, and the PS states it as an amount it would accept,
+   not as the ceiling, which the agent does not learn Appendix A.6.
+
 18.  Standing Authorization for Metered Inference
 
    Metered inference is the initiating use case for this extension and
@@ -1955,10 +2116,11 @@ Table of Contents
    *Do not model the harness as a mission.* A mission description is
    defined as human intent expressed in Markdown.  Synthesizing an
    "operating mission" or "harness mission" to hold the inference budget
-   would put a fabricated description into a signed, content-addressed
-   blob, and mission revocation — a kill switch for one piece of work —
-   would then also be the kill switch for the agent's ability to think.
-   Those are two distinct controls and conflating them is a mistake.
+   would put a fabricated description into the content-addressed blob
+   that every token carrying mission_s256 is bound to, and mission
+   revocation — a kill switch for one piece of work — would then also be
+   the kill switch for the agent's ability to think.  Those are two
+   distinct controls and conflating them is a mistake.
 
    *Pre-mission inference runs on a mission-less auth token* and lands
    in the person's usage with no mission attribution.  Mission
@@ -2186,285 +2348,9 @@ Table of Contents
 
    _Note: This section is to be removed before publishing as an RFC._
 
-   This document has not been submitted to the datatracker.  Everything
-   below is a change to the editor's copy, made while the design was
-   being explored against implementations in progress.  The log is reset
-   at first submission, which becomes draft-hardt-aauth-budgets-00;
-   readers wanting the detail behind any entry will find it in the
-   repository's history and pull requests.
-
-23.1.  Exploratory Changes
-
-   *  Settlement of a revoked auth token Section 14.4.1: a revoked token
-      is not an early exp.  Where the base protocol's cascade reports
-      the revocation as recorded at the resource, the allocation settles
-      at the first usage reading whose as_of is at or after that moment;
-      where it reports revocation_unsupported the resource honors the
-      token to exp and the allocation stays reserved; where it reports
-      revocation_unavailable the issuer cannot tell and holds the
-      reservation to exp.  The downstream report added to the base
-      protocol's Token Revocation is what makes the three
-      distinguishable.  Issue #151.
-
-   *  Section 13.3 no longer says 429 means only "increase the polling
-      interval by 5 seconds" in this protocol: the base protocol now
-      also uses it for rate_limited at a revocation endpoint.  Neither
-      meaning is a budget condition, which is the point the paragraph
-      was making.
-
-   *  An agent declares the budget capability in the capabilities
-      parameter of its person token request as well as its auth token
-      request, following the base protocol's addition of that parameter
-      to the person token endpoint.
-
-   *  Updated Implementation Status: Regent Protocol is in production at
-      get4agent.com, and its regent-httpsig middleware publishes test
-      vectors.  Addresses issue #127.
-
-   *  Consistency pass against the family (2026-09-13).  Removed the
-      expired-token challenge from Section 13: a resource issues a
-      resource token only on a valid person token or auth token, an
-      expired auth token is answered expired_jwt, and the agent re-
-      authorizes with a person token, so no resource token can name an
-      expired token and no final consumption record rides on expiry.  A
-      consumption record is therefore always a snapshot, and the usage
-      reading settles every allocation Section 14.4.1; the exhausted and
-      insufficient challenges are unchanged.  An earlier entry had the
-      resource tolerate an expired auth token solely to issue that
-      challenge, which the base protocol does not permit.  Also: the
-      usage endpoint's Signature-Key examples and prose use the jwks_uri
-      scheme's actual parameters (id, dwk, kid), with the caller's role
-      read from dwk; the PS-to-AS example carries the REQUIRED
-      presented_token; the authorization endpoint example presents a
-      person token; revocation endpoints are RECOMMENDED per the base
-      protocol; the resource metadata count is one endpoint; the header
-      sending rule is stated as SHOULD in the rationale as in the rule;
-      trailer rules are referenced as such; protocol citations no longer
-      carry doubled parentheses; the section is titled Auth Token
-      Endpoint Extensions after the base protocol's rename.
-
-   *  Required an affirmative PS ceiling in four-party access Section 9.
-      When the resource token carries budget and the PS-to-AS request
-      omits the budget parameter, the AS issues no budget claim; a PS
-      granting the full offer echoes it.  Omission previously meant the
-      resource's full offer, which made a PS that had not implemented
-      this extension indistinguishable from one deliberately granting
-      the maximum.
-
-   *  Reduced budget_consumed from an array of up to twenty records to
-      one record, the presented token's Section 7.1.  Every other record
-      duplicated a figure the issuer already had or would settle from a
-      usage reading; the list cost a kilobyte in the 401 header and told
-      an agent what was spent under tokens it never held.  The jti stays
-      so that concurrent allocations settle exactly.  Stated when a
-      record is final: a record is as of its resource token's iat, and
-      final when that is at or after the auth token's exp.  Rationale in
-      Appendix A.4.  Addresses issue #120.
-
-   *  Admitted the AS as a usage endpoint caller Section 15.3.  The
-      endpoint was PS-only on the assumption that an AS sits in the
-      resource's trust domain and takes its figures outside the
-      protocol.  A general-purpose AS does not, and it sizes allocations
-      against a ceiling of its own, so it needs the same channel; the
-      response aud names whichever issuer asked.
-
-   *  Added Section 14.4.1 under Unreported Allocations: a final
-      consumption record settles one token early; a usage reading
-      settles every allocation expired by its as_of in aggregate,
-      without naming any of them; and a calendar ceiling settles itself
-      when allocations are clipped to the period boundary.
-
-   *  Stated that budget_consumed includes the presented token
-      Section 7.1: a resource challenging a request that carried an auth
-      token SHOULD report that token's spend to date, first in the
-      array.  The records previously named only "prior" tokens, which
-      read as excluding the one figure the issuer cannot compute — under
-      insufficient-budget, how much of the refused allocation was
-      actually spent.  A record for an unexpired token is a snapshot; a
-      later record with the same jti supersedes it.  In four-party
-      access the resource token reaches the AS inside the PS's token
-      request, so both issuers get the figure without a usage query.
-
-   *  Added Unreported Allocations Section 14.4: an allocation that
-      expires before its issuer sees a figure for it is accounted as
-      fully consumed until one arrives, with reconciliation idempotent
-      where the channel names the token.  Stated for the issuer — the
-      PS, and in four-party access also the AS, whose figures arrive
-      from the resource directly.  Raised from production, where a gate
-      already applies the rule; the document's only conservative-
-      direction rule was the agent-side one Section 12.3.
-
-   *  Corrected the AAuth-Budget examples to comma-separate Dictionary
-      members.  Five examples used semicolons — the parameter separator
-      — which a Structured Field parser rejects.  Caught in production
-      by an implementation round-tripping the examples through an SFV
-      parser.  The AAuth-Requirement examples are unchanged; their
-      semicolons delimit parameters on the requirement member, which is
-      correct.
-
-   *  Dropped the unit request parameter from the usage endpoint.  It
-      existed for a resource metering one person in more than one unit,
-      which Section 1.1 already discourages, and it bought an error
-      condition and an arbitrary notion of a primary unit.  The response
-      reports in the unit the resource meters in and says which that is.
-
-   *  Made signing the usage response RECOMMENDED rather than REQUIRED
-      Section 15.2.4.  It would be the first response-side signature in
-      the family, the figures are decision context rather than
-      authorization, and a person server refusing an unsigned response
-      is left with no figures rather than unattributable ones.
-
-   *  Stated that the granted budget is an allocation drawn against a
-      ceiling the PS holds and may not share with the agent, rather than
-      the person's whole authorization.  This was the design throughout
-      and was nowhere written down; a reviewer read the document end to
-      end and concluded a durable grant was missing.  See the
-      Introduction and Appendix A.6.
-
-   *  Expanded Section 8 with what the PS is deciding Section 8.1, the
-      four inputs it reads Section 8.2, and its six responses
-      Section 8.3.  Named requirement=clarification as the response for
-      an escalation the PS is not ready to refuse or approve — the
-      channel that lets a PS tell an agent it is overspending, which
-      narrowing an amount cannot do.
-
-   *  Rewrote Section 14.3 from a disclaimer about the absent grant
-      identifier into a statement of the mechanism, including that
-      expiry is proportional to time and exhaustion to spend, so the
-      supervision interval tracks whichever moves faster.
-
-   *  Added a fourth reason to Appendix A.5: cumulative consumption
-      across a series of allocations lets an agent infer the ceiling by
-      subtraction.
-
-   *  Permitted a resource to omit cost entirely Section 12.1.  The
-      member previously had two carriers, header and trailer, and a
-      resource that meters a streamed response on a runtime with no
-      trailer support could use neither — making every such response
-      non-conformant. reserved becomes REQUIRED in that case, and the
-      agent recovers the exact figure from the following response's
-      remaining.  Removed the sentence in Section 12.3 stating that a
-      resource emitting usage in its stream is not excused from the
-      trailer.
-
-   *  Added the required member of AAuth-Budget Section 13.2, the
-      maximum cost a resource computed for a request it refused under
-      reason=insufficient-budget.  The figure was previously available
-      only in the enclosed resource token, whose aud is the PS, which
-      left the agent unable to size the shrink-and-retry that Section 13
-      offers it.  It is deliberately distinct from the resource token's
-      budget, which is a re-authorization offer rather than a fact about
-      the refused request.
-
-   *  Separated the two things a resource counts Section 14.5.  The
-      enforced cap is the presented auth token's own budget; the (iss,
-      sub, aud) aggregate is a ledger for the records and counters and
-      is not a second ceiling the resource may refuse against.
-      Concurrency Section 14.7 said "aggregate atomically across all
-      live auth tokens", which read as a cross-token cap; the atomicity
-      requirements are now stated separately for the per-token invariant
-      and for the ledger.  Holding the cross-token total is the PS's
-      job.  Also stated why the ledger is keyed on the person:
-      mission_s256 is optional and Section 18 requires mission-less
-      tokens, so a mission-keyed ledger has no bucket for them.
-
-   *  Reshaped the usage endpoint Section 15. unit and decimals are
-      stated once at the top of the response rather than repeated per
-      entry, since budget_units fixes the scale for a unit and a
-      response reports in one unit Section 15.2.3; usage is consequently
-      a counter object rather than an array.  The response echoes the
-      scope key and carries aud naming the person server it was produced
-      for.  The request takes at most one scope key, and both the scope
-      key and unit are now optional given the addition below.
-
-   *  Added the jkts query Section 15.2.2: the PS names the signing keys
-      it wants figures for and the resource returns what each consumed.
-      Allocations are ceilings, so a PS supervising several agents for
-      one person could not previously learn how the spending divided
-      among them without waiting for consumption records.  Per-key
-      figures carry no calendar periods — a key's spend is already
-      bounded by tokens that live an hour — and a resource SHOULD retain
-      one for 24 hours after that key's last metered request, leaving
-      accumulation to the PS.  An unrecognized or pruned key is omitted
-      rather than reported as zero, which differs from the treatment of
-      scope keys for a reason stated in place.
-
-   *  Required the usage response to be signed Section 15.2.4, bound to
-      the request, using the key material the PS already fetched for
-      resource tokens.  The endpoint reports what a person owes for, and
-      consumption records were already resource-signed by virtue of
-      riding in a resource token; this was the only PS-facing
-      consumption channel that a resource could disown.  Reconciled
-      Section 19.1, which had said a response-side profile was out of
-      scope, and Section 19.4, which now states what signing does and
-      does not fix.
-
-   *  Stated in Section 14.3 that revoking an auth token revokes its
-      budget, pointing at the base protocol's revocation endpoint.
-      Committed consumption is unaffected and an in-flight request
-      completes.
-
-   *  Stated in Section 14.5 that a per-agent ceiling is a PS sizing
-      decision rather than a resource-side key, and noted in
-      Appendix A.10 that no registry does not mean no constraint — a
-      monetary unit SHOULD still be an ISO 4217 code.
-
-   *  Recorded known implementations Section 22: tokenpony, which
-      implements TPX [TPX] over the same metering core; Regent Protocol,
-      implementing both the PS-side claim and resource-side metering
-      middleware; and the editor's own services.  The relationship
-      between TPX and this document is stated there as a fact about
-      deployments rather than as a positional claim in Section 18, which
-      keeps one sentence.
-
-   *  Noted in Section 12.1 that recovering cost by subtraction is exact
-      only for serial requests on one token; concurrent requests on one
-      token recover the net of everything that settled between the two
-      responses.
-
-   *  Rewrote the garbled unit/decimals sentence in Section 11.
-
-   *  Added The Billing Account Section 14.6: which account a metered
-      resource charges.  Most resources need nothing beyond the (iss,
-      sub) lookup the base protocol already provides.  Beyond that there
-      are two questions, asked at different frequencies and answered by
-      different mechanisms: which person this is, answered once by an
-      interaction the person completes at the resource (three-party) or
-      at the AS (four-party); and which of their accounts an
-      authorization is for, answered on every authorization by the
-      account parameter and claim.  No new mechanism; the document was
-      silent on a question every metered resource meets on its first
-      request.
-
-   *  Replaced the header's cumulative consumed member with cost, what
-      *this request* cost.  The agent's question per response is the
-      price of the call it just made and whether it can afford another;
-      cumulative spend answered neither, was derivable as granted -
-      remaining, and collided with the consumed of a consumption record,
-      which is a per-token total.  See Appendix A.5.
-
-   *  Added the OPTIONAL reserved member, what the resource holds for a
-      request whose cost it cannot yet state.  It is a fact about the
-      request and is never revised.
-
-   *  Permitted AAuth-Budget as a trailer, carrying cost for a streamed
-      response.  A trailer MUST NOT restate a member the header carried,
-      which makes the field correct whether a recipient merges trailers
-      or discards them, without mandating either.  Reverses this
-      document's earlier position that trailers are not used; see
-      Appendix A.7.
-
-   *  Added Ambiguous Failures Section 12.3: an agent that never
-      receives a response assumes the request cost what the resource had
-      held for it, until a later remaining supersedes that.
-
-   *  Removed the balance_endpoint and its metadata field.  It was
-      OPTIONAL and existed for the ambiguous-failure case, which a local
-      conservative rule now covers without a round trip.
-
-   _Note: written against draft-hardt-oauth-aauth-protocol-11, which
-   introduces the person token, replaces the mission object with
-   mission_s256, and removes the agent identifier from auth tokens._
+   *  draft-hardt-aauth-budgets-00
+      -  Initial submission, written against draft-hardt-oauth-aauth-
+         protocol-11.
 
 24.  Acknowledgments
 
@@ -2526,7 +2412,7 @@ Table of Contents
 
    [I-D.hardt-aauth-r3]
               Hardt, D., "AAuth Rich Resource Requests (R3)", 2026,
-              <https://github.com/dickhardt/AAuth>.
+              <https://datatracker.ietf.org/doc/draft-hardt-aauth-r3>.
 
    [I-D.ietf-httpapi-ratelimit-headers]
               Polli, R., Ruiz, A. M., and D. Miller, "RateLimit header
@@ -2904,7 +2790,7 @@ B.2.  TPX
    cumulative spend on a grant, which this document reports to the
    person server Section 15 rather than to the agent Appendix A.5.  Its
    separation of budget_exhausted from balance_exhausted is the same
-   boundary Section 13.3 draws between re-authorization and payment.
+   boundary Section 13.4 draws between re-authorization and payment.
    And its budget is "a damage cap, not a payment" — the hard-cap
    property Section 14.8 states, which TPX asserts as a property of the
    grant and this document additionally realizes with reservations,
