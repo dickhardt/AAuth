@@ -1048,7 +1048,7 @@ svg {
 </tr></thead>
 <tfoot><tr>
 <td class="left">Hardt</td>
-<td class="center">Expires 29 March 2027</td>
+<td class="center">Expires 1 April 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1061,12 +1061,12 @@ svg {
 <dd class="internet-draft">draft-hardt-aauth-r3-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-09-25" class="published">25 September 2026</time>
+<time datetime="2026-09-28" class="published">28 September 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Standards Track</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-03-29">29 March 2027</time></dd>
+<dd class="expires"><time datetime="2027-04-01">1 April 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1107,7 +1107,7 @@ svg {
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 29 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 1 April 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -1234,10 +1234,13 @@ svg {
             <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-r3-processing" class="internal xref">R3 Processing</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8.2.1">
-                <p id="section-toc.1-1.8.2.1.1"><a href="#section-8.1" class="auto internal xref">8.1</a>.  <a href="#name-as-processing" class="internal xref">AS Processing</a></p>
+                <p id="section-toc.1-1.8.2.1.1"><a href="#section-8.1" class="auto internal xref">8.1</a>.  <a href="#name-issuer-processing" class="internal xref">Issuer Processing</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8.2.2">
-                <p id="section-toc.1-1.8.2.2.1"><a href="#section-8.2" class="auto internal xref">8.2</a>.  <a href="#name-caching" class="internal xref">Caching</a></p>
+                <p id="section-toc.1-1.8.2.2.1"><a href="#section-8.2" class="auto internal xref">8.2</a>.  <a href="#name-auth-token-delivery" class="internal xref">Auth Token Delivery</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8.2.3">
+                <p id="section-toc.1-1.8.2.3.1"><a href="#section-8.3" class="auto internal xref">8.3</a>.  <a href="#name-caching" class="internal xref">Caching</a></p>
 </li>
             </ul>
 </li>
@@ -1379,7 +1382,7 @@ svg {
           <strong>Vocabularies</strong> that describe a resource's operations in terms the agent already understands (MCP tools, OpenAPI operations, gRPC methods, etc.)<a href="#section-1-5.1" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-1-5.2">
-          <strong>R3 documents</strong>: structured, content-addressed authorization definitions published by the resource and fetched by the AS<a href="#section-1-5.2" class="pilcrow">¶</a>
+          <strong>R3 documents</strong>: structured, content-addressed authorization definitions published by the resource and fetched by the PS and by the auth token's issuer<a href="#section-1-5.2" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-1-5.3">
           <strong>Vocabulary-based grants</strong> in auth tokens, so resources can enforce authorization directly from claims they understand<a href="#section-1-5.3" class="pilcrow">¶</a>
@@ -1412,7 +1415,7 @@ svg {
           <strong>Vocabulary</strong>: A defined scheme for expressing resource operations. Each vocabulary corresponds to an API description format (MCP, OpenAPI, gRPC, GraphQL, AsyncAPI, WSDL, OData). Resources advertise which vocabularies they support; agents use them to request access.<a href="#section-3-1.1" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-3-1.2">
-          <strong>R3 Document</strong>: A JSON document published by a resource, describing the operations it provides and the consequences of granting access. Identified by the SHA-256 hash of its content. Fetched by both the PS (for user consent using <code>display</code> fields) and the AS (for policy evaluation using <code>operations</code>); not accessible to agents.<a href="#section-3-1.2" class="pilcrow">¶</a>
+          <strong>R3 Document</strong>: A JSON document published by a resource, describing the operations it provides and the consequences of granting access. Identified by the SHA-256 hash of its content. Fetched by the PS (for user consent using <code>display</code> fields) and by the auth token's issuer, the AS or in three-party access the PS (for policy evaluation using <code>operations</code>); not accessible to agents.<a href="#section-3-1.2" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-3-1.3">
           <strong>R3 URI (<code>r3_uri</code>)</strong>: A URI identifying an R3 document. Included in a resource token.<a href="#section-3-1.3" class="pilcrow">¶</a>
@@ -1710,8 +1713,8 @@ svg {
             </tr>
           </tbody>
         </table>
-<p id="section-5.1-3"><code>session-token</code> MUST NOT appear in an annotation. A resource that manages its own authorization does so for the whole resource, and says so in <code>access_mode</code>.<a href="#section-5.1-3" class="pilcrow">¶</a></p>
-<p id="section-5.1-4">The first three values are ordered by increasing requirement, and a credential satisfying a later one satisfies an earlier one. An agent holding an auth token for a resource presents it on every request there (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Auth Token Usage), and a resource issues the resource token that an auth token is obtained with only after verifying a person token or an earlier auth token (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Resource Token), so every auth token follows from a person token the resource verified. An agent holding an auth token may therefore call that resource's <code>person-token</code> and <code>agent-token</code> operations without obtaining anything further.<a href="#section-5.1-4" class="pilcrow">¶</a></p>
+<p id="section-5.1-3"><code>session-token</code> MUST NOT appear in an annotation. R3 grants travel in auth tokens, and a session token is the resource's own credential and carries none (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, AAuth-Access Response Header), so R3 has nothing to annotate for such an operation.<a href="#section-5.1-3" class="pilcrow">¶</a></p>
+<p id="section-5.1-4">The first three values are ordered by increasing requirement, and a credential satisfying a later one satisfies an earlier one. An agent holding an auth token for a resource presents it on every request there (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Auth Token Usage), and a resource issues the resource token that an auth token is obtained with only after verifying a person token or an earlier auth token (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Resource Token), so every auth token follows from a person token the resource verified. An agent holding an auth token may therefore call that resource's <code>person-token</code> and <code>agent-token</code> operations without obtaining anything further. An <code>agent-token</code> operation is satisfied this way only where the resource does not decide on the agent identifier, which no person token or auth token carries (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Why No Agent Identifier Reaches a Resource). Where it does, the resource answers <code>requirement=agent-token</code> (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Agent Token Required), and the agent presents its agent token for that call.<a href="#section-5.1-4" class="pilcrow">¶</a></p>
 <p id="section-5.1-5"><code>per-call</code> is not a fourth rung on that ladder. It says that no credential held in advance is sufficient: the resource challenges every invocation, builds a proposal from that call's parameters, and the grant that results is consumed by that one call. An agent planning unattended work uses <code>per-call</code> to identify the operations that will block on a person.<a href="#section-5.1-5" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -1889,7 +1892,8 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtcGVyc29uK2p3dCJ9
             <strong><code>operations</code></strong> (REQUIRED). An array of operation requests. Structure is vocabulary-specific; see <a href="#mcp-vocabulary" class="auto internal xref">Section 4.3.1</a> through <a href="#odata-vocabulary" class="auto internal xref">Section 4.3.7</a>.<a href="#section-6.1-4.2" class="pilcrow">¶</a>
 </li>
         </ul>
-<p id="section-6.1-5">When <code>r3_operations</code> is present, the resource maps the declared operations to an appropriate R3 document and includes <code>r3_uri</code> and <code>r3_s256</code> in the resource token. When <code>r3_operations</code> is absent, the resource MAY still include R3 claims in the resource token based on its own policy.<a href="#section-6.1-5" class="pilcrow">¶</a></p>
+<p id="section-6.1-5">An agent MAY send <code>r3_operations</code> in place of <code>scope</code> at the authorization endpoint, as R3 claims may replace <code>scope</code> in the resource token (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Resource Token Structure).<a href="#section-6.1-5" class="pilcrow">¶</a></p>
+<p id="section-6.1-6">When <code>r3_operations</code> is present, the resource maps the declared operations to an appropriate R3 document and includes <code>r3_uri</code> and <code>r3_s256</code> in the resource token. When <code>r3_operations</code> is absent, the resource MAY still include R3 claims in the resource token based on its own policy.<a href="#section-6.1-6" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="response">
@@ -2035,7 +2039,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtcGVyc29uK2p3dCJ9
 
 </pre><a href="#section-7.3-5" class="pilcrow">¶</a>
 </div>
-<p id="section-7.3-6">Resource tokens MAY include both <code>scope</code> (as defined in AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>)) and R3 claims. When both are present, the AS MUST enforce both independently.<a href="#section-7.3-6" class="pilcrow">¶</a></p>
+<p id="section-7.3-6">Resource tokens MAY include both <code>scope</code> (as defined in AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>)) and R3 claims. When both are present, the auth token's issuer MUST enforce both independently.<a href="#section-7.3-6" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2045,28 +2049,28 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtcGVyc29uK2p3dCJ9
       <h2 id="name-r3-processing">
 <a href="#section-8" class="section-number selfRef">8. </a><a href="#name-r3-processing" class="section-name selfRef">R3 Processing</a>
       </h2>
-<p id="section-8-1">Both the PS and the AS fetch R3 documents, but for different purposes:<a href="#section-8-1" class="pilcrow">¶</a></p>
+<p id="section-8-1">The PS and the issuer of the auth token fetch R3 documents, for different purposes:<a href="#section-8-1" class="pilcrow">¶</a></p>
 <ul class="compact">
 <li class="compact" id="section-8-2.1">
           <strong>The PS</strong> fetches R3 to present the <code>display</code> section to the user during consent — summary, implications, data accessed, irreversibility. The PS uses this information to determine whether the request fits the mission scope and to obtain informed user consent. <code>display</code> is resource-asserted content, which the PS visually distinguishes from the agent's <code>justification</code> (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Consent Presentation).<a href="#section-8-2.1" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-8-2.2">
-          <strong>The AS</strong> fetches R3 to evaluate <code>operations</code> for policy decisions and to populate <code>r3_granted</code> and <code>r3_per_call</code> in the auth token.<a href="#section-8-2.2" class="pilcrow">¶</a>
+          <strong>The issuer</strong> fetches R3 to evaluate <code>operations</code> for policy decisions and to populate <code>r3_granted</code> and <code>r3_per_call</code> in the auth token.<a href="#section-8-2.2" class="pilcrow">¶</a>
 </li>
       </ul>
-<p id="section-8-3">Both independently verify <code>r3_s256</code> against the fetched document. Because R3 documents are content-addressed, both can cache aggressively by hash.<a href="#section-8-3" class="pilcrow">¶</a></p>
-<div id="as-processing">
+<p id="section-8-3">The issuer is the AS in four-party access and the PS in three-party access (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, PS Authorization Access (Three-Party)), where the PS fetches for both purposes. Each verifies <code>r3_s256</code> against the fetched document independently, and because R3 documents are content-addressed, each can cache aggressively by hash.<a href="#section-8-3" class="pilcrow">¶</a></p>
+<div id="issuer-processing">
 <section id="section-8.1">
-        <h3 id="name-as-processing">
-<a href="#section-8.1" class="section-number selfRef">8.1. </a><a href="#name-as-processing" class="section-name selfRef">AS Processing</a>
+        <h3 id="name-issuer-processing">
+<a href="#section-8.1" class="section-number selfRef">8.1. </a><a href="#name-issuer-processing" class="section-name selfRef">Issuer Processing</a>
         </h3>
-<p id="section-8.1-1">When the AS receives a resource token containing <code>r3_uri</code> and <code>r3_s256</code>, it MUST:<a href="#section-8.1-1" class="pilcrow">¶</a></p>
+<p id="section-8.1-1">When the issuer of the auth token receives a resource token containing <code>r3_uri</code> and <code>r3_s256</code>, it MUST:<a href="#section-8.1-1" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="compact type-1" id="section-8.1-2">
 <li id="section-8.1-2.1">Verify the resource token, and the <code>presented_token</code> sent with it, per (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Resource Token Verification).<a href="#section-8.1-2.1" class="pilcrow">¶</a>
 </li>
-          <li id="section-8.1-2.2">Fetch the R3 document at <code>r3_uri</code>. The AS MAY use a cached copy if the cache entry was stored with the same <code>r3_s256</code> value.<a href="#section-8.1-2.2" class="pilcrow">¶</a>
+          <li id="section-8.1-2.2">Fetch the R3 document at <code>r3_uri</code>. The issuer MAY use a cached copy if the cache entry was stored with the same <code>r3_s256</code> value.<a href="#section-8.1-2.2" class="pilcrow">¶</a>
 </li>
-          <li id="section-8.1-2.3">Compute the SHA-256 hash of the bytes received and compare it to <code>r3_s256</code>. If the hashes do not match, the AS MUST reject the resource token.<a href="#section-8.1-2.3" class="pilcrow">¶</a>
+          <li id="section-8.1-2.3">Compute the SHA-256 hash of the bytes received and compare it to <code>r3_s256</code>. If the hashes do not match, the issuer MUST reject the resource token.<a href="#section-8.1-2.3" class="pilcrow">¶</a>
 </li>
           <li id="section-8.1-2.4">Record <code>r3_uri</code> and <code>r3_s256</code> in its audit log alongside the token issuance event, the timestamp, <code>ps</code> and <code>sub</code> from the resource token, <code>agent_jkt</code> from the resource token, and the agent identifier.<a href="#section-8.1-2.4" class="pilcrow">¶</a>
 </li>
@@ -2075,15 +2079,23 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtcGVyc29uK2p3dCJ9
           <li id="section-8.1-2.6">Include <code>r3_uri</code>, <code>r3_s256</code>, <code>r3_granted</code>, and (if applicable) <code>r3_per_call</code> in the issued auth token.<a href="#section-8.1-2.6" class="pilcrow">¶</a>
 </li>
         </ol>
-<p id="section-8.1-3">The agent identifier in step 4 does not come from the resource token. No token a resource issues carries one (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Why No Agent Identifier Reaches a Resource): the resource token binds to the agent's key through <code>agent_jkt</code> and names the person through <code>ps</code> and <code>sub</code>. The AS takes the agent identifier from the <code>sub</code> of the <code>agent_token</code>, which the PS is REQUIRED to send alongside the resource token (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, PS-to-AS Token Request). The PS is the only caller of an AS token endpoint (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, PS-AS Federation), so the AS always has one. Where the PS also sends a <code>subagent_token</code>, that token's <code>sub</code> is the agent the auth token is bound to and is the identifier the AS records; the <code>agent_token</code>'s <code>sub</code> is its parent, and an AS that distinguishes them SHOULD record both.<a href="#section-8.1-3" class="pilcrow">¶</a></p>
+<p id="section-8.1-3">The agent identifier in step 4 does not come from the resource token. No token a resource issues carries one (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Why No Agent Identifier Reaches a Resource): the resource token binds to the agent's key through <code>agent_jkt</code> and names the person through <code>ps</code> and <code>sub</code>. The issuer takes the agent identifier from the <code>sub</code> of an agent token. In three-party access that is the agent token that signed the token request (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Auth Token Request). In four-party access it is the <code>agent_token</code> the PS is REQUIRED to send alongside the resource token (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, PS-to-AS Token Request); the PS is the only caller of an AS token endpoint (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, PS-AS Federation), so the AS always has one. Where the request also carries a <code>subagent_token</code>, that token's <code>sub</code> is the agent the auth token is bound to and is the identifier the issuer records; the other agent token's <code>sub</code> is its parent, and an issuer that distinguishes them SHOULD record both.<a href="#section-8.1-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="r3-auth-token-delivery">
+<section id="section-8.2">
+        <h3 id="name-auth-token-delivery">
+<a href="#section-8.2" class="section-number selfRef">8.2. </a><a href="#name-auth-token-delivery" class="section-name selfRef">Auth Token Delivery</a>
+        </h3>
+<p id="section-8.2-1">In four-party access the PS verifies the AS's auth token before returning it to the agent (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Auth Token Delivery). When the token carries R3 claims, the PS also verifies that its <code>r3_uri</code> and <code>r3_s256</code> equal those of the resource token the PS sent, and that every operation in <code>r3_granted</code> and <code>r3_per_call</code> appears in the <code>operations</code> of that R3 document. An auth token that fails either check fails delivery verification, and the PS returns <code>as_unreachable</code> (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Token Endpoint Error Codes).<a href="#section-8.2-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="caching">
-<section id="section-8.2">
+<section id="section-8.3">
         <h3 id="name-caching">
-<a href="#section-8.2" class="section-number selfRef">8.2. </a><a href="#name-caching" class="section-name selfRef">Caching</a>
+<a href="#section-8.3" class="section-number selfRef">8.3. </a><a href="#name-caching" class="section-name selfRef">Caching</a>
         </h3>
-<p id="section-8.2-1">The AS is not required to retain R3 documents beyond their immediate use in token issuance. Its audit log records <code>r3_uri</code> and <code>r3_s256</code>, which is enough to re-fetch and verify the document later.<a href="#section-8.2-1" class="pilcrow">¶</a></p>
+<p id="section-8.3-1">The issuer is not required to retain R3 documents beyond their immediate use in token issuance. Its audit log records <code>r3_uri</code> and <code>r3_s256</code>, which is enough to re-fetch and verify the document later.<a href="#section-8.3-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2094,11 +2106,11 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtcGVyc29uK2p3dCJ9
 <a href="#section-9" class="section-number selfRef">9. </a><a href="#name-auth-token-extensions" class="section-name selfRef">Auth Token Extensions</a>
       </h2>
 <p id="section-9-1">R3 extends the auth token defined in AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>) (a JWT with <code>typ: aa-auth+jwt</code>) with claims for audit provenance and vocabulary-based grants. The resource can enforce authorization directly from these claims.<a href="#section-9-1" class="pilcrow">¶</a></p>
-<p id="section-9-2">The base claims are those of Auth Token Structure in AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>) and are not restated here. An auth token carries no agent identifier; <code>cnf</code> binds it to one key, and the resource enforces against <code>sub</code> and the R3 claims below.<a href="#section-9-2" class="pilcrow">¶</a></p>
+<p id="section-9-2">The base claims are those of Auth Token Structure in AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>) and are not restated here. The issuer is the AS in four-party access and the PS in three-party access <a href="#r3-processing" class="auto internal xref">Section 8</a>. An auth token carries no agent identifier; <code>cnf</code> binds it to one key, and the resource enforces against <code>sub</code> and the R3 claims below.<a href="#section-9-2" class="pilcrow">¶</a></p>
 <p id="section-9-3">R3 extension claims:
 - <strong><code>r3_uri</code></strong> (REQUIRED for R3): The URI of the R3 document that was in effect at approval time.
 - <strong><code>r3_s256</code></strong> (REQUIRED for R3): The SHA-256 hash of that R3 document.
-- <strong><code>r3_granted</code></strong> (REQUIRED for R3): Operations the AS fully authorized. The resource serves these immediately.
+- <strong><code>r3_granted</code></strong> (REQUIRED for R3): Operations the issuer fully authorized. The resource serves these immediately.
 - <strong><code>r3_per_call</code></strong> (OPTIONAL): Operations authorized in principle but requiring per-call approval based on the specific parameters the agent provides.<a href="#section-9-3" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="section-9-4">
 <pre>{
@@ -2140,17 +2152,17 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtcGVyc29uK2p3dCJ9
 
 </pre><a href="#section-9-5" class="pilcrow">¶</a>
 </div>
-<p id="section-9-6"><strong><code>r3_uri</code></strong> and <strong><code>r3_s256</code></strong> provide audit provenance: a permanent, verifiable record of which R3 document was in effect at approval time. The AS can verify the R3 document by fetching <code>r3_uri</code> and checking <code>r3_s256</code>.<a href="#section-9-6" class="pilcrow">¶</a></p>
+<p id="section-9-6"><strong><code>r3_uri</code></strong> and <strong><code>r3_s256</code></strong> provide audit provenance: a permanent, verifiable record of which R3 document was in effect at approval time. The issuer can verify the R3 document by fetching <code>r3_uri</code> and checking <code>r3_s256</code>.<a href="#section-9-6" class="pilcrow">¶</a></p>
 <p id="section-9-7"><strong><code>r3_granted</code></strong> and <strong><code>r3_per_call</code></strong> use the same vocabulary-specific operation format as the R3 document's <code>operations</code> field and the agent's <code>r3_operations</code> request:<a href="#section-9-7" class="pilcrow">¶</a></p>
 <ul class="compact">
 <li class="compact" id="section-9-8.1">
           <strong><code>vocabulary</code></strong> (REQUIRED). The vocabulary URI.<a href="#section-9-8.1" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-9-8.2">
-          <strong><code>operations</code></strong> (REQUIRED). An array of operations using the vocabulary-specific structure. The AS MAY narrow the grant to fewer operations than defined in the R3 document.<a href="#section-9-8.2" class="pilcrow">¶</a>
+          <strong><code>operations</code></strong> (REQUIRED). An array of operations using the vocabulary-specific structure. The issuer MAY narrow the grant to fewer operations than defined in the R3 document.<a href="#section-9-8.2" class="pilcrow">¶</a>
 </li>
       </ul>
-<p id="section-9-9">The distinction: <code>r3_granted</code> operations are fully authorized and the resource serves them. <code>r3_per_call</code> operations require the resource to challenge when the agent actually calls. On the challenge the resource builds a <strong>per-call proposal</strong> <a href="#per-call-proposals" class="auto internal xref">Section 10</a> — a content-addressed document carrying the specific parameters of the call — and the AS evaluates those concrete parameters before issuing a per-call auth token.<a href="#section-9-9" class="pilcrow">¶</a></p>
+<p id="section-9-9">The distinction: <code>r3_granted</code> operations are fully authorized and the resource serves them. <code>r3_per_call</code> operations require the resource to challenge when the agent actually calls. On the challenge the resource builds a <strong>per-call proposal</strong> <a href="#per-call-proposals" class="auto internal xref">Section 10</a> — a content-addressed document carrying the specific parameters of the call — and the issuer evaluates those concrete parameters before issuing a per-call auth token.<a href="#section-9-9" class="pilcrow">¶</a></p>
 <div id="resource-enforcement">
 <section id="section-9.1">
         <h3 id="name-resource-enforcement">
@@ -2162,14 +2174,14 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtcGVyc29uK2p3dCJ9
             <strong>Match in <code>r3_granted</code></strong>: serve the request.<a href="#section-9.1-2.1" class="pilcrow">¶</a>
 </li>
           <li id="section-9.1-2.2">
-            <strong>Match in <code>r3_per_call</code></strong>: build a per-call proposal <a href="#per-call-proposals" class="auto internal xref">Section 10</a> and return <code>AAuth-Requirement</code> with a resource token referencing it. The AS evaluates the specific call against the proposed parameters.<a href="#section-9.1-2.2" class="pilcrow">¶</a>
+            <strong>Match in <code>r3_per_call</code></strong>: build a per-call proposal <a href="#per-call-proposals" class="auto internal xref">Section 10</a> and return <code>AAuth-Requirement</code> with a resource token referencing it. The issuer evaluates the specific call against the proposed parameters.<a href="#section-9.1-2.2" class="pilcrow">¶</a>
 </li>
           <li id="section-9.1-2.3">
             <strong>No match</strong>: reject the request.<a href="#section-9.1-2.3" class="pilcrow">¶</a>
 </li>
         </ol>
 <p id="section-9.1-3">No token introspection or R3 document fetch is needed at enforcement time. The resource uses the vocabulary it already understands.<a href="#section-9.1-3" class="pilcrow">¶</a></p>
-<p id="section-9.1-4">When <code>r3_operations</code> was not used (the agent received the resource token in a challenge rather than from the authorization endpoint), the AS populates <code>r3_granted</code> and <code>r3_per_call</code> based on the operations defined in the R3 document and its own policy. The AS decides which operations to grant outright and which to make per-call.<a href="#section-9.1-4" class="pilcrow">¶</a></p>
+<p id="section-9.1-4">When <code>r3_operations</code> was not used (the agent received the resource token in a challenge rather than from the authorization endpoint), the issuer populates <code>r3_granted</code> and <code>r3_per_call</code> based on the operations defined in the R3 document and its own policy. The issuer decides which operations to grant outright and which to make per-call.<a href="#section-9.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2179,7 +2191,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtcGVyc29uK2p3dCJ9
       <h2 id="name-per-call-proposals">
 <a href="#section-10" class="section-number selfRef">10. </a><a href="#name-per-call-proposals" class="section-name selfRef">Per-Call Proposals</a>
       </h2>
-<p id="section-10-1">An <code>r3_per_call</code> operation is authorized in principle but not for any specific call: the consequences depend on the concrete parameters the agent supplies (who the email is addressed to, how large the payment is, which record is deleted). When the agent invokes such an operation, the resource challenges the call and the AS re-evaluates it against those parameters before issuing a per-call auth token.<a href="#section-10-1" class="pilcrow">¶</a></p>
+<p id="section-10-1">An <code>r3_per_call</code> operation is authorized in principle but not for any specific call: the consequences depend on the concrete parameters the agent supplies (who the email is addressed to, how large the payment is, which record is deleted). When the agent invokes such an operation, the resource challenges the call and the issuer re-evaluates it against those parameters before issuing a per-call auth token.<a href="#section-10-1" class="pilcrow">¶</a></p>
 <p id="section-10-2">A <strong>per-call proposal</strong> is the document that carries the specifics of that one pending call. It is an R3 document scoped to a single invocation: same structure, same content-addressing <a href="#content-addressing" class="auto internal xref">Section 7.2</a>, and the same AS/PS-only fetch restriction as a class R3 document. Reusing content-addressing keeps tokens small — they carry only the <code>r3_uri</code>/<code>r3_s256</code> reference, never the parameters — and binds the eventual approval to the exact call that was proposed.<a href="#section-10-2" class="pilcrow">¶</a></p>
 <div id="proposal-document">
 <section id="section-10.1">
@@ -2188,7 +2200,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtcGVyc29uK2p3dCJ9
         </h3>
 <p id="section-10.1-1">In addition to the R3 document fields <a href="#r3-document" class="auto internal xref">Section 7</a>, a per-call proposal carries:<a href="#section-10.1-1" class="pilcrow">¶</a></p>
 <p id="section-10.1-2"><strong><code>operations</code></strong> (REQUIRED). The single <code>r3_per_call</code> operation being invoked, in the resource's vocabulary.<a href="#section-10.1-2" class="pilcrow">¶</a></p>
-<p id="section-10.1-3"><strong><code>parameters</code></strong> (REQUIRED). The concrete parameters of the call, machine-readable, for the AS to evaluate and the resource to bind. A large or sensitive value MAY be represented by a digest object in place of the inline value:<a href="#section-10.1-3" class="pilcrow">¶</a></p>
+<p id="section-10.1-3"><strong><code>parameters</code></strong> (REQUIRED). The concrete parameters of the call, machine-readable, for the issuer to evaluate and the resource to bind. A large or sensitive value MAY be represented by a digest object in place of the inline value:<a href="#section-10.1-3" class="pilcrow">¶</a></p>
 <ul class="compact">
 <li class="compact" id="section-10.1-4.1">
             <code>s256</code> (REQUIRED). <code>BASE64URL(SHA-256(value-bytes))</code> of the parameter value as it will be presented at call time.<a href="#section-10.1-4.1" class="pilcrow">¶</a>
@@ -2201,7 +2213,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtcGVyc29uK2p3dCJ9
 </li>
         </ul>
 <p id="section-10.1-5"><strong><code>result</code></strong> (OPTIONAL). What the resource holds, present only when the resource has already run the operation and is seeking approval to release the result to the agent <a href="#release-gating" class="auto internal xref">Section 10.4</a>. Its absence means the call has not run and the approval is for execution.<a href="#section-10.1-5" class="pilcrow">¶</a></p>
-<p id="section-10.1-6">Its members are resource-defined. They describe the result in terms the AS can evaluate and the PS can act on — how many records came back, which categories of data they hold — and they are what a later request from the same agent is judged against <a href="#release-gating" class="auto internal xref">Section 10.4</a>. The result itself is not carried, and the prose a person reads belongs in <code>display</code>, as it does for any other proposal.<a href="#section-10.1-6" class="pilcrow">¶</a></p>
+<p id="section-10.1-6">Its members are resource-defined. They describe the result in terms the issuer can evaluate and the PS can act on — how many records came back, which categories of data they hold — and they are what a later request from the same agent is judged against <a href="#release-gating" class="auto internal xref">Section 10.4</a>. The result itself is not carried, and the prose a person reads belongs in <code>display</code>, as it does for any other proposal.<a href="#section-10.1-6" class="pilcrow">¶</a></p>
 <p id="section-10.1-7"><strong><code>display</code></strong> (RECOMMENDED). Per-call human context for the user's approval decision. In addition to the structured fields defined in <a href="#r3-document" class="auto internal xref">Section 7</a>, a proposal's <code>display</code> MAY include a <code>detail</code> Markdown string. The following sections are RECOMMENDED as a convention (not normative requirements): <code>## Action</code>, <code>## To</code> / <code>## Recipient</code>, <code>## Details</code>, <code>## Content</code> (excerpt), <code>## Irreversible</code>.<a href="#section-10.1-7" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="section-10.1-8">
 <pre>{
@@ -2232,7 +2244,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtcGVyc29uK2p3dCJ9
             <strong>Per-call challenge.</strong> The agent invokes an <code>r3_per_call</code> operation. The resource builds the proposal, persists it keyed by its <code>r3_s256</code>, and returns <code>AAuth-Requirement</code> with a resource token whose <code>r3_uri</code>/<code>r3_s256</code> reference the proposal — either as a <code>401</code> the agent retries, or as a <code>202 Accepted</code> deferred delivery that holds the invocation (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Deferred Delivery). A resource that can hold the invocation SHOULD use <code>202</code>: the parameters never leave its hands, so the verification in step 3 disappears and the agent never reconstructs the call. The token carries only the reference, not the parameters.<a href="#section-10.2-1.1" class="pilcrow">¶</a>
 </li>
           <li id="section-10.2-1.2">
-            <strong>Approval.</strong> The agent sends the resource token to its PS as for any challenge, with the auth token it presented on the call as <code>presented_token</code> (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Auth Token Request). The AS fetches the proposal and evaluates <code>parameters</code> per policy; the PS renders <code>display</code> for user consent. On approval, the AS issues a per-call auth token that echoes the proposal's <code>r3_uri</code>/<code>r3_s256</code> and lists the now-approved operation in <code>r3_granted</code>. It expires no later than the auth token presented on the call (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Auth Token Structure).<a href="#section-10.2-1.2" class="pilcrow">¶</a>
+            <strong>Approval.</strong> The agent sends the resource token to its PS as for any challenge, with the auth token it presented on the call as <code>presented_token</code> (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Auth Token Request). The issuer fetches the proposal and evaluates <code>parameters</code> per policy; the PS renders <code>display</code> for user consent. On approval, the per-call auth token the issuer returns echoes the proposal's <code>r3_uri</code>/<code>r3_s256</code> and lists the now-approved operation in <code>r3_granted</code>. It expires no later than the auth token presented on the call (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Auth Token Structure).<a href="#section-10.2-1.2" class="pilcrow">¶</a>
 </li>
           <li id="section-10.2-1.3">
             <strong>Enforced completion.</strong> Under <code>202</code>, the resource executes the held call when a valid per-call auth token arrives at the pending URL; there are no parameters to verify, because the agent never re-sends the call. Under <code>401</code>, the agent retries the actual call with the per-call auth token, and the resource recovers the proposal from its store via <code>r3_s256</code> and MUST verify that the agent's actual parameters match the approved proposal: inline parameter values MUST be compared structurally (JSON value equality — member order and insignificant whitespace do not affect the result), and for any parameter represented as a digest the resource MUST verify that <code>BASE64URL(SHA-256(presented-value))</code> equals the stored <code>s256</code>, so the agent MUST present those values byte-identically. If anything differs, the resource MUST reject the call. An approval to email one recipient cannot be replayed against another.<a href="#section-10.2-1.3" class="pilcrow">¶</a>
@@ -2241,6 +2253,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtcGVyc29uK2p3dCJ9
             <strong>Single use.</strong> The grant is consumed by the call it approved, on either delivery. A resource MUST NOT execute more than one invocation under one per-call auth token: under <code>202</code>, completion consumes the pending record; under <code>401</code>, the resource MUST mark the stored proposal consumed when it executes the call. A repeated presentation of the same per-call auth token is answered from the retained result, keyed by the auth token's <code>jti</code>, per the Deferred Delivery rules of AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>). Under <code>202</code>, the pending URL answers from that record, not with <code>410 Gone</code>, until the retention ends (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Pending URL Security).<a href="#section-10.2-1.4" class="pilcrow">¶</a>
 </li>
         </ol>
+<p id="section-10.2-2">A per-call approval can take longer than the auth token the agent presented on the call has left to live, and the per-call auth token cannot outlive it (step 2). If that auth token expires before the person approves, the PS answers <code>expired_presented_token</code> (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Token Endpoint Error Codes). The agent then refreshes top down (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Expiry and the Refresh Margin) and resubmits the call, which the resource challenges again against the agent's new auth token. The PS SHOULD apply the approval it already recorded rather than ask the person again (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Resource Token Structure). Under <code>202</code> delivery, the held invocation is re-requested: the agent sends the call again rather than polling the original pending URL.<a href="#section-10.2-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="large-and-sensitive-payloads">
@@ -2263,7 +2276,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtcGVyc29uK2p3dCJ9
 <p id="section-10.4-4">There is no drift. The result is fixed at the moment of execution, so the approval covers bytes that already exist. Under <code>401</code> the comparison in step 3 of the flow <a href="#per-call-flow" class="auto internal xref">Section 10.2</a> has nothing to compare, and the parameter-substitution concern that step exists to address does not arise.<a href="#section-10.4-4" class="pilcrow">¶</a></p>
 <p id="section-10.4-5">When the resource has executed the operation before seeking approval, <code>display</code> MUST state that the operation has run and that what is being approved is release of its result. Approving execution and approving disclosure of a computed result are different decisions, and a person who approves believing they are gating execution has been misled about what their approval controls.<a href="#section-10.4-5" class="pilcrow">¶</a></p>
 <p id="section-10.4-6">A resource MUST NOT execute before approval where the execution is itself the audited, metered, or billed event. Where running the operation is what an access-logging regime records, what a rate limit or meter counts, or what triggers a call to another party, the execution has consequences of its own and the approval MUST precede it. The test is whether anything outside the result changes when the call runs.<a href="#section-10.4-6" class="pilcrow">¶</a></p>
-<p id="section-10.4-7">The resource decides what of the result it puts in the proposal and what it releases. It may have its own reason to withhold or redact — the result contains personal data, or material the resource has determined this person or this agent should not receive — and the per-call proposal is where it says so, through what it puts in <code>result</code> and <code>display</code> and what it then releases. The PS and the AS see only what the resource chose to put in the proposal. This is the privacy control already stated for parameter digests <a href="#large-and-sensitive-payloads" class="auto internal xref">Section 10.3</a>, applied on the output side, and it is why the release decision belongs to the resource rather than being derivable by the AS from the parameters.<a href="#section-10.4-7" class="pilcrow">¶</a></p>
+<p id="section-10.4-7">The resource decides what of the result it puts in the proposal and what it releases. It may have its own reason to withhold or redact — the result contains personal data, or material the resource has determined this person or this agent should not receive — and the per-call proposal is where it says so, through what it puts in <code>result</code> and <code>display</code> and what it then releases. The PS and the AS see only what the resource chose to put in the proposal. This is the privacy control already stated for parameter digests <a href="#large-and-sensitive-payloads" class="auto internal xref">Section 10.3</a>, applied on the output side, and it is why the release decision belongs to the resource rather than being derivable by the issuer from the parameters.<a href="#section-10.4-7" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="section-10.4-8">
 <pre>{
   "vocabulary": "urn:aauth:vocabulary:openapi",
@@ -2314,7 +2327,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtcGVyc29uK2p3dCJ9
         <h3 id="name-hash-verification">
 <a href="#section-11.2" class="section-number selfRef">11.2. </a><a href="#name-hash-verification" class="section-name selfRef">Hash Verification</a>
         </h3>
-<p id="section-11.2-1">The AS MUST verify <code>r3_s256</code> against the fetched document before using it. Failure to verify allows a resource to serve different content than what was hashed in the resource token.<a href="#section-11.2-1" class="pilcrow">¶</a></p>
+<p id="section-11.2-1">A party that fetches an R3 document MUST verify <code>r3_s256</code> against it before using it. Failure to verify allows a resource to serve different content than what was hashed in the resource token.<a href="#section-11.2-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="audit-log-integrity">
@@ -2322,7 +2335,7 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtcGVyc29uK2p3dCJ9
         <h3 id="name-audit-log-integrity">
 <a href="#section-11.3" class="section-number selfRef">11.3. </a><a href="#name-audit-log-integrity" class="section-name selfRef">Audit Log Integrity</a>
         </h3>
-<p id="section-11.3-1">The AS MUST write audit log entries atomically with token issuance. An auth token issued without a corresponding audit log entry creates an undetectable gap in the observability record. Implementations SHOULD use transactional writes or equivalent mechanisms.<a href="#section-11.3-1" class="pilcrow">¶</a></p>
+<p id="section-11.3-1">The issuer MUST write audit log entries atomically with token issuance. An auth token issued without a corresponding audit log entry creates an undetectable gap in the observability record. Implementations SHOULD use transactional writes or equivalent mechanisms.<a href="#section-11.3-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="operation-validation">
@@ -2547,54 +2560,68 @@ Signature-Key: sig=jwt;jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtcGVyc29uK2p3dCJ9
 <li class="compact" id="section-14-3.1">
           <p id="section-14-3.1.1">draft-hardt-aauth-r3-00<a href="#section-14-3.1.1" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-14-3.1.2.1">Aligned with AAuth Protocol -11 as published. A party fetching an R3 document signs as a server under the <code>jwks_uri</code> scheme, and the entitled PS is the resource token's <code>ps</code>, which on a per-call challenge comes from the auth token the request carried, not a person token. The PS renders <code>display</code> as resource-asserted content per Consent Presentation. AS Processing verifies the resource token and its <code>presented_token</code> per Resource Token Verification, and no longer provides for an AS reached other than by a PS-to-AS token request, since the PS is the only caller. A per-call auth token expires no later than the auth token presented on the call, and under <code>202</code> its retained result is the pending URL's exception to <code>410 Gone</code>. The access-mode ladder rests on a resource verifying a person token or an auth token before issuing a resource token. A runtime requirement may arrive on a <code>202</code> as well as a <code>401</code>. The JWT claim registrations name a change controller.<a href="#section-14-3.1.2.1" class="pilcrow">¶</a>
+<li class="compact" id="section-14-3.1.2.1">Aligned with AAuth Protocol -11 as published. A party fetching an R3 document signs as a server under the <code>jwks_uri</code> scheme, and the entitled PS is the resource token's <code>ps</code>, which on a per-call challenge comes from the auth token the request carried, not a person token. The PS renders <code>display</code> as resource-asserted content per Consent Presentation. Issuer Processing verifies the resource token and its <code>presented_token</code> per Resource Token Verification, and no longer provides for an AS reached other than by a PS-to-AS token request, since the PS is the only caller. A per-call auth token expires no later than the auth token presented on the call, and under <code>202</code> its retained result is the pending URL's exception to <code>410 Gone</code>. The access-mode ladder rests on a resource verifying a person token or an auth token before issuing a resource token. A runtime requirement may arrive on a <code>202</code> as well as a <code>401</code>. The JWT claim registrations name a change controller.<a href="#section-14-3.1.2.1" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.2">Consistency pass against AAuth Protocol -11. The base-claim recitals in Resource Token Extensions and Auth Token Extensions are replaced by pointers to the protocol, since they had drifted twice; they also called the issuer an "Auth server", which is not a term. The access-mode ladder no longer rests on every request carrying an agent token, which -11 removed. The authorization endpoint example presents a person token. The single-use rule points at the protocol's Deferred Delivery rule for the retained result instead of restating it.<a href="#section-14-3.1.2.2" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.2">A person token or auth token satisfies an <code>agent-token</code> operation only where the resource does not decide on the agent identifier. Where it does, the resource answers <code>requirement=agent-token</code>, and the agent presents its agent token for that call.<a href="#section-14-3.1.2.2" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.3">Resource token recital: <code>presented_jti</code> is the <code>jti</code> of the token the request carried, the person token or, on a per-call challenge, the auth token, and <code>ps</code> and <code>sub</code> are copied from that token. Follows AAuth Protocol -11, issue #152 there.<a href="#section-14-3.1.2.3" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.3">A per-call approval that outlasts the presented auth token: the PS answers <code>expired_presented_token</code>, the agent refreshes top down and resubmits the call, and the PS SHOULD apply the approval it already recorded. Under <code>202</code> delivery the held invocation is re-requested.<a href="#section-14-3.1.2.3" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.4">Rewrote Why Not RAR and the Comparison with RAR table. The argument led with directionality — RAR client-declared, R3 resource-declared — which is no longer the live counterposition: OAuth Transaction Authorization Challenge (<span>[<a href="#I-D.rosomakho-oauth-txn-challenge" class="cite xref">I-D.rosomakho-oauth-txn-challenge</a>]</span>) has the protected resource sign <code>authorization_details</code> in a challenge from which the AS derives the granted authorization details. The comparison is now against resource-declared RAR, and rests on content addressing, agent opacity, and carriage by reference. The complementary position is kept and restated.<a href="#section-14-3.1.2.4" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.4">
+              <code>r3_operations</code> MAY be sent in place of <code>scope</code> at the authorization endpoint.<a href="#section-14-3.1.2.4" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.5">Added Approving Release Rather Than Execution: for an operation with no side effects, a resource MAY run the call and seek approval to release the result rather than to execute. No wire change — <code>access_mode</code> stays <code>per-call</code> and the <code>202</code> deferred delivery already holds the invocation. The proposal then describes the actual result rather than inferring consequence from parameters, and there is nothing for the <code>401</code> comparison step to compare.<a href="#section-14-3.1.2.5" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.5">R3 Processing, Issuer Processing (was AS Processing), Auth Token Extensions, and Per-Call Proposals name the auth token's issuer: the PS in three-party access, the AS in four-party access.<a href="#section-14-3.1.2.5" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.6">Added the OPTIONAL <code>result</code> member to the proposal document. Its presence signals that the resource has run the operation and is seeking approval to release the result; its resource-defined members describe what the result holds, which is what the PS judges the agent's next request against. The result itself is not carried, and no digest of it: the resource would be hashing bytes only it holds, which no reader of the proposal ever obtains to check it against.<a href="#section-14-3.1.2.6" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.6">
+              <code>session-token</code> stays out of annotations for a stated reason: R3 grants travel in auth tokens, and a session token is the resource's own credential and carries none.<a href="#section-14-3.1.2.6" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.7">
-              <code>display</code> MUST state that the operation has run where the resource executed before seeking approval, and a resource MUST NOT execute before approval where execution is itself the audited, metered, or billed event. Also stated that the resource decides what of the result it puts in the proposal and what it releases — the same privacy control as for parameter digests, applied on the output side.<a href="#section-14-3.1.2.7" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.7">Added Auth Token Delivery: in four-party access the PS verifies that the AS's auth token carries the resource token's <code>r3_uri</code> and <code>r3_s256</code>, and that <code>r3_granted</code> and <code>r3_per_call</code> fall within the R3 document's <code>operations</code>. A failure is <code>as_unreachable</code>.<a href="#section-14-3.1.2.7" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.8">Budget accounting for a call executed but not released: a metered or billed execution is not a candidate for release gating, since approval MUST precede it; otherwise whether a declined release draws down a budget is the resource's metering policy, as for a failed call in AAuth Budgets (<span>[<a href="#I-D.hardt-aauth-budgets" class="cite xref">I-D.hardt-aauth-budgets</a>]</span>).<a href="#section-14-3.1.2.8" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.8">Consistency pass against AAuth Protocol -11. The base-claim recitals in Resource Token Extensions and Auth Token Extensions are replaced by pointers to the protocol, since they had drifted twice; they also called the issuer an "Auth server", which is not a term. The access-mode ladder no longer rests on every request carrying an agent token, which -11 removed. The authorization endpoint example presents a person token. The single-use rule points at the protocol's Deferred Delivery rule for the retained result instead of restating it.<a href="#section-14-3.1.2.8" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.9">Brought the base-claim recitals in Resource Token Extensions and Auth Token Extensions up to AAuth Protocol -11. The <code>agent</code> claim is gone from both tokens: a resource token now carries <code>ps</code>, <code>sub</code>, and <code>presented_jti</code>, and an auth token carries <code>ps</code> and a REQUIRED directed <code>sub</code>, with <code>mission_s256</code> OPTIONAL. The examples were updated to match, including the auth token's <code>sub</code>, which showed an email address where the value is an opaque directed identifier.<a href="#section-14-3.1.2.9" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.9">Resource token recital: <code>presented_jti</code> is the <code>jti</code> of the token the request carried, the person token or, on a per-call challenge, the auth token, and <code>ps</code> and <code>sub</code> are copied from that token. Follows AAuth Protocol -11, issue #152 there.<a href="#section-14-3.1.2.9" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.10">AS Processing required the AS to log "the agent identifier" against a resource token that no longer carries one. The step now names identifiers the AS actually holds — <code>ps</code>, <code>sub</code>, and <code>agent_jkt</code> from the resource token — and says where the agent identifier does come from: the <code>sub</code> of the <code>agent_token</code> the PS is REQUIRED to send on the PS-to-AS token request, or of the <code>subagent_token</code> where one is present. An AS reached any other way has no agent token and MUST NOT infer an agent identity.<a href="#section-14-3.1.2.10" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.10">Rewrote Why Not RAR and the Comparison with RAR table. The argument led with directionality — RAR client-declared, R3 resource-declared — which is no longer the live counterposition: OAuth Transaction Authorization Challenge (<span>[<a href="#I-D.rosomakho-oauth-txn-challenge" class="cite xref">I-D.rosomakho-oauth-txn-challenge</a>]</span>) has the protected resource sign <code>authorization_details</code> in a challenge from which the AS derives the granted authorization details. The comparison is now against resource-declared RAR, and rests on content addressing, agent opacity, and carriage by reference. The complementary position is kept and restated.<a href="#section-14-3.1.2.10" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.11">R3 Document Access Restriction identified the entitled PS by the <code>ps</code> claim of the agent token. Under -11 an agent presents a person token in place of its agent token at the authorization endpoint, so the resource may never see an agent token, and that claim is OPTIONAL in any case. The entitled PS is now the issuer of the person token the resource verified, which is the REQUIRED <code>ps</code> claim of the resource token the resource itself issued.<a href="#section-14-3.1.2.11" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.11">Added Approving Release Rather Than Execution: for an operation with no side effects, a resource MAY run the call and seek approval to release the result rather than to execute. No wire change — <code>access_mode</code> stays <code>per-call</code> and the <code>202</code> deferred delivery already holds the invocation. The proposal then describes the actual result rather than inferring consequence from parameters, and there is nothing for the <code>401</code> comparison step to compare.<a href="#section-14-3.1.2.11" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.12">Added operation access annotations: a resource states, on the operation in its own vocabulary, which credential the operation requires and whether it consumes budget. The vocabulary is where they go because it is the only description of the resource's operations an agent can read — R3 documents are PS- and AS-only. Annotations are sparse against the resource-wide <code>access_mode</code>, replace it rather than intersect with it, and stay advisory: the runtime <code>AAuth-Requirement</code> remains authoritative. Encodings defined for MCP, OpenAPI, AsyncAPI, and OData; none for gRPC, GraphQL, or WSDL, whose discovery mechanisms do not carry annotations to a generic caller.<a href="#section-14-3.1.2.12" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.12">Added the OPTIONAL <code>result</code> member to the proposal document. Its presence signals that the resource has run the operation and is seeking approval to release the result; its resource-defined members describe what the result holds, which is what the PS judges the agent's next request against. The result itself is not carried, and no digest of it: the resource would be hashing bytes only it holds, which no reader of the proposal ever obtains to check it against.<a href="#section-14-3.1.2.12" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.13">Added the <code>access_mode</code> value <code>per-call</code>, for a resource or an operation that authorizes each invocation individually against its parameters, and registered it in the AAuth Access Mode Value Registry.<a href="#section-14-3.1.2.13" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.13">
+              <code>display</code> MUST state that the operation has run where the resource executed before seeking approval, and a resource MUST NOT execute before approval where execution is itself the audited, metered, or billed event. Also stated that the resource decides what of the result it puts in the proposal and what it releases — the same privacy control as for parameter digests, applied on the output side.<a href="#section-14-3.1.2.13" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.14">Renamed the auth token claim <code>r3_conditional</code> to <code>r3_per_call</code>, matching the <code>per-call</code> access mode. "Conditional" did not say what the condition was.<a href="#section-14-3.1.2.14" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.14">Budget accounting for a call executed but not released: a metered or billed execution is not a candidate for release gating, since approval MUST precede it; otherwise whether a declined release draws down a budget is the resource's metering policy, as for a failed call in AAuth Budgets (<span>[<a href="#I-D.hardt-aauth-budgets" class="cite xref">I-D.hardt-aauth-budgets</a>]</span>).<a href="#section-14-3.1.2.14" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.15">Removed the <code>version</code> field. R3 documents are content-addressed, so a revision is a different document at a different hash; <code>version</code> named nothing the hash did not, and nothing prevented two different documents carrying the same value.<a href="#section-14-3.1.2.15" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.15">Brought the base-claim recitals in Resource Token Extensions and Auth Token Extensions up to AAuth Protocol -11. The <code>agent</code> claim is gone from both tokens: a resource token now carries <code>ps</code>, <code>sub</code>, and <code>presented_jti</code>, and an auth token carries <code>ps</code> and a REQUIRED directed <code>sub</code>, with <code>mission_s256</code> OPTIONAL. The examples were updated to match, including the auth token's <code>sub</code>, which showed an email address where the value is an opaque directed identifier.<a href="#section-14-3.1.2.15" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.16">Per-call grants are single-use on either delivery, with completion answered idempotently from the retained result. The <code>401</code> retry gained the comparison semantics it lacked — structural equality for inline parameters, digest equality for <code>s256</code> parameters — and a resource that can hold the invocation SHOULD use the <code>202</code> deferred delivery AAuth Protocol defines, under which nothing is re-sent and nothing is compared. Addresses issue #92.<a href="#section-14-3.1.2.16" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.16">AS Processing required the AS to log "the agent identifier" against a resource token that no longer carries one. The step now names identifiers the AS actually holds — <code>ps</code>, <code>sub</code>, and <code>agent_jkt</code> from the resource token — and says where the agent identifier does come from: the <code>sub</code> of the <code>agent_token</code> the PS is REQUIRED to send on the PS-to-AS token request, or of the <code>subagent_token</code> where one is present. An AS reached any other way has no agent token and MUST NOT infer an agent identity.<a href="#section-14-3.1.2.16" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.17">Renamed <code>person_token_jti</code> to <code>presented_jti</code>, following AAuth Protocol.<a href="#section-14-3.1.2.17" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.17">R3 Document Access Restriction identified the entitled PS by the <code>ps</code> claim of the agent token. Under -11 an agent presents a person token in place of its agent token at the authorization endpoint, so the resource may never see an agent token, and that claim is OPTIONAL in any case. The entitled PS is now the issuer of the person token the resource verified, which is the REQUIRED <code>ps</code> claim of the resource token the resource itself issued.<a href="#section-14-3.1.2.17" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.18">Added per-call proposals: an <code>r3_conditional</code> operation is challenged at call time, and the resource builds a content-addressed proposal carrying the concrete parameters, which the AS evaluates and the resource binds on retry. A parameter MAY be carried as a digest so large or sensitive values stay between the agent and the resource.<a href="#section-14-3.1.2.18" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.18">Added operation access annotations: a resource states, on the operation in its own vocabulary, which credential the operation requires and whether it consumes budget. The vocabulary is where they go because it is the only description of the resource's operations an agent can read — R3 documents are PS- and AS-only. Annotations are sparse against the resource-wide <code>access_mode</code>, replace it rather than intersect with it, and stay advisory: the runtime <code>AAuth-Requirement</code> remains authoritative. Encodings defined for MCP, OpenAPI, AsyncAPI, and OData; none for gRPC, GraphQL, or WSDL, whose discovery mechanisms do not carry annotations to a generic caller.<a href="#section-14-3.1.2.18" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.19">Added the OPTIONAL <code>account</code> field, carrying the <code>account</code> value the authorization endpoint request named. <code>display</code> SHOULD name the account in terms the person recognises, the value itself being an identifier in the resource's namespace that may be opaque.<a href="#section-14-3.1.2.19" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.19">Added the <code>access_mode</code> value <code>per-call</code>, for a resource or an operation that authorizes each invocation individually against its parameters, and registered it in the AAuth Access Mode Value Registry.<a href="#section-14-3.1.2.19" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.20">Content addressing hashes the bytes as served; canonicalization removed.<a href="#section-14-3.1.2.20" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.20">Renamed the auth token claim <code>r3_conditional</code> to <code>r3_per_call</code>, matching the <code>per-call</code> access mode. "Conditional" did not say what the condition was.<a href="#section-14-3.1.2.20" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.21">A resource MUST compose a single R3 document when the requested operations span more than one of its internal definitions.<a href="#section-14-3.1.2.21" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.21">Removed the <code>version</code> field. R3 documents are content-addressed, so a revision is a different document at a different hash; <code>version</code> named nothing the hash did not, and nothing prevented two different documents carrying the same value.<a href="#section-14-3.1.2.21" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.22">Added operation identifier scope rules, and what a resource aggregating multiple backend services behind one resource identifier MUST do.<a href="#section-14-3.1.2.22" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.22">Per-call grants are single-use on either delivery, with completion answered idempotently from the retained result. The <code>401</code> retry gained the comparison semantics it lacked — structural equality for inline parameters, digest equality for <code>s256</code> parameters — and a resource that can hold the invocation SHOULD use the <code>202</code> deferred delivery AAuth Protocol defines, under which nothing is re-sent and nothing is compared. Addresses issue #92.<a href="#section-14-3.1.2.22" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.23">Aligned with the AAuth Protocol: <code>issuer</code> in resource metadata, and <code>dwk</code> values <code>aauth-access.json</code> and <code>aauth-person.json</code> in auth tokens.<a href="#section-14-3.1.2.23" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.23">Renamed <code>person_token_jti</code> to <code>presented_jti</code>, following AAuth Protocol.<a href="#section-14-3.1.2.23" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="section-14-3.1.2.24">Initial draft.<a href="#section-14-3.1.2.24" class="pilcrow">¶</a>
+            <li class="compact" id="section-14-3.1.2.24">Added per-call proposals: an <code>r3_conditional</code> operation is challenged at call time, and the resource builds a content-addressed proposal carrying the concrete parameters, which the AS evaluates and the resource binds on retry. A parameter MAY be carried as a digest so large or sensitive values stay between the agent and the resource.<a href="#section-14-3.1.2.24" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-14-3.1.2.25">Added the OPTIONAL <code>account</code> field, carrying the <code>account</code> value the authorization endpoint request named. <code>display</code> SHOULD name the account in terms the person recognises, the value itself being an identifier in the resource's namespace that may be opaque.<a href="#section-14-3.1.2.25" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-14-3.1.2.26">Content addressing hashes the bytes as served; canonicalization removed.<a href="#section-14-3.1.2.26" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-14-3.1.2.27">A resource MUST compose a single R3 document when the requested operations span more than one of its internal definitions.<a href="#section-14-3.1.2.27" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-14-3.1.2.28">Added operation identifier scope rules, and what a resource aggregating multiple backend services behind one resource identifier MUST do.<a href="#section-14-3.1.2.28" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-14-3.1.2.29">Aligned with the AAuth Protocol: <code>issuer</code> in resource metadata, and <code>dwk</code> values <code>aauth-access.json</code> and <code>aauth-person.json</code> in auth tokens.<a href="#section-14-3.1.2.29" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-14-3.1.2.30">Initial draft.<a href="#section-14-3.1.2.30" class="pilcrow">¶</a>
 </li>
           </ul>
 </li>
