@@ -30,6 +30,7 @@ Implementing against an earlier revision? See [Updating from -10 to -11](upgrade
 | [dotnet-samples](https://github.com/aauth-dev/dotnet-samples) | .NET SDK and samples |
 | [aauth-python-library](https://github.com/christian-posta/aauth-python-library) | Python request signing and verification |
 | [aauth-go-library](https://github.com/christian-posta/aauth-go-library) | Go request signing and verification |
+| [regent-httpsig](https://github.com/regent-protocol/regent-httpsig) | Python resource-side verification and budgets metering |
 | [keycloak-aauth-extension](https://github.com/christian-posta/keycloak-aauth-extension) | Keycloak SPI (26.2.5) |
 | [aauth-person-server](https://github.com/christian-posta/aauth-person-server) | Person server with missions |
 | [extauth-aauth-resource](https://github.com/christian-posta/extauth-aauth-resource) | Envoy / agentgateway ext-authz that makes an HTTP, MCP, or A2A service an AAuth resource |
