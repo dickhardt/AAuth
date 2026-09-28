@@ -1050,7 +1050,7 @@ svg {
 </tr></thead>
 <tfoot><tr>
 <td class="left">Hardt</td>
-<td class="center">Expires 29 March 2027</td>
+<td class="center">Expires 1 April 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1063,12 +1063,12 @@ svg {
 <dd class="internet-draft">draft-hardt-aauth-budgets-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-09-25" class="published">25 September 2026</time>
+<time datetime="2026-09-28" class="published">28 September 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Standards Track</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-03-29">29 March 2027</time></dd>
+<dd class="expires"><time datetime="2027-04-01">1 April 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1109,7 +1109,7 @@ svg {
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 29 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 1 April 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -1241,7 +1241,10 @@ svg {
                 <p id="section-toc.1-1.13.2.2.1"><a href="#section-13.2" class="auto internal xref">13.2</a>.  <a href="#name-refusing-a-request-that-doe" class="internal xref">Refusing a Request That Does Not Fit</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.3">
-                <p id="section-toc.1-1.13.2.3.1"><a href="#section-13.3" class="auto internal xref">13.3</a>.  <a href="#name-boundaries" class="internal xref">Boundaries</a></p>
+                <p id="section-toc.1-1.13.2.3.1"><a href="#section-13.3" class="auto internal xref">13.3</a>.  <a href="#name-deferred-delivery" class="internal xref">Deferred Delivery</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.4">
+                <p id="section-toc.1-1.13.2.4.1"><a href="#section-13.4" class="auto internal xref">13.4</a>.  <a href="#name-boundaries" class="internal xref">Boundaries</a></p>
 </li>
             </ul>
 </li>
@@ -2006,7 +2009,8 @@ Signature-Key: sig=jwks_uri;id="https://ps.example";
 </pre><a href="#section-9-3" class="pilcrow">¶</a>
 </div>
 <p id="section-9-4">The PS MUST copy <code>unit</code> and <code>decimals</code> from the resource token's <code>budget</code> claim unchanged, and MUST NOT set <code>amount</code> higher than the resource token's <code>budget.amount</code>. The AS MUST NOT issue a <code>budget</code> claim exceeding this parameter, and MAY lower it further.<a href="#section-9-4" class="pilcrow">¶</a></p>
-<p id="section-9-5">When the resource token carries <code>budget</code> and the PS omits this parameter, the AS MUST NOT issue a <code>budget</code> claim. A PS that grants the resource's full offer says so by echoing the resource token's <code>budget</code>; omission is what a PS that does not implement this extension sends, and it MUST NOT be read as a grant. The auth token then carries no allocation, and the resource applies its own default to it <a href="#auth-token" class="auto internal xref">Section 10</a>. Reading omission as the full offer would turn a PS's non-participation into the maximum grant, the opposite of what ignoring an unrecognized claim is meant to do.<a href="#section-9-5" class="pilcrow">¶</a></p>
+<p id="section-9-5">When the AS returns an auth token, the PS MUST verify, along with the checks of the base protocol's Auth Token Delivery, that the token carries a <code>budget</code> claim when the PS sent a <code>budget</code> parameter, that the claim has the <code>unit</code> and <code>decimals</code> of that parameter and an <code>amount</code> no higher, and that the token carries no <code>budget</code> claim when the PS sent no <code>budget</code> parameter. A token without a <code>budget</code> claim would leave the resource to apply its own default, which can exceed what the PS allowed. A token that fails is an auth token that fails delivery verification, and the PS answers the agent <code>as_unreachable</code> (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Auth Token Delivery). This is the budget counterpart of the base protocol's check that the AS's <code>scope</code> is no broader than the resource token's.<a href="#section-9-5" class="pilcrow">¶</a></p>
+<p id="section-9-6">When the resource token carries <code>budget</code> and the PS omits this parameter, the AS MUST NOT issue a <code>budget</code> claim. A PS that grants the resource's full offer says so by echoing the resource token's <code>budget</code>; omission is what a PS that does not implement this extension sends, and it MUST NOT be read as a grant. The auth token then carries no allocation, and the resource applies its own default to it <a href="#auth-token" class="auto internal xref">Section 10</a>. Reading omission as the full offer would turn a PS's non-participation into the maximum grant, the opposite of what ignoring an unrecognized claim is meant to do.<a href="#section-9-6" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="auth-token">
@@ -2069,7 +2073,7 @@ Signature-Key: sig=jwks_uri;id="https://ps.example";
 <p id="section-11-3">Members:<a href="#section-11-3" class="pilcrow">¶</a></p>
 <ul class="compact">
 <li class="compact" id="section-11-4.1">
-          <strong><code>remaining</code></strong> (REQUIRED): A non-negative Integer, in the granted scale, giving what is left of the budget on this auth token, net of reservations for requests in flight <a href="#overshoot" class="auto internal xref">Section 14.8</a>. It is a floor — committed consumption will not exceed the grant — though the figure may lag metering. Exhaustion is signaled by the <code>401</code> <a href="#exhaustion" class="auto internal xref">Section 13</a>, for which the agent stays prepared regardless.<a href="#section-11-4.1" class="pilcrow">¶</a>
+          <strong><code>remaining</code></strong> (REQUIRED): A non-negative Integer, in the granted scale, giving what is left of the budget on this auth token, net of reservations for requests in flight <a href="#overshoot" class="auto internal xref">Section 14.8</a>. It is a floor — committed consumption will not exceed the grant — though the figure may lag metering. Exhaustion is signaled by the <code>requirement=auth-token</code> challenge, as a <code>401</code> or a <code>202</code> <a href="#exhaustion" class="auto internal xref">Section 13</a>, for which the agent stays prepared regardless.<a href="#section-11-4.1" class="pilcrow">¶</a>
 </li>
         <li class="compact" id="section-11-4.2">
           <strong><code>cost</code></strong> (OPTIONAL): A non-negative Integer, in the granted scale, giving what <strong>this request</strong> cost. A resource sends it in the header when it knows the figure as it writes the response, in a trailer when it learns the figure after <a href="#streaming" class="auto internal xref">Section 12</a>, and not at all when it will not learn it in time to do either. The third case is bounded by <a href="#cost-omitted" class="auto internal xref">Section 12.1</a>.<a href="#section-11-4.2" class="pilcrow">¶</a>
@@ -2092,7 +2096,7 @@ Signature-Key: sig=jwks_uri;id="https://ps.example";
         <h3 id="name-sending-rules">
 <a href="#section-11.1" class="section-number selfRef">11.1. </a><a href="#name-sending-rules" class="section-name selfRef">Sending Rules</a>
         </h3>
-<p id="section-11.1-1">A resource that granted a budget SHOULD include <code>AAuth-Budget</code> on every response to a request bearing that auth token — success, error, and the <code>401</code> challenge, where it reads <code>remaining=0</code> beside the <code>AAuth-Requirement</code> header <a href="#exhaustion" class="auto internal xref">Section 13</a>.<a href="#section-11.1-1" class="pilcrow">¶</a></p>
+<p id="section-11.1-1">A resource that granted a budget SHOULD include <code>AAuth-Budget</code> on every response to a request bearing that auth token — success, error, and the challenge, <code>401</code> or <code>202</code> <a href="#exhaustion-deferred" class="auto internal xref">Section 13.3</a>, where it reads <code>remaining=0</code> beside the <code>AAuth-Requirement</code> header <a href="#exhaustion" class="auto internal xref">Section 13</a>.<a href="#section-11.1-1" class="pilcrow">¶</a></p>
 <p id="section-11.1-2">This is SHOULD rather than MUST because the failing layer may sit below the metering layer: a gateway timeout, a crashed worker, or a fault in metering itself produces a response no budget figure can ride on. A resource MUST NOT omit the field for any other reason. An agent that misses the field learns the balance from its next response, and until then applies <a href="#ambiguous-failure" class="auto internal xref">Section 12.3</a>.<a href="#section-11.1-2" class="pilcrow">¶</a></p>
 <div class="lang-http sourcecode" id="section-11.1-3">
 <pre>HTTP/1.1 401 Unauthorized
@@ -2243,13 +2247,54 @@ AAuth-Budget: remaining=150000, required=400000,
 <p id="section-13.2-7">An agent that understands the <code>reason</code> values knows what to do beyond re-authorizing: for <code>budget-exhausted</code>, request a larger budget and say why in the <code>justification</code> it sends to its PS; for <code>insufficient-budget</code>, either that, or shrink the request and retry without involving the PS at all. An agent that understands neither ignores the parameter and re-authorizes, which is always correct.<a href="#section-13.2-7" class="pilcrow">¶</a></p>
 </section>
 </div>
-<div id="exhaustion-boundaries">
+<div id="exhaustion-deferred">
 <section id="section-13.3">
-        <h3 id="name-boundaries">
-<a href="#section-13.3" class="section-number selfRef">13.3. </a><a href="#name-boundaries" class="section-name selfRef">Boundaries</a>
+        <h3 id="name-deferred-delivery">
+<a href="#section-13.3" class="section-number selfRef">13.3. </a><a href="#name-deferred-delivery" class="section-name selfRef">Deferred Delivery</a>
         </h3>
-<p id="section-13.3-1"><code>429 Too Many Requests</code> is not used by this document. The base protocol gives it two meanings already — <code>slow_down</code> on a pending URL, which asks a polling agent to lengthen its interval, and <code>rate_limited</code> at a revocation endpoint, which refuses work a caller has sent too much of (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>). Neither is a budget condition. A budget refusal is about what the next request would cost, not about how often requests arrive, and the agent answers it by re-authorizing rather than by waiting.<a href="#section-13.3-1" class="pilcrow">¶</a></p>
-<p id="section-13.3-2"><code>402 Payment Required</code> is a different condition: the resource needs payment rather than re-authorization from the person. The base protocol already permits <code>AAuth-Requirement</code> on a <code>402</code>, and this document does not change that.<a href="#section-13.3-2" class="pilcrow">¶</a></p>
+<p id="section-13.3-1">A resource MAY deliver either refusal as a <code>202</code> deferred response rather than a <code>401</code>, holding the invocation (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Deferred Delivery). The <code>AAuth-Requirement</code> header is the same, <code>reason</code> included, and so is the enclosed resource token with its consumption record <a href="#budget-consumed" class="auto internal xref">Section 7.1</a>. What differs is what becomes of the request. Under the <code>401</code> the resource holds nothing, and the agent sends the request again. Under the <code>202</code> the resource holds the invocation, and the agent does not send it again: it obtains an auth token and polls the pending URL, and the resource executes the held invocation on the first poll that presents a valid auth token.<a href="#section-13.3-1" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-13.3-2">
+<pre>HTTP/1.1 202 Accepted
+Location: /pending/f7a3b9c
+Retry-After: 5
+Cache-Control: no-store
+AAuth-Requirement: requirement=auth-token;
+    resource-token="eyJ..."; reason=budget-exhausted
+AAuth-Budget: remaining=0, unit="USD", decimals=6
+Content-Type: application/json
+
+{
+  "status": "pending"
+}
+
+</pre><a href="#section-13.3-2" class="pilcrow">¶</a>
+</div>
+<p id="section-13.3-3">A resource holding an invocation under this section follows four rules:<a href="#section-13.3-3" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="compact type-1" id="section-13.3-4">
+<li id="section-13.3-4.1">
+            <strong>Nothing is reserved while it is held.</strong> For the held invocation, the resource MUST NOT reserve against or meter to the token presented on the original request. For that token the <code>202</code> is a refusal like the <code>401</code>, and any remainder it has stays available to the agent's other requests.<a href="#section-13.3-4.1" class="pilcrow">¶</a>
+</li>
+          <li id="section-13.3-4.2">
+            <strong>It meters against the completing token.</strong> The held invocation is metered against the auth token presented on the poll that completes it. The resource applies <a href="#overshoot" class="auto internal xref">Section 14.8</a> to that token before executing: it reserves the invocation's maximum cost against that token's remainder, serves, and commits.<a href="#section-13.3-4.2" class="pilcrow">¶</a>
+</li>
+          <li id="section-13.3-4.3">
+            <strong>A completing token that does not fit does not complete it.</strong> If the invocation's maximum cost exceeds the remainder of the token presented on the poll, the resource does not execute it. It answers the poll with another <code>202</code> carrying <code>requirement=auth-token</code>, <code>reason=insufficient-budget</code>, and a fresh resource token whose <code>presented_jti</code> names that token, and continues to hold the invocation.<a href="#section-13.3-4.3" class="pilcrow">¶</a>
+</li>
+          <li id="section-13.3-4.4">
+            <strong>A replay is not metered again.</strong> A resource answering a repeated presentation of the completing token from the stored result, as the base protocol requires, MUST NOT meter the invocation a second time. The <code>AAuth-Budget</code> on the replay reports that token's current <code>remaining</code>, so that the figure is still a floor, with the invocation's <code>cost</code> where the resource has it and no <code>reserved</code>.<a href="#section-13.3-4.4" class="pilcrow">¶</a>
+</li>
+        </ol>
+<p id="section-13.3-5"><code>AAuth-Budget</code> on the <code>202</code> reports what it would report on the <code>401</code>: the <code>remaining</code> of the token presented on the request, <code>required</code> under <code>insufficient-budget</code> <a href="#required-member" class="auto internal xref">Section 13.2</a>, and <code>unit</code> and <code>decimals</code>. It carries no <code>cost</code> and no <code>reserved</code>, because nothing was served or held against that grant. A later <code>202</code> answering a poll that bore an auth token reports on that token the same way <a href="#header-rules" class="auto internal xref">Section 11.1</a>. The response to the completing poll carries <code>AAuth-Budget</code> for the completing token, as any response to a request bearing it does.<a href="#section-13.3-5" class="pilcrow">¶</a></p>
+<p id="section-13.3-6">Under <code>insufficient-budget</code>, the agent's other move — lower the request's bound and retry on the token it already holds <a href="#exhaustion" class="auto internal xref">Section 13</a> — abandons the pending URL. The agent sends a new request with the smaller bound and does not poll the pending URL again. The held invocation is never executed, and since nothing was reserved for it (rule 1), abandoning it costs the grant nothing. The resource discards it when the pending URL's lifetime ends (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Pending URL Security).<a href="#section-13.3-6" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="exhaustion-boundaries">
+<section id="section-13.4">
+        <h3 id="name-boundaries">
+<a href="#section-13.4" class="section-number selfRef">13.4. </a><a href="#name-boundaries" class="section-name selfRef">Boundaries</a>
+        </h3>
+<p id="section-13.4-1"><code>429 Too Many Requests</code> is not used by this document. The base protocol gives it two meanings already — <code>slow_down</code> on a pending URL, which asks a polling agent to lengthen its interval, and <code>rate_limited</code> at a revocation endpoint, which refuses work a caller has sent too much of (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>). Neither is a budget condition. A budget refusal is about what the next request would cost, not about how often requests arrive, and the agent answers it by re-authorizing rather than by waiting.<a href="#section-13.4-1" class="pilcrow">¶</a></p>
+<p id="section-13.4-2"><code>402 Payment Required</code> is a different condition: the resource needs payment rather than re-authorization from the person. The base protocol already permits <code>AAuth-Requirement</code> on a <code>402</code>, and this document does not change that.<a href="#section-13.4-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2685,6 +2730,7 @@ Signature-Key: sig=jwks_uri;id="https://inference.example";
 <a href="#section-17.1" class="section-number selfRef">17.1. </a><a href="#name-declining-with-guidance" class="section-name selfRef">Declining with Guidance</a>
         </h3>
 <p id="section-17.1-1">A PS granting less than the resource offered needs no mechanism: the <code>amount</code> in the issued claim says it. A PS or AS that declines a token request outright on budget grounds MAY include <strong><code>suggested_budget</code></strong> in its error response body: a budget object <a href="#budget-object" class="auto internal xref">Section 4.5</a> whose <code>unit</code> and <code>decimals</code> are copied from the resource token, and whose <code>amount</code> is what the issuer would currently accept. It is guidance, not a grant — the agent's move is a fresh resource token at that figure <a href="#authorization-endpoint" class="auto internal xref">Section 6</a> and a new token request, with the usual consent and policy evaluation.<a href="#section-17.1-1" class="pilcrow">¶</a></p>
+<p id="section-17.1-2">In four-party access an AS's <code>suggested_budget</code> reaches the PS, not the agent. The PS relays it in the problem+json body with which it relays the AS's error to the agent (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Auth Token Delivery), with <code>unit</code> and <code>decimals</code> unchanged and <code>amount</code> lowered to what the PS would itself currently accept for the person where that is lower. That figure never exceeds the ceiling the PS holds <a href="#ps-decision" class="auto internal xref">Section 8.1</a>, and the PS states it as an amount it would accept, not as the ceiling, which the agent does not learn <a href="#why-not-the-ceiling" class="auto internal xref">Appendix A.6</a>.<a href="#section-17.1-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -3172,7 +3218,7 @@ Signature-Key: sig=jwks_uri;id="https://inference.example";
 <a href="#appendix-B.2" class="section-number selfRef">B.2. </a><a href="#name-tpx" class="section-name selfRef">TPX</a>
         </h3>
 <p id="appendix-B.2-1">TPX <span>[<a href="#TPX" class="cite xref">TPX</a>]</span> is an OAuth 2.0 profile for metered LLM inference grants: apps ship without provider keys, and the person grants each app a metered budget from a provider the person chooses and pays. The budget rides RFC 9396 <code>authorization_details</code> as <code>{type: "llm-inference", budget, models}</code>; the user or provider MAY grant less than requested and the client MUST read the granted figure from the token response — the requested/granted split of the narrowing chain <a href="#narrowing-chain" class="auto internal xref">Section 4.2</a>, in OAuth form.<a href="#appendix-B.2-1" class="pilcrow">¶</a></p>
-<p id="appendix-B.2-2">Three of its mechanisms have direct counterparts here. Its <code>GET /credits</code> spend summary and <code>budget_used</code> introspection member report cumulative spend on a grant, which this document reports to the person server <a href="#usage-counters" class="auto internal xref">Section 15</a> rather than to the agent <a href="#why-no-cumulative" class="auto internal xref">Appendix A.5</a>. Its separation of <code>budget_exhausted</code> from <code>balance_exhausted</code> is the same boundary <a href="#exhaustion-boundaries" class="auto internal xref">Section 13.3</a> draws between re-authorization and payment. And its budget is "a damage cap, not a payment" — the hard-cap property <a href="#overshoot" class="auto internal xref">Section 14.8</a> states, which TPX asserts as a property of the grant and this document additionally realizes with reservations, since an agent's operations are unbounded before generation.<a href="#appendix-B.2-2" class="pilcrow">¶</a></p>
+<p id="appendix-B.2-2">Three of its mechanisms have direct counterparts here. Its <code>GET /credits</code> spend summary and <code>budget_used</code> introspection member report cumulative spend on a grant, which this document reports to the person server <a href="#usage-counters" class="auto internal xref">Section 15</a> rather than to the agent <a href="#why-no-cumulative" class="auto internal xref">Appendix A.5</a>. Its separation of <code>budget_exhausted</code> from <code>balance_exhausted</code> is the same boundary <a href="#exhaustion-boundaries" class="auto internal xref">Section 13.4</a> draws between re-authorization and payment. And its budget is "a damage cap, not a payment" — the hard-cap property <a href="#overshoot" class="auto internal xref">Section 14.8</a> states, which TPX asserts as a property of the grant and this document additionally realizes with reservations, since an agent's operations are unbounded before generation.<a href="#appendix-B.2-2" class="pilcrow">¶</a></p>
 <p id="appendix-B.2-3">TPX denominates in USD as decimal JSON numbers with at most six fractional digits, where this document uses an integer in a declared scale <a href="#why-integer" class="auto internal xref">Appendix A.1</a>. TPX serves human-driven apps over OAuth; <a href="#inference" class="auto internal xref">Section 18</a> describes the deployment where one provider's meter serves both envelopes.<a href="#appendix-B.2-3" class="pilcrow">¶</a></p>
 </section>
 </div>

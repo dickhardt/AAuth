@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                       25 September 2026
-Expires: 29 March 2027
+Intended status: Standards Track                       28 September 2026
+Expires: 1 April 2027
 
 
                              AAuth Budgets
@@ -51,7 +51,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 29 March 2027.
+   This Internet-Draft will expire on 1 April 2027.
 
 Copyright Notice
 
@@ -99,7 +99,8 @@ Table of Contents
    13. Budget Exhaustion
      13.1.  The reason Parameter
      13.2.  Refusing a Request That Does Not Fit
-     13.3.  Boundaries
+     13.3.  Deferred Delivery
+     13.4.  Boundaries
    14. Enforcement
      14.1.  The Resource Enforces
      14.2.  Budgets Require Auth-Token Mode
@@ -826,6 +827,19 @@ Table of Contents
    token's budget.amount.  The AS MUST NOT issue a budget claim
    exceeding this parameter, and MAY lower it further.
 
+   When the AS returns an auth token, the PS MUST verify, along with the
+   checks of the base protocol's Auth Token Delivery, that the token
+   carries a budget claim when the PS sent a budget parameter, that the
+   claim has the unit and decimals of that parameter and an amount no
+   higher, and that the token carries no budget claim when the PS sent
+   no budget parameter.  A token without a budget claim would leave the
+   resource to apply its own default, which can exceed what the PS
+   allowed.  A token that fails is an auth token that fails delivery
+   verification, and the PS answers the agent as_unreachable
+   ([I-D.hardt-oauth-aauth-protocol], Auth Token Delivery).  This is the
+   budget counterpart of the base protocol's check that the AS's scope
+   is no broader than the resource token's.
+
    When the resource token carries budget and the PS omits this
    parameter, the AS MUST NOT issue a budget claim.  A PS that grants
    the resource's full offer says so by echoing the resource token's
@@ -898,8 +912,9 @@ Table of Contents
       scale, giving what is left of the budget on this auth token, net
       of reservations for requests in flight Section 14.8.  It is a
       floor — committed consumption will not exceed the grant — though
-      the figure may lag metering.  Exhaustion is signaled by the 401
-      Section 13, for which the agent stays prepared regardless.
+      the figure may lag metering.  Exhaustion is signaled by the
+      requirement=auth-token challenge, as a 401 or a 202 Section 13,
+      for which the agent stays prepared regardless.
    *  *cost* (OPTIONAL): A non-negative Integer, in the granted scale,
       giving what *this request* cost.  A resource sends it in the
       header when it knows the figure as it writes the response, in a
@@ -944,8 +959,8 @@ Table of Contents
 
    A resource that granted a budget SHOULD include AAuth-Budget on every
    response to a request bearing that auth token — success, error, and
-   the 401 challenge, where it reads remaining=0 beside the AAuth-
-   Requirement header Section 13.
+   the challenge, 401 or 202 Section 13.3, where it reads remaining=0
+   beside the AAuth-Requirement header Section 13.
 
    This is SHOULD rather than MUST because the failing layer may sit
    below the metering layer: a gateway timeout, a crashed worker, or a
@@ -1226,7 +1241,79 @@ Table of Contents
    at all.  An agent that understands neither ignores the parameter and
    re-authorizes, which is always correct.
 
-13.3.  Boundaries
+13.3.  Deferred Delivery
+
+   A resource MAY deliver either refusal as a 202 deferred response
+   rather than a 401, holding the invocation
+   ([I-D.hardt-oauth-aauth-protocol], Deferred Delivery).  The AAuth-
+   Requirement header is the same, reason included, and so is the
+   enclosed resource token with its consumption record Section 7.1.
+   What differs is what becomes of the request.  Under the 401 the
+   resource holds nothing, and the agent sends the request again.  Under
+   the 202 the resource holds the invocation, and the agent does not
+   send it again: it obtains an auth token and polls the pending URL,
+   and the resource executes the held invocation on the first poll that
+   presents a valid auth token.
+
+   HTTP/1.1 202 Accepted
+   Location: /pending/f7a3b9c
+   Retry-After: 5
+   Cache-Control: no-store
+   AAuth-Requirement: requirement=auth-token;
+       resource-token="eyJ..."; reason=budget-exhausted
+   AAuth-Budget: remaining=0, unit="USD", decimals=6
+   Content-Type: application/json
+
+   {
+     "status": "pending"
+   }
+
+   A resource holding an invocation under this section follows four
+   rules:
+
+   1.  *Nothing is reserved while it is held.* For the held invocation,
+       the resource MUST NOT reserve against or meter to the token
+       presented on the original request.  For that token the 202 is a
+       refusal like the 401, and any remainder it has stays available to
+       the agent's other requests.
+   2.  *It meters against the completing token.* The held invocation is
+       metered against the auth token presented on the poll that
+       completes it.  The resource applies Section 14.8 to that token
+       before executing: it reserves the invocation's maximum cost
+       against that token's remainder, serves, and commits.
+   3.  *A completing token that does not fit does not complete it.* If
+       the invocation's maximum cost exceeds the remainder of the token
+       presented on the poll, the resource does not execute it.  It
+       answers the poll with another 202 carrying requirement=auth-
+       token, reason=insufficient-budget, and a fresh resource token
+       whose presented_jti names that token, and continues to hold the
+       invocation.
+   4.  *A replay is not metered again.* A resource answering a repeated
+       presentation of the completing token from the stored result, as
+       the base protocol requires, MUST NOT meter the invocation a
+       second time.  The AAuth-Budget on the replay reports that token's
+       current remaining, so that the figure is still a floor, with the
+       invocation's cost where the resource has it and no reserved.
+
+   AAuth-Budget on the 202 reports what it would report on the 401: the
+   remaining of the token presented on the request, required under
+   insufficient-budget Section 13.2, and unit and decimals.  It carries
+   no cost and no reserved, because nothing was served or held against
+   that grant.  A later 202 answering a poll that bore an auth token
+   reports on that token the same way Section 11.1.  The response to the
+   completing poll carries AAuth-Budget for the completing token, as any
+   response to a request bearing it does.
+
+   Under insufficient-budget, the agent's other move — lower the
+   request's bound and retry on the token it already holds Section 13 —
+   abandons the pending URL.  The agent sends a new request with the
+   smaller bound and does not poll the pending URL again.  The held
+   invocation is never executed, and since nothing was reserved for it
+   (rule 1), abandoning it costs the grant nothing.  The resource
+   discards it when the pending URL's lifetime ends
+   ([I-D.hardt-oauth-aauth-protocol], Pending URL Security).
+
+13.4.  Boundaries
 
    429 Too Many Requests is not used by this document.  The base
    protocol gives it two meanings already — slow_down on a pending URL,
@@ -1997,6 +2084,15 @@ Table of Contents
    agent's move is a fresh resource token at that figure Section 6 and a
    new token request, with the usual consent and policy evaluation.
 
+   In four-party access an AS's suggested_budget reaches the PS, not the
+   agent.  The PS relays it in the problem+json body with which it
+   relays the AS's error to the agent ([I-D.hardt-oauth-aauth-protocol],
+   Auth Token Delivery), with unit and decimals unchanged and amount
+   lowered to what the PS would itself currently accept for the person
+   where that is lower.  That figure never exceeds the ceiling the PS
+   holds Section 8.1, and the PS states it as an amount it would accept,
+   not as the ceiling, which the agent does not learn Appendix A.6.
+
 18.  Standing Authorization for Metered Inference
 
    Metered inference is the initiating use case for this extension and
@@ -2694,7 +2790,7 @@ B.2.  TPX
    cumulative spend on a grant, which this document reports to the
    person server Section 15 rather than to the agent Appendix A.5.  Its
    separation of budget_exhausted from balance_exhausted is the same
-   boundary Section 13.3 draws between re-authorization and payment.
+   boundary Section 13.4 draws between re-authorization and payment.
    And its budget is "a damage cap, not a payment" — the hard-cap
    property Section 14.8 states, which TPX asserts as a property of the
    grant and this document additionally realizes with reservations,
