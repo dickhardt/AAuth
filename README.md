@@ -61,6 +61,7 @@ The authorization protocol for agent-to-resource access. Defines five resource a
 |----------|------------|-------|
 | TypeScript | [github.com/aauth-dev/packages-js](https://github.com/aauth-dev/packages-js) | Reference SDK for agents and MCP servers |
 | Python | [github.com/christian-posta/aauth-python-library](https://github.com/christian-posta/aauth-python-library) | Request signing and verification |
+| Python | [github.com/regent-protocol/regent-httpsig](https://github.com/regent-protocol/regent-httpsig) | Resource-side verification and budgets metering (RFC 9421 with the jwt Signature-Key scheme, revocation and usage endpoints); Apache-2.0, on PyPI |
 | Go | [github.com/christian-posta/aauth-go-library](https://github.com/christian-posta/aauth-go-library) | Request signing and verification |
 | Java (Keycloak) | [github.com/christian-posta/keycloak-aauth-extension](https://github.com/christian-posta/keycloak-aauth-extension) | Keycloak SPI extension (targets 26.2.5) |
 | .NET | [github.com/aauth-dev/dotnet-samples](https://github.com/aauth-dev/dotnet-samples) | Reference SDK and samples |
