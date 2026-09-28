@@ -254,7 +254,7 @@ APs are free to choose any opaque scheme for the local part: a random string ass
 
 ## Per-Install Identity {#per-install-identity}
 
-Each install's durable key is the basis for one agent identity. A returning user on a new device is a new agent. This keeps the AP minimal — it has no user-account system, no `(user, durable_jkt)` mappings, and no ability to correlate a single user's activity across their devices.
+Each install's durable key is the basis for one agent identity. A returning user on a new device is a new agent. The AP may know which of its accounts enrolled an install, but it issues each install its own identifier and does not join installs into one agent.
 
 Multi-device users will see multiple agent entries in their PS dashboard. Grouping or merging those entries belongs at the PS, which already authenticates the user and is the correct layer for cross-device correlation. Rotation of the durable key produces a new agent identity; rotation of the ephemeral key (on every refresh) does not — the agent's `sub` is stable across ephemeral rotations. PS-side regrouping is the recovery path for durable-key changes.
 
@@ -290,7 +290,7 @@ Agent token lifetime is the AP's policy re-evaluation cadence — every refresh 
 
 The agent refreshes its agent token when fewer than five minutes remain, then the person tokens and auth tokens it obtained with it, which expire no later than the agent token ([@!I-D.hardt-oauth-aauth-protocol], Expiry and the Refresh Margin). A lifetime has to leave room for that margin: an agent token of five minutes or less is inside it when issued.
 
-## Two-Key Refresh
+## Two-Key Refresh {#two-key-refresh}
 
 On web, mobile, and desktop, refresh chains the new ephemeral key to the durable key via the `jkt-jwt` scheme [@!I-D.hardt-httpbis-signature-key]:
 
@@ -306,13 +306,17 @@ Example refresh request:
 POST /refresh HTTP/1.1
 Host: ap.example
 Content-Type: application/json
-Signature-Input: sig=("@method" "@authority"
-    "@path" "signature-key");created=1746316800
+Content-Digest: sha-256=:...:
+Signature-Input: sig=("@method" "@authority" "@path"
+    "content-type" "content-digest"
+    "signature-key");created=1746316800
 Signature: sig=:...ephemeral-key signature bytes...:
 Signature-Key: sig=jkt-jwt;jwt="eyJhbGc..."
 
 {}
 ```
+
+A request with a body to an AP endpoint — enrollment, refresh, or sub-agent issuance — should cover `content-digest` and `content-type`, as the protocol requires of a request with a body to a PS or AS ([@!I-D.hardt-oauth-aauth-protocol], Covered Components). A refresh body can carry attestation evidence, and an enrollment or sub-agent request carries a public key the AP binds into a token.
 
 The `jwt` parameter value is a JWT signed by the durable key, carrying the ephemeral public key in `cnf.jwk` along with the other claims the `jkt-jwt` scheme requires [@!I-D.hardt-httpbis-signature-key], and a `jti` for replay protection. The HTTP signature is produced by the ephemeral key. The AP correlates the two keys via the naming JWT's payload.
 
@@ -367,9 +371,29 @@ The parent plays no protocol role in issuance here. The operator spawns the sub-
 When the parent's tokens come from an AP the operator does not run, the parent requests the sub-agent's token from that AP; no other AP can issue it, since a PS rejects a sub-agent token whose `iss` differs from its parent's ([@!I-D.hardt-oauth-aauth-protocol], Sub-Agent Identity). This document defines no endpoint for it; the shape below is what any AP offering sub-agent issuance needs to cover, and an AP publishes how it does so in its own documentation.
 
 1. The sub-agent generates its key pair where it will run, and gives its public key to the parent. Where the parent spawns the sub-agent in a runtime it controls, it may generate the pair on the sub-agent's behalf and hand over the private key at spawn; the point is that the private key ends up with the sub-agent and nowhere else.
-2. The parent sends a signed request to the AP, signing with its own ephemeral key and presenting its own agent token under the `jwt` scheme ([@!I-D.hardt-httpbis-signature-key]). The body carries the sub-agent's public key and, if the parent wants to name it, a discriminator.
+2. The parent sends a signed request to the AP, signing with its own ephemeral key and presenting its own agent token under the `jwt` scheme ([@!I-D.hardt-httpbis-signature-key]). The body carries the sub-agent's public key and, if the parent wants to name it, a discriminator. The signature covers `content-digest` and `content-type`, as recommended in (#two-key-refresh), which binds that key to the parent's signature.
 3. The AP verifies the parent's signature and token ([@!I-D.hardt-oauth-aauth-protocol], Agent Token Verification), checks that the token carries no `parent_agent` (a sub-agent may not have sub-agents), and applies its policy: how many sub-agents this parent may have live, what lifetime they get, whether this parent may spawn at all.
 4. The AP issues the sub-agent token: `iss` the same as in the parent's token, `sub` formed from the parent's `local` part and the discriminator (its own if the parent offered none, or if the parent's collides), `parent_agent` naming the parent, `ps` copied from the parent's token, `cnf.jwk` the sub-agent's public key, `exp` no later than the parent's token. The AP returns it to the parent, which passes it to the sub-agent.
+
+Example sub-agent request, with the parent's agent token in `Signature-Key` and the sub-agent's public key in the body. The path and member names are illustrative; each AP defines its own.
+
+```http
+POST /subagent HTTP/1.1
+Host: ap.example
+Content-Type: application/json
+Content-Digest: sha-256=:...:
+Signature-Input: sig=("@method" "@authority" "@path"
+    "content-type" "content-digest"
+    "signature-key");created=1746316800
+Signature: sig=:...parent ephemeral-key signature bytes...:
+Signature-Key: sig=jwt;jwt="eyJhbGc..."
+
+{
+  "jwk": { "kty": "OKP", "crv": "Ed25519",
+           "x": "...", "alg": "Ed25519" },
+  "discriminator": "search1"
+}
+```
 
 The parent's durable key is not involved. Sub-agent issuance is a request the parent makes with its current ephemeral key and token, the same credentials it uses for every other signed request, and it needs nothing from the enrollment ceremony. Sub-agent tokens are not refreshed by the sub-agent: a sub-agent has no enrollment with the AP and no durable key. A sub-agent that needs a fresh token gets one through the parent, by the same request.
 
@@ -478,6 +502,8 @@ TBD
   - A sub-agent token's `iss` equals its parent's, so only the parent's AP can issue it.
   - An AP revokes a compromised agent's current token at the PS, which revokes what it issued to that agent's `sub`. The ephemeral-key bound covers the person tokens and auth tokens obtained with the key. The PS reports nothing of a revocation back to the AP.
   - Protocol rules are cited by section name.
+  - A request with a body to an AP endpoint should cover `content-digest` and `content-type`, as the protocol requires at a PS or AS. The refresh example shows it, and a new example shows the hosted sub-agent request, whose body carries the sub-agent's public key.
+  - Per-Install Identity: the AP may know which of its accounts enrolled an install, but issues each install its own identifier and does not join installs into one agent. It no longer claims the AP keeps no account mappings, which the enrollment sketches contradicted.
 
 - draft-hardt-aauth-bootstrap-01
   - Major rewrite. The document is now informational guidance for AP implementers. The previously-normative PS bootstrap protocol (PS `/bootstrap` endpoint, `bootstrap_token`, bootstrap announcement, agent server [now Agent Provider] `bootstrap_endpoint` / `refresh_endpoint` / `webauthn_endpoint`) has been removed. PS-side binding to a person now happens lazily on the agent's first interaction with the PS per the AAuth Protocol; the bootstrap document covers AP-side enrollment patterns only.
