@@ -567,6 +567,8 @@ Signature-Key: sig=jwks_uri;id="https://ps.example";
 
 The PS MUST copy `unit` and `decimals` from the resource token's `budget` claim unchanged, and MUST NOT set `amount` higher than the resource token's `budget.amount`. The AS MUST NOT issue a `budget` claim exceeding this parameter, and MAY lower it further.
 
+When the AS returns an auth token, the PS MUST verify, along with the checks of the base protocol's Auth Token Delivery, that a `budget` claim in it has the `unit` and `decimals` of the `budget` parameter the PS sent and an `amount` no higher, and that the token carries no `budget` claim when the PS sent no `budget` parameter. A token that fails is an auth token that fails delivery verification, and the PS answers the agent `as_unreachable` ([@!I-D.hardt-oauth-aauth-protocol], Auth Token Delivery). This is the budget counterpart of the base protocol's check that the AS's `scope` is no broader than the resource token's.
+
 When the resource token carries `budget` and the PS omits this parameter, the AS MUST NOT issue a `budget` claim. A PS that grants the resource's full offer says so by echoing the resource token's `budget`; omission is what a PS that does not implement this extension sends, and it MUST NOT be read as a grant. The auth token then carries no allocation, and the resource applies its own default to it (#auth-token). Reading omission as the full offer would turn a PS's non-participation into the maximum grant, the opposite of what ignoring an unrecognized claim is meant to do.
 
 # Auth Token Extensions {#auth-token}
@@ -616,7 +618,7 @@ AAuth-Budget: cost=221200, remaining=1568800,
 
 Members:
 
-- **`remaining`** (REQUIRED): A non-negative Integer, in the granted scale, giving what is left of the budget on this auth token, net of reservations for requests in flight (#overshoot). It is a floor — committed consumption will not exceed the grant — though the figure may lag metering. Exhaustion is signaled by the `401` (#exhaustion), for which the agent stays prepared regardless.
+- **`remaining`** (REQUIRED): A non-negative Integer, in the granted scale, giving what is left of the budget on this auth token, net of reservations for requests in flight (#overshoot). It is a floor — committed consumption will not exceed the grant — though the figure may lag metering. Exhaustion is signaled by the `requirement=auth-token` challenge, as a `401` or a `202` (#exhaustion), for which the agent stays prepared regardless.
 - **`cost`** (OPTIONAL): A non-negative Integer, in the granted scale, giving what **this request** cost. A resource sends it in the header when it knows the figure as it writes the response, in a trailer when it learns the figure after (#streaming), and not at all when it will not learn it in time to do either. The third case is bounded by (#cost-omitted).
 - **`reserved`** (OPTIONAL): A non-negative Integer, in the granted scale, giving what the resource has held against the grant for this request and not yet committed (#overshoot). Meaningful only where `cost` is not yet known, so in practice it accompanies a streamed response. It is a statement about this request, not a running total, and is never revised. REQUIRED where `cost` is omitted (#cost-omitted).
 - **`required`** (OPTIONAL): A non-negative Integer, in the granted scale, giving the maximum cost the resource computed for a request it refused under `reason=insufficient-budget` (#reason-parameter). Sent only with that refusal, where it is RECOMMENDED. It is what the request needed, not what the resource is asking the PS to grant next; see (#required-member).
@@ -630,7 +632,7 @@ The scope of the reported figures is this auth token's budget, because the budge
 
 ## Sending Rules {#header-rules}
 
-A resource that granted a budget SHOULD include `AAuth-Budget` on every response to a request bearing that auth token — success, error, and the `401` challenge, where it reads `remaining=0` beside the `AAuth-Requirement` header (#exhaustion).
+A resource that granted a budget SHOULD include `AAuth-Budget` on every response to a request bearing that auth token — success, error, and the challenge, `401` or `202` (#exhaustion-deferred), where it reads `remaining=0` beside the `AAuth-Requirement` header (#exhaustion).
 
 This is SHOULD rather than MUST because the failing layer may sit below the metering layer: a gateway timeout, a crashed worker, or a fault in metering itself produces a response no budget figure can ride on. A resource MUST NOT omit the field for any other reason. An agent that misses the field learns the balance from its next response, and until then applies (#ambiguous-failure).
 
@@ -763,6 +765,36 @@ A resource MAY refuse without `required` — where the operation has no cost bou
 No new `requirement` value is minted. The base protocol says an agent that does not recognize a `requirement` value MUST NOT treat the response as satisfiable and surfaces it as an error, while recipients MUST ignore unknown *parameters* on the `requirement` member ([@!I-D.hardt-oauth-aauth-protocol], Requirement Responses). A new value would hard-fail every budget-unaware agent on a condition that plain `auth-token` resolves correctly. That asymmetry — unknown values fail, unknown parameters are ignored — is why this extension extends by parameter.
 
 An agent that understands the `reason` values knows what to do beyond re-authorizing: for `budget-exhausted`, request a larger budget and say why in the `justification` it sends to its PS; for `insufficient-budget`, either that, or shrink the request and retry without involving the PS at all. An agent that understands neither ignores the parameter and re-authorizes, which is always correct.
+
+## Deferred Delivery {#exhaustion-deferred}
+
+A resource MAY deliver either refusal as a `202` deferred response rather than a `401`, holding the invocation ([@!I-D.hardt-oauth-aauth-protocol], Deferred Delivery). The `AAuth-Requirement` header is the same, `reason` included, and so is the enclosed resource token with its consumption record (#budget-consumed). What differs is what becomes of the request. Under the `401` the resource holds nothing, and the agent sends the request again. Under the `202` the resource holds the invocation, and the agent does not send it again: it obtains an auth token and polls the pending URL, and the resource executes the held invocation on the first poll that presents a valid auth token.
+
+```http
+HTTP/1.1 202 Accepted
+Location: /pending/f7a3b9c
+Retry-After: 5
+Cache-Control: no-store
+AAuth-Requirement: requirement=auth-token;
+    resource-token="eyJ..."; reason=budget-exhausted
+AAuth-Budget: remaining=0, unit="USD", decimals=6
+Content-Type: application/json
+
+{
+  "status": "pending"
+}
+```
+
+A resource holding an invocation under this section follows four rules:
+
+1. **Nothing is reserved while it is held.** For the held invocation, the resource MUST NOT reserve against or meter to the token presented on the original request. For that token the `202` is a refusal like the `401`, and any remainder it has stays available to the agent's other requests.
+2. **It meters against the completing token.** The held invocation is metered against the auth token presented on the poll that completes it. The resource applies (#overshoot) to that token before executing: it reserves the invocation's maximum cost against that token's remainder, serves, and commits.
+3. **A completing token that does not fit does not complete it.** If the invocation's maximum cost exceeds the remainder of the token presented on the poll, the resource does not execute it. It answers the poll with another `202` carrying `requirement=auth-token`, `reason=insufficient-budget`, and a fresh resource token whose `presented_jti` names that token, and continues to hold the invocation.
+4. **A replay is not metered again.** A resource answering a repeated presentation of the completing token from the stored result, as the base protocol requires, MUST NOT meter the invocation a second time. The `AAuth-Budget` on the replay reports that token's current `remaining`, so that the figure is still a floor, with the invocation's `cost` where the resource has it and no `reserved`.
+
+`AAuth-Budget` on the `202` reports what it would report on the `401`: the `remaining` of the token presented on the request, `required` under `insufficient-budget` (#required-member), and `unit` and `decimals`. It carries no `cost` and no `reserved`, because nothing was served or held against that grant. A later `202` answering a poll that bore an auth token reports on that token the same way (#header-rules). The response to the completing poll carries `AAuth-Budget` for the completing token, as any response to a request bearing it does.
+
+Under `insufficient-budget`, the agent's other move — lower the request's bound and retry on the token it already holds (#exhaustion) — abandons the pending URL. The agent sends a new request with the smaller bound and does not poll the pending URL again. The held invocation is never executed, and since nothing was reserved for it (rule 1), abandoning it costs the grant nothing. The resource discards it when the pending URL's lifetime ends ([@!I-D.hardt-oauth-aauth-protocol], Pending URL Security).
 
 ## Boundaries {#exhaustion-boundaries}
 
@@ -1077,6 +1109,8 @@ A PS or AS that has no cached `budget_units` for the resource and cannot fetch t
 ## Declining with Guidance {#declining}
 
 A PS granting less than the resource offered needs no mechanism: the `amount` in the issued claim says it. A PS or AS that declines a token request outright on budget grounds MAY include **`suggested_budget`** in its error response body: a budget object (#budget-object) whose `unit` and `decimals` are copied from the resource token, and whose `amount` is what the issuer would currently accept. It is guidance, not a grant — the agent's move is a fresh resource token at that figure (#authorization-endpoint) and a new token request, with the usual consent and policy evaluation.
+
+In four-party access an AS's `suggested_budget` reaches the PS, not the agent. The PS relays it in the problem+json body with which it relays the AS's error to the agent ([@!I-D.hardt-oauth-aauth-protocol], Auth Token Delivery), with `unit` and `decimals` unchanged and `amount` lowered to what the PS would itself currently accept for the person where that is lower. That figure never exceeds the ceiling the PS holds (#ps-decision), and the PS states it as an amount it would accept, not as the ceiling, which the agent does not learn (#why-not-the-ceiling).
 
 # Standing Authorization for Metered Inference {#inference}
 
