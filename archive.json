@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-09-27T00:10:34.341007+00:00",
+  "timestamp": "2026-09-29T00:10:27.612275+00:00",
   "repo": "dickhardt/AAuth",
   "labels": [
     {
@@ -1960,7 +1960,7 @@
       ],
       "body": "## Problem\n\n(#pending-url-security) says only that pending URLs \"SHOULD have limited lifetime.\" Day-scale human consent is a real deployment shape, and the draft states no relationship between the pending record's lifetime and the lifetimes of the tokens flowing through it.\n\nThe sharp case is key rotation. Under bootstrap's two-key refresh, the agent's ephemeral key changes on every agent token refresh \u2014 so \"same `sub`, different key\" is the *normal* case over a multi-day consent window, not an anomaly. An agent token refreshes to a fresh key while a grant is pending, and the pending record is bound to the old key. Nothing says what happens next.\n\n## Suggested direction\n\nPick one and say it:\n\n1. The PS binds pending state to the durable (AP-verified) identity rather than the ephemeral key, or\n2. The agent MUST NOT rotate its key across a pending grant (which constrains bootstrap refresh timing), or\n3. Re-presentation with a new key under the same `sub` gets defined behavior \u2014 what the PS verifies before transferring the pending record to the new key, and what PoP guarantee survives that transfer.\n\nWhichever way, state the required relationship between pending-record lifetime and resource/auth token lifetimes. (#deferred-auth-token) already handles the expired-resource-token half; the pending-record half is unspecified.\n\nNote: honoring bare \"any holder of a key for the same `sub` may collect\" would demote PoP to identity-level \u2014 the answer has to preserve what `cnf` binding is for.\n\n## Context\n\nFrom the notes.ito.com deployment review ([writeup](https://notes.ito.com/7f22bdf95ddbff07c9409e25/), [review pass](https://claude.ai/share/f59ffcb2-291f-4116-9a2b-aaeb664e4e53)). This is one of the deployers' two priority asks for -11: their consent path routinely takes longer than an agent token lifetime. Natural home may be the personal PS profile (see companion issue), but the rotation semantics are protocol.\n",
       "createdAt": "2026-08-31T19:06:37Z",
-      "updatedAt": "2026-09-20T11:03:25Z",
+      "updatedAt": "2026-09-28T11:00:45Z",
       "closedAt": null,
       "comments": [
         {
@@ -1976,6 +1976,13 @@
           "body": "Working through the day-scale case, with the constraint that the resource token stays bound to the agent's key.\n\n## What has actually expired after three days\n\n- **Resource token** \u2014 dead after five minutes, and consumed by the token request.\n- **Presented person token** \u2014 dead after an hour, which also caps what the PS could issue: an auth token's `exp` never exceeds the presented token's.\n- **Agent token** \u2014 dead, and under bootstrap's two-key refresh the signing key rotated with it, several times.\n\nSo the pending record is the only thing left, and the question splits in two: may the agent still *collect*, and can the PS still *issue*.\n\n## Collecting is not the problem\n\n`#pending-url-security` already says servers MUST verify the agent's identity on every poll. A poll is a signed `GET` presenting the agent's current agent token, so the PS verifies a fresh AP assertion that this key belongs to this `sub`. Binding the pending record to `(AP iss, agent sub)` rather than to a key thumbprint therefore costs nothing in PoP: a rotated key collects only because its agent provider vouched for it a moment ago, and a stranger holding some key for that `sub` has no agent token and cannot sign a poll at all. That is option 1 in the issue, and it is the right one. Option 3 \u2014 transferring the pending record to a new key \u2014 is the one that demotes PoP, because it would let the holder collect without anything re-verifying the key; option 2 forces long-lived keys, which is the opposite of what bootstrap wants.\n\n## Issuing is the problem\n\nEven with a successful poll and the person's yes, the PS cannot mint anything useful: the resource token is gone and the presented token's `exp` caps the auth token. So the terminal answer to a poll after the evidence has lapsed is not an auth token. Today it is `expired` (408), which reads as \"the person never answered\" \u2014 the agent cannot tell a lapsed grant from a lapsed credential, and if it starts over it risks asking the person a second time.\n\n## The shape for -12\n\n1. **Bind the pending record to the agent identity, not the key.** `agent_jkt` on the resource token is untouched: it is checked when the resource token is presented, and checked again against a *fresh* resource token on resubmission. Nothing is transferred, and no binding is broken \u2014 it is re-established by the party that mints it.\n2. **Separate the consent record from the pending request.** The person's decision is recorded against `(person, agent sub, resource, scope, mission)` with its own PS-policy lifetime, days if the PS wants. The pending request holds evidence and dies with it; the decision does not.\n3. **A terminal code meaning \"approved, bring fresh evidence.\"** The person said yes, your tokens lapsed, resubmit and you will not be asked again. Distinct from `expired`. Naming is open \u2014 `stale_evidence` reads right to me.\n4. **A denial is still deliverable.** After the evidence lapses the only terminal answers are `denied` and the code above, so an agent that polls on day three and gets `denied` never re-runs the chain for nothing.\n5. **State the lifetime relationships.** The pending record MAY outlive its evidence; the pending URL's retention SHOULD cover the consent window the PS is willing to hold; the consent record's lifetime is PS policy and independent of both.\n\nThe resubmission is cheap and the person is not involved in it: a fresh person token, a fresh resource token, one token request the PS answers from the consent on file. Where the resource deferred the invocation (`#deferred-auth-token`) it is cheaper still \u2014 that section already lets the resource put a fresh resource token in the `AAuth-Requirement` header of a later poll response, minted against whatever key the agent signs that poll with, so the rotation path already exists on the resource side and the two mechanisms compose.\n\nHeld for -12.",
           "createdAt": "2026-09-20T10:31:52Z",
           "updatedAt": "2026-09-20T10:31:52Z"
+        },
+        {
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "body": "Two more cases of this came up in the companion reviews before submission:\n\n- **Bootstrap two-key refresh.** The agent's ephemeral key changes at every refresh, so a request pending at the PS that is bound to the old key hits this case at every refresh, not occasionally. Bootstrap -02 leaves the text unchanged and defers to this issue.\n- **R3 per-call approvals.** A per-call auth token expires no later than the auth token the agent presented (\u00a79.4.1). If the person approves after that token expires, the PS answers `expired_presented_token`. R3 -00 documents today's behavior: the agent refreshes top down and resubmits, the PS SHOULD apply the approval it already recorded (\u00a76.7.1), and a held `202` invocation is re-requested. The consent record and the `stale_evidence` code proposed here would let the approval survive instead.",
+          "createdAt": "2026-09-28T11:00:45Z",
+          "updatedAt": "2026-09-28T11:00:45Z"
         }
       ]
     },
@@ -3272,6 +3279,44 @@
       "body": "**Decision:** the person is identified by `(ps, sub)` in every token. The AS does not mint its own `sub`.\n\n## The problem in -11\n\nIn four-party access, `sub` is minted by the PS but carried in a token issued by the AS:\n\n1. **Person token (\u00a77.1):** `iss`=PS, `sub`=S_ps (the PS's directed identifier for the person at resource R).\n2. **Resource token (\u00a76.7.1):** `ps`=PS and `sub`=S_ps, both copied from the person token.\n3. **PS-to-AS request (\u00a79.1.1):** the AS checks that the presented person token's `iss` is the PS that signed the request.\n4. **Auth token (\u00a79.4.1):** `iss`=AS, `ps`=PS, `sub`=S_ps \"copied from the resource token\", described as \"unique within `iss`\".\n5. **Resource (\u00a79.4.3 step 4):** keys the person as `(iss, sub)` = (AS, S_ps).\n\nThe AS never minted S_ps, so \"unique within `iss`\" is false. Worse, a PS chooses its `sub` values freely. PS2 can mint S_ps for its own user and obtain an auth token with (AS, S_ps). The resource then matches that token to PS1's person.\n\nThe resource also keys the same person two ways: (PS, S_ps) from the person token, and (AS, S_ps) from the auth token.\n\n## The fix\n\n`sub` belongs to the namespace of `ps`. -11 already says this for the resource token (\"the person server whose namespace `sub` belongs to\", \u00a76.7.1) and in the `ps` IANA entry (\u00a715.7). In a person token and in a PS-issued auth token, `ps` is `iss`, so nothing changes there. The rule changes only for four-party auth tokens.\n\nThe resource's `ps` is trustworthy because the AS verified, at \u00a79.1.1, that the presented token's issuer is the PS that signed the PS-to-AS request. State that dependency explicitly, and say that a resource MUST NOT key on `(iss, sub)` for an AS-issued token.\n\nWhy not have the AS mint its own `sub`: the resource would see (PS, S_ps) on every person token and (AS, S_as) on every auth token, and would need a mapping to tie them together. `(ps, sub)` gives the resource one identifier in every mode, and keeps \u00a714.1's rule that the same `sub` appears in the person token, the resource token, and every auth token for the resource.\n\n## Text to change\n\n- **\u00a79.4.1 `sub`:** \"unique within `ps`\", not \"unique within `iss`\".\n- **\u00a79.4.1 `tenant`:** `(ps, tenant)` identifies the organization, and the person's identifier is `(ps, sub)`.\n- **\u00a79.4.3 step 4:** `(ps, sub)` matches or establishes the resource's record.\n- **\u00a710.1.1.2 (Directed Identifiers Across a Chain):** identity is the pair `(ps, sub)`.\n- **\u00a713.7:** `(ps, sub)`; also covers #210.\n- **\u00a713.10:** the person's identifier is `(ps, sub)`.\n- **\u00a714.1:** a `sub` MUST be unique within the PS that minted it, and `(ps, sub)` identifies the person.\n- **Appendix C.1.4:** keying on `(ps, sub)`.\n- **\u00a77.1.1 and \u00a77.1.4 (person token):** these can keep `(iss, sub)`, since `iss` is the PS. Or phrase them uniformly as \"the PS and `sub`\".\n- **Unchanged:** the agent-identity sentences, where `(iss, sub)` means the agent token's AP and agent identifier: \u00a713.17 and Appendix B.\n\n## Companion and guide impact\n\n- **Budgets:** the ledger key `(iss, sub, aud)` becomes `(ps, sub, aud)`. This is decision 5 in PR #206.\n- **Update guides:** `upgrade-10-to-11/resource.md` (RS-10, RS-40) and `access-server.md` (AS-20) describe -11's `(iss, sub)`. They stay correct for -11. The -11 \u2192 -12 guide should carry this change.",
       "createdAt": "2026-09-25T21:30:09Z",
       "updatedAt": "2026-09-25T21:30:09Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 217,
+      "id": "I_kwDOQJKwSc8AAAABTpZXOw",
+      "title": "Scope the server jwks_uri signing rule to requests the protocol defines",
+      "url": "https://github.com/dickhardt/AAuth/issues/217",
+      "state": "OPEN",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "protocol",
+        "-12"
+      ],
+      "body": "Keying Material (\u00a711.3.2) says: \"A PS, AS, AP, or resource making a signed AAuth request in its own right, such as a PS-to-AS token request or a revocation, MUST use the `jwks_uri` scheme.\"\n\nVerification step 4 (\u00a711.3.4) says a server rejects \"any scheme this profile does not use\" with `unsupported_scheme`.\n\nAAuth Events delivers events with a resource signing in its own right under the `self-jwt` scheme. The event token is the signing key, and the AP verifies it at its `event_endpoint`. As written, -11 forbids that and has the AP reject it. Events keeps `self-jwt`, which was decided in the review of PR #207.\n\n**Fix:** scope both sentences to requests this document defines: the PS-to-AS token request, revocation, and the pending-URL polls those make. State that a companion specification MAY define the scheme for requests it defines, as AAuth Events does with `self-jwt`. Step 4 applies to this document's endpoints.\n\nRelated: #203 (Related Specifications) would list Events.",
+      "createdAt": "2026-09-28T11:00:58Z",
+      "updatedAt": "2026-09-28T11:00:58Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 218,
+      "id": "I_kwDOQJKwSc8AAAABTpZYtQ",
+      "title": "Auth Token Usage: an agent-token endpoint still takes the agent token",
+      "url": "https://github.com/dickhardt/AAuth/issues/218",
+      "state": "OPEN",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "protocol",
+        "-12"
+      ],
+      "body": "Auth Token Usage (\u00a79.4.2) says: \"Once an auth token has been issued for a resource, the agent presents the auth token (not the agent token) via `Signature-Key` on subsequent requests to that resource.\"\n\nThat conflicts with per-endpoint modes. A resource MAY apply different modes to different endpoints (\u00a74.2, \u00a76). An endpoint that decides on the agent's identity answers a request without an agent token with `requirement=agent-token` (\u00a76.1). An auth token carries no agent identifier (\u00a79.4.1), so presenting it there can't satisfy that endpoint.\n\nR3 -00 now states the limit: a person or auth token satisfies an `agent-token` operation only where the resource doesn't decide on the agent identifier, and otherwise the agent presents its agent token for that call. This was decided in the review of PR #204.\n\n**Fix:** reword \u00a79.4.2 so the agent presents the auth token where the resource authorizes on it, and presents the token an endpoint's requirement names where that differs. Point at `requirement=agent-token` (\u00a76.1) as the signal.",
+      "createdAt": "2026-09-28T11:01:01Z",
+      "updatedAt": "2026-09-28T11:01:01Z",
       "closedAt": null,
       "comments": []
     }
@@ -5906,25 +5951,35 @@
       "id": "PR_kwDOQJKwSc8AAAABFKH4Mw",
       "title": "R3: align with AAuth Protocol -11 and prepare -00",
       "url": "https://github.com/dickhardt/AAuth/pull/204",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
       "labels": [],
       "body": "Review of `draft-hardt-aauth-r3.md` against the published AAuth Protocol -11, and preparation for its first datatracker submission as -00. Only `draft-hardt-aauth-r3.md` changes.\n\n## Changes, with the -11 section behind each\n\n- **R3 Document Access Restriction.** A party fetching `r3_uri` signs as a server in its own right, under the `jwks_uri` scheme with `id` set to its `issuer`, and the resource identifies the signer by `id`. -11 \u00a711.3.2 Keying Material.\n- **R3 Document Access Restriction.** The entitled PS was \"the PS that issued the person token the resource verified\". A per-call proposal's resource token is always issued on an auth token, so the entitled PS is now the resource token's `ps`: the person token's `iss`, or on a step-up or per-call challenge the auth token's `ps`. -11 \u00a76.7.1 Resource Token Structure.\n- **Resource Token Extensions, `r3_uri`.** Said only the AS fetches it. Now says the AS and the PS fetch it with a signed request, pointing at the access restriction. -11 \u00a711.3.2.\n- **R3 Processing (PS bullet).** `display` is resource-asserted content, which the PS visually distinguishes from the agent's `justification`. -11 \u00a77.4 Consent Presentation, which names the R3 `display` section.\n- **AS Processing step 1.** Was \"validate the resource token signature\". Now verifies the resource token and its `presented_token` per Resource Token Verification. -11 \u00a76.7.2.\n- **AS Processing.** Removed the paragraph on \"an AS reached any other way than a PS-to-AS token request\". -11 has no such path: the PS is the only caller of an AS token endpoint. Added named citations for the no-agent-identifier rule and the `agent_token` parameter. -11 \u00a79.3 PS-AS Federation, \u00a79.1.1 PS-to-AS Token Request, Why No Agent Identifier Reaches a Resource.\n- **Per-Call Proposals, Flow step 2.** The agent sends the per-call resource token with the auth token it presented on the call as `presented_token`, and the per-call auth token expires no later than that auth token. -11 \u00a77.2.1 Auth Token Request, \u00a79.4.1 Auth Token Structure.\n- **Per-Call Proposals, Flow step 4.** Under `202`, the pending URL answers a repeated presentation from the retained record, not with `410 Gone`, until retention ends. -11 \u00a713.2 Pending URL Security, which names R3 per-call grants. Step 1 now cites Deferred Delivery by name (-11 \u00a76.5.1).\n- **Access Mode Annotation (ladder).** The restatement said \"a resource MUST have verified a person token before issuing the resource token\". -11 says a person token **or an auth token**. Reworded to match, citing Resource Token and Auth Token Usage. -11 \u00a76.7, \u00a79.4.2.\n- **Applying Annotations (\"advisory\").** \"An agent MUST be prepared for a `401`\" now covers a `401` or a `202`, since `requirement=auth-token` may be delivered as a `202`. -11 \u00a76.5.1.\n- **Resource Enforcement.** \"received the resource token via a 401\" is now \"in a challenge\". -11 \u00a76.5.1.\n- **IANA, JWT Claims Registration.** Table now has Claim Name, Claim Description, Change Controller (IETF), and Reference, matching -11 \u00a715.7.\n- **Named citations.** Added section names to bare protocol citations at Access Mode Annotation, Applying Annotations, Authorization Endpoint Extensions, and the `account` field (Resource Metadata \u00a711.2.4, Authorization Endpoint \u00a76.6, Account Binding \u00a711.11). Every section name cited exists in -11.\n\nChecked with no change needed: no `AAuth-Mission`, `approver`, `mission` object, `agent`/`act` claims, `token_endpoint`, `aauth-access-token`, `invalid_agent_token`, `login_endpoint`, `EdDSA`, or old mode names. Examples use `Ed25519`, `aa-person+jwt` at the authorization endpoint, and resource/auth token claims per -11 \u00a76.7.1 and \u00a79.4.1. `per-call` is registered in the AAuth Access Mode Value Registry (-11 \u00a715.11) in that registry's format, and satisfies the \u00a715.12 expert criteria. R3 cites no RFC 8941, defines no error codes, and never requests `sub` via `requirement=claims`.\n\n## Submission prep\n\n- Removed `date = 2026-07-11T00:00:00Z` from the front matter.\n- `I-D.hardt-aauth-events` and `I-D.hardt-aauth-budgets` now target `https://datatracker.ietf.org/doc/draft-hardt-aauth-events` and `.../draft-hardt-aauth-budgets`.\n- **Document History.** The preamble said the list \"becomes `draft-hardt-aauth-r3-00`\". It says nothing about resetting the log at submission. So I removed \"This document has not been submitted to the datatracker.\", changed \"which becomes\" to \"which is\", and kept the -00 list. This pass is recorded as a new first bullet. The earlier bullet about \"an AS reached any other way\" is left as written; the new bullet records its removal.\n\nBuild: `make draft-hardt-aauth-r3.txt` succeeds. xml2rfc gives the same 41 warnings as `main` (long lines in examples, the Vocabulary Summary table width). None are new.\n\n## Needs a decision\n\nDriven by -11:\n\n1. **Ladder and `agent-token` operations.** -11 says no person token or auth token carries an agent identifier (\"a decision keyed on the agent identifier holds in the two-party modes and nowhere else\", Why No Agent Identifier Reaches a Resource). \u00a76.1 answers a request that did not present an agent token with `requirement=agent-token`. Access Mode Annotation still says a credential satisfying a later value satisfies an earlier one, so an auth token or person token satisfies an `agent-token` operation. That holds only where the operation's decision is not keyed on the agent identifier. One option: the ladder covers `person-token` and `auth-token`, and an `agent-token` operation takes the agent token. The other: keep the ladder and state the limit. Left unchanged.\n2. **Per-call approval is bounded by the presented auth token's lifetime.** \u00a79.4.1 caps an auth token's `exp` at the `presented_token`'s. On a per-call challenge that is the auth token the agent carried. R3 describes `per-call` as the operations that block on a person. If the person answers after that auth token has expired, there are two outcomes: `expired_presented_token`, or a per-call token that is born expired. R3 does not say what the agent or the resource does then, especially under `202`, where the held invocation would be lost.\n3. **`scope` is REQUIRED at the authorization endpoint (\u00a76.6).** R3's `r3_operations` example sends no `scope`. \u00a76.7.1 already lets R3 replace `scope` in the resource token. Either R3 states that `r3_operations` MAY be sent in place of `scope`, or the protocol relaxes \u00a76.6.\n\nPredate -11:\n\n4. **Three-party issuance.** R3 Processing, AS Processing, and Auth Token Extensions describe only the AS populating `r3_granted` and `r3_per_call`. In PS authorization access (\u00a74.2.4) the PS issues the auth token. The access restriction section already treats `aud` = PS.\n5. **`session-token` MUST NOT appear in an annotation.** The rationale is \"a resource that manages its own authorization does so for the whole resource\". That contradicts -11 \u00a76 and Why Five Resource Access Modes: a resource MAY handle authorization itself for any request and apply different modes per endpoint. The rule is R3's to keep. Only the rationale conflicts.\n6. **No PS delivery check for R3 claims.** \u00a79.1.3 Auth Token Delivery checks `scope` is no broader than the resource token's. R3 defines no matching check that `r3_uri`/`r3_s256` match the resource token, or that `r3_granted`/`r3_per_call` fall within the document's `operations`.\n\n## Possible problems in the protocol spec (not changed here)\n\n- \u00a711.6.2 Requirement Values lists `auth-token` with status `401` only. The \u00a76 table and \u00a76.5.1 allow `401` or `202`.\n- \u00a76.6 makes `scope` REQUIRED, but \u00a76.7.1 says a companion spec may replace `scope`, \"as R3 does\" (item 3 above).\n- \u00a79.4.2 Auth Token Usage says the agent presents the auth token, not the agent token, on every subsequent request to the resource. That conflicts with per-endpoint modes (\u00a74.2) where an endpoint authorizes on agent identity and challenges with `requirement=agent-token` (\u00a76.1). See item 1 above.\n- No rule covers a pending step-up or per-call request whose `presented_token` expires before issuance. Call chaining has one: it ends with `expired` (\u00a710.1.1). See item 2 above.\n- The protocol's `I-D.hardt-aauth-r3` and `I-D.hardt-aauth-events` references still target GitHub, not the datatracker.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01GF34pBFY1fXuHBTFPMrqRN\n",
       "createdAt": "2026-09-25T18:04:53Z",
-      "updatedAt": "2026-09-25T18:04:53Z",
+      "updatedAt": "2026-09-28T11:55:03Z",
       "baseRepository": "dickhardt/AAuth",
       "baseRefName": "main",
       "baseRefOid": "178e9e68b6578e4d6f7d0bf30f33b4c38833e3a1",
       "headRepository": "dickhardt/AAuth",
       "headRefName": "r3-11-review",
-      "headRefOid": "9cf69e5684a02becd4afe9991358cd6b60e44155",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
-      "comments": [],
+      "headRefOid": "2cd80976257c640bea68622ae25f21308ea2f6fa",
+      "closedAt": "2026-09-28T11:55:03Z",
+      "mergedAt": "2026-09-28T11:55:02Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "8b7adb0ce10b60fb604f024cb10631d1eb573b74"
+      },
+      "comments": [
+        {
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "body": "Applied the six decisions in 2cd8097:\n\n1. **Ladder** (Access Mode Annotation): a person token or auth token satisfies an `agent-token` operation only where the resource does not decide on the agent identifier. Where it does, the resource answers `requirement=agent-token` (Agent Token Required) and the agent presents its agent token for that call.\n2. **Late per-call approval** (Per-Call Proposals, Flow): if the presented auth token expires before the person approves, the PS answers `expired_presented_token`. The agent then refreshes top down (Expiry and the Refresh Margin) and resubmits the call. The PS SHOULD apply the approval it already recorded (Resource Token Structure). Under `202`, the held invocation is re-requested.\n3. **`scope`** (Authorization Endpoint Extensions): `r3_operations` MAY be sent in place of `scope`, citing Resource Token Structure.\n4. **Issuer**: R3 Processing, Auth Token Extensions, Resource Enforcement, Per-Call Proposals, and Security Considerations now name the auth token's issuer: the PS in three-party access (PS Authorization Access (Three-Party)), the AS in four-party. \"AS Processing\" is now \"Issuer Processing\", and the agent identifier comes from the signing agent token in three-party.\n5. **`session-token`**: the MUST NOT stays. The reason is now that R3 grants travel in auth tokens and a session token carries none.\n6. **Delivery check**: new \"Auth Token Delivery\" subsection. In four-party access the PS verifies that `r3_uri`/`r3_s256` match the resource token, and that `r3_granted`/`r3_per_call` fall within the R3 document's `operations`. A failure is `as_unreachable`.\n\nAll six are recorded in the -00 Document History. Build: `make draft-hardt-aauth-r3.txt` OK, with the same 41 pre-existing xml2rfc warnings.\n",
+          "createdAt": "2026-09-28T11:30:23Z",
+          "updatedAt": "2026-09-28T11:30:23Z"
+        }
+      ],
       "reviews": []
     },
     {
@@ -5932,25 +5987,35 @@
       "id": "PR_kwDOQJKwSc8AAAABFKIMSA",
       "title": "Bootstrap: align with AAuth Protocol -11 and prepare -02",
       "url": "https://github.com/dickhardt/AAuth/pull/205",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
       "labels": [],
       "body": "Aligns AAuth Bootstrap Guidance with AAuth Protocol -11 and prepares it for submission as -02. Only `draft-hardt-aauth-bootstrap.md` changes.\n\n## Changes\n\n- **Front matter**: removed the fixed `date` so the submission is dated on the day it is submitted. No sibling-draft references to retarget; the protocol and signature-key references already point at datatracker.\n- **Introduction**: \"how agents present that identity to PSes, resources, and ASes\" now says where the agent token goes: always to the PS, to an AS through the PS, and to a resource only in agent identity and resource-managed access. -11 Keying Material; Why No Agent Identifier Reaches a Resource.\n- **What Bootstrapping Is Not**: cites Agent-Person Binding by section name.\n- **Terminology, Agent token**: dropped the claim list, which omitted `dwk`, `iat`, and `jti`. `ps` is carried whenever the agent has a PS, not \"optionally\". -11 Agent Governance; Agent Token Structure.\n- **Self-Hosted Agents**: new paragraph. A resource that calls downstream must be its own AP, with `aauth-agent.json` on its own origin and the same `issuer` as its resource metadata. Its agent token is not bound to one person. -11 Intermediary Agent Identity.\n- **Many Agents, One Operator**: the AP key \"never signs an HTTP message to a PS\" was wrong. It also signs the AP's revocations to the PS under the `jwks_uri` scheme. -11 Keying Material; Token Revocation.\n- **Agent Identifier Strategies**: the local part must meet the protocol's character and length rules, which now allow uppercase and reserve `+`. A base64url thumbprint fits as it stands. Comparison is exact, with no case-folding. -11 Agent Identifiers (#164).\n- **Refresh Patterns**: the agent refreshes when five minutes remain, top down. A lifetime must leave room for that margin, so the high-assurance example changes from 5\u201315 minutes to 15\u201330. -11 Expiry and the Refresh Margin.\n- **Two-Key Refresh**: the naming JWT carries the ephemeral key in `cnf.jwk`, which the `jkt-jwt` scheme requires. It no longer says \"typically\". HTTP Signature Keys -09, jkt-jwt.\n- **Key Rotation vs Token Refresh**: the agent replaces its person tokens and auth tokens after every refresh in either pattern, so a new ephemeral key adds no work. -11 Person Token Structure and Auth Token Structure `exp` caps; Re-authorization.\n- **Sub-Agent Tokens**: a sub-agent token's `iss` equals its parent's. That is stated in the section intro, in hosted-AP step 4, and as the reason only the parent's AP can issue the token. -11 Sub-Agent Identity.\n- **Sub-Agent Tokens**: \"later present the sub-agent's resource token with its own\" left out `presented_token`. The sentence now cites Parent-Mediated Authorization instead of restating it. Hosted-AP step 3 cites Agent Token Verification.\n- **Trust in the AP**: AP-attested claims reach the PS and the AS. A resource sees them only in agent identity and resource-managed access. -11 Why No Agent Identifier Reaches a Resource.\n- **Ephemeral Key Compromise**: the one-lifetime bound also covers the person tokens and auth tokens obtained with the key, because neither can outlive the agent token. -11 Person Token Structure; Auth Token Structure.\n- **Durable Key Compromise**: revoking the enrollment does not end the current agent token. The AP revokes it at the PS, which then revokes what it issued to that `sub`. A resource that accepted the agent token directly is not told. -11 Token Revocation, Revocation Cascade.\n- **Identifier Stability**: \"the same value at every PS / colluding PSes\" did not fit -11, where an agent has one PS. The text now says the `sub` reaches the PS, the AS, and resources in two modes, and resources can correlate it. In person-token modes they see a directed identifier. -11 Directed Identifiers.\n- **AP Visibility**: the AP's view includes sub-agent issuance. A PS reports nothing of a revocation back to the AP. -11 Why a PS Reports Nothing to the Agent Provider.\n- **Document History**: -02 bullets for each change above.\n\nEvery protocol citation names a heading that exists in -11. mmark and xml2rfc run with no warnings.\n\n## Needs a decision\n\n1. **`hwk` at the AP versus -11 Keying Material.** -11 says \"AAuth does not use the `hwk` scheme\" and lists the agent token as presented to \"the PS and the AP always\". Bootstrap uses `hwk` for web enrollment step 3 and for Single-Key Refresh. At enrollment no agent token exists yet, so \"always\" cannot hold literally. One option is to scope the -11 sentence to protocol requests. The other is to have Single-Key Refresh present the current agent token under the `jwt` scheme, which works inside the refresh margin.\n2. **Body coverage at AP endpoints.** -11 requires `content-digest` and `content-type` coverage on body requests to a PS, an AS, or a revocation endpoint. AP endpoints are not in that list. Bootstrap's refresh example POSTs a JSON body without covering it. The hosted sub-agent request carries the sub-agent's public key in its body. Should bootstrap recommend the same coverage? That would apply the -11 rule by analogy.\n3. **Two-key rotation and pending grants (#108).** The ephemeral key changes at every refresh. A deferred request bound to the old key meets the case #108 holds for -12. Not changed here.\n4. **Existing internal inconsistency, not from -11.** Per-Install Identity says the AP has \"no user-account system, no `(user, durable_jkt)` mappings\". The web and mobile sketches record `(ap_user, durable_jkt)` after the user logs in to the AP.\n\n## In the protocol spec\n\n- Introduction, HTTP Clients Need Their Own Identity: \"An agent identifier ... is bound to a signing key, published at a well-known URL\". This invites the reading that Bootstrap's Many Agents, One Operator corrects: only the AP's key is published, and agent keys are not.\n- Design Rationale, Why Agents Are Under an Agent Provider: \"AAuth therefore requires every agent to hold a token issued by a distinct AP, not self-signed\" and \"An agent that is also its own AP would bypass this layer\". This conflicts with Roles (a self-hosted agent is its own AP) and with Intermediary Agent Identity (an intermediary MUST be its own AP).\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01GF34pBFY1fXuHBTFPMrqRN\n",
       "createdAt": "2026-09-25T18:05:27Z",
-      "updatedAt": "2026-09-25T18:05:27Z",
+      "updatedAt": "2026-09-28T11:54:55Z",
       "baseRepository": "dickhardt/AAuth",
       "baseRefName": "main",
       "baseRefOid": "178e9e68b6578e4d6f7d0bf30f33b4c38833e3a1",
       "headRepository": "dickhardt/AAuth",
       "headRefName": "bootstrap-11-review",
-      "headRefOid": "710df10d13b72ba71eb056a1e93ab78c88213a46",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
-      "comments": [],
+      "headRefOid": "cc75f8e46af991c5399df4dedc11bad3c6a87f91",
+      "closedAt": "2026-09-28T11:54:55Z",
+      "mergedAt": "2026-09-28T11:54:55Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "4550f76dd688919c119227c426b26c264de818c7"
+      },
+      "comments": [
+        {
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "body": "Applied Dick's decisions in cc75f8e:\n\n- **Body coverage at AP endpoints:** a request with a body to an AP endpoint (enrollment, refresh, or sub-agent issuance) should cover `content-digest` and `content-type`, following -11 Covered Components. The recommendation sits after the refresh example, and the example now shows `Content-Digest` and both components in `Signature-Input`. Hosted sub-agent step 2 says the body carries the sub-agent's public key, and a new example request follows the steps. Its path and member names are marked illustrative.\n- **Per-Install Identity:** the AP may know which of its accounts enrolled an install, but it issues each install its own identifier and does not join installs into one agent. The \"no user-account system, no `(user, durable_jkt)` mappings\" claim is gone, and the enrollment sketches are unchanged.\n- **Document History:** -02 bullets for both.\n- **No change** to the `hwk` text or for #108.\n\nThe build is clean, with no mmark or xml2rfc warnings.\n",
+          "createdAt": "2026-09-28T11:30:26Z",
+          "updatedAt": "2026-09-28T11:30:26Z"
+        }
+      ],
       "reviews": []
     },
     {
@@ -5958,24 +6023,26 @@
       "id": "PR_kwDOQJKwSc8AAAABFKKm5A",
       "title": "Budgets: align with AAuth Protocol -11 and prepare -00",
       "url": "https://github.com/dickhardt/AAuth/pull/206",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
       "labels": [],
       "body": "Reviews `draft-hardt-aauth-budgets.md` against AAuth Protocol -11 and prepares it for its first datatracker submission as -00. Only the Budgets draft is touched. The settlement and allocation model is unchanged.\n\n## Changes, with the -11 section behind each\n\n**Examples**\n- Resource Token Extensions: the example's `presented_jti` was `pt-3ab910` (a person token) while `budget_consumed` named auth token `at-71b9d0`. A record is only carried when an auth token was presented, and that token is the one `presented_jti` names, so `presented_jti` is now `at-71b9d0`. Its `iat`/`exp` moved to after the auth token's issuance. Added a sentence saying which challenge the example is. (-11 \u00a76.7.1)\n- The Consumption Record: `jti` is stated to be the value the resource token carries as `presented_jti`. (-11 \u00a76.7.1)\n- Auth Token Extensions: the example now carries `tenant` and `mission_s256`. The resource token example copies both from this token, which it can only do if the token carries them. (-11 \u00a76.7.1, \u00a79.4.1)\n- PS-to-AS Token Request Extensions: the example adds `Content-Digest` and covers `content-type` and `content-digest`. (-11 \u00a711.3.3.1)\n- How the PS Responds: the clarification `202` example adds `Cache-Control: no-store`. (-11 \u00a711.8)\n- Resource Metadata Extensions: the example shows `revocation_endpoint`, with one sentence noting the base protocol recommends it for a resource that accepts person tokens and that Settlement depends on it. (-11 \u00a711.2.4, \u00a711.12)\n\n**Restated rules that did not match -11**\n- How the PS Responds: \"The PS SHOULD enforce the base protocol's limit on clarification rounds\" contradicted -11's MUST. It now cites the limit instead of restating it. (-11 \u00a77.5.3)\n- The Billing Account: removed the `(iss, tenant, sub)` lookup. `(iss, sub)` is the identifier and `tenant` is not part of it. (-11 \u00a79.4.1, \u00a713.10, \u00a714.1)\n- Budget Exhaustion, step-up: the restated permission now uses -11's wording (\"needs more authorization than the token provides\") and cites Auth Token Required. (-11 \u00a76.5)\n- Budgets Require Auth-Token Mode: \"only where it issues auth tokens\" is now \"requires auth tokens\", since a resource never issues auth tokens. Per-endpoint modes cite Resource Access Modes. (-11 \u00a74.2)\n- Token Scope, revocation: replaced \"A PS and an AS SHOULD provide a revocation endpoint, and revoking an auth token by `(iss, jti)`\". The request is now `{jti, exp}` with the issuer taken from the signer. Revocation happens at the resource, by the PS in three-party access. In four-party access the PS revokes the person token at the AS, and the AS revokes the auth tokens it issued against that token. A resource without an endpoint honors the token until `exp`. (-11 \u00a711.12.1, \u00a711.12.2, \u00a711.12.4)\n\n**Flows -11 changed**\n- Budget Exhaustion, auth token expired: added the refresh margin (refresh with five minutes left, do not present inside it). An expired token is now answered `401` with `Signature-Error: error=expired_jwt`, per the family's Signature-Error rule. (-11 \u00a77.9.1, \u00a711.3.4)\n- Budget Exhaustion, exhausted: the agent sends the exhausted auth token as `presented_token`. The auth token issued against it expires no later than the exhausted one, so a step-up renews the allocation but not the lifetime. (-11 \u00a77.2.1, \u00a79.4.1, \u00a77.1.3)\n- Token Scope: the expiry condition now reflects the refresh margin. (-11 \u00a77.9.1)\n- Unreported Allocations: the opening paragraph said allocations go unreported when an agent crashes. Under -11, a token the agent retires inside the refresh margin is never named in a record either, because re-authorization runs on a person token. The normative rule is unchanged. (-11 \u00a77.9.1, \u00a77.1.3)\n- Settlement: a revocation's terminal answer can arrive at the pending URL of a `202`. The citation is now Revocation Response. (-11 \u00a711.12.3)\n- The Consumption Record: \"an agent it has not authorized\" is now \"on a person token, at its authorization endpoint or on the first challenge of a grant\". (-11 \u00a76.7, \u00a76.7.1)\n- Mission Attribution: a mission is identified by its PS plus `mission_s256`. The PS, and the AS in four-party access, verify the resource token's `mission_s256` against the presented token's; the text previously said the PS \"bound the resource token to the person token\". (-11 \u00a78.2.1, \u00a76.7.2)\n- Usage Request: the caller signs as a server in its own right (`jwks_uri` scheme, `id` = its `issuer`, `dwk` = its metadata document), covering `content-type`/`content-digest`. This replaces \"exactly as a PS does at an AS `auth_token_endpoint`\", which did not describe an AS caller. (-11 \u00a711.3.2, \u00a711.3.3.1)\n- Standing Authorization for Metered Inference: the mission blob was called \"signed\". It is content-addressed, and tokens bind to it through `mission_s256`. (-11 \u00a78.2.1)\n\n**Citations and naming**\n- Every protocol citation now names an -11 heading. New or corrected: Endpoint and Other URLs (was \"Endpoint URL requirements\"), Authorization Endpoint, Resource Token Structure, Updated Request, Clarification Limits, PS-to-AS Token Request (was AS Token Endpoint), Expiry and the Refresh Margin, Auth Token Required, Auth Token Structure, Requirement Responses, Resource Access Modes, Revocation Response, Organization Identification, PS-AS Trust Establishment (was Access Server Federation), Agent Delegation, Mission Identifier, Resource Token Verification, Keying Material, Covered Components, AAuth-Capabilities Request Header. I checked every one against the -11 headings.\n- \"PS token request\" is now \"auth token request\". `usage_endpoint` names both callers, the PS and the AS.\n\n**Submission prep**\n- `I-D.hardt-aauth-r3` target is now `https://datatracker.ietf.org/doc/draft-hardt-aauth-r3`. There are no other sibling references.\n- The front matter had no `date =` line, so nothing was removed.\n\n## Document History\n\nThe preamble said: \"This document has not been submitted to the datatracker ... The log is reset at first submission, which becomes `draft-hardt-aauth-budgets-00`.\" I did what it says:\n- Removed the preamble, the whole `## Exploratory Changes {#exploratory-changes}` section (every entry), and the trailing \"written against draft-hardt-oauth-aauth-protocol-11\" note.\n- Replaced them with one entry, `draft-hardt-aauth-budgets-00`: \"Initial submission, written against draft-hardt-oauth-aauth-protocol-11.\" The note's one fact is folded into that entry.\n- Nothing else in the document, or elsewhere in the repo outside `archive/`, links to `#exploratory-changes`.\n- The detail behind the removed entries is in the git history and in PRs #102, #128, #138, #141, #159, and the 2026-09-13 consistency review.\n\n## Needs a decision\n\n1. **`budget_consumed.jti` duplicates `presented_jti`.** -11 binds every resource token to the token it was issued on, and the record only appears when that token is an auth token. The record could shrink to `consumed` alone. Why One Record says \"The `jti` stays\", but that was written without `presented_jti` in view. This PR only states that the two are equal.\n2. **Budget refusals and `202` deferred delivery (-11 \u00a76.5.1).** Budget Exhaustion is written for the `401`, but a -11 resource may deliver `requirement=auth-token` as a `202` and hold the invocation. The draft needs either a rule requiring the `401` for budget refusals, or rules for:\n   - which token the held invocation meters against (the auth token on the completing poll);\n   - that nothing is reserved against the exhausted token while the invocation is held;\n   - what `AAuth-Budget` on the `202` reports;\n   - that the `insufficient-budget` shrink-and-retry path means abandoning the pending URL.\n3. **`suggested_budget` in four-party access.** -11 \u00a79.1.3 has the PS relay an AS terminal error in its own problem+json body, carrying only the AS's `error` value and status. Declining with Guidance lets the AS include `suggested_budget`, but does not say whether the PS carries it to the agent, or lowers it to its own ceiling first.\n4. **PS check at Auth Token Delivery (-11 \u00a79.1.3).** The PS checks that the AS's `scope` is no broader than the resource token's. There is no parallel check that the AS's `budget` stays within the `budget` parameter the PS sent and keeps `unit`/`decimals`. Under -11, a token failing such a check would be reported as `as_unreachable`.\n5. **Ledger key in four-party access.** The ledger is keyed on `(iss, sub, aud)`. In four-party access `iss` is the AS, but `sub` is minted by the PS. Two PSes can mint the same `sub` for different people behind one AS. `(ps, sub, aud)` would be unambiguous. The draft follows -11 as written; see the protocol item below.\n\n## Found in the protocol spec (not changed here)\n\n- \u00a713.7 Trust Posture in PS Authorization Access still says \"`(iss, tenant, sub)` identifies a user within an organization\". This contradicts \u00a79.4.1, \u00a713.10 and \u00a714.1, which say `tenant` is never part of the identifier.\n- \u00a79.4.1 says auth token `sub` is \"unique within `iss`\", and \u00a79.4.3 identifies the person by `(iss, sub)`. In four-party access `iss` is the AS and `sub` is the PS's directed value, so uniqueness within the AS is not guaranteed across PSes.\n- The \u00a79.1.1 PS-to-AS request example and the \u00a711.12.1 revocation request example show no `Content-Digest` or `Signature-Input`, although body coverage is REQUIRED on both.\n\n## Build\n\n`make draft-hardt-aauth-budgets.txt`: mmark OK, xml2rfc OK. xml2rfc reports three warnings, and `main` reports the same three: the `consensus` attribute, one wide artwork, and the long `Signature-Key` line in the authorization endpoint example. This PR adds no warnings.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01GF34pBFY1fXuHBTFPMrqRN\n",
       "createdAt": "2026-09-25T18:09:29Z",
-      "updatedAt": "2026-09-25T21:36:13Z",
+      "updatedAt": "2026-09-28T11:55:10Z",
       "baseRepository": "dickhardt/AAuth",
       "baseRefName": "main",
       "baseRefOid": "178e9e68b6578e4d6f7d0bf30f33b4c38833e3a1",
       "headRepository": "dickhardt/AAuth",
       "headRefName": "budgets-11-review",
-      "headRefOid": "641f0ade738d0d65642c566ce491a8649fa47752",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "headRefOid": "b8ed1474f0077f5b72174fea650e4c2817c8c547",
+      "closedAt": "2026-09-28T11:55:10Z",
+      "mergedAt": "2026-09-28T11:55:10Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "c170e03cf025e4b35bf597ac3c50ef5c70d178c9"
+      },
       "comments": [
         {
           "author": "dickhardt",
@@ -5983,6 +6050,13 @@
           "body": "Decision 5 settled as `(ps, sub, aud)` (#215). Pushed 641f0ad: the ledger key and aggregation text now use `(ps, sub)`. The usage endpoint gains a `ps` member, REQUIRED when an AS queries by a scope key, because the tokens an AS issues carry values from every PS that federates with it.",
           "createdAt": "2026-09-25T21:36:06Z",
           "updatedAt": "2026-09-25T21:36:13Z"
+        },
+        {
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "body": "71ce599 applies the decisions on the Budgets items. It builds on 641f0ad, which keys the ledger on `(ps, sub, aud)`.\n\n1. **Record `jti`**: kept. No change.\n2. **`202` delivery**: new subsection *Budget Exhaustion \u203a Deferred Delivery* (`#exhaustion-deferred`), with an example. The `401` text is unchanged. A held invocation follows four rules:\n   1. Nothing is reserved against, or metered to, the token presented on the original request.\n   2. It meters against the auth token on the poll that completes it, under the hard cap (#overshoot).\n   3. If that token's remainder does not cover the invocation's maximum cost, the poll gets another `202` with `reason=insufficient-budget` and a fresh resource token, and the invocation stays held.\n   4. A replay answered from the stored result is not metered again. It reports the token's current `remaining`, so the figure stays a floor.\n\n   `AAuth-Budget` on the `202` reports what the `401` would: `remaining`, `required` under `insufficient-budget`, and `unit`/`decimals`, with no `cost` and no `reserved`. Shrink-and-retry abandons the pending URL: the agent sends a new, smaller request and never polls the held one. The `remaining` definition and the Sending Rules now mention the `202`.\n3. **`suggested_budget` in four-party access** (*Declining with Guidance*): the PS relays it in its relayed problem+json body. `unit` and `decimals` are unchanged. `amount` is lowered to what the PS would itself accept for the person, where that is lower. That figure never exceeds the PS's ceiling. It is stated as an acceptable amount rather than as the ceiling, because the draft keeps the ceiling from the agent (#why-not-the-ceiling).\n4. **Delivery check** (*PS-to-AS Token Request Extensions*): the PS verifies that the AS's `budget` has the `unit`/`decimals` of the `budget` it sent and an `amount` no higher. It also verifies that the token carries no `budget` when the PS sent none. A failure is `as_unreachable` (-11 Auth Token Delivery).\n\nThe Document History is still the single -00 entry. The build adds no new warnings.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01GF34pBFY1fXuHBTFPMrqRN\n",
+          "createdAt": "2026-09-28T11:34:22Z",
+          "updatedAt": "2026-09-28T11:34:22Z"
         }
       ],
       "reviews": []
@@ -5992,24 +6066,131 @@
       "id": "PR_kwDOQJKwSc8AAAABFKLOAA",
       "title": "Events: align with AAuth Protocol -11 and prepare -00",
       "url": "https://github.com/dickhardt/AAuth/pull/207",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "dickhardt",
       "authorAssociation": "OWNER",
       "assignees": [],
       "labels": [],
       "body": "Aligns AAuth Events with the published AAuth Protocol -11 and prepares it for first submission as -00. Only `draft-hardt-aauth-events.md` changes. Section numbers below are Events (E) and Protocol -11 (P).\n\n## Changes\n\n- **E front matter**: removed `date = 2026-07-05\u2026`, so the submission is dated on the day it is submitted.\n- **E references**: `I-D.hardt-aauth-r3` target is now `https://datatracker.ietf.org/doc/draft-hardt-aauth-r3`. Protocol and Bootstrap were already datatracker URLs.\n- **E 1.2, A.1**: \"the agent's identity token\" is now \"agent token\" (P 5.1).\n- **E 3**: Person Token added to the terms taken from the protocol (P 3). E 7.2 already used it.\n- **E 4 step 2**: the resource stores the AP's issuer and resolves `event_endpoint` at delivery time. It previously said it stores the `event_endpoint`, which contradicted E 5 and E 6.3.\n- **E 5**: a resource verifies the AP metadata document per P 11.2 (Metadata Documents) before using `event_endpoint`.\n- **E 6.2**: the subscribe token takes the place of the agent token, person token, or auth token the agent otherwise presents, not only the agent token (P 11.3.2).\n- **E 6.3**: a subscribe token that fails verification is a signature failure, `401` with `Signature-Error` (P 11.3.4, P 11.5.2). This is the family rule for tokens in `Signature-Key`.\n- **E 6.4**: the example mapping names \"the agent's current mission\" instead of `mission_xyz`. Missions are identified by `mission_s256` (P 8).\n- **E 7.2 step 4**: \"No person token or auth token is required\", instead of \"No additional auth token\".\n- **E 8.1 `dwk`**: a resource that delivers events makes signed calls, so its metadata carries `jwks_uri` (P 11.2.4).\n- **E 8.1 `aud`**: agent identifiers are compared exactly and case-sensitively (P 5.2; -11 allows uppercase in `local`).\n- **E 9.1**: the example now shows the `Content-Digest` header it already covered. New normative sentence: when event delivery carries a body, the signature MUST cover `content-digest` and `content-type`. This follows the P 11.3.3.1 rule and the P C.2.4 rationale for the revocation endpoint, an endpoint defined by the spec rather than by the server's own API. The example already did it. **Check this one**: it is a new MUST.\n- **E 9.1**: says which `iss` locates the AP's metadata (the subscribe token's). The paragraph before it discusses the event token's `iss`.\n- **E 9.2**: removed step 6 (\"verify `exp` is in the future\"). Step 1's Common JWT Verification (P 11.5.2) already checks it. The error sentence now says `401` with `Signature-Error` for a failing event token or HTTP signature, an expired event token included (P 11.3.4). The 404 paragraph and the 429 reasoning (PR #194) are unchanged. The 429 paragraph now names P 11.9.4 Polling Error Codes and P 11.12.3 Revocation Response.\n- **E 10.1 step 1**: \"If `exp` has passed, the agent SHOULD NOT act\" is now \"fails this step \u2026 MUST NOT act on it\". This matches E 8.1 (MUST NOT) and P 11.5.2 (no `exp` tolerance).\n- **E 11.2, A.6**: the event token envelope lists include `jti`, which the earlier -11 pass added to the token.\n- **E 12.4**: registrations are deduplicated on `(iss, eid)` rather than `eid`. An `eid` is unique only within its AP. This parallels `(iss, jti)` in P 11.12.1.\n- **E 12.5**: the citation names P C.1.6 (Why No Agent Identifier Reaches a Resource).\n- **E 13.2, A.6**: sensitive details are fetched \"presenting the token the resource requires for that data\" (P 6), not \"using a current auth token\".\n- **E A.2, A.9**: \"identity-based request\" is now \"agent identity access\" (P 4.2.1). The \"normal agent token\" and \"auth token\" alternatives now name the person token too.\n- **E 14 IANA**: follows P 15. Adds media type registrations for `application/aa-subscribe+jwt` and `application/aa-event+jwt` (P 15.5 template). The `typ` table now cites P 15.6, which lists both values as registered by Events. Adds `eid` and `max_uses` to the JWT Claims registry, as P 15.7, R3, and Budgets do for their claims.\n- Every protocol citation by section name was checked against a heading in -11.\n\n## Document History\n\nNothing in the draft said it had not been submitted, and nothing said what happens to the log at first submission. So the -00 list stays. I added one bullet at the top for this -11 alignment round. The existing \"Referenced \u2026 by their datatracker document URLs\" bullet now includes R3.\n\n## Needs a decision\n\n1. **`self-jwt` vs P 11.3.2.** P 11.3.2 says a PS, AS, AP, or resource \"making a signed AAuth request in its own right \u2026 MUST use the `jwks_uri` scheme\". Event delivery (E 9.1) is a resource signing in its own right, and it uses `self-jwt`. P 11.3.4 step 4 also says to reject \"any scheme this profile does not use\" with `unsupported_scheme`. There are two ways to fix it. (a) The protocol scopes the MUST to requests it defines, or names the Events exception. (b) Events moves to `jwks_uri` and carries the event token elsewhere. E A.7 explains `self-jwt` against `jwt` but not against `jwks_uri`.\n2. **The agent identifier and AP reach the resource.** The subscribe token (`iss`, `sub`) and the event token (`aud`) give the resource the agent identifier and its AP. -11 withholds both in person identity, PS authorization, and federated authorization access (P 4.2.1, P C.1.6). In a protected subscription, the ticket's thumbprint binding also links that identifier to the person's `(iss, sub)`. E 13.1 calls this \"the intended property\". Keep it and say so against -11, or change it, for example with a pairwise `sub` and an `aud` that is not the agent identifier.\n3. **The AP learns which resources the person uses.** It sees the subscribe token `aud` and the event token `iss`. P C.2.8 keeps exactly this from the AP. It is inherent to AP-as-inbox. Decide whether E 12.6 or E 13 should say so.\n4. **SSRF through `event_endpoint`.** A resource POSTs to a URL chosen by whoever runs the \"AP\". Neither E 12 nor the egress admission rules cover this, because P 11.4 and sig-key only cover metadata and JWKS fetches. Proposed text: \"Before fetching the AP's metadata or posting to its `event_endpoint`, a resource applies egress admission ([@!I-D.hardt-httpbis-signature-key], Scheme-Specific Risks).\"\n5. **Payload integrity at the agent.** The agent gets the payload from the AP and cannot check the resource's HTTP signature. Nothing in the event token binds the body. Options: add a digest claim, or state that the agent trusts the AP for the payload.\n6. **Subscribe token has no `jti`.** Every -11 token has one, for audit and revocation (P 11.5.1). No revocation is defined for subscribe tokens. Low priority.\n7. **Minor.** E 9.2 step 7 (`aud` mismatch) has no status code. E 7.2 step 1 accepts only a person token or auth token, which excludes agent identity and resource-managed (session token) access. That may be intended.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01GF34pBFY1fXuHBTFPMrqRN\n",
       "createdAt": "2026-09-25T18:10:29Z",
-      "updatedAt": "2026-09-25T18:10:29Z",
+      "updatedAt": "2026-09-28T11:55:17Z",
       "baseRepository": "dickhardt/AAuth",
       "baseRefName": "main",
       "baseRefOid": "178e9e68b6578e4d6f7d0bf30f33b4c38833e3a1",
       "headRepository": "dickhardt/AAuth",
       "headRefName": "events-11-review",
-      "headRefOid": "8bbb9b2635cf95bc4cc04f71d099a8de492055c5",
-      "closedAt": null,
+      "headRefOid": "f79f8339a474c62fecdcddfb50c50bbcb19ef381",
+      "closedAt": "2026-09-28T11:55:17Z",
+      "mergedAt": "2026-09-28T11:55:17Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "b1a5ebd40fa4c36c750f45c27a3a6ea2023e37a3"
+      },
+      "comments": [
+        {
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "body": "Applied the decisions in f79f833:\n\n- **`self-jwt`**: kept. No Events change; the protocol scoping goes to a -12 issue.\n- **`body_s256`** (E 8.1): new event token claim, the unpadded base64url SHA-256 of the body bytes. REQUIRED when the delivery carries a body, absent when it carries none. The AP delivers the body bytes unchanged (E 10). The agent verifies the digest before acting (E 10.1 step 3). The AP also checks it (E 9.2 step 4, `401` `invalid_jwt` on mismatch), so it does not accept an event the agent will reject. Examples updated. The `Content-Digest` and `body_s256` values are the real digest of the example body. Registered in the JWT Claims table.\n- **Subscribe token `jti`** (E 6.1): REQUIRED, citing -11 Common JWT Claims. Example updated.\n- **`aud` mismatch** (E 9.2 step 8, was 7): `401` with `Signature-Error: error=invalid_jwt`.\n- **Protected subscriptions** (E 7.2 step 1): require a person token or auth token \"since a protected subscription is bound to a person\".\n- **Egress** (E 5, new E 12.7): a resource applies egress admission before fetching the AP's metadata or posting to `event_endpoint`, citing HTTP Signature Keys, Scheme-Specific Risks. In -09, the egress admission list sits under that section.\n- **Privacy** (E 13.1, new E 13.2): subscribing discloses the agent identifier and AP to the resource by the agent's choice. This departs from -11 Agent Identity Access and Why No Agent Identifier Reaches a Resource. Delivery shows the AP which resources its agents subscribe at, which departs from -11 Why a PS Reports Nothing to the Agent Provider.\n- **#214**: dropped the \"JSON Web Token Types\" table. The media type registrations note that their subtypes are the `typ` values (RFC 7515 \u00a74.1.9).\n- Recorded in the -00 Document History. Build is clean, with the same 9 xml2rfc warnings as before (long example lines).\n",
+          "createdAt": "2026-09-28T11:30:38Z",
+          "updatedAt": "2026-09-28T11:30:38Z"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "number": 216,
+      "id": "PR_kwDOQJKwSc8AAAABFerfJw",
+      "title": "README: add regent-httpsig to the implementations table",
+      "url": "https://github.com/dickhardt/AAuth/pull/216",
+      "state": "CLOSED",
+      "author": "abay94",
+      "authorAssociation": "CONTRIBUTOR",
+      "assignees": [],
+      "labels": [],
+      "body": "Adds one row under Libraries & SDKs: regent-httpsig, Python, resource side (RFC 9421 verification with the jwt scheme in Signature-Key, budgets metering, revocation and usage endpoints, test vectors), Apache-2.0, on PyPI, in production at get4agent.com. The PS side is in our gate and not open source, so the row says resource only. Edit the wording as you see fit.",
+      "createdAt": "2026-09-28T10:57:00Z",
+      "updatedAt": "2026-09-28T15:52:37Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "a200889e238b30e72d7565580a157fae4b23866c",
+      "headRepository": "abay94/AAuth",
+      "headRefName": "readme-regent-httpsig",
+      "headRefOid": "cae58a81be0919115f2b5de2f35580f7a0586213",
+      "closedAt": "2026-09-28T13:26:44Z",
       "mergedAt": null,
       "mergedBy": null,
       "mergeCommit": null,
+      "comments": [
+        {
+          "author": "dickhardt",
+          "authorAssociation": "OWNER",
+          "body": "Thanks, Abay. While this was open we rewrote the README (#219), and the table you edited no longer exists, so this PR can't merge as is. I added `regent-httpsig` to the new Implementations table in #220 (4354ec0) and credited you as co-author: https://github.com/dickhardt/AAuth#implementations\n\nIt reads \"Python resource-side verification and budgets metering\". The new table allows one short line per project, so the license, PyPI, and endpoint details didn't carry over. If you'd like different wording, send a PR against the new table.",
+          "createdAt": "2026-09-28T13:26:43Z",
+          "updatedAt": "2026-09-28T13:26:43Z"
+        },
+        {
+          "author": "abay94",
+          "authorAssociation": "CONTRIBUTOR",
+          "body": "Thank you, the line reads right as it is; the new table's one-line format is the better one. No wording change from me. Closing the loop here.",
+          "createdAt": "2026-09-28T15:52:37Z",
+          "updatedAt": "2026-09-28T15:52:37Z"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "number": 219,
+      "id": "PR_kwDOQJKwSc8AAAABFfhXIA",
+      "title": "README: list the family on the first screen, point at the datatracker",
+      "url": "https://github.com/dickhardt/AAuth/pull/219",
+      "state": "MERGED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "All six drafts are on the datatracker. The README now puts the whole family on the first screen, and is 37 lines instead of 174.\n\n- Two-sentence description.\n- **Specifications table:** Protocol, HTTP Signature Keys, Bootstrap, R3, Budgets, Events. The name links the datatracker document page, which always shows the latest revision; a second column links the editor's copy.\n- Pointers to `upgrade-10-to-11/` and the interop demo profile.\n- **Get Involved:** aauth.dev, office hours, the two Slacks, and issues/CONTRIBUTING.\n- **Implementations:** one table, one link per project, replacing the four tables.\n\nRemoved: the motivation sections (the spec intro and aauth.dev cover them), the per-draft link lists and diff links, and the AAuth Night demos table.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01GF34pBFY1fXuHBTFPMrqRN",
+      "createdAt": "2026-09-28T12:20:47Z",
+      "updatedAt": "2026-09-28T12:33:09Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "b1a5ebd40fa4c36c750f45c27a3a6ea2023e37a3",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "readme-simplify",
+      "headRefOid": "a24e9e6aafc4e36523648152352a81c01a8bca70",
+      "closedAt": "2026-09-28T12:33:07Z",
+      "mergedAt": "2026-09-28T12:33:07Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "e0cec26cf88d886202eb5984d12bf8c50c9a2c66"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 220,
+      "id": "PR_kwDOQJKwSc8AAAABFgOq6A",
+      "title": "README: add regent-httpsig to the implementations table",
+      "url": "https://github.com/dickhardt/AAuth/pull/220",
+      "state": "MERGED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Adds Regent's `regent-httpsig` (Python, resource-side verification and budgets metering) to the implementations table. It comes from #216, which targeted the README before the #219 rewrite. Abay is credited as co-author.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01GF34pBFY1fXuHBTFPMrqRN",
+      "createdAt": "2026-09-28T13:26:29Z",
+      "updatedAt": "2026-09-28T13:26:36Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "e0cec26cf88d886202eb5984d12bf8c50c9a2c66",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "readme-regent-httpsig",
+      "headRefOid": "4354ec0bf0aad4946bb404054a2b80e8faa2cf39",
+      "closedAt": "2026-09-28T13:26:33Z",
+      "mergedAt": "2026-09-28T13:26:33Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "28e8258f8153a2a51a709c53ebc9618f941564e4"
+      },
       "comments": [],
       "reviews": []
     }
