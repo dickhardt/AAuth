@@ -12,6 +12,7 @@ AAuth gives every agent its own cryptographic identity and signs every request i
 | [AAuth R3](https://datatracker.ietf.org/doc/draft-hardt-aauth-r3/) | Authorization in the vocabularies agents already use: MCP, OpenAPI, gRPC, GraphQL | [html](https://dickhardt.github.io/AAuth/draft-hardt-aauth-r3.html) |
 | [AAuth Budgets](https://datatracker.ietf.org/doc/draft-hardt-aauth-budgets/) | Spending ceilings for metered resources | [html](https://dickhardt.github.io/AAuth/draft-hardt-aauth-budgets.html) |
 | [AAuth Events](https://datatracker.ietf.org/doc/draft-hardt-aauth-events/) | Event delivery to agents through their agent provider | [html](https://dickhardt.github.io/AAuth/draft-hardt-aauth-events.html) |
+| [AAuth Supervision](https://datatracker.ietf.org/doc/draft-hardt-aauth-supervision/) | The PS–SS interface: a supervision server deciding on the person's behalf | [html](https://dickhardt.github.io/AAuth/draft-hardt-aauth-supervision.html) |
 
 Implementing against an earlier revision? See [Updating from -10 to -11](upgrade-10-to-11/). For the minimum live pieces needed to show interoperability, see the [Interoperability Demo Profile](interop-demo-profile.md).
 
