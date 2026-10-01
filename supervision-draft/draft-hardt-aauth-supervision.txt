@@ -1,0 +1,1360 @@
+
+
+
+
+TBD                                                             D. Hardt
+Internet-Draft                                                     Hellō
+Intended status: Standards Track                          1 October 2026
+Expires: 4 April 2027
+
+
+                           AAuth Supervision
+                  draft-hardt-aauth-supervision-latest
+
+Abstract
+
+   This document defines AAuth Supervision — the interface between a
+   Person Server (PS) and a Supervision Server (SS) under the AAuth
+   Protocol ([I-D.hardt-oauth-aauth-protocol]).  The AAuth Protocol
+   names a Supervisor that evaluates each act an agent asks its PS to
+   authorize: the person by default, or a supervision server the PS
+   consults on the person's behalf.  This document specifies how a
+   person connects a supervision server to their PS, how the PS puts
+   each decision to it, how the server answers, and how the PS tells it
+   what happened.
+
+Discussion Venues
+
+   _Note: This section is to be removed before publishing as an RFC._
+
+   This document is part of the AAuth specification family.  Source for
+   this draft and an issue tracker can be found at
+   https://github.com/dickhardt/AAuth (https://github.com/dickhardt/
+   AAuth).
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 4 April 2027.
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction
+     1.1.  The Supervisor
+     1.2.  What This Document Defines
+     1.3.  Out of Scope
+   2.  Conventions and Definitions
+   3.  Terminology
+   4.  Protocol Overview
+   5.  Supervisor Metadata
+   6.  Configuration and Routing
+   7.  Authentication and Common Request Format
+     7.1.  PS Authentication
+     7.2.  Envelope
+     7.3.  Supervision Decision Identifier
+     7.4.  Delivery
+   8.  Connect
+   9.  Supervision Decisions
+     9.1.  Deferred Decisions
+     9.2.  Clarification
+     9.3.  Idempotence
+     9.4.  Signed Decisions
+   10. Mission Endpoint
+     10.1.  Proposal
+     10.2.  Approved
+     10.3.  Update
+     10.4.  Completion
+     10.5.  Terminated
+   11. Decision Endpoint
+     11.1.  Person Token
+     11.2.  Auth Token
+     11.3.  Permission
+   12. Event Endpoint
+     12.1.  Decision Resolved
+     12.2.  Reach of an Answer
+   13. Unavailable Supervisor
+   14. Replay and Recovery
+   15. Errors
+   16. Security Considerations
+     16.1.  The Supervisor Holds the Person's Authority
+     16.2.  Forwarded Tokens
+     16.3.  Connect
+     16.4.  Response Authenticity
+     16.5.  Egress
+   17. Privacy Considerations
+     17.1.  What the Supervisor Sees
+     17.2.  Identifiers
+     17.3.  Organizational Supervisors
+   18. IANA Considerations
+     18.1.  Well-Known URI Registration
+   19. Implementation Status
+   20. Document History
+   21. Acknowledgments
+   22. Normative References
+   Appendix A.  Design Rationale
+     A.1.  Why the PS Never Decides
+     A.2.  Why Three Endpoints
+     A.3.  Why the PS Is Authoritative
+     A.4.  Why the SS Never Calls the PS
+     A.5.  Why the sdi Is Minted by the PS
+     A.6.  Why Decisions Are Signed Responses, Not JWTs
+     A.7.  Why Interaction Relay Is an Event
+     A.8.  Why Routing, Not Fan-Out
+   Author's Address
+
+1.  Introduction
+
+1.1.  The Supervisor
+
+   The AAuth Protocol concentrates the judgment about what an agent may
+   do at the person server.  The PS has the mission the person approved,
+   the agent's justification for each request, the log of what the agent
+   has done, and a channel to the person.  It decides whether to issue a
+   person token, whether to issue or federate an auth token, whether an
+   agent may take an action no remote resource governs, and whether a
+   mission proposal, update, or completion is acceptable.
+
+   The protocol calls the party that makes those decisions the
+   Supervisor, and says that it is the person by default, or a
+   supervision server the PS delegates to
+   ([I-D.hardt-oauth-aauth-protocol], Roles).  A person with one agent
+   and a handful of missions answers each question themselves.  A person
+   with many agents working around the clock cannot, and an organization
+   that governs its members' agents by policy will not.  Supervision is
+   the layer where a standing policy, a rules engine, or a model
+   applying the person's preferences answers on the person's behalf, and
+   asks the person only when it cannot.
+
+1.2.  What This Document Defines
+
+   This document defines the supervision server (SS) role and the
+   protocol between a PS and an SS:
+
+   *  *Metadata* the SS publishes so a PS can find its endpoints and,
+      when it signs its decisions, its keys.
+   *  *Connect*, by which a PS establishes that a person has chosen this
+      SS.
+   *  *Supervision requests*, which the PS makes for every act it would
+      otherwise put to the person: a mission proposal, update, or
+      completion; a person token, auth token, or permission request.
+   *  *Supervision decisions*, the SS's answers: allow, deny, or ask the
+      person; with clarification of the agent where the SS needs it.
+   *  *Events*, by which the PS tells the SS what it did and what the
+      person decided.
+
+   A PS that has an SS configured for an agent makes no supervision
+   decision of its own for that agent.  It relays, records, and
+   enforces.  That is the property this document is built around: the PS
+   is the protocol party, and the SS is the policy party, and the person
+   can change the second without touching the first.
+
+1.3.  Out of Scope
+
+   Revocation of missions, agents, and person tokens is at the PS, by
+   the parties the AAuth Protocol names, and is not a supervision
+   decision.  Reading and managing missions by parties other than the
+   owning agent is the PS's mission_control_endpoint, which a companion
+   specification defines.  How an SS forms its policy — from rules the
+   person wrote, from what the person decided before, from a model — is
+   the SS's own.  This document defines what the SS is asked and what it
+   may answer, not how it decides.
+
+2.  Conventions and Definitions
+
+   {::boilerplate bcp14-tagged}
+
+3.  Terminology
+
+   Terms defined in [I-D.hardt-oauth-aauth-protocol] are used here with
+   the same meaning.  In particular: Agent, Agent Token, Person Server
+   (PS), Person Token, Auth Token, Resource Token, Mission, Mission Log,
+   Supervisor, Supervision, HTTP Sig, and Deferred Response.
+
+   This document additionally uses:
+
+   *  *Supervision Server (SS)*: A server the person has connected to
+      their PS, which the PS consults for every supervision decision
+      concerning the agents routed to it.
+   *  *Supervision Request*: A signed request from the PS to the SS
+      putting one act to it for decision.
+   *  *Supervision Decision*: A terminal answer to a supervision
+      request: allow, deny, or ask.  An SS may also answer with a
+      clarification, which is not terminal Section 9.
+   *  *Supervision Decision Identifier (sdi)*: An identifier the PS
+      mints for each supervision request, by which the request, its
+      decision, what the person then decided, and any token issued under
+      it are tied together.
+   *  *Event*: A signed request from the PS to the SS reporting
+      something that happened, which the SS acknowledges and does not
+      decide.
+   *  *Deciding SS*: For a given agent, the one SS the PS consults.  The
+      person configures which SS decides for which agent Section 6.
+
+4.  Protocol Overview
+
+   An agent makes a request of its PS, as the AAuth Protocol defines.
+   Instead of deciding, the PS puts the act to the agent's deciding SS.
+   The SS answers, and the PS acts on the answer: it issues the token,
+   denies the agent, or asks the person.  Afterwards the PS tells the SS
+   what it did.
+
+   Agent                PS                        SS                Person
+     |                   |                         |                   |
+     | request           |                         |                   |
+     |------------------>|                         |                   |
+     |                   | supervision request     |                   |
+     |                   |------------------------>|                   |
+     |                   |                         |                   |
+     |                   |     allow / deny / ask  |                   |
+     |                   |<------------------------|                   |
+     |                   |                         |                   |
+     |                   | [on ask] present        |                   |
+     |                   |-------------------------------------------->|
+     |                   |                         |          decision |
+     |                   |<--------------------------------------------|
+     |                   |                         |                   |
+     | token / denial    |                         |                   |
+     |<------------------|                         |                   |
+     |                   | event: what happened    |                   |
+     |                   |------------------------>|                   |
+     |                   |              201        |                   |
+     |                   |<------------------------|                   |
+
+   {: #fig-overview title="Supervision Overview"}
+
+   Three endpoints at the SS carry this, cut by the kind of answer each
+   gives Appendix A.2:
+
+   +===================+==============================+================+
+   | Endpoint          | Carries                      | Answers with   |
+   +===================+==============================+================+
+   | mission_endpoint  | The mission itself           | A mission-     |
+   |                   | changing: proposal,          | shaped         |
+   |                   | update, completion; and      | decision, or   |
+   |                   | the PS's report of           | 201 for a      |
+   |                   | approval and termination     | report         |
+   +-------------------+------------------------------+----------------+
+   | decision_endpoint | An act under the             | A supervision  |
+   |                   | person's authority: a        | decision       |
+   |                   | person token, auth           |                |
+   |                   | token, or permission         |                |
+   |                   | request                      |                |
+   +-------------------+------------------------------+----------------+
+   | event_endpoint    | What happened: tokens        | 201            |
+   |                   | issued, what the person      |                |
+   |                   | decided, audit records,      |                |
+   |                   | interactions relayed,        |                |
+   |                   | agents bound,                |                |
+   |                   | revocations received         |                |
+   +-------------------+------------------------------+----------------+
+
+                                  Table 1
+
+   A fourth, connect_endpoint, is used once per person to establish the
+   pairing Section 8.
+
+5.  Supervisor Metadata
+
+   An SS publishes its metadata at /.well-known/aauth-supervisor.json:
+
+   {
+     "issuer": "https://ss.example",
+     "name": "Example Supervisor",
+     "connect_endpoint": "https://ss.example/connect",
+     "mission_endpoint": "https://ss.example/mission",
+     "decision_endpoint": "https://ss.example/decision",
+     "event_endpoint": "https://ss.example/event",
+     "jwks_uri": "https://ss.example/.well-known/jwks.json"
+   }
+
+   *  issuer (REQUIRED): The SS's HTTPS URL, conforming to the server
+      identifier requirements of [I-D.hardt-oauth-aauth-protocol].  It
+      is the id the SS signs with Section 9.4 and the value the person
+      gives their PS to register it.
+   *  name (OPTIONAL): A display name the PS MAY show the person.
+   *  connect_endpoint (REQUIRED): URL where a PS connects a person
+      Section 8.
+   *  mission_endpoint (REQUIRED): URL where a PS puts mission
+      proposals, updates, and completions, and reports approvals and
+      terminations Section 10.
+   *  decision_endpoint (REQUIRED): URL where a PS puts token and
+      permission requests Section 11.
+   *  event_endpoint (REQUIRED): URL where a PS reports what happened
+      Section 12.
+   *  jwks_uri (OPTIONAL): URL of the SS's JSON Web Key Set. An SS that
+      publishes one signs its decisions Section 9.4.  An SS that does
+      not is a plain JSON responder, and the PS's record of its
+      decisions rests on the PS's word alone.
+
+   The common metadata fields of [I-D.hardt-oauth-aauth-protocol]
+   (description, logo_uri, documentation_uri, tos_uri, policy_uri) MAY
+   be present.  Endpoint URLs MUST be HTTPS and MUST be on the issuer's
+   origin or one the SS controls; a PS fetches the metadata and calls
+   the endpoints under the egress rules of
+   [I-D.hardt-httpbis-signature-key].
+
+6.  Configuration and Routing
+
+   The person registers an SS at their PS by its issuer.  How the PS
+   takes that registration from the person is out of scope; it is a
+   setting at the PS like any other.
+
+   The PS consults exactly one SS for each agent: the agent's *deciding
+   SS*. The person MAY name a default SS for all their agents and a
+   different SS for particular agents.  Every supervision request and
+   every event concerning an agent goes to that agent's deciding SS and
+   to no other Appendix A.8.  An agent with no deciding SS is supervised
+   by the person, as [I-D.hardt-oauth-aauth-protocol] describes, and
+   nothing in this document applies to it.
+
+   When the person changes an agent's deciding SS, the PS replays the
+   agent's active state to the new SS Section 14 before it puts any new
+   act to it.
+
+   An organization MAY configure routing at a PS for the people it
+   governs, so that their agents are decided by an SS the organization
+   operates.  That is a configuration at the PS and a policy at the SS,
+   and is not otherwise treated here.
+
+7.  Authentication and Common Request Format
+
+7.1.  PS Authentication
+
+   Every request from the PS to the SS is a signed POST or GET with an
+   HTTP Sig ([I-D.hardt-oauth-aauth-protocol], HTTP Message Signatures
+   Profile).  The PS signs as a server, under the jwks_uri Signature-Key
+   scheme ([I-D.hardt-httpbis-signature-key]), naming its issuer and its
+   person server metadata document:
+
+   Signature-Key: sig=jwks_uri;id="https://ps.example";
+       dwk="aauth-person.json";kid="key-1"
+
+   The signature MUST cover content-digest and content-type on a request
+   with a body, along with the base components.  The SS verifies the
+   signature and takes the PS's identity from it.  The SS MUST accept
+   requests only from a PS it has connected for the sub the request
+   names Section 8, and answers others with unsupported_iss or
+   unknown_sub Section 15.
+
+   The SS never makes a request of the PS Appendix A.4.  Everything the
+   SS has to say is a response.
+
+7.2.  Envelope
+
+   Every request body is a JSON object carrying the following members,
+   in addition to those the endpoint defines:
+
+   *  sdi (REQUIRED on a supervision request): The supervision decision
+      identifier, minted by the PS, unique within it Section 7.3.
+   *  id (REQUIRED on an event and on a report): An identifier for the
+      event, minted by the PS, unique within it. (iss, id) is the
+      deduplication key, where iss is the PS's verified identity.
+   *  iat (REQUIRED): The time of the act at the PS, as seconds since
+      the epoch.  On a retried request it is unchanged; the signature's
+      creation time is the time of delivery, not of the act.
+   *  sub (REQUIRED): The person, as the directed identifier the PS
+      derives for this SS as audience, by the same rule it derives a sub
+      for any resource ([I-D.hardt-oauth-aauth-protocol], Directed
+      Identifiers). (iss, sub) names one person at one PS, and it is the
+      value the PS connected Section 8.
+   *  agent (REQUIRED): The agent's identifier, aauth:local@domain, from
+      the iss and sub of the agent token the agent presented.
+   *  mission_s256 (OPTIONAL): The mission the act belongs to, when it
+      names one.
+
+   Tokens the SS receives inside a request carry other directed
+   identifiers for their own audiences.  The SS keys its state on sub
+   and treats identifiers inside forwarded tokens as opaque.
+
+7.3.  Supervision Decision Identifier
+
+   The PS mints an sdi for each supervision request before it makes the
+   request.  The same sdi names the request in the PS's log, a retry of
+   the request, the 202 and polls that follow it, the clarification
+   round trips under it, the decision.resolved event that reports what
+   the person decided after an ask, and the person_token.issued or
+   auth_token.issued event for a token the decision allowed.  A decision
+   the SS never answered still has an sdi and a complete log entry.
+
+7.4.  Delivery
+
+   The PS delivers requests for one (sub, SS) pair in the order the acts
+   occurred.  The PS retries a request that did not receive a terminal
+   response, under the same id or sdi, until it does.  The SS
+   deduplicates on (iss, id) and answers a repeated event with 201 and
+   nothing new recorded.  A repeated supervision request is answered per
+   Section 9.3.
+
+   The PS SHOULD send Prefer: wait ([RFC7240]) on every supervision
+   request, and a wait of 30 seconds is RECOMMENDED, so that an SS which
+   decides within it never has to hold a pending record.  An SS that
+   cannot answer within the wait returns a deferred response
+   Section 9.1.
+
+8.  Connect
+
+   Before a PS puts anything to an SS for a person, it connects the
+   person.  The connect call establishes, at the SS, that this PS speaks
+   for this sub, and gives the SS the chance to have the person confirm
+   it.
+
+   The PS makes a signed POST to the connect_endpoint:
+
+   POST /connect HTTP/1.1
+   Host: ss.example
+   Content-Type: application/json
+   Prefer: wait=30
+   Signature-Key: sig=jwks_uri;id="https://ps.example";
+       dwk="aauth-person.json";kid="key-1"
+
+   {
+     "action": "connect",
+     "id": "c-8f3k2n9p",
+     "iat": 1790600000,
+     "sub": "8f14e45fceea167a5a36dedd4bea2543",
+     "tenant": "acme.example"
+   }
+
+   *  action (REQUIRED): connect or disconnect.
+   *  tenant (OPTIONAL): The person's tenant, per the tenant claim of
+      [I-D.hardt-oauth-aauth-protocol], when the PS asserts one.  An SS
+      operated for an organization uses it to accept the PS for that
+      organization's people without interaction.
+
+   The SS answers in one of three ways:
+
+   *  *Connected* (200 OK): The SS already accepts this PS for this sub,
+      whether from configuration, from a tenant it trusts this PS for,
+      or from an earlier connect.  The PS proceeds.
+   *  *Interaction required* (202 Accepted): The SS returns a deferred
+      response with requirement=interaction, a url, and a code, exactly
+      as any server does under [I-D.hardt-oauth-aauth-protocol],
+      Interaction Required.  The PS directs the person to
+      {url}?code={code}. The person confirms the PS at the SS, the code
+      is consumed, and the PS polls Location with a signed GET until 200
+      OK.  The SS MAY complete the interaction over a channel it already
+      has with the person, as the protocol allows the host of any
+      interaction URL to do.  This is the one place the SS interacts
+      with the person, and it is setup, not supervision.
+   *  *Refused* (403 Forbidden, unsupported_iss): The SS does not accept
+      this PS.  The PS tells the person.
+
+   Once connected, the SS records (iss, sub) and accepts requests naming
+   that pair.  A later connect for a connected pair answers 200 OK.
+
+   A disconnect tells the SS the person has removed it, or that the PS
+   no longer routes any agent of this person to it.  The SS answers 200
+   OK and MAY discard what it holds for the pair.  A request after
+   disconnect is answered unknown_sub.
+
+9.  Supervision Decisions
+
+   An SS answers a supervision request in one of four ways.  Three are
+   decisions: they are terminal, the PS acts on them, and they close the
+   sdi.  The fourth, clarification, is not: the SS asks the agent
+   something before it decides, and the sdi stays open until one of the
+   three follows.
+
+    +==========+===========================+========+=================+
+    | Response | Status                    | Closes | The PS          |
+    |          |                           | the    |                 |
+    |          |                           | sdi    |                 |
+    +==========+===========================+========+=================+
+    | allow    | 200                       | yes    | proceeds with   |
+    |          |                           |        | the act,        |
+    |          |                           |        | narrowed as the |
+    |          |                           |        | decision says   |
+    +----------+---------------------------+--------+-----------------+
+    | deny     | 200                       | yes    | refuses the act |
+    +----------+---------------------------+--------+-----------------+
+    | ask      | 200                       | yes    | puts the act to |
+    |          |                           |        | the person and  |
+    |          |                           |        | reports what    |
+    |          |                           |        | they decided    |
+    +----------+---------------------------+--------+-----------------+
+    | clarify  | 202 with                  | no     | relays the      |
+    |          | requirement=clarification |        | question to the |
+    |          |                           |        | agent and the   |
+    |          |                           |        | answer back     |
+    |          |                           |        | Section 9.2     |
+    +----------+---------------------------+--------+-----------------+
+
+                                  Table 2
+
+   A decision is a 200 OK whose body is a JSON object with a decision
+   member of:
+
+   *  allow: The PS proceeds with the act.  The decision MAY narrow it,
+      with members the endpoint defines: a scope narrower than
+      requested, an exp earlier than the PS would otherwise issue, or
+      for a mission proposal the refined mission Section 10.1.
+   *  deny: The PS refuses the act.  The decision MAY carry a reason, a
+      Markdown string, which the PS passes to the agent where the
+      protocol gives the agent a reason.
+   *  ask: The SS does not decide, and the PS puts the act to the
+      person.  The decision SHOULD carry a summary, a Markdown string
+      the PS presents alongside the request; MAY carry a recommendation
+      of allow or deny; for a mission proposal MAY carry a proposed
+      refinement the PS presents for the person to confirm or edit
+      Section 10.1; and MAY carry apply_options, the reaches the SS
+      offers the person for their answer Section 12.2.  The PS reports
+      what the person decided in a decision.resolved event Section 12.1.
+
+   HTTP/1.1 200 OK
+   Content-Type: application/json
+
+   {
+     "sdi": "d-4d2a91",
+     "decision": "ask",
+     "summary": "The agent wants to book a $3,200 flight. The mission budget is $5,000 and $2,900 is spent.",
+     "recommendation": "deny"
+   }
+
+   The response MUST echo the request's sdi.  The PS MUST verify it
+   matches.
+
+   The SS applies whatever reach the person has given earlier answers
+   Section 12.2.  The PS applies none: with an SS configured, every act
+   goes to the SS, and the PS never answers from its own record
+   Appendix A.1.
+
+9.1.  Deferred Decisions
+
+   An SS that cannot answer within the PS's wait returns a 202 Accepted
+   deferred response ([I-D.hardt-oauth-aauth-protocol], Deferred
+   Responses) with Location and Retry-After.  The PS polls the pending
+   URL with a signed GET, signing under the same identity that made the
+   request, and sends no body.  The SS MUST verify that identity and
+   MUST answer unknown_pending Section 15 to a poll from any other.  The
+   terminal response is the decision, and is signed when the SS signs
+   Section 9.4.
+
+   The PS polls until it has a decision or until the agent's own pending
+   request at the PS would expire.  At that point the PS treats the SS
+   as unavailable for this decision Section 13, and a decision the SS
+   returns afterwards is discarded.
+
+9.2.  Clarification
+
+   An SS that needs the agent to answer a question before it decides
+   returns 202 Accepted with requirement=clarification and a
+   clarification body, exactly as [I-D.hardt-oauth-aauth-protocol],
+   Clarification Required defines it, and with "decision": "clarify" in
+   the body beside "status": "pending", so the four responses read
+   alike:
+
+   HTTP/1.1 202 Accepted
+   Location: /pending/q7x2
+   Retry-After: 0
+   Cache-Control: no-store
+   AAuth-Requirement: requirement=clarification
+   Content-Type: application/json
+
+   {
+     "sdi": "d-4d2a92",
+     "status": "pending",
+     "decision": "clarify",
+     "clarification": "Is the fare refundable?",
+     "timeout": 120
+   }
+
+   The PS relays the question to the agent on its own pending URL, and
+   relays the agent's answer back by a signed POST to the SS's pending
+   URL with an action of clarification_response or updated_request, or a
+   signed DELETE when the agent cancels, per Agent Response to
+   Clarification in that document.  The SS then answers with a decision,
+   or with a further clarification within the round limit the PS
+   enforces.
+
+   Clarification is the SS speaking to the agent through the PS.  It is
+   never the SS speaking to the person; that is ask.
+
+9.3.  Idempotence
+
+   A repeated supervision request under an sdi the SS has already
+   answered MUST be answered with the same decision, and where the SS
+   signs, the same signed response.  A repeated request under an sdi the
+   SS is still deciding is answered 202 with the same Location.  The SS
+   keeps decisions it has given at least until the exp of any token the
+   decision could have allowed, and MAY keep them longer.
+
+9.4.  Signed Decisions
+
+   An SS that publishes a jwks_uri signs the terminal response to every
+   supervision request with an HTTP Message Signature ([RFC9421],
+   Section 2.4 and Section 3), and identifies the signing key with a
+   Signature-Key header on the response under the jwks_uri scheme,
+   naming its issuer and this document's metadata file:
+
+   HTTP/1.1 200 OK
+   Content-Type: application/json
+   Content-Digest: sha-256=:X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=:
+   Signature-Key: sig=jwks_uri;id="https://ss.example";
+       dwk="aauth-supervisor.json";kid="ss-key-1"
+   Signature-Input: sig=("@status" "content-type" "content-digest"
+       "content-digest";req "@authority";req "@path";req);
+       created=1790600030;keyid="ss-key-1"
+   Signature: sig=:...:
+
+   {
+     "sdi": "d-4d2a91",
+     "decision": "allow",
+     "scope": "calendar.read"
+   }
+
+   The PS asks for the signature with Accept-Signature ([RFC9421],
+   Section 5.1) on the request, naming the components it wants covered.
+   The signature MUST cover @status, content-type, and content-digest,
+   and SHOULD cover the request's content-digest, @authority, and @path
+   as ;req components, which bind a synchronous decision to the request
+   it answers.  A decision returned at a pending URL is a response to
+   the PS's GET, and its ;req components bind it to that poll; the
+   binding to the supervision request is the sdi in the body.
+
+   The PS MUST verify the signature against the key set the SS's
+   metadata names, and MUST verify that the id in the response's
+   Signature-Key is the issuer of the SS it called.  A signed response
+   that fails either check is treated as server_error.  An unsigned
+   terminal response from an SS that publishes a jwks_uri is likewise
+   treated as server_error.
+
+   The PS records the exchange, the request as it signed it and the
+   response as it received it, as the log entry for the decision.  The
+   response identifies its signer in itself, so the entry can be
+   verified later without knowing which SS was configured at the time.
+
+   |  *Editor's Note:* [I-D.hardt-httpbis-signature-key] defines
+   |  Signature-Key as a request header.  Its use on a signed response,
+   |  identifying the responder, is proposed in that document's issue
+   |  tracker (issue 43) and this section depends on it.
+
+10.  Mission Endpoint
+
+   The mission endpoint carries the mission itself changing.  Its URL
+   shape and action discriminator mirror the PS's own mission endpoint
+   ([I-D.hardt-oauth-aauth-protocol], Mission), so the PS forwards what
+   the agent sent it with the envelope added.
+
+     +===================================+=============+============+
+     | Request                           | Kind        | Answer     |
+     +===================================+=============+============+
+     | POST {mission_endpoint}           | Supervision | A decision |
+     |                                   | request: a  | Section    |
+     |                                   | proposal    | 10.1       |
+     +-----------------------------------+-------------+------------+
+     | POST                              | Report      | 201        |
+     | {mission_endpoint}/{mission_s256} |             |            |
+     | with action: approved             |             |            |
+     +-----------------------------------+-------------+------------+
+     | POST                              | Supervision | A decision |
+     | {mission_endpoint}/{mission_s256} | request     |            |
+     | with action: update               |             |            |
+     +-----------------------------------+-------------+------------+
+     | POST                              | Supervision | A decision |
+     | {mission_endpoint}/{mission_s256} | request     |            |
+     | with action: completion           |             |            |
+     +-----------------------------------+-------------+------------+
+     | POST                              | Report      | 201        |
+     | {mission_endpoint}/{mission_s256} |             |            |
+     | with action: terminated           |             |            |
+     +-----------------------------------+-------------+------------+
+
+                                 Table 3
+
+   action is REQUIRED on a request to a mission's URL, and an SS MUST
+   reject a missing or unrecognized action with invalid_request.
+
+10.1.  Proposal
+
+   The PS forwards the agent's proposal:
+
+   POST /mission HTTP/1.1
+   Host: ss.example
+   Content-Type: application/json
+   Prefer: wait=30
+   Accept-Signature: sig=("@status" "content-type" "content-digest"
+       "content-digest";req "@authority";req "@path";req)
+   Signature-Key: sig=jwks_uri;id="https://ps.example";
+       dwk="aauth-person.json";kid="key-1"
+
+   {
+     "sdi": "d-7a1c02",
+     "iat": 1790600000,
+     "sub": "8f14e45fceea167a5a36dedd4bea2543",
+     "agent": "aauth:assistant@agent.example",
+     "agent_token": "eyJhbGc...",
+     "description": "# Plan Japan Vacation\n\nPlan and book a trip to Japan next month for 2 adults. Budget around $5k. Propose an itinerary before booking.",
+     "tools": [
+       { "name": "WebSearch", "description": "Search the web" },
+       { "name": "BookFlight", "description": "Book flights" }
+     ],
+     "resources": [
+       "https://flights.example",
+       "https://hotels.example"
+     ]
+   }
+
+   *  agent_token (REQUIRED): The agent token the agent presented.  It
+      carries whatever posture claims the agent provider put in it, and
+      the SS is the party that evaluates them.
+   *  description, tools, resources: As the agent sent them.
+
+   An allow carries the approved mission, in the members the PS writes
+   into the mission blob:
+
+   {
+     "sdi": "d-7a1c02",
+     "decision": "allow",
+     "description": "# Plan Japan Vacation\n\nPlan and book a trip to Japan next month for 2 adults. Budget $5,000. Propose an itinerary before booking. Do not book non-refundable fares.",
+     "approved_tools": [
+       { "name": "WebSearch", "description": "Search the web" }
+     ],
+     "approved_resources": [
+       "https://flights.example",
+       "https://hotels.example"
+     ],
+     "expires_at": "2026-11-01T00:00:00Z"
+   }
+
+   *  description (REQUIRED): The approved description.  It MAY differ
+      from the proposal.
+   *  approved_tools (OPTIONAL): A subset of, or a refinement of, the
+      proposed tools.  Absent means none are pre-approved.
+   *  approved_resources (OPTIONAL): The resources the PS is to issue
+      person tokens for at approval.
+   *  expires_at (OPTIONAL): When the mission expires.
+
+   The PS assembles the mission blob from these, computes s256, issues
+   the person tokens, records the mission, and returns the approval to
+   the agent, all as the AAuth Protocol defines.  The SS refines; the PS
+   builds.
+
+   An ask MAY carry the same members under proposed.  The PS presents
+   them to the person as the supervisor's proposed refinement, the
+   person confirms or edits them, and the PS builds the blob from what
+   the person approved.
+
+   A deny ends the proposal.  The PS returns the denial to the agent
+   with the reason, if any.
+
+10.2.  Approved
+
+   Once the PS has built and recorded the mission, it reports it:
+
+   {
+     "action": "approved",
+     "id": "e-9b2f",
+     "sdi": "d-7a1c02",
+     "iat": 1790600045,
+     "sub": "8f14e45fceea167a5a36dedd4bea2543",
+     "agent": "aauth:assistant@agent.example",
+     "s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+     "mission": "eyJhZ2VudCI6ImFhdXRoOmFzc2lzdGFudEBhZ2VudC5leGFtcGxlIiwiYXBwcm92..."
+   }
+
+   *  sdi: The proposal decision this approval followed from.
+   *  s256 and mission: The mission identifier and the blob bytes, as
+      returned to the agent.  The SS SHOULD verify that s256 is the
+      digest of mission.
+
+   The SS answers 201 Created.  From here the SS has the exact bytes
+   every later mission_s256 refers to.
+
+10.3.  Update
+
+   The PS forwards the agent's update to
+   {mission_endpoint}/{mission_s256} with action: update and the agent's
+   description.  The SS answers with a decision.  On allow, the PS
+   accepts the update, appends it to the mission log, and returns its
+   s256 to the agent.  On ask, the person reviews it at the PS.  The
+   decision MAY narrow nothing: an update is accepted or not.
+
+10.4.  Completion
+
+   The PS forwards the agent's completion proposal with action:
+   completion and the agent's summary.  On allow, the PS terminates the
+   mission with reason completed and returns 200 OK to the agent, and
+   then reports the termination Section 10.5.  On ask, the person
+   reviews the summary at the PS, and may question the agent through
+   clarification chat there before accepting; the PS reports the outcome
+   in decision.resolved.  On deny, the mission stays active and the
+   agent is told.
+
+10.5.  Terminated
+
+   When a mission ends for any reason, the PS reports it with action:
+   terminated and a reason from the termination reasons of
+   [I-D.hardt-oauth-aauth-protocol], Mission Management.  The SS answers
+   201 Created and MAY discard what it holds for the mission.
+
+11.  Decision Endpoint
+
+   The decision endpoint carries an act under the person's authority,
+   with or without a mission.  Every request is a supervision request
+   with an act member naming which.  The PS forwards the tokens and body
+   the agent presented, so the SS sees what the PS saw.
+
+11.1.  Person Token
+
+   {
+     "sdi": "d-4d2a91",
+     "act": "person_token",
+     "iat": 1790600100,
+     "sub": "8f14e45fceea167a5a36dedd4bea2543",
+     "agent": "aauth:assistant@agent.example",
+     "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+     "agent_token": "eyJhbGc...",
+     "resource": "https://calendar.example",
+     "upstream_token": "eyJhbGc..."
+   }
+
+   *  resource (REQUIRED): The resource the person token is for.
+   *  agent_token (REQUIRED): The agent token presented.
+   *  upstream_token (OPTIONAL): Present when the request is part of a
+      call chain, as the agent sent it.
+   *  subagent_token (OPTIONAL): Present when a parent agent requests
+      for a sub-agent, as the agent sent it.
+
+   An allow MAY carry exp, a time no later than which the issued token's
+   exp MUST be.
+
+11.2.  Auth Token
+
+   {
+     "sdi": "d-4d2a92",
+     "act": "auth_token",
+     "iat": 1790600200,
+     "sub": "8f14e45fceea167a5a36dedd4bea2543",
+     "agent": "aauth:assistant@agent.example",
+     "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+     "agent_token": "eyJhbGc...",
+     "resource_token": "eyJhbGc...",
+     "presented_token": "eyJhbGc...",
+     "justification": "I need to read your calendar to find a week with no meetings."
+   }
+
+   *  resource_token, presented_token (REQUIRED): As the agent sent
+      them.  The resource token carries the resource, the scope it
+      requires, and any budget or other requirement the resource
+      attached.
+   *  upstream_token, subagent_token (OPTIONAL): As above.
+   *  justification (OPTIONAL): The agent's justification, as it sent
+      it.
+
+   An allow MAY carry scope, a scope narrower than the resource token
+   requested, and exp.  The PS applies them to the auth token it issues,
+   or passes them to the AS it federates with where the AS accepts them;
+   how a PS narrows a federated request is the AS's business and is not
+   treated here.
+
+11.3.  Permission
+
+   {
+     "sdi": "d-4d2a93",
+     "act": "permission",
+     "iat": 1790600300,
+     "sub": "8f14e45fceea167a5a36dedd4bea2543",
+     "agent": "aauth:assistant@agent.example",
+     "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+     "action": "SendEmail",
+     "description": "Send the proposed itinerary to the user",
+     "parameters": {
+       "to": "user@example.com",
+       "subject": "Japan trip itinerary"
+     }
+   }
+
+   *  action, description, parameters: As the agent sent them to the
+      PS's permission endpoint.
+
+   An allow becomes permission: granted to the agent; a deny becomes
+   permission: denied with the reason.
+
+12.  Event Endpoint
+
+   The event endpoint carries what happened.  Every request is a report
+   with an event member, and the SS answers 201 Created with no body.
+   The SS does not decide an event; it records it, and MAY use it in
+   later decisions.
+
+    +=======================+==============+=========================+
+    | event                 | Members      | Meaning                 |
+    +=======================+==============+=========================+
+    | person_token.issued   | sdi, jti,    | The PS issued a person  |
+    |                       | aud, exp     | token under the         |
+    |                       |              | decision sdi            |
+    +-----------------------+--------------+-------------------------+
+    | auth_token.issued     | sdi, jti,    | The PS issued an auth   |
+    |                       | aud, scope,  | token, or an AS did on  |
+    |                       | exp, issuer  | the PS's federation,    |
+    |                       |              | under sdi; issuer is    |
+    |                       |              | the PS or the AS        |
+    +-----------------------+--------------+-------------------------+
+    | decision.resolved     | Section 12.1 | What the person decided |
+    |                       |              | after an ask, or when   |
+    |                       |              | the SS was unavailable  |
+    +-----------------------+--------------+-------------------------+
+    | audit.recorded        | action,      | The agent logged an     |
+    |                       | description, | action at the PS's      |
+    |                       | parameters,  | audit endpoint, as it   |
+    |                       | result       | sent it                 |
+    +-----------------------+--------------+-------------------------+
+    | interaction.requested | type, url    | The agent asked the PS  |
+    |                       |              | to relay an interaction |
+    |                       |              | to the person, and the  |
+    |                       |              | PS did.  Not a decision |
+    |                       |              | Appendix A.7            |
+    +-----------------------+--------------+-------------------------+
+    | agent.bound           | agent_iss,   | The PS bound the agent  |
+    |                       | agent_sub    | to the person on first  |
+    |                       |              | approval                |
+    +-----------------------+--------------+-------------------------+
+    | revocation.received   | token_type,  | The PS received a       |
+    |                       | iss, jti,    | revocation: an agent    |
+    |                       | exp          | token from the agent    |
+    |                       |              | provider, or a resource |
+    |                       |              | token from a resource.  |
+    |                       |              | The SS is told; it has  |
+    |                       |              | no part in the cascade  |
+    +-----------------------+--------------+-------------------------+
+
+                                 Table 4
+
+   Every event carries the envelope Section 7.2.  The code of a relayed
+   interaction is not forwarded.
+
+12.1.  Decision Resolved
+
+   After an ask, and after any decision the PS put to the person because
+   the SS was unavailable Section 13, the PS reports what the person
+   decided:
+
+   {
+     "event": "decision.resolved",
+     "id": "e-c3d4",
+     "sdi": "d-4d2a91",
+     "iat": 1790600130,
+     "sub": "8f14e45fceea167a5a36dedd4bea2543",
+     "agent": "aauth:assistant@agent.example",
+     "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+     "answer": "allow",
+     "apply": "mission",
+     "recommendation": "deny",
+     "transcript": [
+       { "from": "person", "text": "Is this fare refundable?" },
+       { "from": "agent", "text": "Yes, fully refundable until 48 hours before departure." }
+     ]
+   }
+
+   *  answer (REQUIRED): allow or deny, or abandoned when the person did
+      not answer before the request expired.
+   *  apply (OPTIONAL): The reach the person gave their answer
+      Section 12.2.  Absent means once.
+   *  recommendation (OPTIONAL): The recommendation the SS gave in its
+      ask, echoed so the SS can compare its policy with the person's
+      answer.
+   *  proposed (OPTIONAL): For a mission proposal, the refinement as the
+      person approved it, after any edits.
+   *  transcript (OPTIONAL): The clarification chat between the person
+      and the agent at the PS, if any, in order.  Each entry has from,
+      one of person or agent, and text, Markdown.
+   *  supervisor (OPTIONAL): unavailable when the PS put the act to the
+      person because it could not reach the SS.  There is no
+      recommendation in that case.
+   *  reason (OPTIONAL): A reason the person gave, Markdown.  A PS MAY
+      offer the person a reason field and MUST NOT require one.
+
+12.2.  Reach of an Answer
+
+   When the PS puts an act to the person after an ask, it MAY offer them
+   a choice of how far their answer reaches.  The person's choice comes
+   back to the SS as apply in decision.resolved, and the SS remembers
+   and applies it to later acts Appendix A.1.  The PS applies nothing.
+
+   The SS knows what its policy can match on and the PS does not, so the
+   SS names the choices.  An ask MAY carry apply_options, an array of
+   objects each with a value the SS will recognize and a label,
+   Markdown, the PS shows the person:
+
+   {
+     "sdi": "d-4d2a91",
+     "decision": "ask",
+     "summary": "The agent wants to book a $3,200 refundable fare.",
+     "apply_options": [
+       { "value": "once", "label": "This booking only" },
+       { "value": "refundable-under-4k", "label": "Any refundable fare under $4,000 on this trip" },
+       { "value": "mission", "label": "Anything else this agent asks on this trip" }
+     ]
+   }
+
+   The PS presents the labels and returns the chosen value as apply.
+   When an ask carries no apply_options, the PS MAY offer these three,
+   whose meaning is fixed:
+
+   *  once: this act only.
+   *  mission: every act of this kind under this mission, until it
+      terminates.
+   *  always: every act of this kind by this agent, under any mission or
+      none, until the person changes it.
+
+   What "this kind" means for mission and always is the SS's to
+   determine, since the SS applies it.  A PS that offers them SHOULD
+   word them as above and no more precisely.
+
+13.  Unavailable Supervisor
+
+   An SS is unavailable for a decision when the PS cannot reach it: the
+   connection fails or times out, the response is malformed, the SS
+   answers server_error, or the SS answers rate_limited with a Retry-
+   After past the point the agent's request would expire.  An SS that
+   answers 202 is not unavailable; the PS polls it as Section 9.1
+   describes, and it becomes unavailable for that decision only when the
+   agent's request would expire first.
+
+   When the SS is unavailable, the PS puts the act to the person, as it
+   would with no SS configured.  The sdi stands, the PS's log entry
+   records that the SS was not consulted, and when the SS is reachable
+   again the PS reports the outcome in decision.resolved with
+   supervisor: unavailable.  Events that could not be delivered are
+   delivered then, in order.
+
+   The PS does not decide in the SS's absence.  It asks the person or it
+   waits.
+
+14.  Replay and Recovery
+
+   An SS holds state: the missions it has seen, the tokens issued under
+   them, the reach the person has given earlier answers.  A PS can bring
+   an SS up to date without the SS asking, since the SS never calls the
+   PS.
+
+   *Routing change.* When an agent's deciding SS changes, the PS sends
+   the new SS, before any new act: agent.bound for the agent; for each
+   active mission, action: approved with the blob and s256, followed by
+   the mission's log entries in order, each as the event or report it
+   would have been; and person_token.issued and auth_token.issued for
+   each outstanding token.  The id of each replayed event is the id it
+   had, or one the PS mints if the entry predates its record of one.
+
+   *Unknown mission.* When the SS answers a request with unknown_mission
+   Section 15, the PS replays that mission as above, then resends the
+   request under the same sdi or id.
+
+   The PS's mission log is authoritative Appendix A.3.  Replay is the PS
+   giving the SS a copy; it is not the SS's record becoming the PS's.
+
+15.  Errors
+
+   Error responses use the format of [I-D.hardt-oauth-aauth-protocol],
+   Error Response Format.  A request whose signature does not verify is
+   answered 401 with the Signature-Error header
+   ([I-D.hardt-httpbis-signature-key]).
+
+    +=================+========+=================+===================+
+    | Error           | Status | Meaning         | PS action         |
+    +=================+========+=================+===================+
+    | invalid_request | 400    | Malformed body, | Logs it and       |
+    |                 |        | missing member, | treats the SS as  |
+    |                 |        | unrecognized    | unavailable for   |
+    |                 |        | action, act, or | this act.  It is  |
+    |                 |        | event           | a PS defect or a  |
+    |                 |        |                 | version mismatch, |
+    |                 |        |                 | and retrying will |
+    |                 |        |                 | not help          |
+    +-----------------+--------+-----------------+-------------------+
+    | unsupported_iss | 403    | The SS does not | Treats the SS as  |
+    |                 |        | accept requests | unavailable and   |
+    |                 |        | from this PS    | tells the person  |
+    |                 |        |                 | the SS has        |
+    |                 |        |                 | dropped the       |
+    |                 |        |                 | pairing           |
+    +-----------------+--------+-----------------+-------------------+
+    | unknown_sub     | 404    | The SS accepts  | Connects          |
+    |                 |        | this PS but has | Section 8, then   |
+    |                 |        | no connection   | resends under the |
+    |                 |        | for this sub    | same sdi or id    |
+    +-----------------+--------+-----------------+-------------------+
+    | unknown_mission | 404    | The SS has no   | Replays the       |
+    |                 |        | record of       | mission, then     |
+    |                 |        | mission_s256    | resends           |
+    |                 |        |                 | Section 14        |
+    +-----------------+--------+-----------------+-------------------+
+    | unknown_pending | 404    | A poll or       | Treats the SS as  |
+    |                 |        | clarification   | unavailable for   |
+    |                 |        | reply names a   | this act          |
+    |                 |        | pending URL the |                   |
+    |                 |        | SS does not     |                   |
+    |                 |        | hold, or the    |                   |
+    |                 |        | poller is not   |                   |
+    |                 |        | the requester   |                   |
+    +-----------------+--------+-----------------+-------------------+
+    | rate_limited    | 429    | The SS will not | Waits Retry-      |
+    |                 |        | take more from  | After;            |
+    |                 |        | this PS for     | unavailable if    |
+    |                 |        | now.  Retry-    | that passes the   |
+    |                 |        | After is        | agent's request   |
+    |                 |        | REQUIRED        | expiry            |
+    +-----------------+--------+-----------------+-------------------+
+    | server_error    | 500    | Internal        | Treats the SS as  |
+    |                 |        | failure         | unavailable for   |
+    |                 |        |                 | this act          |
+    +-----------------+--------+-----------------+-------------------+
+
+                                 Table 5
+
+   Polling a pending URL uses the polling error codes of the AAuth
+   Protocol.  A status or error not in this table is treated as
+   server_error.
+
+16.  Security Considerations
+
+16.1.  The Supervisor Holds the Person's Authority
+
+   An SS decides, on the person's behalf, what every agent routed to it
+   may do.  A compromised SS can allow anything the person could allow,
+   and can deny everything.  That is the same authority a compromised PS
+   has over consent, held by a second party.  A person choosing an SS is
+   choosing who exercises their judgment, and a PS SHOULD make that
+   plain when the person registers one.
+
+   The SS cannot act; it can only answer.  It issues no tokens, reaches
+   no resource, and calls no one Appendix A.4.  Everything it allows is
+   issued by the PS, bounded by what the agent asked for, and revocable
+   at the PS by the parties the AAuth Protocol names.
+
+16.2.  Forwarded Tokens
+
+   Supervision requests carry the agent token, the resource token, and
+   the presented token as the agent sent them.  Each is bound to the
+   agent's key by its cnf and is of no use to a holder without that key.
+   An SS learns from them; it cannot present them.  Events name issued
+   tokens by jti only.
+
+16.3.  Connect
+
+   The interaction at connect is the person confirming, at a server they
+   chose, that a PS speaks for them there.  An attacker who could
+   complete that interaction for a sub the person did not initiate would
+   have a PS they control accepted as the person's.  The SS MUST show
+   the connecting PS's issuer and name on the confirmation, and SHOULD
+   show the code, so the person can recognize a connect they did not
+   start.  Interaction Code Misdirection in the AAuth Protocol applies.
+
+16.4.  Response Authenticity
+
+   Over TLS to an origin the PS resolved from the person's registration,
+   an unsigned decision is authentic when it arrives.  A signed decision
+   is authentic afterwards, when the log entry is read by someone who
+   was not on the connection.  A PS that will ever have to show what its
+   supervisor said SHOULD require an SS with a jwks_uri.  The check that
+   the response's id is the SS the PS called Section 9.4 is what stops
+   one SS's signed decision being presented as another's.
+
+16.5.  Egress
+
+   The person names the SS, and anyone can run one.  A PS that posted to
+   whatever endpoint an SS's metadata named could be induced to send
+   signed requests to addresses it should not reach.  The egress
+   admission rules of [I-D.hardt-httpbis-signature-key] apply before the
+   PS fetches the SS's metadata or calls an endpoint in it.
+
+17.  Privacy Considerations
+
+17.1.  What the Supervisor Sees
+
+   The SS sees everything the PS puts to it for the agents routed to it:
+   mission text, justifications, the resources an agent reaches, the
+   actions it takes, and what the person decides.  That is the point; a
+   supervisor that saw less could decide less.  It is the person's own
+   choice of a party to see it, made agent by agent Section 6, and the
+   PS SHOULD say so when the person registers an SS.
+
+17.2.  Identifiers
+
+   The sub the PS sends is directed to the SS and appears nowhere else.
+   Tokens forwarded in supervision requests carry directed identifiers
+   for their own audiences, and the SS can trivially correlate them,
+   since every request names the same sub.  Nothing is gained by hiding
+   that from the person's own supervisor, and nothing is lost by it: no
+   other party receives the SS's sub.
+
+17.3.  Organizational Supervisors
+
+   Where an organization routes its people's agents to an SS it
+   operates, the organization sees what the SS sees.  The tenant at
+   connect is how the SS knows it has that standing.  What an
+   organization may lawfully see of its members' agents is outside this
+   document.
+
+18.  IANA Considerations
+
+18.1.  Well-Known URI Registration
+
+   This specification registers the following well-known URI per
+   [RFC8615]:
+
+      +=======================+===================+================+
+      | URI Suffix            | Change Controller | Reference      |
+      +=======================+===================+================+
+      | aauth-supervisor.json | IETF              | This document, |
+      |                       |                   | Section 5      |
+      +-----------------------+-------------------+----------------+
+
+                                 Table 6
+
+19.  Implementation Status
+
+   _Note: This section is to be removed before publishing as an RFC._
+
+   There are no known implementations of this specification at the time
+   of writing.
+
+20.  Document History
+
+   _Note: This section is to be removed before publishing as an RFC._
+
+   *  *-00*: Initial version.  Supervisor metadata, connect, three
+      endpoints, supervision decisions, events, replay, signed
+      decisions.
+
+21.  Acknowledgments
+
+   TBD.
+
+22.  Normative References
+
+   [I-D.hardt-httpbis-signature-key]
+              Hardt, D. and T. Meunier, "HTTP Signature Keys", 2026,
+              <https://datatracker.ietf.org/doc/draft-hardt-httpbis-
+              signature-key>.
+
+   [I-D.hardt-oauth-aauth-protocol]
+              Hardt, D., "AAuth Protocol", 2026,
+              <https://datatracker.ietf.org/doc/draft-hardt-oauth-aauth-
+              protocol>.
+
+   [RFC7240]  Snell, J., "Prefer Header for HTTP", RFC 7240,
+              DOI 10.17487/RFC7240, June 2014,
+              <https://www.rfc-editor.org/info/rfc7240>.
+
+   [RFC8615]  Nottingham, M., "Well-Known Uniform Resource Identifiers
+              (URIs)", RFC 8615, DOI 10.17487/RFC8615, May 2019,
+              <https://www.rfc-editor.org/info/rfc8615>.
+
+   [RFC9421]  Backman, A., Ed., Richer, J., Ed., and M. Sporny, "HTTP
+              Message Signatures", RFC 9421, DOI 10.17487/RFC9421,
+              February 2024, <https://www.rfc-editor.org/info/rfc9421>.
+
+Appendix A.  Design Rationale
+
+A.1.  Why the PS Never Decides
+
+   A PS that applied some of the person's standing decisions itself and
+   forwarded the rest would hold part of the person's policy, and the SS
+   the other part.  The person could then not change their supervisor
+   without losing what the PS held, and neither party would have the
+   full record of how a decision was reached.  Routing every act to the
+   SS keeps the policy in one place, and makes the PS what the protocol
+   wants it to be: the party that verifies, issues, and records, with no
+   judgment of its own.  The reach of an answer Section 12.2 is
+   therefore delivered to the SS and applied there, and a person with no
+   SS gets none.
+
+A.2.  Why Three Endpoints
+
+   One endpoint with a discriminator would carry everything, and an
+   implementer writes one dispatch either way.  The three are cut by
+   what comes back: a mission-shaped answer, a decision, or an
+   acknowledgment.  Events are high-volume and fire-and-forget;
+   decisions are few and latency-bound.  Separate URLs let those be
+   deployed, scaled, and rate-limited separately, and let the mission
+   endpoint mirror the PS's own, so its shape is already known.
+
+A.3.  Why the PS Is Authoritative
+
+   A person may have no SS, one, or several, one per agent.  Only the PS
+   sees every act for the person, so only the PS can hold the whole
+   record.  The SS holds what it needs, and may drop a mission when it
+   ends.  Replay makes any SS current from the PS's record.  An SS-held
+   record would also require the PS to read from the SS, and the SS is a
+   party the PS trusts to answer, not one it trusts to be reachable.
+
+A.4.  Why the SS Never Calls the PS
+
+   An SS that could call the PS would need keys the PS trusts, an
+   authorization model at the PS for what an SS may do, and a way for
+   the person to bound it.  Everything the SS needs to say fits in a
+   response: a decision, a refinement, a question for the agent.  What
+   it cannot do in a response, such as act between events, belongs to
+   mission control, under the authorization model that document defines.
+   An SS with no inbound calls also has no attack surface toward the PS
+   beyond what it answers.
+
+A.5.  Why the sdi Is Minted by the PS
+
+   The PS's log entry for a decision begins before the SS has answered,
+   and must be complete when the SS never does.  An identifier the SS
+   assigned would arrive, if at all, after the entry existed.  Minting
+   it at the PS makes one identifier cover the request, its retries, its
+   polls, its clarifications, the person's answer, and the tokens
+   issued, from the first moment.
+
+A.6.  Why Decisions Are Signed Responses, Not JWTs
+
+   A JWT would be a second encoding of a body that is already JSON, and
+   a new token type.  An HTTP Message Signature over the response leaves
+   the body as it is, binds the decision to the request through ;req
+   components, and, with Signature-Key on the response, makes the stored
+   exchange say who signed it.  The log entry is then the exchange
+   itself, request and response, each carrying its signer's identity.
+
+A.7.  Why Interaction Relay Is an Event
+
+   When an agent asks the PS to relay an interaction, a resource or an
+   AS has already decided the person is needed; the relay is not
+   authorization.  A deny from the SS could stop the PS relaying, but
+   the protocol then has the agent direct the person itself, so the deny
+   would remove the person's better channel and stop nothing.  The SS is
+   told, so an agent that keeps sending the person to interaction pages
+   is visible in its record.
+
+A.8.  Why Routing, Not Fan-Out
+
+   Delivering the same act to two SSes raises which one decides and what
+   the other is for.  One deciding SS per agent answers the first, and a
+   passive second supervisor is a PS configuration feature that adds
+   nothing on the wire: an SS that only receives events already gets the
+   same calls and answers 201.  It can be added without changing this
+   document.
+
+Author's Address
+
+   Dick Hardt
+   Hellō
+   Email: dick.hardt@gmail.com

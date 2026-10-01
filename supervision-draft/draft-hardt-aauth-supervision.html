@@ -1,0 +1,2704 @@
+<!DOCTYPE html>
+<html lang="en" class="Internet-Draft">
+<head>
+<meta charset="utf-8">
+<meta content="Common,Latin" name="scripts">
+<meta content="initial-scale=1.0" name="viewport">
+<title>AAuth Supervision</title>
+<meta content="Dick Hardt" name="author">
+<meta content="
+       This document defines AAuth Supervision — the interface between a Person Server (PS) and a Supervision Server (SS) under the AAuth Protocol ( ). The AAuth Protocol names a Supervisor that evaluates each act an agent asks its PS to authorize: the person by default, or a supervision server the PS consults on the person's behalf. This document specifies how a person connects a supervision server to their PS, how the PS puts each decision to it, how the server answers, and how the PS tells it what happened. 
+    " name="description">
+<meta content="xml2rfc 3.34.1" name="generator">
+<meta content="agent" name="keyword">
+<meta content="supervision" name="keyword">
+<meta content="governance" name="keyword">
+<meta content="mission" name="keyword">
+<meta content="consent" name="keyword">
+<meta content="http" name="keyword">
+<meta content="identity" name="keyword">
+<meta content="draft-hardt-aauth-supervision-latest" name="ietf.draft">
+<!-- Generator version information:
+  xml2rfc 3.34.1
+    Python 3.14.7
+    ConfigArgParse 1.7.7
+    google-i18n-address 3.1.1
+    intervaltree 3.2.1
+    Jinja2 3.1.6
+    lxml 6.1.1
+    natsort 8.4.0
+    platformdirs 4.11.10
+    pycountry 24.6.1
+    PyYAML 6.0.3
+    requests 2.33.1
+    wcwidth 0.8.4
+-->
+<link href="draft-hardt-aauth-supervision.xml" rel="alternate" type="application/rfc+xml">
+<link href="#copyright" rel="license">
+<style type="text/css">@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-vietnamese.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-cyrillic.woff2') format('woff2');
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-vietnamese.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-cyrillic.woff2') format('woff2');
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-vietnamese.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: local('Lora SemiBold'), local('Lora-SemiBold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-semibold-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Oxygen Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Oxygen Mono'), local('OxygenMono-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/oxygenmono-regular-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Oxygen Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Oxygen Mono'), local('OxygenMono-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/oxygenmono-regular-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-greek.woff2') format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-greek.woff2') format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  color-scheme: light dark;
+  --background-color: #fff;
+  --text-color: #222;
+  --title-color: #191919;
+  --link-color: #2a6496;
+  --highlight-color: #f9f9f9;
+  --line-color: #eee;
+  --pilcrow-weak: #ddd;
+  --pilcrow-strong: #bbb;
+  --small-font-size: 14.5px;
+  --font-mono: 'Oxygen Mono', monospace;
+  --font-title: "Sofia Sans Semi Condensed", sans-serif;
+  scrollbar-color: #bbb #eee;
+}
+body {
+  max-width: 600px;
+  margin: 75px auto;
+  padding: 0 5px;
+  color: var(--text-color);
+  background-color: var(--background-color);
+  font: 16px/22px "Lora", serif;
+  scroll-behavior: smooth;
+}
+
+.ears {
+  display: none;
+}
+
+/* headings */
+section {
+  clear: both;
+}
+.section-number {
+  padding-right: 0.5em;
+}
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-title);
+  font-weight: 680;
+  margin: 0.8em 0 0.3em;
+  font-size-adjust: 0.5;
+  color: var(--title-color);
+}
+h1 {
+  &#title {
+    font-size: 32px;
+    line-height: 40px;
+    clear: both;
+    margin: 1.5em 0 0.2em;
+  }
+  &#rfcnum {
+    margin: 1.5em 0 0.2em;
+    & + h1#title {
+      margin: 0.2em 0;
+    }
+  }
+}
+
+h1, h2, h3 {
+  font-size: 22px;
+  line-height: 27px;
+}
+h4, h5, h6 {
+  font-size: 20px;
+  line-height: 24px;
+}
+
+/* general structure */
+.author {
+  padding-bottom: 0.3em;
+  vertical-align: top;
+}
+#abstract+p {
+  font-size: 18px;
+  line-height: 24px;
+  & code, & samp, & tt {
+    font-size: 16px;
+    line-height: 0;
+  }
+}
+
+p {
+  padding: 0;
+  margin: 0.5em 0;
+  text-align: left;
+}
+div {
+  margin: 0;
+}
+.alignRight {
+  margin: 1em 0;
+  &.art-text {
+    background-color: var(--highlight-color);
+    border: 1px solid var(--line-color);
+    border-radius: 3px;
+    padding: 0.5em 1em 0;
+    margin-bottom: 0.5em;
+    & pre {
+      padding: 0;
+      width: auto;
+    }
+  }
+  & > *:first-child {
+    border: none;
+    margin: 0;
+    float: right;
+    clear: both;
+  }
+  & > *:nth-child(2) {
+    clear: both;
+    display: block;
+    border: none;
+  }
+}
+svg {
+  display: block;
+  /* font-family isn't space-separated, but =~ will have to do */
+  &[font-family~="monospace" i], & [font-family~="monospace" i] {
+    font-family: var(--font-mono);
+  }
+}
+.alignCenter {
+  margin: 1em 0;
+  &.art-text {
+    background-color: var(--highlight-color);
+    border: 1px solid var(--line-color);
+    border-radius: 3px;
+    padding: 0.5em 1em 0;
+    margin-bottom: 0.5em;
+    & pre {
+      padding: 0;
+      width: auto;
+    }
+  }
+  & > *:first-child {
+    border: none;
+    /* this isn't optimal, but it's an existence proof.  PrinceXML doesn't
+       support flexbox yet.
+    */
+    display: table;
+    margin: 0 auto;
+  }
+}
+
+/* lists */
+ol, ul {
+  padding: 0;
+  margin: 0 0 0.5em 2em;
+  & :is(ol, ul) {
+    margin-left: 1em;
+  }
+}
+li {
+  margin: 0 0 0.25em 0;
+}
+ul.empty, .ulEmpty {
+  list-style-type: none;
+  & li {
+    margin-top: 0.5em;
+  }
+}
+:is(ul, ol).compact, .ulCompact, .olCompact {
+  margin: 0 0 0 2em;
+  & li {
+    margin: 0;
+    & :first-child { margin-top: 0; }
+    & :last-child { margin-bottom: 0; }
+  }
+}
+
+/* definition lists */
+dl {
+  clear: left;
+  --indent: 3ch;
+  /* --indent: attr(indent ch); not supported in any browser, but we can dream */
+  &.olPercent {
+    --indent: 5ch;
+    & > dt {
+      min-width: calc(var(--indent) - 2ch);
+      float: none;
+    }
+  }
+
+  dl > dd > & {
+    margin-top: 0.5em;
+    margin-bottom: 0;
+  }
+
+  &:not(.dlNewline) > dt {
+    float: left;
+    margin-right: 2ch;
+    min-width: 8ch;
+  }
+  & > dd {
+    margin-bottom: .8em;
+    margin-left: var(--indent) !important; /* stupid element overrides */
+    min-height: 2ex;
+  }
+}
+:is(dl.compact, .dlCompact) > dd {
+  margin-bottom: 0;
+  & > :is(:first-child, .break:first-child + *) {
+    margin-top: 0;
+  }
+  & > :is(:last-child) {
+    margin-bottom: 0;
+  }
+}
+:is(dd, span).break {
+  display: none;
+}
+
+/* links */
+a {
+  text-decoration: none;
+  &[href] {
+    color: var(--link-color);
+    &:hover { text-decoration: underline; }
+    &.selfRef {
+      color: var(--text-color);
+      &:hover {
+        text-decoration: none;
+        background-color: var(--highlight-color);
+      }
+    }
+  }
+}
+.iref + a[href].internal {
+  color: var(--text-color);
+}
+a.xref:is(.cite, .auto), :is(#status-of-memo, #copyright) a {
+  white-space: nowrap;
+}
+
+/* Figures */
+tt, code, pre {
+  background-color: var(--highlight-color);
+  font: 14px/22px var(--font-mono);
+}
+tt, code {
+  /* changing the font for inline elements leads to different ascender
+     and descender heights; as we want to retain baseline alignment,
+     remove leading to avoid altering the final height of lines
+     note: this fails if these blocks take an entire line,
+     a different solution would be great */
+  line-height: 0;
+}
+:is(h1, h2, h3, h4, h5, h6) :is(tt, code) {
+  font-size: 84%;
+}
+pre {
+  border: 1px solid var(--line-color);
+  font-size: 13.5px;
+  line-height: 16px;
+  letter-spacing: -0.2px;
+  margin: 5px;
+  padding: 5px;
+}
+img {
+  max-width: 100%;
+}
+figure {
+  margin: 0.5em 0;
+  padding: 0;
+  & blockquote {
+    margin: 0.8em 0.4em 0.4em;
+  }
+}
+figcaption, caption {
+  font-style: italic;
+  margin: 0.5em 1.5em;
+  text-align: left;
+  caption-side: bottom;
+}
+@media screen {
+  /* Auto-collapse boilerplate. */
+  :is(#status-of-memo, #copyright) {
+    & p {
+      margin: -2px 0;
+      max-height: 0;
+      transition: max-height 2s ease, margin 0.5s ease 0.5s;
+      overflow: hidden;
+    }
+    &:hover p,
+    & h2:target ~ p {
+      margin: 0.5em 0;
+      max-height: 500px;
+      overflow: auto;
+    }
+  }
+  pre, svg {
+    display: inline-block;
+    /* In the horizontal direction, sometimes people make over-sized figures.
+       Scrollbars for those is therefore necessary: auto adds them as necessary..
+       In the vertical direction, the line-height can combine with the font
+       asender/descender height to produce scrollbars: hidden avoids that. */
+    overflow: auto hidden;
+  }
+  pre {
+    max-width: 100%;
+    width: calc(100% - 22px - 1em);
+  }
+  svg {
+    max-width: calc(100% - 22px - 1em);
+  }
+  figure pre {
+    display: block;
+    width: calc(100% - 25px);
+  }
+  :is(pre, svg) + .pilcrow {
+    display: inline-block;
+    vertical-align: text-bottom;
+    padding-bottom: 8px;
+  }
+}
+
+/* aside, blockquote */
+aside, blockquote {
+  margin-left: 0;
+  padding: 0 2em;
+  font-style: italic;
+}
+blockquote {
+  margin: 1em 0;
+  border-left: 2px var(--pilcrow-strong) solid;
+}
+cite {
+  display: block;
+  text-align: right;
+  font-style: italic;
+}
+
+/* tables */
+table {
+  width: auto;
+  max-width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  &.right { margin-left: auto; }
+  &.center { margin-left: auto; margin-right: auto; }
+  &.left { margin-right: auto; }
+  & .text-left { text-align: left; }
+  & .text-center { text-align: center; }
+  & .text-right { text-align: right; }
+  & caption {
+    margin: 0;
+    padding: 3px 0 3px 1em;
+  }
+  & p { margin: 0; }
+}
+
+thead, tbody {
+  border: 1px solid var(--line-color);
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 5px 10px;
+}
+th {
+  background-color: var(--line-color);
+}
+:is(tr:nth-child(2n), thead+tbody > tr:nth-child(2n+1)) > td {
+  background-color: var(--background-color);
+}
+:is(tr:nth-child(2n+1), thead+tbody > tr:nth-child(2n)) > td {
+  background-color: var(--highlight-color);
+}
+
+/* pilcrow */
+a.pilcrow {
+  margin-left: 3px;
+  opacity: 0.2;
+  user-select: none;
+  &[href] {
+    color: var(--pilcrow-weak);
+    &:hover { text-decoration: none; }
+  }
+  @media not print {
+    :hover > &, &:focus {
+      opacity: 1;
+    }
+    &[href]:hover {
+      color: var(--pilcrow-strong);
+      background-color: transparent;
+    }
+  }
+  @media print {
+    display: none;
+  }
+}
+
+/* misc */
+hr {
+  border: 0;
+  border-top: 1px solid var(--line-color);
+}
+.bcp14 {
+  font-variant: small-caps;
+  font-weight: 600;
+  font-size: var(--small-font-size);
+}
+.role {
+  font-variant: all-small-caps;
+}
+sub, sup {
+  line-height: 1;
+  font-size: 80%;
+}
+
+/* info block */
+#identifiers {
+  margin: 0;
+  font-size: var(--small-font-size);
+  line-height: 18px;
+  --identifier-width: 15ch;
+  & dt {
+    width: var(--identifier-width);
+    min-width: var(--identifier-width);
+    clear: left;
+    float: left;
+    text-align: right;
+    margin-right: 1ch;
+  }
+  & dd {
+    margin: 0;
+    margin-left: calc(1em + var(--identifier-width)) !important;
+    min-width: 5em;
+  }
+  & .authors {
+    & .author {
+      display: inline-block;
+      margin-right: 1.5em;
+    }
+    & .org {
+      font-style: italic;
+    }
+  }
+}
+
+/* The prepared/rendered info at the very bottom of the page */
+.docInfo {
+  color: #999;
+  font-size: 0.9em;
+  font-style: italic;
+  margin-top: 2em;
+  & .prepared {
+    float: right;
+  }
+}
+
+/* table of contents */
+#toc {
+  padding: 0.75em 0 2em 0;
+  margin-bottom: 1em;
+
+  & nav {
+    & ul {
+      margin: 0 0.5em 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    & li {
+      line-height: 1.3em;
+      margin: 2px 0;
+      padding-left: 1.2em;
+      text-indent: -1.2em;
+    }
+  }
+  & a.xref {
+    white-space: normal;
+  }
+}
+
+.references {
+  & > dt {
+    text-align: right;
+    font-weight: bold;
+    min-width: 10ch;
+    margin-right: 1.5ch;
+    &:target::before {
+      content: "⇒";
+      margin: 0 10px 0 -25px;
+    }
+  }
+  & > dd {
+    margin-left: 12ch !important;
+    overflow: visible;
+    & .refInstance {
+      margin-bottom: 0.8em;
+    }
+    & .ascii {
+      margin-bottom: 0.25em;
+    }
+  }
+}
+
+#rfc\.index\.index + ul {
+  margin-left: 0;
+}
+
+/* authors */
+address.vcard {
+  font-style: normal;
+  max-width: 20em;
+  margin: 1em auto 1em 0;
+
+  & .nameRole {
+    font-weight: 700;
+    margin-left: 0;
+  }
+  & .label {
+    margin: 0.5em 0;
+  }
+  & .type {
+    display: none;
+  }
+  & .alternative-contact {
+    margin: 0.5em 0 0.25em 0;
+  }
+  & .non-ascii {
+    margin: 0 0 0 2em;
+  }
+  & div.left {
+    text-align: left;
+  }
+  & div.right {
+    text-align: right;
+  }
+}
+
+hr.addr {
+  border-top: 1px dashed;
+  margin: 0;
+  color: #ddd;
+  max-width: calc(100% - 16px);
+}
+@media (min-width: 500px) {
+  #authors-addresses {
+    & > section {
+      column-count: 2;
+      column-gap: 20px;
+    }
+    & > section > h2 {
+      column-span: all;
+    }
+    /* hack for break-inside: avoid-column */
+    & address {
+      display: inline-block;
+      break-inside: avoid-column;
+    }
+  }
+}
+
+/* Comments */
+.rfcEditorRemove {
+  & p:first-of-type {
+    font-style: italic;
+  }
+}
+.cref {
+  background-color: rgba(249, 232, 105, 0.3);
+  padding: 2px 4px;
+}
+.crefSource {
+  font-style: italic;
+}
+
+@media screen {
+  #toc {
+    & nav {
+      font-family: var(--font-title);
+      font-weight: 360;
+      & > ul { margin-bottom: 2em; }
+      & ul {
+        margin: 0 0 0 4px;
+        & :is(p, li) {
+          margin: 2px 0;
+        }
+      }
+    }
+    & a.toplink {
+      float: right;
+    }
+  }
+}
+@media not screen {
+  #toc a.toplink {
+    display: none;
+  }
+}
+
+
+/* TOC layout for smaller screens */
+@media screen and (max-width: 929px) {
+  #toc {
+    position: fixed;
+    z-index: 2;
+    top: 0;
+    right: 0;
+    padding: 1px 0 0 0;
+    margin: 0;
+    border-bottom: 1px solid #ccc;
+    opacity: 0.6;
+    & h2 {
+      margin: 0;
+      padding: 2px 0 2px 6px;
+      padding-right: 1em;
+      font-size: 18px;
+      line-height: 24px;
+      min-width: 190px;
+      text-align: right;
+      background-color: #444;
+      color: white;
+      cursor: pointer;
+      &::before { /* css hamburger */
+        float: right;
+        position: relative;
+        width: 1em;
+        height: 1px;
+        left: -164px;
+        margin: 8px 0 0 0;
+        background: white none repeat scroll 0 0;
+        box-shadow: 0 4px 0 0 white, 0 8px 0 0 white;
+        content: "";
+      }
+    }
+    & nav {
+      display: none;
+      background-color: var(--background-color);
+      padding: 0.5em 1em 1em;
+      overflow: auto;
+      overscroll-behavior: contain;
+      height: calc(100vh - 48px);
+      border-left: 1px solid #ddd;
+    }
+    &.active {
+      opacity: 1;
+      & nav { display: block; }
+    }
+    /* Make the collapsed ToC header render white on gray also when it's a link */
+    & h2 a,
+    & h2 a:is(:link, :focus, :hover),
+    & a.toplink,
+    & a.toplink:hover {
+      color: white;
+      background-color: #444;
+      text-decoration: none;
+    }
+    & a.toplink {
+      margin: 2px 0.5em 0;
+    }
+  }
+}
+
+/* TOC layout for wide screens */
+@media screen and (min-width: 930px) {
+  body {
+    padding-right: 360px;
+    padding-right: calc(min(180px + 20%, 500px));
+  }
+  #toc {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    right: calc(50vw - 480px);
+    width: 312px;
+    margin: 0;
+    padding: 0;
+    z-index: 1;
+    & h2 {
+      margin: 0;
+      padding: 0.25em 1em 1em 0;
+    }
+    & nav {
+      display: block;
+      height: calc(90vh - 84px);
+      bottom: 0;
+      padding: 0.5em 0 2em;
+      overflow: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+    }
+    & a.toplink {
+      margin: 8px 0.5em 0;
+    }
+  }
+  img { /* future proofing */
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* pagination */
+@media print {
+  body {
+    width: 100%;
+  }
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+  #n-copyright-notice {
+    border-bottom: none;
+  }
+  #toc {
+    page-break-before: always;
+    border-top: none;
+    padding-top: 0;
+  }
+  #n-introduction {
+    page-break-before: always;
+  }
+  figure, pre, .vcard {
+    page-break-inside: avoid;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+  :is(h2, h3, h4, h5, h6)+*, dd {
+    page-break-before: avoid;
+  }
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 10pt;
+  }
+  table {
+    border: 1px solid #ddd;
+  }
+  td {
+    border-top: 1px solid #ddd;
+  }
+}
+
+@page :first {
+  padding-top: 0;
+  @top-left {
+    content: normal;
+    border: none;
+  }
+  @top-center {
+    content: normal;
+    border: none;
+  }
+  @top-right {
+    content: normal;
+    border: none;
+  }
+}
+
+@page {
+  size: A4;
+  margin-bottom: 45mm;
+  padding-top: 20px;
+}
+
+/* Dark mode. */
+@media (prefers-color-scheme: dark) {
+:root {
+  --background-color: #121212;
+  --text-color: #f0f0f0;
+  --title-color: #fff;
+  --link-color: #4da4f0;
+  --highlight-color: #282828;
+  --line-color: #444;
+  --pilcrow-weak: #444;
+  --pilcrow-strong: #666;
+  scrollbar-color: #777 #333;
+}
+}
+
+/* SVG Trick: a prefix match works because only black and white are allowed */
+svg {
+  & :is([stroke="black"], [stroke^="#000"]) {
+    stroke: var(--text-color);
+  }
+  & :is([stroke="white"], [stroke^="#fff"]) {
+    stroke: var(--background-color);
+  }
+  & :is([fill="black"], [fill^="#000"], :not([fill])) {
+    fill: var(--text-color);
+  }
+  & :is([fill="white"], [fill^="#fff"]) {
+    fill: var(--background-color);
+  }
+}
+</style>
+
+</head>
+<body class="xml2rfc">
+<table class="ears">
+<thead><tr>
+<td class="left">Internet-Draft</td>
+<td class="center">AAuth-Supervision</td>
+<td class="right">October 2026</td>
+</tr></thead>
+<tfoot><tr>
+<td class="left">Hardt</td>
+<td class="center">Expires 4 April 2027</td>
+<td class="right">[Page]</td>
+</tr></tfoot>
+</table>
+<div id="external-metadata" class="document-information"></div>
+<div id="internal-metadata" class="document-information">
+<dl id="identifiers">
+<dt class="label-workgroup">Workgroup:</dt>
+<dd class="workgroup">TBD</dd>
+<dt class="label-internet-draft">Internet-Draft:</dt>
+<dd class="internet-draft">draft-hardt-aauth-supervision-latest</dd>
+<dt class="label-published">Published:</dt>
+<dd class="published">
+<time datetime="2026-10-01" class="published">1 October 2026</time>
+    </dd>
+<dt class="label-intended-status">Intended Status:</dt>
+<dd class="intended-status">Standards Track</dd>
+<dt class="label-expires">Expires:</dt>
+<dd class="expires"><time datetime="2027-04-04">4 April 2027</time></dd>
+<dt class="label-authors">Author:</dt>
+<dd class="authors">
+<div class="author">
+      <div class="author-name">D. Hardt</div>
+<div class="org">Hellō</div>
+</div>
+</dd>
+</dl>
+</div>
+<h1 id="title">AAuth Supervision</h1>
+<section id="section-abstract">
+      <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
+<p id="section-abstract-1">This document defines AAuth Supervision — the interface between a Person Server (PS) and a Supervision Server (SS) under the AAuth Protocol (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>). The AAuth Protocol names a Supervisor that evaluates each act an agent asks its PS to authorize: the person by default, or a supervision server the PS consults on the person's behalf. This document specifies how a person connects a supervision server to their PS, how the PS puts each decision to it, how the server answers, and how the PS tells it what happened.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+</section>
+<section class="note" id="section-note.1">
+      <h2 id="name-discussion-venues">
+<a href="#name-discussion-venues" class="section-name selfRef">Discussion Venues</a>
+      </h2>
+<p id="section-note.1-1"><em>Note: This section is to be removed before publishing as an RFC.</em><a href="#section-note.1-1" class="pilcrow">¶</a></p>
+<p id="section-note.1-2">This document is part of the AAuth specification family. Source for this draft and an issue tracker can be found at <a href="https://github.com/dickhardt/AAuth">https://github.com/dickhardt/AAuth</a>.<a href="#section-note.1-2" class="pilcrow">¶</a></p>
+</section>
+<div id="status-of-memo">
+<section id="section-boilerplate.1">
+        <h2 id="name-status-of-this-memo">
+<a href="#name-status-of-this-memo" class="section-name selfRef">Status of This Memo</a>
+        </h2>
+<p id="section-boilerplate.1-1">
+        This Internet-Draft is submitted in full conformance with the
+        provisions of BCP 78 and BCP 79.<a href="#section-boilerplate.1-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-2">
+        Internet-Drafts are working documents of the Internet Engineering Task
+        Force (IETF). Note that other groups may also distribute working
+        documents as Internet-Drafts. The list of current Internet-Drafts is
+        at <span><a href="https://datatracker.ietf.org/drafts/current/">https://datatracker.ietf.org/drafts/current/</a></span>.<a href="#section-boilerplate.1-2" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-3">
+        Internet-Drafts are draft documents valid for a maximum of six months
+        and may be updated, replaced, or obsoleted by other documents at any
+        time. It is inappropriate to use Internet-Drafts as reference
+        material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-4">
+        This Internet-Draft will expire on 4 April 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="copyright">
+<section id="section-boilerplate.2">
+        <h2 id="name-copyright-notice">
+<a href="#name-copyright-notice" class="section-name selfRef">Copyright Notice</a>
+        </h2>
+<p id="section-boilerplate.2-1">
+            Copyright (c) 2026 IETF Trust and the persons identified as the
+            document authors. All rights reserved.<a href="#section-boilerplate.2-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.2-2">
+            This document is subject to BCP 78 and the IETF Trust's Legal
+            Provisions Relating to IETF Documents
+            (<span><a href="https://trustee.ietf.org/license-info">https://trustee.ietf.org/license-info</a></span>) in effect on the date of
+            publication of this document. Please review these documents
+            carefully, as they describe your rights and restrictions with
+            respect to this document. Code Components extracted from this
+            document must include Revised BSD License text as described in
+            Section 4.e of the Trust Legal Provisions and are provided without
+            warranty as described in the Revised BSD License.<a href="#section-boilerplate.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="toc">
+<section id="section-toc.1">
+        <a href="#" onclick="scroll(0,0)" class="toplink">▲</a><h2 id="name-table-of-contents">
+<a href="#name-table-of-contents" class="section-name selfRef">Table of Contents</a>
+        </h2>
+<nav class="toc"><ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1">
+            <p id="section-toc.1-1.1.1"><a href="#section-1" class="auto internal xref">1</a>.  <a href="#name-introduction" class="internal xref">Introduction</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.1">
+                <p id="section-toc.1-1.1.2.1.1" class="keepWithNext"><a href="#section-1.1" class="auto internal xref">1.1</a>.  <a href="#name-the-supervisor" class="internal xref">The Supervisor</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.2">
+                <p id="section-toc.1-1.1.2.2.1" class="keepWithNext"><a href="#section-1.2" class="auto internal xref">1.2</a>.  <a href="#name-what-this-document-defines" class="internal xref">What This Document Defines</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.3">
+                <p id="section-toc.1-1.1.2.3.1" class="keepWithNext"><a href="#section-1.3" class="auto internal xref">1.3</a>.  <a href="#name-out-of-scope" class="internal xref">Out of Scope</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2">
+            <p id="section-toc.1-1.2.1"><a href="#section-2" class="auto internal xref">2</a>.  <a href="#name-conventions-and-definitions" class="internal xref">Conventions and Definitions</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3">
+            <p id="section-toc.1-1.3.1"><a href="#section-3" class="auto internal xref">3</a>.  <a href="#name-terminology" class="internal xref">Terminology</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4">
+            <p id="section-toc.1-1.4.1"><a href="#section-4" class="auto internal xref">4</a>.  <a href="#name-protocol-overview" class="internal xref">Protocol Overview</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5">
+            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-supervisor-metadata" class="internal xref">Supervisor Metadata</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6">
+            <p id="section-toc.1-1.6.1"><a href="#section-6" class="auto internal xref">6</a>.  <a href="#name-configuration-and-routing" class="internal xref">Configuration and Routing</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7">
+            <p id="section-toc.1-1.7.1"><a href="#section-7" class="auto internal xref">7</a>.  <a href="#name-authentication-and-common-r" class="internal xref">Authentication and Common Request Format</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.1">
+                <p id="section-toc.1-1.7.2.1.1"><a href="#section-7.1" class="auto internal xref">7.1</a>.  <a href="#name-ps-authentication" class="internal xref">PS Authentication</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.2">
+                <p id="section-toc.1-1.7.2.2.1"><a href="#section-7.2" class="auto internal xref">7.2</a>.  <a href="#name-envelope" class="internal xref">Envelope</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.3">
+                <p id="section-toc.1-1.7.2.3.1"><a href="#section-7.3" class="auto internal xref">7.3</a>.  <a href="#name-supervision-decision-identi" class="internal xref">Supervision Decision Identifier</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.4">
+                <p id="section-toc.1-1.7.2.4.1"><a href="#section-7.4" class="auto internal xref">7.4</a>.  <a href="#name-delivery" class="internal xref">Delivery</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8">
+            <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-connect" class="internal xref">Connect</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9">
+            <p id="section-toc.1-1.9.1"><a href="#section-9" class="auto internal xref">9</a>.  <a href="#name-supervision-decisions" class="internal xref">Supervision Decisions</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.1">
+                <p id="section-toc.1-1.9.2.1.1"><a href="#section-9.1" class="auto internal xref">9.1</a>.  <a href="#name-deferred-decisions" class="internal xref">Deferred Decisions</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.2">
+                <p id="section-toc.1-1.9.2.2.1"><a href="#section-9.2" class="auto internal xref">9.2</a>.  <a href="#name-clarification" class="internal xref">Clarification</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.3">
+                <p id="section-toc.1-1.9.2.3.1"><a href="#section-9.3" class="auto internal xref">9.3</a>.  <a href="#name-idempotence" class="internal xref">Idempotence</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.4">
+                <p id="section-toc.1-1.9.2.4.1"><a href="#section-9.4" class="auto internal xref">9.4</a>.  <a href="#name-signed-decisions" class="internal xref">Signed Decisions</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10">
+            <p id="section-toc.1-1.10.1"><a href="#section-10" class="auto internal xref">10</a>. <a href="#name-mission-endpoint" class="internal xref">Mission Endpoint</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.1">
+                <p id="section-toc.1-1.10.2.1.1"><a href="#section-10.1" class="auto internal xref">10.1</a>.  <a href="#name-proposal" class="internal xref">Proposal</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.2">
+                <p id="section-toc.1-1.10.2.2.1"><a href="#section-10.2" class="auto internal xref">10.2</a>.  <a href="#name-approved" class="internal xref">Approved</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.3">
+                <p id="section-toc.1-1.10.2.3.1"><a href="#section-10.3" class="auto internal xref">10.3</a>.  <a href="#name-update" class="internal xref">Update</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.4">
+                <p id="section-toc.1-1.10.2.4.1"><a href="#section-10.4" class="auto internal xref">10.4</a>.  <a href="#name-completion" class="internal xref">Completion</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.5">
+                <p id="section-toc.1-1.10.2.5.1"><a href="#section-10.5" class="auto internal xref">10.5</a>.  <a href="#name-terminated" class="internal xref">Terminated</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11">
+            <p id="section-toc.1-1.11.1"><a href="#section-11" class="auto internal xref">11</a>. <a href="#name-decision-endpoint" class="internal xref">Decision Endpoint</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.1">
+                <p id="section-toc.1-1.11.2.1.1"><a href="#section-11.1" class="auto internal xref">11.1</a>.  <a href="#name-person-token" class="internal xref">Person Token</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.2">
+                <p id="section-toc.1-1.11.2.2.1"><a href="#section-11.2" class="auto internal xref">11.2</a>.  <a href="#name-auth-token" class="internal xref">Auth Token</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.3">
+                <p id="section-toc.1-1.11.2.3.1"><a href="#section-11.3" class="auto internal xref">11.3</a>.  <a href="#name-permission" class="internal xref">Permission</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12">
+            <p id="section-toc.1-1.12.1"><a href="#section-12" class="auto internal xref">12</a>. <a href="#name-event-endpoint" class="internal xref">Event Endpoint</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.1">
+                <p id="section-toc.1-1.12.2.1.1"><a href="#section-12.1" class="auto internal xref">12.1</a>.  <a href="#name-decision-resolved" class="internal xref">Decision Resolved</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.2">
+                <p id="section-toc.1-1.12.2.2.1"><a href="#section-12.2" class="auto internal xref">12.2</a>.  <a href="#name-reach-of-an-answer" class="internal xref">Reach of an Answer</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13">
+            <p id="section-toc.1-1.13.1"><a href="#section-13" class="auto internal xref">13</a>. <a href="#name-unavailable-supervisor" class="internal xref">Unavailable Supervisor</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14">
+            <p id="section-toc.1-1.14.1"><a href="#section-14" class="auto internal xref">14</a>. <a href="#name-replay-and-recovery" class="internal xref">Replay and Recovery</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15">
+            <p id="section-toc.1-1.15.1"><a href="#section-15" class="auto internal xref">15</a>. <a href="#name-errors" class="internal xref">Errors</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16">
+            <p id="section-toc.1-1.16.1"><a href="#section-16" class="auto internal xref">16</a>. <a href="#name-security-considerations" class="internal xref">Security Considerations</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.1">
+                <p id="section-toc.1-1.16.2.1.1"><a href="#section-16.1" class="auto internal xref">16.1</a>.  <a href="#name-the-supervisor-holds-the-pe" class="internal xref">The Supervisor Holds the Person's Authority</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.2">
+                <p id="section-toc.1-1.16.2.2.1"><a href="#section-16.2" class="auto internal xref">16.2</a>.  <a href="#name-forwarded-tokens" class="internal xref">Forwarded Tokens</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.3">
+                <p id="section-toc.1-1.16.2.3.1"><a href="#section-16.3" class="auto internal xref">16.3</a>.  <a href="#name-connect-2" class="internal xref">Connect</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.4">
+                <p id="section-toc.1-1.16.2.4.1"><a href="#section-16.4" class="auto internal xref">16.4</a>.  <a href="#name-response-authenticity" class="internal xref">Response Authenticity</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.5">
+                <p id="section-toc.1-1.16.2.5.1"><a href="#section-16.5" class="auto internal xref">16.5</a>.  <a href="#name-egress" class="internal xref">Egress</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17">
+            <p id="section-toc.1-1.17.1"><a href="#section-17" class="auto internal xref">17</a>. <a href="#name-privacy-considerations" class="internal xref">Privacy Considerations</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17.2.1">
+                <p id="section-toc.1-1.17.2.1.1"><a href="#section-17.1" class="auto internal xref">17.1</a>.  <a href="#name-what-the-supervisor-sees" class="internal xref">What the Supervisor Sees</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17.2.2">
+                <p id="section-toc.1-1.17.2.2.1"><a href="#section-17.2" class="auto internal xref">17.2</a>.  <a href="#name-identifiers" class="internal xref">Identifiers</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17.2.3">
+                <p id="section-toc.1-1.17.2.3.1"><a href="#section-17.3" class="auto internal xref">17.3</a>.  <a href="#name-organizational-supervisors" class="internal xref">Organizational Supervisors</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.18">
+            <p id="section-toc.1-1.18.1"><a href="#section-18" class="auto internal xref">18</a>. <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.18.2.1">
+                <p id="section-toc.1-1.18.2.1.1"><a href="#section-18.1" class="auto internal xref">18.1</a>.  <a href="#name-well-known-uri-registration" class="internal xref">Well-Known URI Registration</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19">
+            <p id="section-toc.1-1.19.1"><a href="#section-19" class="auto internal xref">19</a>. <a href="#name-implementation-status" class="internal xref">Implementation Status</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.20">
+            <p id="section-toc.1-1.20.1"><a href="#section-20" class="auto internal xref">20</a>. <a href="#name-document-history" class="internal xref">Document History</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.21">
+            <p id="section-toc.1-1.21.1"><a href="#section-21" class="auto internal xref">21</a>. <a href="#name-acknowledgments" class="internal xref">Acknowledgments</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.22">
+            <p id="section-toc.1-1.22.1"><a href="#section-22" class="auto internal xref">22</a>. <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23">
+            <p id="section-toc.1-1.23.1"><a href="#appendix-A" class="auto internal xref">Appendix A</a>.  <a href="#name-design-rationale" class="internal xref">Design Rationale</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23.2.1">
+                <p id="section-toc.1-1.23.2.1.1"><a href="#appendix-A.1" class="auto internal xref">A.1</a>.  <a href="#name-why-the-ps-never-decides" class="internal xref">Why the PS Never Decides</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23.2.2">
+                <p id="section-toc.1-1.23.2.2.1"><a href="#appendix-A.2" class="auto internal xref">A.2</a>.  <a href="#name-why-three-endpoints" class="internal xref">Why Three Endpoints</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23.2.3">
+                <p id="section-toc.1-1.23.2.3.1"><a href="#appendix-A.3" class="auto internal xref">A.3</a>.  <a href="#name-why-the-ps-is-authoritative" class="internal xref">Why the PS Is Authoritative</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23.2.4">
+                <p id="section-toc.1-1.23.2.4.1"><a href="#appendix-A.4" class="auto internal xref">A.4</a>.  <a href="#name-why-the-ss-never-calls-the-" class="internal xref">Why the SS Never Calls the PS</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23.2.5">
+                <p id="section-toc.1-1.23.2.5.1"><a href="#appendix-A.5" class="auto internal xref">A.5</a>.  <a href="#name-why-the-sdi-is-minted-by-th" class="internal xref">Why the <code>sdi</code> Is Minted by the PS</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23.2.6">
+                <p id="section-toc.1-1.23.2.6.1"><a href="#appendix-A.6" class="auto internal xref">A.6</a>.  <a href="#name-why-decisions-are-signed-re" class="internal xref">Why Decisions Are Signed Responses, Not JWTs</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23.2.7">
+                <p id="section-toc.1-1.23.2.7.1"><a href="#appendix-A.7" class="auto internal xref">A.7</a>.  <a href="#name-why-interaction-relay-is-an" class="internal xref">Why Interaction Relay Is an Event</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23.2.8">
+                <p id="section-toc.1-1.23.2.8.1"><a href="#appendix-A.8" class="auto internal xref">A.8</a>.  <a href="#name-why-routing-not-fan-out" class="internal xref">Why Routing, Not Fan-Out</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.24">
+            <p id="section-toc.1-1.24.1"><a href="#appendix-B" class="auto internal xref"></a><a href="#name-authors-address" class="internal xref">Author's Address</a></p>
+</li>
+        </ul>
+</nav>
+</section>
+</div>
+<div id="introduction">
+<section id="section-1">
+      <h2 id="name-introduction">
+<a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
+      </h2>
+<div id="the-supervisor">
+<section id="section-1.1">
+        <h3 id="name-the-supervisor">
+<a href="#section-1.1" class="section-number selfRef">1.1. </a><a href="#name-the-supervisor" class="section-name selfRef">The Supervisor</a>
+        </h3>
+<p id="section-1.1-1">The AAuth Protocol concentrates the judgment about what an agent may do at the person server. The PS has the mission the person approved, the agent's justification for each request, the log of what the agent has done, and a channel to the person. It decides whether to issue a person token, whether to issue or federate an auth token, whether an agent may take an action no remote resource governs, and whether a mission proposal, update, or completion is acceptable.<a href="#section-1.1-1" class="pilcrow">¶</a></p>
+<p id="section-1.1-2">The protocol calls the party that makes those decisions the Supervisor, and says that it is the person by default, or a supervision server the PS delegates to (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Roles). A person with one agent and a handful of missions answers each question themselves. A person with many agents working around the clock cannot, and an organization that governs its members' agents by policy will not. Supervision is the layer where a standing policy, a rules engine, or a model applying the person's preferences answers on the person's behalf, and asks the person only when it cannot.<a href="#section-1.1-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="what-this-document-defines">
+<section id="section-1.2">
+        <h3 id="name-what-this-document-defines">
+<a href="#section-1.2" class="section-number selfRef">1.2. </a><a href="#name-what-this-document-defines" class="section-name selfRef">What This Document Defines</a>
+        </h3>
+<p id="section-1.2-1">This document defines the supervision server (SS) role and the protocol between a PS and an SS:<a href="#section-1.2-1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-1.2-2.1">
+            <strong>Metadata</strong> the SS publishes so a PS can find its endpoints and, when it signs its decisions, its keys.<a href="#section-1.2-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-1.2-2.2">
+            <strong>Connect</strong>, by which a PS establishes that a person has chosen this SS.<a href="#section-1.2-2.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-1.2-2.3">
+            <strong>Supervision requests</strong>, which the PS makes for every act it would otherwise put to the person: a mission proposal, update, or completion; a person token, auth token, or permission request.<a href="#section-1.2-2.3" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-1.2-2.4">
+            <strong>Supervision decisions</strong>, the SS's answers: allow, deny, or ask the person; with clarification of the agent where the SS needs it.<a href="#section-1.2-2.4" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-1.2-2.5">
+            <strong>Events</strong>, by which the PS tells the SS what it did and what the person decided.<a href="#section-1.2-2.5" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-1.2-3">A PS that has an SS configured for an agent makes no supervision decision of its own for that agent. It relays, records, and enforces. That is the property this document is built around: the PS is the protocol party, and the SS is the policy party, and the person can change the second without touching the first.<a href="#section-1.2-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="out-of-scope">
+<section id="section-1.3">
+        <h3 id="name-out-of-scope">
+<a href="#section-1.3" class="section-number selfRef">1.3. </a><a href="#name-out-of-scope" class="section-name selfRef">Out of Scope</a>
+        </h3>
+<p id="section-1.3-1">Revocation of missions, agents, and person tokens is at the PS, by the parties the AAuth Protocol names, and is not a supervision decision. Reading and managing missions by parties other than the owning agent is the PS's <code>mission_control_endpoint</code>, which a companion specification defines. How an SS forms its policy — from rules the person wrote, from what the person decided before, from a model — is the SS's own. This document defines what the SS is asked and what it may answer, not how it decides.<a href="#section-1.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="conventions-and-definitions">
+<section id="section-2">
+      <h2 id="name-conventions-and-definitions">
+<a href="#section-2" class="section-number selfRef">2. </a><a href="#name-conventions-and-definitions" class="section-name selfRef">Conventions and Definitions</a>
+      </h2>
+<p id="section-2-1">{::boilerplate bcp14-tagged}<a href="#section-2-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="terminology">
+<section id="section-3">
+      <h2 id="name-terminology">
+<a href="#section-3" class="section-number selfRef">3. </a><a href="#name-terminology" class="section-name selfRef">Terminology</a>
+      </h2>
+<p id="section-3-1">Terms defined in <span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span> are used here with the same meaning. In particular: Agent, Agent Token, Person Server (PS), Person Token, Auth Token, Resource Token, Mission, Mission Log, Supervisor, Supervision, HTTP Sig, and Deferred Response.<a href="#section-3-1" class="pilcrow">¶</a></p>
+<p id="section-3-2">This document additionally uses:<a href="#section-3-2" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-3-3.1">
+          <strong>Supervision Server (SS)</strong>: A server the person has connected to their PS, which the PS consults for every supervision decision concerning the agents routed to it.<a href="#section-3-3.1" class="pilcrow">¶</a>
+</li>
+        <li class="compact" id="section-3-3.2">
+          <strong>Supervision Request</strong>: A signed request from the PS to the SS putting one act to it for decision.<a href="#section-3-3.2" class="pilcrow">¶</a>
+</li>
+        <li class="compact" id="section-3-3.3">
+          <strong>Supervision Decision</strong>: A terminal answer to a supervision request: <code>allow</code>, <code>deny</code>, or <code>ask</code>. An SS may also answer with a clarification, which is not terminal <a href="#decisions" class="auto internal xref">Section 9</a>.<a href="#section-3-3.3" class="pilcrow">¶</a>
+</li>
+        <li class="compact" id="section-3-3.4">
+          <strong>Supervision Decision Identifier (<code>sdi</code>)</strong>: An identifier the PS mints for each supervision request, by which the request, its decision, what the person then decided, and any token issued under it are tied together.<a href="#section-3-3.4" class="pilcrow">¶</a>
+</li>
+        <li class="compact" id="section-3-3.5">
+          <strong>Event</strong>: A signed request from the PS to the SS reporting something that happened, which the SS acknowledges and does not decide.<a href="#section-3-3.5" class="pilcrow">¶</a>
+</li>
+        <li class="compact" id="section-3-3.6">
+          <strong>Deciding SS</strong>: For a given agent, the one SS the PS consults. The person configures which SS decides for which agent <a href="#routing" class="auto internal xref">Section 6</a>.<a href="#section-3-3.6" class="pilcrow">¶</a>
+</li>
+      </ul>
+</section>
+</div>
+<div id="protocol-overview">
+<section id="section-4">
+      <h2 id="name-protocol-overview">
+<a href="#section-4" class="section-number selfRef">4. </a><a href="#name-protocol-overview" class="section-name selfRef">Protocol Overview</a>
+      </h2>
+<p id="section-4-1">An agent makes a request of its PS, as the AAuth Protocol defines. Instead of deciding, the PS puts the act to the agent's deciding SS. The SS answers, and the PS acts on the answer: it issues the token, denies the agent, or asks the person. Afterwards the PS tells the SS what it did.<a href="#section-4-1" class="pilcrow">¶</a></p>
+<div class="lang-ascii-art sourcecode" id="section-4-2">
+<pre>Agent                PS                        SS                Person
+  |                   |                         |                   |
+  | request           |                         |                   |
+  |------------------&gt;|                         |                   |
+  |                   | supervision request     |                   |
+  |                   |------------------------&gt;|                   |
+  |                   |                         |                   |
+  |                   |     allow / deny / ask  |                   |
+  |                   |&lt;------------------------|                   |
+  |                   |                         |                   |
+  |                   | [on ask] present        |                   |
+  |                   |--------------------------------------------&gt;|
+  |                   |                         |          decision |
+  |                   |&lt;--------------------------------------------|
+  |                   |                         |                   |
+  | token / denial    |                         |                   |
+  |&lt;------------------|                         |                   |
+  |                   | event: what happened    |                   |
+  |                   |------------------------&gt;|                   |
+  |                   |              201        |                   |
+  |                   |&lt;------------------------|                   |
+
+</pre><a href="#section-4-2" class="pilcrow">¶</a>
+</div>
+<p id="section-4-3">{: #fig-overview title="Supervision Overview"}<a href="#section-4-3" class="pilcrow">¶</a></p>
+<p id="section-4-4">Three endpoints at the SS carry this, cut by the kind of answer each gives <a href="#why-three-endpoints" class="auto internal xref">Appendix A.2</a>:<a href="#section-4-4" class="pilcrow">¶</a></p>
+<table class="center" id="table-1">
+        <caption><a href="#table-1" class="selfRef">Table 1</a></caption>
+<thead>
+          <tr>
+            <th class="text-left" rowspan="1" colspan="1">Endpoint</th>
+            <th class="text-left" rowspan="1" colspan="1">Carries</th>
+            <th class="text-left" rowspan="1" colspan="1">Answers with</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>mission_endpoint</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">The mission itself changing: proposal, update, completion; and the PS's report of approval and termination</td>
+            <td class="text-left" rowspan="1" colspan="1">A mission-shaped decision, or <code>201</code> for a report</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>decision_endpoint</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">An act under the person's authority: a person token, auth token, or permission request</td>
+            <td class="text-left" rowspan="1" colspan="1">A supervision decision</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>event_endpoint</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">What happened: tokens issued, what the person decided, audit records, interactions relayed, agents bound, revocations received</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>201</code>
+</td>
+          </tr>
+        </tbody>
+      </table>
+<p id="section-4-6">A fourth, <code>connect_endpoint</code>, is used once per person to establish the pairing <a href="#connect" class="auto internal xref">Section 8</a>.<a href="#section-4-6" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="ss-metadata">
+<section id="section-5">
+      <h2 id="name-supervisor-metadata">
+<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-supervisor-metadata" class="section-name selfRef">Supervisor Metadata</a>
+      </h2>
+<p id="section-5-1">An SS publishes its metadata at <code>/.well-known/aauth-supervisor.json</code>:<a href="#section-5-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-5-2">
+<pre>{
+  "issuer": "https://ss.example",
+  "name": "Example Supervisor",
+  "connect_endpoint": "https://ss.example/connect",
+  "mission_endpoint": "https://ss.example/mission",
+  "decision_endpoint": "https://ss.example/decision",
+  "event_endpoint": "https://ss.example/event",
+  "jwks_uri": "https://ss.example/.well-known/jwks.json"
+}
+
+</pre><a href="#section-5-2" class="pilcrow">¶</a>
+</div>
+<ul class="compact">
+<li class="compact" id="section-5-3.1">
+          <code>issuer</code> (REQUIRED): The SS's HTTPS URL, conforming to the server identifier requirements of <span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>. It is the <code>id</code> the SS signs with <a href="#signed-decisions" class="auto internal xref">Section 9.4</a> and the value the person gives their PS to register it.<a href="#section-5-3.1" class="pilcrow">¶</a>
+</li>
+        <li class="compact" id="section-5-3.2">
+          <code>name</code> (OPTIONAL): A display name the PS MAY show the person.<a href="#section-5-3.2" class="pilcrow">¶</a>
+</li>
+        <li class="compact" id="section-5-3.3">
+          <code>connect_endpoint</code> (REQUIRED): URL where a PS connects a person <a href="#connect" class="auto internal xref">Section 8</a>.<a href="#section-5-3.3" class="pilcrow">¶</a>
+</li>
+        <li class="compact" id="section-5-3.4">
+          <code>mission_endpoint</code> (REQUIRED): URL where a PS puts mission proposals, updates, and completions, and reports approvals and terminations <a href="#mission-endpoint" class="auto internal xref">Section 10</a>.<a href="#section-5-3.4" class="pilcrow">¶</a>
+</li>
+        <li class="compact" id="section-5-3.5">
+          <code>decision_endpoint</code> (REQUIRED): URL where a PS puts token and permission requests <a href="#decision-endpoint" class="auto internal xref">Section 11</a>.<a href="#section-5-3.5" class="pilcrow">¶</a>
+</li>
+        <li class="compact" id="section-5-3.6">
+          <code>event_endpoint</code> (REQUIRED): URL where a PS reports what happened <a href="#event-endpoint" class="auto internal xref">Section 12</a>.<a href="#section-5-3.6" class="pilcrow">¶</a>
+</li>
+        <li class="compact" id="section-5-3.7">
+          <code>jwks_uri</code> (OPTIONAL): URL of the SS's JSON Web Key Set. An SS that publishes one signs its decisions <a href="#signed-decisions" class="auto internal xref">Section 9.4</a>. An SS that does not is a plain JSON responder, and the PS's record of its decisions rests on the PS's word alone.<a href="#section-5-3.7" class="pilcrow">¶</a>
+</li>
+      </ul>
+<p id="section-5-4">The common metadata fields of <span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span> (<code>description</code>, <code>logo_uri</code>, <code>documentation_uri</code>, <code>tos_uri</code>, <code>policy_uri</code>) MAY be present. Endpoint URLs MUST be HTTPS and MUST be on the <code>issuer</code>'s origin or one the SS controls; a PS fetches the metadata and calls the endpoints under the egress rules of <span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>.<a href="#section-5-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="routing">
+<section id="section-6">
+      <h2 id="name-configuration-and-routing">
+<a href="#section-6" class="section-number selfRef">6. </a><a href="#name-configuration-and-routing" class="section-name selfRef">Configuration and Routing</a>
+      </h2>
+<p id="section-6-1">The person registers an SS at their PS by its <code>issuer</code>. How the PS takes that registration from the person is out of scope; it is a setting at the PS like any other.<a href="#section-6-1" class="pilcrow">¶</a></p>
+<p id="section-6-2">The PS consults exactly one SS for each agent: the agent's <strong>deciding SS</strong>. The person MAY name a default SS for all their agents and a different SS for particular agents. Every supervision request and every event concerning an agent goes to that agent's deciding SS and to no other <a href="#why-routing-only" class="auto internal xref">Appendix A.8</a>. An agent with no deciding SS is supervised by the person, as <span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span> describes, and nothing in this document applies to it.<a href="#section-6-2" class="pilcrow">¶</a></p>
+<p id="section-6-3">When the person changes an agent's deciding SS, the PS replays the agent's active state to the new SS <a href="#replay" class="auto internal xref">Section 14</a> before it puts any new act to it.<a href="#section-6-3" class="pilcrow">¶</a></p>
+<p id="section-6-4">An organization MAY configure routing at a PS for the people it governs, so that their agents are decided by an SS the organization operates. That is a configuration at the PS and a policy at the SS, and is not otherwise treated here.<a href="#section-6-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="common-request">
+<section id="section-7">
+      <h2 id="name-authentication-and-common-r">
+<a href="#section-7" class="section-number selfRef">7. </a><a href="#name-authentication-and-common-r" class="section-name selfRef">Authentication and Common Request Format</a>
+      </h2>
+<div id="ps-authentication">
+<section id="section-7.1">
+        <h3 id="name-ps-authentication">
+<a href="#section-7.1" class="section-number selfRef">7.1. </a><a href="#name-ps-authentication" class="section-name selfRef">PS Authentication</a>
+        </h3>
+<p id="section-7.1-1">Every request from the PS to the SS is a signed POST or GET with an HTTP Sig (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, HTTP Message Signatures Profile). The PS signs as a server, under the <code>jwks_uri</code> Signature-Key scheme (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>), naming its <code>issuer</code> and its person server metadata document:<a href="#section-7.1-1" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-7.1-2">
+<pre>Signature-Key: sig=jwks_uri;id="https://ps.example";
+    dwk="aauth-person.json";kid="key-1"
+
+</pre><a href="#section-7.1-2" class="pilcrow">¶</a>
+</div>
+<p id="section-7.1-3">The signature MUST cover <code>content-digest</code> and <code>content-type</code> on a request with a body, along with the base components. The SS verifies the signature and takes the PS's identity from it. The SS MUST accept requests only from a PS it has connected for the <code>sub</code> the request names <a href="#connect" class="auto internal xref">Section 8</a>, and answers others with <code>unsupported_iss</code> or <code>unknown_sub</code> <a href="#errors" class="auto internal xref">Section 15</a>.<a href="#section-7.1-3" class="pilcrow">¶</a></p>
+<p id="section-7.1-4">The SS never makes a request of the PS <a href="#why-ss-never-calls" class="auto internal xref">Appendix A.4</a>. Everything the SS has to say is a response.<a href="#section-7.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="envelope">
+<section id="section-7.2">
+        <h3 id="name-envelope">
+<a href="#section-7.2" class="section-number selfRef">7.2. </a><a href="#name-envelope" class="section-name selfRef">Envelope</a>
+        </h3>
+<p id="section-7.2-1">Every request body is a JSON object carrying the following members, in addition to those the endpoint defines:<a href="#section-7.2-1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-7.2-2.1">
+            <code>sdi</code> (REQUIRED on a supervision request): The supervision decision identifier, minted by the PS, unique within it <a href="#sdi" class="auto internal xref">Section 7.3</a>.<a href="#section-7.2-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-7.2-2.2">
+            <code>id</code> (REQUIRED on an event and on a report): An identifier for the event, minted by the PS, unique within it. <code>(iss, id)</code> is the deduplication key, where <code>iss</code> is the PS's verified identity.<a href="#section-7.2-2.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-7.2-2.3">
+            <code>iat</code> (REQUIRED): The time of the act at the PS, as seconds since the epoch. On a retried request it is unchanged; the signature's creation time is the time of delivery, not of the act.<a href="#section-7.2-2.3" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-7.2-2.4">
+            <code>sub</code> (REQUIRED): The person, as the directed identifier the PS derives for this SS as audience, by the same rule it derives a <code>sub</code> for any resource (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Directed Identifiers). <code>(iss, sub)</code> names one person at one PS, and it is the value the PS connected <a href="#connect" class="auto internal xref">Section 8</a>.<a href="#section-7.2-2.4" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-7.2-2.5">
+            <code>agent</code> (REQUIRED): The agent's identifier, <code>aauth:local@domain</code>, from the <code>iss</code> and <code>sub</code> of the agent token the agent presented.<a href="#section-7.2-2.5" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-7.2-2.6">
+            <code>mission_s256</code> (OPTIONAL): The mission the act belongs to, when it names one.<a href="#section-7.2-2.6" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-7.2-3">Tokens the SS receives inside a request carry other directed identifiers for their own audiences. The SS keys its state on <code>sub</code> and treats identifiers inside forwarded tokens as opaque.<a href="#section-7.2-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="sdi">
+<section id="section-7.3">
+        <h3 id="name-supervision-decision-identi">
+<a href="#section-7.3" class="section-number selfRef">7.3. </a><a href="#name-supervision-decision-identi" class="section-name selfRef">Supervision Decision Identifier</a>
+        </h3>
+<p id="section-7.3-1">The PS mints an <code>sdi</code> for each supervision request before it makes the request. The same <code>sdi</code> names the request in the PS's log, a retry of the request, the <code>202</code> and polls that follow it, the clarification round trips under it, the <code>decision.resolved</code> event that reports what the person decided after an <code>ask</code>, and the <code>person_token.issued</code> or <code>auth_token.issued</code> event for a token the decision allowed. A decision the SS never answered still has an <code>sdi</code> and a complete log entry.<a href="#section-7.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="delivery">
+<section id="section-7.4">
+        <h3 id="name-delivery">
+<a href="#section-7.4" class="section-number selfRef">7.4. </a><a href="#name-delivery" class="section-name selfRef">Delivery</a>
+        </h3>
+<p id="section-7.4-1">The PS delivers requests for one <code>(sub, SS)</code> pair in the order the acts occurred. The PS retries a request that did not receive a terminal response, under the same <code>id</code> or <code>sdi</code>, until it does. The SS deduplicates on <code>(iss, id)</code> and answers a repeated event with <code>201</code> and nothing new recorded. A repeated supervision request is answered per <a href="#idempotence" class="auto internal xref">Section 9.3</a>.<a href="#section-7.4-1" class="pilcrow">¶</a></p>
+<p id="section-7.4-2">The PS SHOULD send <code>Prefer: wait</code> (<span>[<a href="#RFC7240" class="cite xref">RFC7240</a>]</span>) on every supervision request, and a wait of 30 seconds is RECOMMENDED, so that an SS which decides within it never has to hold a pending record. An SS that cannot answer within the wait returns a deferred response <a href="#deferred-decisions" class="auto internal xref">Section 9.1</a>.<a href="#section-7.4-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="connect">
+<section id="section-8">
+      <h2 id="name-connect">
+<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-connect" class="section-name selfRef">Connect</a>
+      </h2>
+<p id="section-8-1">Before a PS puts anything to an SS for a person, it connects the person. The connect call establishes, at the SS, that this PS speaks for this <code>sub</code>, and gives the SS the chance to have the person confirm it.<a href="#section-8-1" class="pilcrow">¶</a></p>
+<p id="section-8-2">The PS makes a signed POST to the <code>connect_endpoint</code>:<a href="#section-8-2" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-8-3">
+<pre>POST /connect HTTP/1.1
+Host: ss.example
+Content-Type: application/json
+Prefer: wait=30
+Signature-Key: sig=jwks_uri;id="https://ps.example";
+    dwk="aauth-person.json";kid="key-1"
+
+{
+  "action": "connect",
+  "id": "c-8f3k2n9p",
+  "iat": 1790600000,
+  "sub": "8f14e45fceea167a5a36dedd4bea2543",
+  "tenant": "acme.example"
+}
+
+</pre><a href="#section-8-3" class="pilcrow">¶</a>
+</div>
+<ul class="compact">
+<li class="compact" id="section-8-4.1">
+          <code>action</code> (REQUIRED): <code>connect</code> or <code>disconnect</code>.<a href="#section-8-4.1" class="pilcrow">¶</a>
+</li>
+        <li class="compact" id="section-8-4.2">
+          <code>tenant</code> (OPTIONAL): The person's tenant, per the <code>tenant</code> claim of <span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, when the PS asserts one. An SS operated for an organization uses it to accept the PS for that organization's people without interaction.<a href="#section-8-4.2" class="pilcrow">¶</a>
+</li>
+      </ul>
+<p id="section-8-5">The SS answers in one of three ways:<a href="#section-8-5" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-8-6.1">
+          <strong>Connected</strong> (<code>200 OK</code>): The SS already accepts this PS for this <code>sub</code>, whether from configuration, from a tenant it trusts this PS for, or from an earlier connect. The PS proceeds.<a href="#section-8-6.1" class="pilcrow">¶</a>
+</li>
+        <li class="compact" id="section-8-6.2">
+          <strong>Interaction required</strong> (<code>202 Accepted</code>): The SS returns a deferred response with <code>requirement=interaction</code>, a <code>url</code>, and a <code>code</code>, exactly as any server does under <span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Interaction Required. The PS directs the person to <code>{url}?code={code}</code>. The person confirms the PS at the SS, the code is consumed, and the PS polls <code>Location</code> with a signed GET until <code>200 OK</code>. The SS MAY complete the interaction over a channel it already has with the person, as the protocol allows the host of any interaction URL to do. This is the one place the SS interacts with the person, and it is setup, not supervision.<a href="#section-8-6.2" class="pilcrow">¶</a>
+</li>
+        <li class="compact" id="section-8-6.3">
+          <strong>Refused</strong> (<code>403 Forbidden</code>, <code>unsupported_iss</code>): The SS does not accept this PS. The PS tells the person.<a href="#section-8-6.3" class="pilcrow">¶</a>
+</li>
+      </ul>
+<p id="section-8-7">Once connected, the SS records <code>(iss, sub)</code> and accepts requests naming that pair. A later <code>connect</code> for a connected pair answers <code>200 OK</code>.<a href="#section-8-7" class="pilcrow">¶</a></p>
+<p id="section-8-8">A <code>disconnect</code> tells the SS the person has removed it, or that the PS no longer routes any agent of this person to it. The SS answers <code>200 OK</code> and MAY discard what it holds for the pair. A request after disconnect is answered <code>unknown_sub</code>.<a href="#section-8-8" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="decisions">
+<section id="section-9">
+      <h2 id="name-supervision-decisions">
+<a href="#section-9" class="section-number selfRef">9. </a><a href="#name-supervision-decisions" class="section-name selfRef">Supervision Decisions</a>
+      </h2>
+<p id="section-9-1">An SS answers a supervision request in one of four ways. Three are decisions: they are terminal, the PS acts on them, and they close the <code>sdi</code>. The fourth, clarification, is not: the SS asks the agent something before it decides, and the <code>sdi</code> stays open until one of the three follows.<a href="#section-9-1" class="pilcrow">¶</a></p>
+<table class="center" id="table-2">
+        <caption><a href="#table-2" class="selfRef">Table 2</a></caption>
+<thead>
+          <tr>
+            <th class="text-left" rowspan="1" colspan="1">Response</th>
+            <th class="text-left" rowspan="1" colspan="1">Status</th>
+            <th class="text-left" rowspan="1" colspan="1">Closes the <code>sdi</code>
+</th>
+            <th class="text-left" rowspan="1" colspan="1">The PS</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>allow</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>200</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">yes</td>
+            <td class="text-left" rowspan="1" colspan="1">proceeds with the act, narrowed as the decision says</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>deny</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>200</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">yes</td>
+            <td class="text-left" rowspan="1" colspan="1">refuses the act</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>ask</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>200</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">yes</td>
+            <td class="text-left" rowspan="1" colspan="1">puts the act to the person and reports what they decided</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>clarify</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>202</code> with <code>requirement=clarification</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">no</td>
+            <td class="text-left" rowspan="1" colspan="1">relays the question to the agent and the answer back <a href="#ss-clarification" class="auto internal xref">Section 9.2</a>
+</td>
+          </tr>
+        </tbody>
+      </table>
+<p id="section-9-3">A decision is a <code>200 OK</code> whose body is a JSON object with a <code>decision</code> member of:<a href="#section-9-3" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-9-4.1">
+          <code>allow</code>: The PS proceeds with the act. The decision MAY narrow it, with members the endpoint defines: a <code>scope</code> narrower than requested, an <code>exp</code> earlier than the PS would otherwise issue, or for a mission proposal the refined mission <a href="#ss-mission-proposal" class="auto internal xref">Section 10.1</a>.<a href="#section-9-4.1" class="pilcrow">¶</a>
+</li>
+        <li class="compact" id="section-9-4.2">
+          <code>deny</code>: The PS refuses the act. The decision MAY carry a <code>reason</code>, a Markdown string, which the PS passes to the agent where the protocol gives the agent a reason.<a href="#section-9-4.2" class="pilcrow">¶</a>
+</li>
+        <li class="compact" id="section-9-4.3">
+          <code>ask</code>: The SS does not decide, and the PS puts the act to the person. The decision SHOULD carry a <code>summary</code>, a Markdown string the PS presents alongside the request; MAY carry a <code>recommendation</code> of <code>allow</code> or <code>deny</code>; for a mission proposal MAY carry a <code>proposed</code> refinement the PS presents for the person to confirm or edit <a href="#ss-mission-proposal" class="auto internal xref">Section 10.1</a>; and MAY carry <code>apply_options</code>, the reaches the SS offers the person for their answer <a href="#apply" class="auto internal xref">Section 12.2</a>. The PS reports what the person decided in a <code>decision.resolved</code> event <a href="#event-decision-resolved" class="auto internal xref">Section 12.1</a>.<a href="#section-9-4.3" class="pilcrow">¶</a>
+</li>
+      </ul>
+<div class="lang-http sourcecode" id="section-9-5">
+<pre>HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "sdi": "d-4d2a91",
+  "decision": "ask",
+  "summary": "The agent wants to book a $3,200 flight. The mission budget is $5,000 and $2,900 is spent.",
+  "recommendation": "deny"
+}
+
+</pre><a href="#section-9-5" class="pilcrow">¶</a>
+</div>
+<p id="section-9-6">The response MUST echo the request's <code>sdi</code>. The PS MUST verify it matches.<a href="#section-9-6" class="pilcrow">¶</a></p>
+<p id="section-9-7">The SS applies whatever reach the person has given earlier answers <a href="#apply" class="auto internal xref">Section 12.2</a>. The PS applies none: with an SS configured, every act goes to the SS, and the PS never answers from its own record <a href="#why-ps-never-decides" class="auto internal xref">Appendix A.1</a>.<a href="#section-9-7" class="pilcrow">¶</a></p>
+<div id="deferred-decisions">
+<section id="section-9.1">
+        <h3 id="name-deferred-decisions">
+<a href="#section-9.1" class="section-number selfRef">9.1. </a><a href="#name-deferred-decisions" class="section-name selfRef">Deferred Decisions</a>
+        </h3>
+<p id="section-9.1-1">An SS that cannot answer within the PS's wait returns a <code>202 Accepted</code> deferred response (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Deferred Responses) with <code>Location</code> and <code>Retry-After</code>. The PS polls the pending URL with a signed GET, signing under the same identity that made the request, and sends no body. The SS MUST verify that identity and MUST answer <code>unknown_pending</code> <a href="#errors" class="auto internal xref">Section 15</a> to a poll from any other. The terminal response is the decision, and is signed when the SS signs <a href="#signed-decisions" class="auto internal xref">Section 9.4</a>.<a href="#section-9.1-1" class="pilcrow">¶</a></p>
+<p id="section-9.1-2">The PS polls until it has a decision or until the agent's own pending request at the PS would expire. At that point the PS treats the SS as unavailable for this decision <a href="#unavailable" class="auto internal xref">Section 13</a>, and a decision the SS returns afterwards is discarded.<a href="#section-9.1-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="ss-clarification">
+<section id="section-9.2">
+        <h3 id="name-clarification">
+<a href="#section-9.2" class="section-number selfRef">9.2. </a><a href="#name-clarification" class="section-name selfRef">Clarification</a>
+        </h3>
+<p id="section-9.2-1">An SS that needs the agent to answer a question before it decides returns <code>202 Accepted</code> with <code>requirement=clarification</code> and a <code>clarification</code> body, exactly as <span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Clarification Required defines it, and with <code>"decision": "clarify"</code> in the body beside <code>"status": "pending"</code>, so the four responses read alike:<a href="#section-9.2-1" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-9.2-2">
+<pre>HTTP/1.1 202 Accepted
+Location: /pending/q7x2
+Retry-After: 0
+Cache-Control: no-store
+AAuth-Requirement: requirement=clarification
+Content-Type: application/json
+
+{
+  "sdi": "d-4d2a92",
+  "status": "pending",
+  "decision": "clarify",
+  "clarification": "Is the fare refundable?",
+  "timeout": 120
+}
+
+</pre><a href="#section-9.2-2" class="pilcrow">¶</a>
+</div>
+<p id="section-9.2-3">The PS relays the question to the agent on its own pending URL, and relays the agent's answer back by a signed POST to the SS's pending URL with an <code>action</code> of <code>clarification_response</code> or <code>updated_request</code>, or a signed DELETE when the agent cancels, per Agent Response to Clarification in that document. The SS then answers with a decision, or with a further clarification within the round limit the PS enforces.<a href="#section-9.2-3" class="pilcrow">¶</a></p>
+<p id="section-9.2-4">Clarification is the SS speaking to the agent through the PS. It is never the SS speaking to the person; that is <code>ask</code>.<a href="#section-9.2-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="idempotence">
+<section id="section-9.3">
+        <h3 id="name-idempotence">
+<a href="#section-9.3" class="section-number selfRef">9.3. </a><a href="#name-idempotence" class="section-name selfRef">Idempotence</a>
+        </h3>
+<p id="section-9.3-1">A repeated supervision request under an <code>sdi</code> the SS has already answered MUST be answered with the same decision, and where the SS signs, the same signed response. A repeated request under an <code>sdi</code> the SS is still deciding is answered <code>202</code> with the same <code>Location</code>. The SS keeps decisions it has given at least until the <code>exp</code> of any token the decision could have allowed, and MAY keep them longer.<a href="#section-9.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="signed-decisions">
+<section id="section-9.4">
+        <h3 id="name-signed-decisions">
+<a href="#section-9.4" class="section-number selfRef">9.4. </a><a href="#name-signed-decisions" class="section-name selfRef">Signed Decisions</a>
+        </h3>
+<p id="section-9.4-1">An SS that publishes a <code>jwks_uri</code> signs the terminal response to every supervision request with an HTTP Message Signature (<span>[<a href="#RFC9421" class="cite xref">RFC9421</a>]</span>, Section 2.4 and Section 3), and identifies the signing key with a <code>Signature-Key</code> header on the response under the <code>jwks_uri</code> scheme, naming its <code>issuer</code> and this document's metadata file:<a href="#section-9.4-1" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-9.4-2">
+<pre>HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Digest: sha-256=:X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=:
+Signature-Key: sig=jwks_uri;id="https://ss.example";
+    dwk="aauth-supervisor.json";kid="ss-key-1"
+Signature-Input: sig=("@status" "content-type" "content-digest"
+    "content-digest";req "@authority";req "@path";req);
+    created=1790600030;keyid="ss-key-1"
+Signature: sig=:...:
+
+{
+  "sdi": "d-4d2a91",
+  "decision": "allow",
+  "scope": "calendar.read"
+}
+
+</pre><a href="#section-9.4-2" class="pilcrow">¶</a>
+</div>
+<p id="section-9.4-3">The PS asks for the signature with <code>Accept-Signature</code> (<span>[<a href="#RFC9421" class="cite xref">RFC9421</a>]</span>, Section 5.1) on the request, naming the components it wants covered. The signature MUST cover <code>@status</code>, <code>content-type</code>, and <code>content-digest</code>, and SHOULD cover the request's <code>content-digest</code>, <code>@authority</code>, and <code>@path</code> as <code>;req</code> components, which bind a synchronous decision to the request it answers. A decision returned at a pending URL is a response to the PS's GET, and its <code>;req</code> components bind it to that poll; the binding to the supervision request is the <code>sdi</code> in the body.<a href="#section-9.4-3" class="pilcrow">¶</a></p>
+<p id="section-9.4-4">The PS MUST verify the signature against the key set the SS's metadata names, and MUST verify that the <code>id</code> in the response's <code>Signature-Key</code> is the <code>issuer</code> of the SS it called. A signed response that fails either check is treated as <code>server_error</code>. An unsigned terminal response from an SS that publishes a <code>jwks_uri</code> is likewise treated as <code>server_error</code>.<a href="#section-9.4-4" class="pilcrow">¶</a></p>
+<p id="section-9.4-5">The PS records the exchange, the request as it signed it and the response as it received it, as the log entry for the decision. The response identifies its signer in itself, so the entry can be verified later without knowing which SS was configured at the time.<a href="#section-9.4-5" class="pilcrow">¶</a></p>
+<blockquote id="section-9.4-6">
+          <p id="section-9.4-6.1"><strong>Editor's Note:</strong> <span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span> defines <code>Signature-Key</code> as a request header. Its use on a signed response, identifying the responder, is proposed in that document's issue tracker (issue 43) and this section depends on it.<a href="#section-9.4-6.1" class="pilcrow">¶</a></p>
+</blockquote>
+</section>
+</div>
+</section>
+</div>
+<div id="mission-endpoint">
+<section id="section-10">
+      <h2 id="name-mission-endpoint">
+<a href="#section-10" class="section-number selfRef">10. </a><a href="#name-mission-endpoint" class="section-name selfRef">Mission Endpoint</a>
+      </h2>
+<p id="section-10-1">The mission endpoint carries the mission itself changing. Its URL shape and <code>action</code> discriminator mirror the PS's own mission endpoint (<span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Mission), so the PS forwards what the agent sent it with the envelope added.<a href="#section-10-1" class="pilcrow">¶</a></p>
+<table class="center" id="table-3">
+        <caption><a href="#table-3" class="selfRef">Table 3</a></caption>
+<thead>
+          <tr>
+            <th class="text-left" rowspan="1" colspan="1">Request</th>
+            <th class="text-left" rowspan="1" colspan="1">Kind</th>
+            <th class="text-left" rowspan="1" colspan="1">Answer</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>POST {mission_endpoint}</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Supervision request: a proposal</td>
+            <td class="text-left" rowspan="1" colspan="1">A decision <a href="#ss-mission-proposal" class="auto internal xref">Section 10.1</a>
+</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>POST {mission_endpoint}/{mission_s256}</code> with <code>action: approved</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Report</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>201</code>
+</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>POST {mission_endpoint}/{mission_s256}</code> with <code>action: update</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Supervision request</td>
+            <td class="text-left" rowspan="1" colspan="1">A decision</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>POST {mission_endpoint}/{mission_s256}</code> with <code>action: completion</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Supervision request</td>
+            <td class="text-left" rowspan="1" colspan="1">A decision</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>POST {mission_endpoint}/{mission_s256}</code> with <code>action: terminated</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Report</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>201</code>
+</td>
+          </tr>
+        </tbody>
+      </table>
+<p id="section-10-3"><code>action</code> is REQUIRED on a request to a mission's URL, and an SS MUST reject a missing or unrecognized <code>action</code> with <code>invalid_request</code>.<a href="#section-10-3" class="pilcrow">¶</a></p>
+<div id="ss-mission-proposal">
+<section id="section-10.1">
+        <h3 id="name-proposal">
+<a href="#section-10.1" class="section-number selfRef">10.1. </a><a href="#name-proposal" class="section-name selfRef">Proposal</a>
+        </h3>
+<p id="section-10.1-1">The PS forwards the agent's proposal:<a href="#section-10.1-1" class="pilcrow">¶</a></p>
+<div class="lang-http sourcecode" id="section-10.1-2">
+<pre>POST /mission HTTP/1.1
+Host: ss.example
+Content-Type: application/json
+Prefer: wait=30
+Accept-Signature: sig=("@status" "content-type" "content-digest"
+    "content-digest";req "@authority";req "@path";req)
+Signature-Key: sig=jwks_uri;id="https://ps.example";
+    dwk="aauth-person.json";kid="key-1"
+
+{
+  "sdi": "d-7a1c02",
+  "iat": 1790600000,
+  "sub": "8f14e45fceea167a5a36dedd4bea2543",
+  "agent": "aauth:assistant@agent.example",
+  "agent_token": "eyJhbGc...",
+  "description": "# Plan Japan Vacation\n\nPlan and book a trip to Japan next month for 2 adults. Budget around $5k. Propose an itinerary before booking.",
+  "tools": [
+    { "name": "WebSearch", "description": "Search the web" },
+    { "name": "BookFlight", "description": "Book flights" }
+  ],
+  "resources": [
+    "https://flights.example",
+    "https://hotels.example"
+  ]
+}
+
+</pre><a href="#section-10.1-2" class="pilcrow">¶</a>
+</div>
+<ul class="compact">
+<li class="compact" id="section-10.1-3.1">
+            <code>agent_token</code> (REQUIRED): The agent token the agent presented. It carries whatever posture claims the agent provider put in it, and the SS is the party that evaluates them.<a href="#section-10.1-3.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-10.1-3.2">
+            <code>description</code>, <code>tools</code>, <code>resources</code>: As the agent sent them.<a href="#section-10.1-3.2" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-10.1-4">An <code>allow</code> carries the approved mission, in the members the PS writes into the mission blob:<a href="#section-10.1-4" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-10.1-5">
+<pre>{
+  "sdi": "d-7a1c02",
+  "decision": "allow",
+  "description": "# Plan Japan Vacation\n\nPlan and book a trip to Japan next month for 2 adults. Budget $5,000. Propose an itinerary before booking. Do not book non-refundable fares.",
+  "approved_tools": [
+    { "name": "WebSearch", "description": "Search the web" }
+  ],
+  "approved_resources": [
+    "https://flights.example",
+    "https://hotels.example"
+  ],
+  "expires_at": "2026-11-01T00:00:00Z"
+}
+
+</pre><a href="#section-10.1-5" class="pilcrow">¶</a>
+</div>
+<ul class="compact">
+<li class="compact" id="section-10.1-6.1">
+            <code>description</code> (REQUIRED): The approved description. It MAY differ from the proposal.<a href="#section-10.1-6.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-10.1-6.2">
+            <code>approved_tools</code> (OPTIONAL): A subset of, or a refinement of, the proposed tools. Absent means none are pre-approved.<a href="#section-10.1-6.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-10.1-6.3">
+            <code>approved_resources</code> (OPTIONAL): The resources the PS is to issue person tokens for at approval.<a href="#section-10.1-6.3" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-10.1-6.4">
+            <code>expires_at</code> (OPTIONAL): When the mission expires.<a href="#section-10.1-6.4" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-10.1-7">The PS assembles the mission blob from these, computes <code>s256</code>, issues the person tokens, records the mission, and returns the approval to the agent, all as the AAuth Protocol defines. The SS refines; the PS builds.<a href="#section-10.1-7" class="pilcrow">¶</a></p>
+<p id="section-10.1-8">An <code>ask</code> MAY carry the same members under <code>proposed</code>. The PS presents them to the person as the supervisor's proposed refinement, the person confirms or edits them, and the PS builds the blob from what the person approved.<a href="#section-10.1-8" class="pilcrow">¶</a></p>
+<p id="section-10.1-9">A <code>deny</code> ends the proposal. The PS returns the denial to the agent with the <code>reason</code>, if any.<a href="#section-10.1-9" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="approved">
+<section id="section-10.2">
+        <h3 id="name-approved">
+<a href="#section-10.2" class="section-number selfRef">10.2. </a><a href="#name-approved" class="section-name selfRef">Approved</a>
+        </h3>
+<p id="section-10.2-1">Once the PS has built and recorded the mission, it reports it:<a href="#section-10.2-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-10.2-2">
+<pre>{
+  "action": "approved",
+  "id": "e-9b2f",
+  "sdi": "d-7a1c02",
+  "iat": 1790600045,
+  "sub": "8f14e45fceea167a5a36dedd4bea2543",
+  "agent": "aauth:assistant@agent.example",
+  "s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+  "mission": "eyJhZ2VudCI6ImFhdXRoOmFzc2lzdGFudEBhZ2VudC5leGFtcGxlIiwiYXBwcm92..."
+}
+
+</pre><a href="#section-10.2-2" class="pilcrow">¶</a>
+</div>
+<ul class="compact">
+<li class="compact" id="section-10.2-3.1">
+            <code>sdi</code>: The proposal decision this approval followed from.<a href="#section-10.2-3.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-10.2-3.2">
+            <code>s256</code> and <code>mission</code>: The mission identifier and the blob bytes, as returned to the agent. The SS SHOULD verify that <code>s256</code> is the digest of <code>mission</code>.<a href="#section-10.2-3.2" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-10.2-4">The SS answers <code>201 Created</code>. From here the SS has the exact bytes every later <code>mission_s256</code> refers to.<a href="#section-10.2-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="update">
+<section id="section-10.3">
+        <h3 id="name-update">
+<a href="#section-10.3" class="section-number selfRef">10.3. </a><a href="#name-update" class="section-name selfRef">Update</a>
+        </h3>
+<p id="section-10.3-1">The PS forwards the agent's update to <code>{mission_endpoint}/{mission_s256}</code> with <code>action: update</code> and the agent's <code>description</code>. The SS answers with a decision. On <code>allow</code>, the PS accepts the update, appends it to the mission log, and returns its <code>s256</code> to the agent. On <code>ask</code>, the person reviews it at the PS. The decision MAY narrow nothing: an update is accepted or not.<a href="#section-10.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="completion">
+<section id="section-10.4">
+        <h3 id="name-completion">
+<a href="#section-10.4" class="section-number selfRef">10.4. </a><a href="#name-completion" class="section-name selfRef">Completion</a>
+        </h3>
+<p id="section-10.4-1">The PS forwards the agent's completion proposal with <code>action: completion</code> and the agent's <code>summary</code>. On <code>allow</code>, the PS terminates the mission with reason <code>completed</code> and returns <code>200 OK</code> to the agent, and then reports the termination <a href="#ss-mission-terminated" class="auto internal xref">Section 10.5</a>. On <code>ask</code>, the person reviews the summary at the PS, and may question the agent through clarification chat there before accepting; the PS reports the outcome in <code>decision.resolved</code>. On <code>deny</code>, the mission stays active and the agent is told.<a href="#section-10.4-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="ss-mission-terminated">
+<section id="section-10.5">
+        <h3 id="name-terminated">
+<a href="#section-10.5" class="section-number selfRef">10.5. </a><a href="#name-terminated" class="section-name selfRef">Terminated</a>
+        </h3>
+<p id="section-10.5-1">When a mission ends for any reason, the PS reports it with <code>action: terminated</code> and a <code>reason</code> from the termination reasons of <span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Mission Management. The SS answers <code>201 Created</code> and MAY discard what it holds for the mission.<a href="#section-10.5-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="decision-endpoint">
+<section id="section-11">
+      <h2 id="name-decision-endpoint">
+<a href="#section-11" class="section-number selfRef">11. </a><a href="#name-decision-endpoint" class="section-name selfRef">Decision Endpoint</a>
+      </h2>
+<p id="section-11-1">The decision endpoint carries an act under the person's authority, with or without a mission. Every request is a supervision request with an <code>act</code> member naming which. The PS forwards the tokens and body the agent presented, so the SS sees what the PS saw.<a href="#section-11-1" class="pilcrow">¶</a></p>
+<div id="person-token">
+<section id="section-11.1">
+        <h3 id="name-person-token">
+<a href="#section-11.1" class="section-number selfRef">11.1. </a><a href="#name-person-token" class="section-name selfRef">Person Token</a>
+        </h3>
+<div class="lang-json sourcecode" id="section-11.1-1">
+<pre>{
+  "sdi": "d-4d2a91",
+  "act": "person_token",
+  "iat": 1790600100,
+  "sub": "8f14e45fceea167a5a36dedd4bea2543",
+  "agent": "aauth:assistant@agent.example",
+  "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+  "agent_token": "eyJhbGc...",
+  "resource": "https://calendar.example",
+  "upstream_token": "eyJhbGc..."
+}
+
+</pre><a href="#section-11.1-1" class="pilcrow">¶</a>
+</div>
+<ul class="compact">
+<li class="compact" id="section-11.1-2.1">
+            <code>resource</code> (REQUIRED): The resource the person token is for.<a href="#section-11.1-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-11.1-2.2">
+            <code>agent_token</code> (REQUIRED): The agent token presented.<a href="#section-11.1-2.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-11.1-2.3">
+            <code>upstream_token</code> (OPTIONAL): Present when the request is part of a call chain, as the agent sent it.<a href="#section-11.1-2.3" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-11.1-2.4">
+            <code>subagent_token</code> (OPTIONAL): Present when a parent agent requests for a sub-agent, as the agent sent it.<a href="#section-11.1-2.4" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-11.1-3">An <code>allow</code> MAY carry <code>exp</code>, a time no later than which the issued token's <code>exp</code> MUST be.<a href="#section-11.1-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="auth-token">
+<section id="section-11.2">
+        <h3 id="name-auth-token">
+<a href="#section-11.2" class="section-number selfRef">11.2. </a><a href="#name-auth-token" class="section-name selfRef">Auth Token</a>
+        </h3>
+<div class="lang-json sourcecode" id="section-11.2-1">
+<pre>{
+  "sdi": "d-4d2a92",
+  "act": "auth_token",
+  "iat": 1790600200,
+  "sub": "8f14e45fceea167a5a36dedd4bea2543",
+  "agent": "aauth:assistant@agent.example",
+  "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+  "agent_token": "eyJhbGc...",
+  "resource_token": "eyJhbGc...",
+  "presented_token": "eyJhbGc...",
+  "justification": "I need to read your calendar to find a week with no meetings."
+}
+
+</pre><a href="#section-11.2-1" class="pilcrow">¶</a>
+</div>
+<ul class="compact">
+<li class="compact" id="section-11.2-2.1">
+            <code>resource_token</code>, <code>presented_token</code> (REQUIRED): As the agent sent them. The resource token carries the resource, the scope it requires, and any budget or other requirement the resource attached.<a href="#section-11.2-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-11.2-2.2">
+            <code>upstream_token</code>, <code>subagent_token</code> (OPTIONAL): As above.<a href="#section-11.2-2.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-11.2-2.3">
+            <code>justification</code> (OPTIONAL): The agent's justification, as it sent it.<a href="#section-11.2-2.3" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-11.2-3">An <code>allow</code> MAY carry <code>scope</code>, a scope narrower than the resource token requested, and <code>exp</code>. The PS applies them to the auth token it issues, or passes them to the AS it federates with where the AS accepts them; how a PS narrows a federated request is the AS's business and is not treated here.<a href="#section-11.2-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="permission">
+<section id="section-11.3">
+        <h3 id="name-permission">
+<a href="#section-11.3" class="section-number selfRef">11.3. </a><a href="#name-permission" class="section-name selfRef">Permission</a>
+        </h3>
+<div class="lang-json sourcecode" id="section-11.3-1">
+<pre>{
+  "sdi": "d-4d2a93",
+  "act": "permission",
+  "iat": 1790600300,
+  "sub": "8f14e45fceea167a5a36dedd4bea2543",
+  "agent": "aauth:assistant@agent.example",
+  "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+  "action": "SendEmail",
+  "description": "Send the proposed itinerary to the user",
+  "parameters": {
+    "to": "user@example.com",
+    "subject": "Japan trip itinerary"
+  }
+}
+
+</pre><a href="#section-11.3-1" class="pilcrow">¶</a>
+</div>
+<ul class="compact">
+<li class="compact" id="section-11.3-2.1">
+            <code>action</code>, <code>description</code>, <code>parameters</code>: As the agent sent them to the PS's permission endpoint.<a href="#section-11.3-2.1" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-11.3-3">An <code>allow</code> becomes <code>permission: granted</code> to the agent; a <code>deny</code> becomes <code>permission: denied</code> with the <code>reason</code>.<a href="#section-11.3-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="event-endpoint">
+<section id="section-12">
+      <h2 id="name-event-endpoint">
+<a href="#section-12" class="section-number selfRef">12. </a><a href="#name-event-endpoint" class="section-name selfRef">Event Endpoint</a>
+      </h2>
+<p id="section-12-1">The event endpoint carries what happened. Every request is a report with an <code>event</code> member, and the SS answers <code>201 Created</code> with no body. The SS does not decide an event; it records it, and MAY use it in later decisions.<a href="#section-12-1" class="pilcrow">¶</a></p>
+<table class="center" id="table-4">
+        <caption><a href="#table-4" class="selfRef">Table 4</a></caption>
+<thead>
+          <tr>
+            <th class="text-left" rowspan="1" colspan="1">
+              <code>event</code>
+</th>
+            <th class="text-left" rowspan="1" colspan="1">Members</th>
+            <th class="text-left" rowspan="1" colspan="1">Meaning</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>person_token.issued</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>sdi</code>, <code>jti</code>, <code>aud</code>, <code>exp</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">The PS issued a person token under the decision <code>sdi</code>
+</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>auth_token.issued</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>sdi</code>, <code>jti</code>, <code>aud</code>, <code>scope</code>, <code>exp</code>, <code>issuer</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">The PS issued an auth token, or an AS did on the PS's federation, under <code>sdi</code>; <code>issuer</code> is the PS or the AS</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>decision.resolved</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <a href="#event-decision-resolved" class="auto internal xref">Section 12.1</a>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">What the person decided after an <code>ask</code>, or when the SS was unavailable</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>audit.recorded</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>action</code>, <code>description</code>, <code>parameters</code>, <code>result</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">The agent logged an action at the PS's audit endpoint, as it sent it</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>interaction.requested</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>type</code>, <code>url</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">The agent asked the PS to relay an interaction to the person, and the PS did. Not a decision <a href="#why-interaction-is-an-event" class="auto internal xref">Appendix A.7</a>
+</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>agent.bound</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>agent_iss</code>, <code>agent_sub</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">The PS bound the agent to the person on first approval</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>revocation.received</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>token_type</code>, <code>iss</code>, <code>jti</code>, <code>exp</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">The PS received a revocation: an agent token from the agent provider, or a resource token from a resource. The SS is told; it has no part in the cascade</td>
+          </tr>
+        </tbody>
+      </table>
+<p id="section-12-3">Every event carries the envelope <a href="#envelope" class="auto internal xref">Section 7.2</a>. The <code>code</code> of a relayed interaction is not forwarded.<a href="#section-12-3" class="pilcrow">¶</a></p>
+<div id="event-decision-resolved">
+<section id="section-12.1">
+        <h3 id="name-decision-resolved">
+<a href="#section-12.1" class="section-number selfRef">12.1. </a><a href="#name-decision-resolved" class="section-name selfRef">Decision Resolved</a>
+        </h3>
+<p id="section-12.1-1">After an <code>ask</code>, and after any decision the PS put to the person because the SS was unavailable <a href="#unavailable" class="auto internal xref">Section 13</a>, the PS reports what the person decided:<a href="#section-12.1-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-12.1-2">
+<pre>{
+  "event": "decision.resolved",
+  "id": "e-c3d4",
+  "sdi": "d-4d2a91",
+  "iat": 1790600130,
+  "sub": "8f14e45fceea167a5a36dedd4bea2543",
+  "agent": "aauth:assistant@agent.example",
+  "mission_s256": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+  "answer": "allow",
+  "apply": "mission",
+  "recommendation": "deny",
+  "transcript": [
+    { "from": "person", "text": "Is this fare refundable?" },
+    { "from": "agent", "text": "Yes, fully refundable until 48 hours before departure." }
+  ]
+}
+
+</pre><a href="#section-12.1-2" class="pilcrow">¶</a>
+</div>
+<ul class="compact">
+<li class="compact" id="section-12.1-3.1">
+            <code>answer</code> (REQUIRED): <code>allow</code> or <code>deny</code>, or <code>abandoned</code> when the person did not answer before the request expired.<a href="#section-12.1-3.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-12.1-3.2">
+            <code>apply</code> (OPTIONAL): The reach the person gave their answer <a href="#apply" class="auto internal xref">Section 12.2</a>. Absent means <code>once</code>.<a href="#section-12.1-3.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-12.1-3.3">
+            <code>recommendation</code> (OPTIONAL): The recommendation the SS gave in its <code>ask</code>, echoed so the SS can compare its policy with the person's answer.<a href="#section-12.1-3.3" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-12.1-3.4">
+            <code>proposed</code> (OPTIONAL): For a mission proposal, the refinement as the person approved it, after any edits.<a href="#section-12.1-3.4" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-12.1-3.5">
+            <code>transcript</code> (OPTIONAL): The clarification chat between the person and the agent at the PS, if any, in order. Each entry has <code>from</code>, one of <code>person</code> or <code>agent</code>, and <code>text</code>, Markdown.<a href="#section-12.1-3.5" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-12.1-3.6">
+            <code>supervisor</code> (OPTIONAL): <code>unavailable</code> when the PS put the act to the person because it could not reach the SS. There is no <code>recommendation</code> in that case.<a href="#section-12.1-3.6" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-12.1-3.7">
+            <code>reason</code> (OPTIONAL): A reason the person gave, Markdown. A PS MAY offer the person a reason field and MUST NOT require one.<a href="#section-12.1-3.7" class="pilcrow">¶</a>
+</li>
+        </ul>
+</section>
+</div>
+<div id="apply">
+<section id="section-12.2">
+        <h3 id="name-reach-of-an-answer">
+<a href="#section-12.2" class="section-number selfRef">12.2. </a><a href="#name-reach-of-an-answer" class="section-name selfRef">Reach of an Answer</a>
+        </h3>
+<p id="section-12.2-1">When the PS puts an act to the person after an <code>ask</code>, it MAY offer them a choice of how far their answer reaches. The person's choice comes back to the SS as <code>apply</code> in <code>decision.resolved</code>, and the SS remembers and applies it to later acts <a href="#why-ps-never-decides" class="auto internal xref">Appendix A.1</a>. The PS applies nothing.<a href="#section-12.2-1" class="pilcrow">¶</a></p>
+<p id="section-12.2-2">The SS knows what its policy can match on and the PS does not, so the SS names the choices. An <code>ask</code> MAY carry <code>apply_options</code>, an array of objects each with a <code>value</code> the SS will recognize and a <code>label</code>, Markdown, the PS shows the person:<a href="#section-12.2-2" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-12.2-3">
+<pre>{
+  "sdi": "d-4d2a91",
+  "decision": "ask",
+  "summary": "The agent wants to book a $3,200 refundable fare.",
+  "apply_options": [
+    { "value": "once", "label": "This booking only" },
+    { "value": "refundable-under-4k", "label": "Any refundable fare under $4,000 on this trip" },
+    { "value": "mission", "label": "Anything else this agent asks on this trip" }
+  ]
+}
+
+</pre><a href="#section-12.2-3" class="pilcrow">¶</a>
+</div>
+<p id="section-12.2-4">The PS presents the labels and returns the chosen <code>value</code> as <code>apply</code>. When an <code>ask</code> carries no <code>apply_options</code>, the PS MAY offer these three, whose meaning is fixed:<a href="#section-12.2-4" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-12.2-5.1">
+            <code>once</code>: this act only.<a href="#section-12.2-5.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-12.2-5.2">
+            <code>mission</code>: every act of this kind under this mission, until it terminates.<a href="#section-12.2-5.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-12.2-5.3">
+            <code>always</code>: every act of this kind by this agent, under any mission or none, until the person changes it.<a href="#section-12.2-5.3" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-12.2-6">What "this kind" means for <code>mission</code> and <code>always</code> is the SS's to determine, since the SS applies it. A PS that offers them SHOULD word them as above and no more precisely.<a href="#section-12.2-6" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="unavailable">
+<section id="section-13">
+      <h2 id="name-unavailable-supervisor">
+<a href="#section-13" class="section-number selfRef">13. </a><a href="#name-unavailable-supervisor" class="section-name selfRef">Unavailable Supervisor</a>
+      </h2>
+<p id="section-13-1">An SS is unavailable for a decision when the PS cannot reach it: the connection fails or times out, the response is malformed, the SS answers <code>server_error</code>, or the SS answers <code>rate_limited</code> with a <code>Retry-After</code> past the point the agent's request would expire. An SS that answers <code>202</code> is not unavailable; the PS polls it as <a href="#deferred-decisions" class="auto internal xref">Section 9.1</a> describes, and it becomes unavailable for that decision only when the agent's request would expire first.<a href="#section-13-1" class="pilcrow">¶</a></p>
+<p id="section-13-2">When the SS is unavailable, the PS puts the act to the person, as it would with no SS configured. The <code>sdi</code> stands, the PS's log entry records that the SS was not consulted, and when the SS is reachable again the PS reports the outcome in <code>decision.resolved</code> with <code>supervisor: unavailable</code>. Events that could not be delivered are delivered then, in order.<a href="#section-13-2" class="pilcrow">¶</a></p>
+<p id="section-13-3">The PS does not decide in the SS's absence. It asks the person or it waits.<a href="#section-13-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="replay">
+<section id="section-14">
+      <h2 id="name-replay-and-recovery">
+<a href="#section-14" class="section-number selfRef">14. </a><a href="#name-replay-and-recovery" class="section-name selfRef">Replay and Recovery</a>
+      </h2>
+<p id="section-14-1">An SS holds state: the missions it has seen, the tokens issued under them, the reach the person has given earlier answers. A PS can bring an SS up to date without the SS asking, since the SS never calls the PS.<a href="#section-14-1" class="pilcrow">¶</a></p>
+<p id="section-14-2"><strong>Routing change.</strong> When an agent's deciding SS changes, the PS sends the new SS, before any new act: <code>agent.bound</code> for the agent; for each active mission, <code>action: approved</code> with the blob and <code>s256</code>, followed by the mission's log entries in order, each as the event or report it would have been; and <code>person_token.issued</code> and <code>auth_token.issued</code> for each outstanding token. The <code>id</code> of each replayed event is the <code>id</code> it had, or one the PS mints if the entry predates its record of one.<a href="#section-14-2" class="pilcrow">¶</a></p>
+<p id="section-14-3"><strong>Unknown mission.</strong> When the SS answers a request with <code>unknown_mission</code> <a href="#errors" class="auto internal xref">Section 15</a>, the PS replays that mission as above, then resends the request under the same <code>sdi</code> or <code>id</code>.<a href="#section-14-3" class="pilcrow">¶</a></p>
+<p id="section-14-4">The PS's mission log is authoritative <a href="#why-ps-authoritative" class="auto internal xref">Appendix A.3</a>. Replay is the PS giving the SS a copy; it is not the SS's record becoming the PS's.<a href="#section-14-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="errors">
+<section id="section-15">
+      <h2 id="name-errors">
+<a href="#section-15" class="section-number selfRef">15. </a><a href="#name-errors" class="section-name selfRef">Errors</a>
+      </h2>
+<p id="section-15-1">Error responses use the format of <span>[<a href="#I-D.hardt-oauth-aauth-protocol" class="cite xref">I-D.hardt-oauth-aauth-protocol</a>]</span>, Error Response Format. A request whose signature does not verify is answered <code>401</code> with the <code>Signature-Error</code> header (<span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span>).<a href="#section-15-1" class="pilcrow">¶</a></p>
+<table class="center" id="table-5">
+        <caption><a href="#table-5" class="selfRef">Table 5</a></caption>
+<thead>
+          <tr>
+            <th class="text-left" rowspan="1" colspan="1">Error</th>
+            <th class="text-left" rowspan="1" colspan="1">Status</th>
+            <th class="text-left" rowspan="1" colspan="1">Meaning</th>
+            <th class="text-left" rowspan="1" colspan="1">PS action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>invalid_request</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">400</td>
+            <td class="text-left" rowspan="1" colspan="1">Malformed body, missing member, unrecognized <code>action</code>, <code>act</code>, or <code>event</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Logs it and treats the SS as unavailable for this act. It is a PS defect or a version mismatch, and retrying will not help</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>unsupported_iss</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">403</td>
+            <td class="text-left" rowspan="1" colspan="1">The SS does not accept requests from this PS</td>
+            <td class="text-left" rowspan="1" colspan="1">Treats the SS as unavailable and tells the person the SS has dropped the pairing</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>unknown_sub</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">404</td>
+            <td class="text-left" rowspan="1" colspan="1">The SS accepts this PS but has no connection for this <code>sub</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Connects <a href="#connect" class="auto internal xref">Section 8</a>, then resends under the same <code>sdi</code> or <code>id</code>
+</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>unknown_mission</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">404</td>
+            <td class="text-left" rowspan="1" colspan="1">The SS has no record of <code>mission_s256</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Replays the mission, then resends <a href="#replay" class="auto internal xref">Section 14</a>
+</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>unknown_pending</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">404</td>
+            <td class="text-left" rowspan="1" colspan="1">A poll or clarification reply names a pending URL the SS does not hold, or the poller is not the requester</td>
+            <td class="text-left" rowspan="1" colspan="1">Treats the SS as unavailable for this act</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>rate_limited</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">429</td>
+            <td class="text-left" rowspan="1" colspan="1">The SS will not take more from this PS for now. <code>Retry-After</code> is REQUIRED</td>
+            <td class="text-left" rowspan="1" colspan="1">Waits <code>Retry-After</code>; unavailable if that passes the agent's request expiry</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>server_error</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">500</td>
+            <td class="text-left" rowspan="1" colspan="1">Internal failure</td>
+            <td class="text-left" rowspan="1" colspan="1">Treats the SS as unavailable for this act</td>
+          </tr>
+        </tbody>
+      </table>
+<p id="section-15-3">Polling a pending URL uses the polling error codes of the AAuth Protocol. A status or error not in this table is treated as <code>server_error</code>.<a href="#section-15-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="security-considerations">
+<section id="section-16">
+      <h2 id="name-security-considerations">
+<a href="#section-16" class="section-number selfRef">16. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
+      </h2>
+<div id="the-supervisor-holds-the-person-s-authority">
+<section id="section-16.1">
+        <h3 id="name-the-supervisor-holds-the-pe">
+<a href="#section-16.1" class="section-number selfRef">16.1. </a><a href="#name-the-supervisor-holds-the-pe" class="section-name selfRef">The Supervisor Holds the Person's Authority</a>
+        </h3>
+<p id="section-16.1-1">An SS decides, on the person's behalf, what every agent routed to it may do. A compromised SS can allow anything the person could allow, and can deny everything. That is the same authority a compromised PS has over consent, held by a second party. A person choosing an SS is choosing who exercises their judgment, and a PS SHOULD make that plain when the person registers one.<a href="#section-16.1-1" class="pilcrow">¶</a></p>
+<p id="section-16.1-2">The SS cannot act; it can only answer. It issues no tokens, reaches no resource, and calls no one <a href="#why-ss-never-calls" class="auto internal xref">Appendix A.4</a>. Everything it allows is issued by the PS, bounded by what the agent asked for, and revocable at the PS by the parties the AAuth Protocol names.<a href="#section-16.1-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="forwarded-tokens">
+<section id="section-16.2">
+        <h3 id="name-forwarded-tokens">
+<a href="#section-16.2" class="section-number selfRef">16.2. </a><a href="#name-forwarded-tokens" class="section-name selfRef">Forwarded Tokens</a>
+        </h3>
+<p id="section-16.2-1">Supervision requests carry the agent token, the resource token, and the presented token as the agent sent them. Each is bound to the agent's key by its <code>cnf</code> and is of no use to a holder without that key. An SS learns from them; it cannot present them. Events name issued tokens by <code>jti</code> only.<a href="#section-16.2-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="connect-1">
+<section id="section-16.3">
+        <h3 id="name-connect-2">
+<a href="#section-16.3" class="section-number selfRef">16.3. </a><a href="#name-connect-2" class="section-name selfRef">Connect</a>
+        </h3>
+<p id="section-16.3-1">The interaction at connect is the person confirming, at a server they chose, that a PS speaks for them there. An attacker who could complete that interaction for a <code>sub</code> the person did not initiate would have a PS they control accepted as the person's. The SS MUST show the connecting PS's <code>issuer</code> and <code>name</code> on the confirmation, and SHOULD show the <code>code</code>, so the person can recognize a connect they did not start. Interaction Code Misdirection in the AAuth Protocol applies.<a href="#section-16.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="response-authenticity">
+<section id="section-16.4">
+        <h3 id="name-response-authenticity">
+<a href="#section-16.4" class="section-number selfRef">16.4. </a><a href="#name-response-authenticity" class="section-name selfRef">Response Authenticity</a>
+        </h3>
+<p id="section-16.4-1">Over TLS to an origin the PS resolved from the person's registration, an unsigned decision is authentic when it arrives. A signed decision is authentic afterwards, when the log entry is read by someone who was not on the connection. A PS that will ever have to show what its supervisor said SHOULD require an SS with a <code>jwks_uri</code>. The check that the response's <code>id</code> is the SS the PS called <a href="#signed-decisions" class="auto internal xref">Section 9.4</a> is what stops one SS's signed decision being presented as another's.<a href="#section-16.4-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="egress">
+<section id="section-16.5">
+        <h3 id="name-egress">
+<a href="#section-16.5" class="section-number selfRef">16.5. </a><a href="#name-egress" class="section-name selfRef">Egress</a>
+        </h3>
+<p id="section-16.5-1">The person names the SS, and anyone can run one. A PS that posted to whatever endpoint an SS's metadata named could be induced to send signed requests to addresses it should not reach. The egress admission rules of <span>[<a href="#I-D.hardt-httpbis-signature-key" class="cite xref">I-D.hardt-httpbis-signature-key</a>]</span> apply before the PS fetches the SS's metadata or calls an endpoint in it.<a href="#section-16.5-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="privacy-considerations">
+<section id="section-17">
+      <h2 id="name-privacy-considerations">
+<a href="#section-17" class="section-number selfRef">17. </a><a href="#name-privacy-considerations" class="section-name selfRef">Privacy Considerations</a>
+      </h2>
+<div id="what-the-supervisor-sees">
+<section id="section-17.1">
+        <h3 id="name-what-the-supervisor-sees">
+<a href="#section-17.1" class="section-number selfRef">17.1. </a><a href="#name-what-the-supervisor-sees" class="section-name selfRef">What the Supervisor Sees</a>
+        </h3>
+<p id="section-17.1-1">The SS sees everything the PS puts to it for the agents routed to it: mission text, justifications, the resources an agent reaches, the actions it takes, and what the person decides. That is the point; a supervisor that saw less could decide less. It is the person's own choice of a party to see it, made agent by agent <a href="#routing" class="auto internal xref">Section 6</a>, and the PS SHOULD say so when the person registers an SS.<a href="#section-17.1-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="identifiers">
+<section id="section-17.2">
+        <h3 id="name-identifiers">
+<a href="#section-17.2" class="section-number selfRef">17.2. </a><a href="#name-identifiers" class="section-name selfRef">Identifiers</a>
+        </h3>
+<p id="section-17.2-1">The <code>sub</code> the PS sends is directed to the SS and appears nowhere else. Tokens forwarded in supervision requests carry directed identifiers for their own audiences, and the SS can trivially correlate them, since every request names the same <code>sub</code>. Nothing is gained by hiding that from the person's own supervisor, and nothing is lost by it: no other party receives the SS's <code>sub</code>.<a href="#section-17.2-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="organizational-supervisors">
+<section id="section-17.3">
+        <h3 id="name-organizational-supervisors">
+<a href="#section-17.3" class="section-number selfRef">17.3. </a><a href="#name-organizational-supervisors" class="section-name selfRef">Organizational Supervisors</a>
+        </h3>
+<p id="section-17.3-1">Where an organization routes its people's agents to an SS it operates, the organization sees what the SS sees. The <code>tenant</code> at connect is how the SS knows it has that standing. What an organization may lawfully see of its members' agents is outside this document.<a href="#section-17.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="iana-considerations">
+<section id="section-18">
+      <h2 id="name-iana-considerations">
+<a href="#section-18" class="section-number selfRef">18. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
+      </h2>
+<div id="well-known-uri-registration">
+<section id="section-18.1">
+        <h3 id="name-well-known-uri-registration">
+<a href="#section-18.1" class="section-number selfRef">18.1. </a><a href="#name-well-known-uri-registration" class="section-name selfRef">Well-Known URI Registration</a>
+        </h3>
+<p id="section-18.1-1">This specification registers the following well-known URI per <span>[<a href="#RFC8615" class="cite xref">RFC8615</a>]</span>:<a href="#section-18.1-1" class="pilcrow">¶</a></p>
+<table class="center" id="table-6">
+          <caption><a href="#table-6" class="selfRef">Table 6</a></caption>
+<thead>
+            <tr>
+              <th class="text-left" rowspan="1" colspan="1">URI Suffix</th>
+              <th class="text-left" rowspan="1" colspan="1">Change Controller</th>
+              <th class="text-left" rowspan="1" colspan="1">Reference</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>aauth-supervisor.json</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">IETF</td>
+              <td class="text-left" rowspan="1" colspan="1">This document, <a href="#ss-metadata" class="auto internal xref">Section 5</a>
+</td>
+            </tr>
+          </tbody>
+        </table>
+</section>
+</div>
+</section>
+</div>
+<div id="implementation-status">
+<section id="section-19">
+      <h2 id="name-implementation-status">
+<a href="#section-19" class="section-number selfRef">19. </a><a href="#name-implementation-status" class="section-name selfRef">Implementation Status</a>
+      </h2>
+<p id="section-19-1"><em>Note: This section is to be removed before publishing as an RFC.</em><a href="#section-19-1" class="pilcrow">¶</a></p>
+<p id="section-19-2">There are no known implementations of this specification at the time of writing.<a href="#section-19-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="document-history">
+<section id="section-20">
+      <h2 id="name-document-history">
+<a href="#section-20" class="section-number selfRef">20. </a><a href="#name-document-history" class="section-name selfRef">Document History</a>
+      </h2>
+<p id="section-20-1"><em>Note: This section is to be removed before publishing as an RFC.</em><a href="#section-20-1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-20-2.1">
+          <strong>-00</strong>: Initial version. Supervisor metadata, connect, three endpoints, supervision decisions, events, replay, signed decisions.<a href="#section-20-2.1" class="pilcrow">¶</a>
+</li>
+      </ul>
+</section>
+</div>
+<div id="acknowledgments">
+<section id="section-21">
+      <h2 id="name-acknowledgments">
+<a href="#section-21" class="section-number selfRef">21. </a><a href="#name-acknowledgments" class="section-name selfRef">Acknowledgments</a>
+      </h2>
+<p id="section-21-1">TBD.<a href="#section-21-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<section id="section-22">
+      <h2 id="name-normative-references">
+<a href="#section-22" class="section-number selfRef">22. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+      </h2>
+<dl class="references">
+<dt id="I-D.hardt-httpbis-signature-key">[I-D.hardt-httpbis-signature-key]</dt>
+      <dd>
+<span class="refAuthor">Hardt, D.</span> and <span class="refAuthor">T. Meunier</span>, <span class="refTitle">"HTTP Signature Keys"</span>, <time datetime="2026" class="refDate">2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-hardt-httpbis-signature-key">https://datatracker.ietf.org/doc/draft-hardt-httpbis-signature-key</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="I-D.hardt-oauth-aauth-protocol">[I-D.hardt-oauth-aauth-protocol]</dt>
+      <dd>
+<span class="refAuthor">Hardt, D.</span>, <span class="refTitle">"AAuth Protocol"</span>, <time datetime="2026" class="refDate">2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-hardt-oauth-aauth-protocol">https://datatracker.ietf.org/doc/draft-hardt-oauth-aauth-protocol</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC7240">[RFC7240]</dt>
+      <dd>
+<span class="refAuthor">Snell, J.</span>, <span class="refTitle">"Prefer Header for HTTP"</span>, <span class="seriesInfo">RFC 7240</span>, <span class="seriesInfo">DOI 10.17487/RFC7240</span>, <time datetime="2014-06" class="refDate">June 2014</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7240">https://www.rfc-editor.org/info/rfc7240</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8615">[RFC8615]</dt>
+      <dd>
+<span class="refAuthor">Nottingham, M.</span>, <span class="refTitle">"Well-Known Uniform Resource Identifiers (URIs)"</span>, <span class="seriesInfo">RFC 8615</span>, <span class="seriesInfo">DOI 10.17487/RFC8615</span>, <time datetime="2019-05" class="refDate">May 2019</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8615">https://www.rfc-editor.org/info/rfc8615</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9421">[RFC9421]</dt>
+    <dd>
+<span class="refAuthor">Backman, A., Ed.</span>, <span class="refAuthor">Richer, J., Ed.</span>, and <span class="refAuthor">M. Sporny</span>, <span class="refTitle">"HTTP Message Signatures"</span>, <span class="seriesInfo">RFC 9421</span>, <span class="seriesInfo">DOI 10.17487/RFC9421</span>, <time datetime="2024-02" class="refDate">February 2024</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc9421">https://www.rfc-editor.org/info/rfc9421</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+<div id="design-rationale">
+<section id="appendix-A">
+      <h2 id="name-design-rationale">
+<a href="#appendix-A" class="section-number selfRef">Appendix A. </a><a href="#name-design-rationale" class="section-name selfRef">Design Rationale</a>
+      </h2>
+<div id="why-ps-never-decides">
+<section id="appendix-A.1">
+        <h3 id="name-why-the-ps-never-decides">
+<a href="#appendix-A.1" class="section-number selfRef">A.1. </a><a href="#name-why-the-ps-never-decides" class="section-name selfRef">Why the PS Never Decides</a>
+        </h3>
+<p id="appendix-A.1-1">A PS that applied some of the person's standing decisions itself and forwarded the rest would hold part of the person's policy, and the SS the other part. The person could then not change their supervisor without losing what the PS held, and neither party would have the full record of how a decision was reached. Routing every act to the SS keeps the policy in one place, and makes the PS what the protocol wants it to be: the party that verifies, issues, and records, with no judgment of its own. The reach of an answer <a href="#apply" class="auto internal xref">Section 12.2</a> is therefore delivered to the SS and applied there, and a person with no SS gets none.<a href="#appendix-A.1-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="why-three-endpoints">
+<section id="appendix-A.2">
+        <h3 id="name-why-three-endpoints">
+<a href="#appendix-A.2" class="section-number selfRef">A.2. </a><a href="#name-why-three-endpoints" class="section-name selfRef">Why Three Endpoints</a>
+        </h3>
+<p id="appendix-A.2-1">One endpoint with a discriminator would carry everything, and an implementer writes one dispatch either way. The three are cut by what comes back: a mission-shaped answer, a decision, or an acknowledgment. Events are high-volume and fire-and-forget; decisions are few and latency-bound. Separate URLs let those be deployed, scaled, and rate-limited separately, and let the mission endpoint mirror the PS's own, so its shape is already known.<a href="#appendix-A.2-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="why-ps-authoritative">
+<section id="appendix-A.3">
+        <h3 id="name-why-the-ps-is-authoritative">
+<a href="#appendix-A.3" class="section-number selfRef">A.3. </a><a href="#name-why-the-ps-is-authoritative" class="section-name selfRef">Why the PS Is Authoritative</a>
+        </h3>
+<p id="appendix-A.3-1">A person may have no SS, one, or several, one per agent. Only the PS sees every act for the person, so only the PS can hold the whole record. The SS holds what it needs, and may drop a mission when it ends. Replay makes any SS current from the PS's record. An SS-held record would also require the PS to read from the SS, and the SS is a party the PS trusts to answer, not one it trusts to be reachable.<a href="#appendix-A.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="why-ss-never-calls">
+<section id="appendix-A.4">
+        <h3 id="name-why-the-ss-never-calls-the-">
+<a href="#appendix-A.4" class="section-number selfRef">A.4. </a><a href="#name-why-the-ss-never-calls-the-" class="section-name selfRef">Why the SS Never Calls the PS</a>
+        </h3>
+<p id="appendix-A.4-1">An SS that could call the PS would need keys the PS trusts, an authorization model at the PS for what an SS may do, and a way for the person to bound it. Everything the SS needs to say fits in a response: a decision, a refinement, a question for the agent. What it cannot do in a response, such as act between events, belongs to mission control, under the authorization model that document defines. An SS with no inbound calls also has no attack surface toward the PS beyond what it answers.<a href="#appendix-A.4-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="why-the-sdi-is-minted-by-the-ps">
+<section id="appendix-A.5">
+        <h3 id="name-why-the-sdi-is-minted-by-th">
+<a href="#appendix-A.5" class="section-number selfRef">A.5. </a><a href="#name-why-the-sdi-is-minted-by-th" class="section-name selfRef">Why the <code>sdi</code> Is Minted by the PS</a>
+        </h3>
+<p id="appendix-A.5-1">The PS's log entry for a decision begins before the SS has answered, and must be complete when the SS never does. An identifier the SS assigned would arrive, if at all, after the entry existed. Minting it at the PS makes one identifier cover the request, its retries, its polls, its clarifications, the person's answer, and the tokens issued, from the first moment.<a href="#appendix-A.5-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="why-decisions-are-signed-responses-not-jwts">
+<section id="appendix-A.6">
+        <h3 id="name-why-decisions-are-signed-re">
+<a href="#appendix-A.6" class="section-number selfRef">A.6. </a><a href="#name-why-decisions-are-signed-re" class="section-name selfRef">Why Decisions Are Signed Responses, Not JWTs</a>
+        </h3>
+<p id="appendix-A.6-1">A JWT would be a second encoding of a body that is already JSON, and a new token type. An HTTP Message Signature over the response leaves the body as it is, binds the decision to the request through <code>;req</code> components, and, with <code>Signature-Key</code> on the response, makes the stored exchange say who signed it. The log entry is then the exchange itself, request and response, each carrying its signer's identity.<a href="#appendix-A.6-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="why-interaction-is-an-event">
+<section id="appendix-A.7">
+        <h3 id="name-why-interaction-relay-is-an">
+<a href="#appendix-A.7" class="section-number selfRef">A.7. </a><a href="#name-why-interaction-relay-is-an" class="section-name selfRef">Why Interaction Relay Is an Event</a>
+        </h3>
+<p id="appendix-A.7-1">When an agent asks the PS to relay an interaction, a resource or an AS has already decided the person is needed; the relay is not authorization. A <code>deny</code> from the SS could stop the PS relaying, but the protocol then has the agent direct the person itself, so the deny would remove the person's better channel and stop nothing. The SS is told, so an agent that keeps sending the person to interaction pages is visible in its record.<a href="#appendix-A.7-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="why-routing-only">
+<section id="appendix-A.8">
+        <h3 id="name-why-routing-not-fan-out">
+<a href="#appendix-A.8" class="section-number selfRef">A.8. </a><a href="#name-why-routing-not-fan-out" class="section-name selfRef">Why Routing, Not Fan-Out</a>
+        </h3>
+<p id="appendix-A.8-1">Delivering the same act to two SSes raises which one decides and what the other is for. One deciding SS per agent answers the first, and a passive second supervisor is a PS configuration feature that adds nothing on the wire: an SS that only receives events already gets the same calls and answers <code>201</code>. It can be added without changing this document.<a href="#appendix-A.8-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="authors-addresses">
+<section id="appendix-B">
+      <h2 id="name-authors-address">
+<a href="#name-authors-address" class="section-name selfRef">Author's Address</a>
+      </h2>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Dick Hardt</span></div>
+<div dir="auto" class="left"><span class="org">Hellō</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:dick.hardt@gmail.com" class="email">dick.hardt@gmail.com</a>
+</div>
+</address>
+</section>
+</div>
+<script>const toc = document.getElementById("toc");
+toc.querySelector("h2").addEventListener("click", e => {
+  toc.classList.toggle("active");
+});
+toc.querySelector("nav").addEventListener("click", e => {
+  toc.classList.remove("active");
+});
+</script>
+</body>
+</html>
