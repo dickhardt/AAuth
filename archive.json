@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-10-04T03:20:45.411242+00:00",
+  "timestamp": "2026-10-06T03:47:11.280177+00:00",
   "repo": "dickhardt/AAuth",
   "labels": [
     {
@@ -3909,6 +3909,38 @@
       "body": "interop-demo-profile.md at 28e8258:\n- L63 (Surface 4): \"Auth-token signature (from issuer JWKS at `{iss}/.well-known/{dwk}`)\"\n- L64 (Surface 4): \"`cnf.jwk` matches the key that signed the HTTP request\"\n- L77 (Surface 5): \"The issued auth token has `cnf.jwk` = the sub-agent's key.\"\n- L81 (Surface 5): \"the resource confirms the auth token is signed with the sub-agent's key\"\n\nThe auth token is signed by its issuer, and the sub-agent's key is its `cnf.jwk`. L81 describes neither Surface 4 check, so a reader of Surface 5 alone could verify the wrong thing.\n\n**Ask:** Reword L81 to say the resource verifies the auth token against the issuer's JWKS and that `cnf.jwk`, the sub-agent's key, matches the key that signed the request.",
       "createdAt": "2026-10-02T00:17:03Z",
       "updatedAt": "2026-10-02T00:17:03Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 255,
+      "id": "I_kwDOQJKwSc8AAAABU96zMA",
+      "title": "OpenAPI vocabulary requires operationId, but OpenAPI makes it optional",
+      "url": "https://github.com/dickhardt/AAuth/issues/255",
+      "state": "OPEN",
+      "author": "sdatapix",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "**Title:** OpenAPI vocabulary requires `operationId`, but OpenAPI makes it optional\n\n**Document:** draft-hardt-aauth-r3 (OpenAPI Vocabulary, Operation Identifier Scope, Operation Validation)\n\n## Problem\n\nThe OpenAPI vocabulary defines `operationId` as REQUIRED in each operation entry, and the Operation Identifier Scope section relies on `operationId` being unique within the document. In OpenAPI 2.0, 3.0, and 3.1, however, `operationId` is optional on an Operation Object. The spec only requires uniqueness among IDs that are present. Many real-world specs omit it, and others contain duplicates, especially after merging.\n\nThe draft does not say what a resource should do when an operation it wants to expose has no `operationId`, or when IDs collide.\n\n## Consequences\n\n- An operation with no `operationId` cannot appear in `r3_operations`, an R3 document, `r3_granted`, or `r3_per_call`. It cannot be granted, gated, or made per-call through R3. This fails closed, since unmatched calls are rejected, but it leaves many existing APIs unable to use R3 without editing their specs.\n- The `x-aauth-access-mode` and `x-aauth-budget` annotations sit on the Operation Object, so they cannot be associated with an operation that has no stable identifier.\n- If two operations share an `operationId`, one grant covers both, contrary to what the person approving would expect.\n- Framework-generated IDs often change on refactor. The R3 hash pins the document, but policy or cached approvals keyed to the old ID silently stop matching.\n- Operation Validation says the resource MUST validate declared operations against its authoritative definition. That check cannot catch a missing or duplicate ID unless the draft says it should.\n- The IANA Designated Expert instructions ask that a vocabulary define identifier derivation well enough for independent implementations to produce the same identifiers. Optional `operationId` does not meet that bar on its own.\n- It is unclear whether operations in `callbacks` and `webhooks` (OpenAPI 3.1) are in scope. They share the same `operationId` uniqueness rule.\n\n## Proposed changes\n\n1. **Normative requirement.** State that a resource advertising the OpenAPI vocabulary MUST ensure every operation it exposes through R3 has an `operationId` that is unique across the entire document. An operation without one MUST NOT be offered through R3. The resource MUST reject, and SHOULD lint for, missing or duplicate IDs before advertising the vocabulary in `r3_vocabularies`.\n2. **Stability guidance.** State that a resource SHOULD NOT change an `operationId` once it has been advertised. If it must, the change is a new R3 document, so existing grants should be treated as not covering the renamed operation.\n3. **Use path template.** Alternatively (or additionally), allow an operation entry of the form `{ \"method\": \"GET\", \"path\": \"/events/{id}\" }`, where `path` is the path template with parameter names normalized. OpenAPI guarantees a method and path pair is unique, so this removes the dependency on an optional field.\n\n## Question\n\nIs the intent that R3 resources must curate their specs to satisfy this requirement, or should the vocabulary tolerate specs as they exist today? That choice determines whether option 1, option 3, or both is the right fix.\n\nMy vote: Use option 3, the path template.\n\np.s. Issue identified by a human->researched using AI agent->drafted by the AI agent->reviewed/ modified by the human ;)",
+      "createdAt": "2026-10-04T18:29:45Z",
+      "updatedAt": "2026-10-04T18:29:45Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 256,
+      "id": "I_kwDOQJKwSc8AAAABVOmUFw",
+      "title": "Supervision: `auth_token` does not carry the R3 per-call proposal to the SS",
+      "url": "https://github.com/dickhardt/AAuth/issues/256",
+      "state": "OPEN",
+      "author": "xmuruaga",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "draft-hardt-aauth-r3.md at 70d6737:\n- L676 (Flow, step 2): \"The issuer fetches the proposal and evaluates `parameters` per policy; the PS renders `display` for user consent.\"\n- L734 (R3 Document Access Restriction): \"Any other signer MUST be rejected.\"\n\ndraft-hardt-aauth-supervision.md at 70d6737:\n- L462 (Decision Endpoint): \"The PS forwards the tokens and body the agent presented, so the SS sees what the PS saw.\"\n\nWith an SS configured, the approval in R3 L676 is a supervision decision. The `auth_token` request (L487) carries the forwarded tokens and `justification`; the resource token references the per-call proposal without carrying its content, and the SS cannot fetch it (R3 L734).\n\nThe PS has fetched and hash-verified the proposal to render `display`; the SS has not, so it does not receive the proposal's concrete `operations` and `parameters` (or `result` when present). \"The SS sees what the PS saw\" therefore does not hold for an R3 per-call proposal. A per-call `send_email` reaches the SS with no resource-asserted recipient, only whatever the agent's `justification` says.\n\n**Ask:** In Decision Endpoint, Auth Token (L487), have the PS include the R3 per-call proposal it fetched and hash-verified alongside the `resource_token`.",
+      "createdAt": "2026-10-05T22:05:55Z",
+      "updatedAt": "2026-10-05T22:05:55Z",
       "closedAt": null,
       "comments": []
     }
