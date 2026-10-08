@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-10-06T03:47:11.280177+00:00",
+  "timestamp": "2026-10-08T03:30:31.702335+00:00",
   "repo": "dickhardt/AAuth",
   "labels": [
     {
@@ -3941,6 +3941,22 @@
       "body": "draft-hardt-aauth-r3.md at 70d6737:\n- L676 (Flow, step 2): \"The issuer fetches the proposal and evaluates `parameters` per policy; the PS renders `display` for user consent.\"\n- L734 (R3 Document Access Restriction): \"Any other signer MUST be rejected.\"\n\ndraft-hardt-aauth-supervision.md at 70d6737:\n- L462 (Decision Endpoint): \"The PS forwards the tokens and body the agent presented, so the SS sees what the PS saw.\"\n\nWith an SS configured, the approval in R3 L676 is a supervision decision. The `auth_token` request (L487) carries the forwarded tokens and `justification`; the resource token references the per-call proposal without carrying its content, and the SS cannot fetch it (R3 L734).\n\nThe PS has fetched and hash-verified the proposal to render `display`; the SS has not, so it does not receive the proposal's concrete `operations` and `parameters` (or `result` when present). \"The SS sees what the PS saw\" therefore does not hold for an R3 per-call proposal. A per-call `send_email` reaches the SS with no resource-asserted recipient, only whatever the agent's `justification` says.\n\n**Ask:** In Decision Endpoint, Auth Token (L487), have the PS include the R3 per-call proposal it fetched and hash-verified alongside the `resource_token`.",
       "createdAt": "2026-10-05T22:05:55Z",
       "updatedAt": "2026-10-05T22:05:55Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 257,
+      "id": "I_kwDOQJKwSc8AAAABVZ0Fdw",
+      "title": "Supervision: R3 release `result` is not delivered to the SS or replayed",
+      "url": "https://github.com/dickhardt/AAuth/issues/257",
+      "state": "OPEN",
+      "author": "xmuruaga",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "draft-hardt-aauth-r3.md at 70d6737:\n- L721 (Approving Release Rather Than Execution): \"A PS MAY approve release into a mission and refuse the agent's subsequent request to send the same data to another resource. The PS is the only party positioned to make that judgment\"\n\ndraft-hardt-aauth-supervision.md at 70d6737:\n- L711 (Why the PS Never Decides): \"makes the PS what the protocol wants it to be: the party that verifies, issues, and records, with no judgment of its own\"\n- L540 (Event Endpoint): `auth_token.issued` carries `sdi`, `jti`, `aud`, `scope`, `exp`, `issuer`\n- L542 (Event Endpoint): `audit.recorded` carries a `result` \"as it sent it\", that is, as the agent sent it\n- L619 (Replay and Recovery): a new SS receives \"the mission's log entries in order, each as the event or report it would have been\"\n\ndraft-hardt-oauth-aauth-protocol.md at 70d6737:\n- L1039 (Consent Presentation): \"A PS MUST NOT base an authorization decision solely on agent-asserted content where resource-asserted content covering the same operation is available.\"\n\nWith an SS configured, refusing the later send in R3 L721 is a supervision decision, which L711 assigns to the SS. To make it, the SS needs the resource-asserted `result` from the earlier release: that is what tells it the agent now holds the sensitive data.\n\nSupervision does not deliver that to the SS. `auth_token.issued` does not carry it. `audit.recorded.result` is agent-asserted, not the resource's R3 `result`, and L1039 already treats agent-asserted content as insufficient for a PS decision when resource-asserted content covering the same operation is available. A replacement SS after a routing change cannot reconstruct it through replay either.\n\n**Ask:** When an SS is configured, have the PS report the resource-asserted released `result` to the SS as replayable state, so the configured Supervisor can make the later cross-resource judgment described in R3 L721. For example, as a member of `auth_token.issued`. Also: if the intent is instead that the PS keeps this judgment even with an SS configured, state that exception in Why the PS Never Decides.\n\nRelated: #256.\n\nFound while mapping the cross-resource composition cases from [Bounded Agents](https://arxiv.org/abs/2608.15888) onto Supervision.",
+      "createdAt": "2026-10-06T15:46:52Z",
+      "updatedAt": "2026-10-06T15:46:52Z",
       "closedAt": null,
       "comments": []
     }
