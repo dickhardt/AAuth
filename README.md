@@ -41,6 +41,7 @@ Implementing against an earlier revision? See [Updating from -10 to -11](upgrade
 | [AAuth Web Agent](https://web-agent.aauth.dev) | Protocol playground |
 | [AAuth Explorer](https://explorer.aauth.dev) | Walkthrough of the protocol flows |
 | [aauth-full-demo](https://github.com/christian-posta/aauth-full-demo) | A2A multi-agent flow with Keycloak and user consent |
+| [aauth-supervision-server](https://github.com/xmuruaga/aauth-supervision-server) | Python supervision server for AAuth Supervision |
 
 ## Building
 
