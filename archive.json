@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-10-08T03:30:31.702335+00:00",
+  "timestamp": "2026-10-11T02:49:49.198144+00:00",
   "repo": "dickhardt/AAuth",
   "labels": [
     {
@@ -3940,9 +3940,17 @@
       "labels": [],
       "body": "draft-hardt-aauth-r3.md at 70d6737:\n- L676 (Flow, step 2): \"The issuer fetches the proposal and evaluates `parameters` per policy; the PS renders `display` for user consent.\"\n- L734 (R3 Document Access Restriction): \"Any other signer MUST be rejected.\"\n\ndraft-hardt-aauth-supervision.md at 70d6737:\n- L462 (Decision Endpoint): \"The PS forwards the tokens and body the agent presented, so the SS sees what the PS saw.\"\n\nWith an SS configured, the approval in R3 L676 is a supervision decision. The `auth_token` request (L487) carries the forwarded tokens and `justification`; the resource token references the per-call proposal without carrying its content, and the SS cannot fetch it (R3 L734).\n\nThe PS has fetched and hash-verified the proposal to render `display`; the SS has not, so it does not receive the proposal's concrete `operations` and `parameters` (or `result` when present). \"The SS sees what the PS saw\" therefore does not hold for an R3 per-call proposal. A per-call `send_email` reaches the SS with no resource-asserted recipient, only whatever the agent's `justification` says.\n\n**Ask:** In Decision Endpoint, Auth Token (L487), have the PS include the R3 per-call proposal it fetched and hash-verified alongside the `resource_token`.",
       "createdAt": "2026-10-05T22:05:55Z",
-      "updatedAt": "2026-10-05T22:05:55Z",
+      "updatedAt": "2026-10-08T15:48:35Z",
       "closedAt": null,
-      "comments": []
+      "comments": [
+        {
+          "author": "xmuruaga",
+          "authorAssociation": "NONE",
+          "body": "The same gap is wider than per-call. draft-hardt-aauth-r3.md at 70d6737:\n- L537 (R3 Processing): \"The issuer fetches R3 to evaluate `operations` for policy decisions and to populate `r3_granted` and `r3_per_call` in the auth token.\"\n- L549 (Issuer Processing, step 5): \"Use the `operations` section for policy evaluation.\"\n\nThat holds for any resource token carrying `r3_uri`, not only a per-call proposal, and L734 keeps the SS from fetching the R3 document as it does the proposal. So under an SS the `operations` of an ordinary R3 request reach no one who decides. (A forwarded document, checked against the same `r3_s256`, is exercised in https://github.com/xmuruaga/aauth-supervision-server, tests/test_r3_extension_optin.py.)\n\n**Ask:** Word the change so the PS includes the R3 content it fetched and hash-verified for the resource token, the R3 document or the per-call proposal, alongside the `resource_token` in the `auth_token` request.",
+          "createdAt": "2026-10-08T15:48:35Z",
+          "updatedAt": "2026-10-08T15:48:35Z"
+        }
+      ]
     },
     {
       "number": 257,
@@ -3957,6 +3965,38 @@
       "body": "draft-hardt-aauth-r3.md at 70d6737:\n- L721 (Approving Release Rather Than Execution): \"A PS MAY approve release into a mission and refuse the agent's subsequent request to send the same data to another resource. The PS is the only party positioned to make that judgment\"\n\ndraft-hardt-aauth-supervision.md at 70d6737:\n- L711 (Why the PS Never Decides): \"makes the PS what the protocol wants it to be: the party that verifies, issues, and records, with no judgment of its own\"\n- L540 (Event Endpoint): `auth_token.issued` carries `sdi`, `jti`, `aud`, `scope`, `exp`, `issuer`\n- L542 (Event Endpoint): `audit.recorded` carries a `result` \"as it sent it\", that is, as the agent sent it\n- L619 (Replay and Recovery): a new SS receives \"the mission's log entries in order, each as the event or report it would have been\"\n\ndraft-hardt-oauth-aauth-protocol.md at 70d6737:\n- L1039 (Consent Presentation): \"A PS MUST NOT base an authorization decision solely on agent-asserted content where resource-asserted content covering the same operation is available.\"\n\nWith an SS configured, refusing the later send in R3 L721 is a supervision decision, which L711 assigns to the SS. To make it, the SS needs the resource-asserted `result` from the earlier release: that is what tells it the agent now holds the sensitive data.\n\nSupervision does not deliver that to the SS. `auth_token.issued` does not carry it. `audit.recorded.result` is agent-asserted, not the resource's R3 `result`, and L1039 already treats agent-asserted content as insufficient for a PS decision when resource-asserted content covering the same operation is available. A replacement SS after a routing change cannot reconstruct it through replay either.\n\n**Ask:** When an SS is configured, have the PS report the resource-asserted released `result` to the SS as replayable state, so the configured Supervisor can make the later cross-resource judgment described in R3 L721. For example, as a member of `auth_token.issued`. Also: if the intent is instead that the PS keeps this judgment even with an SS configured, state that exception in Why the PS Never Decides.\n\nRelated: #256.\n\nFound while mapping the cross-resource composition cases from [Bounded Agents](https://arxiv.org/abs/2608.15888) onto Supervision.",
       "createdAt": "2026-10-06T15:46:52Z",
       "updatedAt": "2026-10-06T15:46:52Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 258,
+      "id": "I_kwDOQJKwSc8AAAABV5Zfkg",
+      "title": "Supervision: the \"same signed response\" on a retry goes stale under a freshness window",
+      "url": "https://github.com/dickhardt/AAuth/issues/258",
+      "state": "OPEN",
+      "author": "xmuruaga",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "draft-hardt-aauth-supervision.md at 70d6737:\n- L316 (Idempotence): \"A repeated supervision request under an `sdi` the SS has already answered MUST be answered with the same decision, and where the SS signs, the same signed response.\"\n- L342 (Signed Decisions): \"The PS MUST verify the signature against the key set the SS's metadata names, and MUST verify that the `id` in the response's `Signature-Key` is the `issuer` of the SS it called. A signed response that fails either check is treated as `server_error`.\"\n\ndraft-hardt-oauth-aauth-protocol.md at 70d6737:\n- L2246 (Verification (Server)): \"Verify the `created` parameter is present and within the server's signature validity window of the server's current time. The default window is 60 seconds\"\n- L2274 (Freshness and Replay): \"A verifier that first sees a signed artifact after a delay [...] applies its own policy for how much `created`-to-verification skew it accepts.\"\n\nThe same signed response carries the `created` of the first answer. Signed Decisions does not say whether the PS applies a freshness window to it, and L2274 leaves the skew to the verifier's own policy. A PS that applies its request window to responses rejects a retried answer once the window has passed, and per L342 treats it as `server_error`. The PS retrying after an outage, which is the case Idempotence exists for, is the one that hits it. Re-signing the stored decision with a fresh `created` would fix the delivery but is no longer \"the same signed response\". (Reproduced by a lifecycle test retrying 301 s after an answer: https://github.com/xmuruaga/aauth-supervision-server, docs/findings.md F6.)\n\n**Ask:** In Signed Decisions (L342), add: \"The PS does not apply a freshness window to a decision response: a retried request is answered with the original signed response (#idempotence).\" Also: Idempotence says what a repeated request gets but not what a different request under an answered `sdi` gets, and an SS that keys its replay on `(iss, sdi)` alone would hand one act's `allow` to another; one sentence in Idempotence (L316) would close it: \"A request under an `sdi` the SS has answered that differs from the request it answered MUST be rejected with `invalid_request`.\"",
+      "createdAt": "2026-10-08T15:23:36Z",
+      "updatedAt": "2026-10-08T15:23:36Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 259,
+      "id": "I_kwDOQJKwSc8AAAABV5Zz9w",
+      "title": "Supervision: an SS allow cannot size a Budgets allocation",
+      "url": "https://github.com/dickhardt/AAuth/issues/259",
+      "state": "OPEN",
+      "author": "xmuruaga",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "draft-hardt-aauth-budgets.md at 70d6737:\n- L263 (A Budget Is Structurally a Scope): \"Every party that already knows how to narrow a scope knows how to narrow a budget.\"\n- L485 (What the PS Is Deciding): \"Sizing the allocation is where the PS's supervision happens.\"\n- L507, L510 (How the PS Responds): \"Grant less\", \"Issue a lower `amount`\"; \"Decline with a figure\", \"Error response carrying `suggested_budget`\"\n\ndraft-hardt-aauth-supervision.md at 70d6737:\n- L79 (Introduction): \"A PS that has an SS configured for an agent makes no supervision decision of its own for that agent.\"\n- L264 (Decisions): \"The decision MAY narrow it, with members the endpoint defines: a `scope` narrower than requested, an `exp` earlier than the PS would otherwise issue\"\n- L540 (Event Endpoint): `auth_token.issued` carries \"`sdi`, `jti`, `aud`, `scope`, `exp`, `issuer`\"\n\nWith an SS configured, sizing the allocation is a supervision decision, so it belongs to the SS. The SS receives the resource's `budget` offer and the signed `budget_consumed` record in the forwarded `resource_token`, but an `allow` has no member for a granted amount and a `deny` has none for `suggested_budget`. The SS narrows scope, yet it cannot narrow a budget, so it can only grant the whole offer, ask, or deny. Since `auth_token.issued` does not say what was granted, an SS that holds a ceiling must also assume the whole offer was issued. (Found implementing an SS against both drafts: https://github.com/xmuruaga/aauth-supervision-server, docs/findings.md F8.)\n\n**Ask:** In Decisions (L264) and Auth Token (L508), let an `allow` carry `budget`, a budget object no larger than the resource token's, which the PS applies to the auth token it issues as it applies `scope`; let a `deny` carry `suggested_budget` as Budgets defines it; and add the granted `budget` to `auth_token.issued` (L540). Also: R3 has the same shape, since the issuer populates `r3_granted` and `r3_per_call` per policy (draft-hardt-aauth-r3.md L537) and R3 claims may replace `scope` in the resource token (draft-hardt-aauth-r3.md L415), so where they do an SS `allow` has no narrowing member at all; the same member list could admit them.",
+      "createdAt": "2026-10-08T15:23:55Z",
+      "updatedAt": "2026-10-08T15:23:55Z",
       "closedAt": null,
       "comments": []
     }
@@ -6859,6 +6899,32 @@
       "mergeCommit": {
         "oid": "70d67375deb0bb002af7da0711fc58f6e8926e7e"
       },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 260,
+      "id": "PR_kwDOQJKwSc8AAAABHtersw",
+      "title": "README: add aauth-supervision-server to Implementations",
+      "url": "https://github.com/dickhardt/AAuth/pull/260",
+      "state": "OPEN",
+      "author": "xmuruaga",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "Adds aauth-supervision-server to the Implementations table.",
+      "createdAt": "2026-10-10T15:43:23Z",
+      "updatedAt": "2026-10-10T15:43:23Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "70d67375deb0bb002af7da0711fc58f6e8926e7e",
+      "headRepository": "xmuruaga/AAuth",
+      "headRefName": "patch-1",
+      "headRefOid": "aac1a9463f98eeee8862ac72b4fa785644be07b3",
+      "closedAt": null,
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
       "comments": [],
       "reviews": []
     }
