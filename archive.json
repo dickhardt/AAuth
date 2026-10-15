@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-10-13T04:28:24.798213+00:00",
+  "timestamp": "2026-10-15T02:18:35.219822+00:00",
   "repo": "dickhardt/AAuth",
   "labels": [
     {
@@ -3924,7 +3924,7 @@
       "labels": [],
       "body": "**Title:** OpenAPI vocabulary requires `operationId`, but OpenAPI makes it optional\n\n**Document:** draft-hardt-aauth-r3 (OpenAPI Vocabulary, Operation Identifier Scope, Operation Validation)\n\n## Problem\n\nThe OpenAPI vocabulary defines `operationId` as REQUIRED in each operation entry, and the Operation Identifier Scope section relies on `operationId` being unique within the document. In OpenAPI 2.0, 3.0, and 3.1, however, `operationId` is optional on an Operation Object. The spec only requires uniqueness among IDs that are present. Many real-world specs omit it, and others contain duplicates, especially after merging.\n\nThe draft does not say what a resource should do when an operation it wants to expose has no `operationId`, or when IDs collide.\n\n## Consequences\n\n- An operation with no `operationId` cannot appear in `r3_operations`, an R3 document, `r3_granted`, or `r3_per_call`. It cannot be granted, gated, or made per-call through R3. This fails closed, since unmatched calls are rejected, but it leaves many existing APIs unable to use R3 without editing their specs.\n- The `x-aauth-access-mode` and `x-aauth-budget` annotations sit on the Operation Object, so they cannot be associated with an operation that has no stable identifier.\n- If two operations share an `operationId`, one grant covers both, contrary to what the person approving would expect.\n- Framework-generated IDs often change on refactor. The R3 hash pins the document, but policy or cached approvals keyed to the old ID silently stop matching.\n- Operation Validation says the resource MUST validate declared operations against its authoritative definition. That check cannot catch a missing or duplicate ID unless the draft says it should.\n- The IANA Designated Expert instructions ask that a vocabulary define identifier derivation well enough for independent implementations to produce the same identifiers. Optional `operationId` does not meet that bar on its own.\n- It is unclear whether operations in `callbacks` and `webhooks` (OpenAPI 3.1) are in scope. They share the same `operationId` uniqueness rule.\n\n## Proposed changes\n\n1. **Normative requirement.** State that a resource advertising the OpenAPI vocabulary MUST ensure every operation it exposes through R3 has an `operationId` that is unique across the entire document. An operation without one MUST NOT be offered through R3. The resource MUST reject, and SHOULD lint for, missing or duplicate IDs before advertising the vocabulary in `r3_vocabularies`.\n2. **Stability guidance.** State that a resource SHOULD NOT change an `operationId` once it has been advertised. If it must, the change is a new R3 document, so existing grants should be treated as not covering the renamed operation.\n3. **Use path template.** Alternatively (or additionally), allow an operation entry of the form `{ \"method\": \"GET\", \"path\": \"/events/{id}\" }`, where `path` is the path template with parameter names normalized. OpenAPI guarantees a method and path pair is unique, so this removes the dependency on an optional field.\n\n## Question\n\nIs the intent that R3 resources must curate their specs to satisfy this requirement, or should the vocabulary tolerate specs as they exist today? That choice determines whether option 1, option 3, or both is the right fix.\n\nMy vote: Use option 3, the path template.\n\np.s. Issue identified by a human->researched using AI agent->drafted by the AI agent->reviewed/ modified by the human ;)",
       "createdAt": "2026-10-04T18:29:45Z",
-      "updatedAt": "2026-10-12T21:32:32Z",
+      "updatedAt": "2026-10-13T04:59:42Z",
       "closedAt": null,
       "comments": [
         {
@@ -3933,6 +3933,13 @@
           "body": "We need a stable operation identifier for the agent to ask for authorization to use it -- a fine grained scope -- as well as for per-call authorization requests. \n\nThe id seems to work so far -- it does make the id required for AAuth. \n\nthe path template maps to rest -- but is not as crisp\n\nI'm a fan of one way to do things in general in a specification -- reduces code paths and conformance issues.\n\nOpen to more discussion!\n",
           "createdAt": "2026-10-12T21:32:32Z",
           "updatedAt": "2026-10-12T21:32:32Z"
+        },
+        {
+          "author": "sdatapix",
+          "authorAssociation": "NONE",
+          "body": ">the path template maps to rest -- but is not as crisp\n\nAgree. I was thinking of making it easier for folks who have invested in APIs for last 10-15 years to easily provide resources for AAuth. But, it seems like they may have either polish their existing surface a bit or create a new surface to truly benefit from AAuth.     ",
+          "createdAt": "2026-10-13T04:59:42Z",
+          "updatedAt": "2026-10-13T04:59:42Z"
         }
       ]
     },
