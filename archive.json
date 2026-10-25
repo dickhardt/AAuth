@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-10-15T02:18:35.219822+00:00",
+  "timestamp": "2026-10-25T02:14:31.913602+00:00",
   "repo": "dickhardt/AAuth",
   "labels": [
     {
@@ -3796,9 +3796,17 @@
       "labels": [],
       "body": "draft-hardt-aauth-r3.md at 28e8258:\n- L488 (Content Addressing): \"Resources MUST serialize the R3 document once and serve those exact bytes verbatim on every request for the same `r3_uri`.\"\n- L490 (Content Addressing): \"If a resource updates the document at the same URI, existing auth tokens still reference the previous hash (which the AS has cached).\"\n- L560 (Caching): \"The issuer is not required to retain R3 documents beyond their immediate use in token issuance. Its audit log records `r3_uri` and `r3_s256`, which is enough to re-fetch and verify the document later.\"\n- L612 (Auth Token Extensions): \"a permanent, verifiable record of which R3 document was in effect at approval time.\"\n\nOne reading is that L488 fixes the bytes only for one revision, since L490 permits an update at the same URI. After such an update, re-fetching `r3_uri` returns bytes that fail the `r3_s256` check at L740, and nobody is required to keep the old bytes, so the record supports later verification only if someone retained a copy.\n\n**Ask:** Say that later verification needs either a retained copy of the document or an `r3_uri` whose bytes never change (for example, a new URI for each revision), either of which is enough, and soften \"permanent\" at L612.",
       "createdAt": "2026-10-02T00:16:57Z",
-      "updatedAt": "2026-10-02T00:16:57Z",
+      "updatedAt": "2026-10-24T10:00:04Z",
       "closedAt": null,
-      "comments": []
+      "comments": [
+        {
+          "author": "krivonosoff161",
+          "authorAssociation": "NONE",
+          "body": "Building on the R3 retention problem already described here, three small verification cases could help:\n\n1. The URI still serves the original document.\n2. The URI serves an updated document, but an original copy has been retained.\n3. No original copy is available and the original bytes can no longer be retrieved.\n\nIn the third case, successful retrospective verification cannot be inferred from a retained URI and digest alone.\n\nI work on a separate local-action approval component that retains approved bytes until execution. This is not an R3 implementation or an argument that AAuth should require that storage model; your immutable, versioned-URI alternative also matters when specifying these cases.\n\nWould a small PR with these three examples and expected outcomes, alongside the agreed wording of the section, be useful\u2014without changing the protocol or adding a dependency on my package?\n\nMy narrow contract, for context: https://github.com/krivonosoff161/agentic-action-authority/blob/f837da0e2eb34fdded3b9981325fc0e770c5ad3f/docs/approved-execution.md\n\n\u2014 krivonosoff161\n",
+          "createdAt": "2026-10-24T10:00:04Z",
+          "updatedAt": "2026-10-24T10:00:04Z"
+        }
+      ]
     },
     {
       "number": 248,
