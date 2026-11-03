@@ -33,6 +33,8 @@ Implementing against an earlier revision? See [Updating from -10 to -11](upgrade
 | [aauth-python-library](https://github.com/christian-posta/aauth-python-library) | Python request signing and verification |
 | [aauth-go-library](https://github.com/christian-posta/aauth-go-library) | Go request signing and verification |
 | [regent-httpsig](https://github.com/regent-protocol/regent-httpsig) | Python resource-side verification and budgets metering |
+| [aauth-rust](https://gitlab.com/sidecat-dev/aauth-rust) | Rust library for every party: agent, agent provider, resource, person server, access server, and supervision server |
+| [aauth-go](https://gitlab.com/sidecat-dev/aauth-go) | Go library for every party: agent, agent provider, resource, person server, access server, and supervision server |
 | [keycloak-aauth-extension](https://github.com/christian-posta/keycloak-aauth-extension) | Keycloak SPI (26.2.5) |
 | [aauth-person-server](https://github.com/christian-posta/aauth-person-server) | Person server with missions |
 | [extauth-aauth-resource](https://github.com/christian-posta/extauth-aauth-resource) | Envoy / agentgateway ext-authz that makes an HTTP, MCP, or A2A service an AAuth resource |
@@ -40,6 +42,7 @@ Implementing against an earlier revision? See [Updating from -10 to -11](upgrade
 | [proxy](https://github.com/aauth-dev/proxy) | The user's AAuth agent as an MCP server |
 | [AAuth Web Agent](https://web-agent.aauth.dev) | Protocol playground |
 | [AAuth Explorer](https://explorer.aauth.dev) | Walkthrough of the protocol flows |
+| [aauth-conformance](https://gitlab.com/sidecat-dev/aauth-conformance) | Wire-level conformance suite for implementations and deployed servers |
 | [aauth-full-demo](https://github.com/christian-posta/aauth-full-demo) | A2A multi-agent flow with Keycloak and user consent |
 
 ## Building
