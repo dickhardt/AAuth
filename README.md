@@ -43,6 +43,7 @@ Implementing against an earlier revision? See [Updating from -10 to -11](upgrade
 | [AAuth Web Agent](https://web-agent.aauth.dev) | Protocol playground |
 | [AAuth Explorer](https://explorer.aauth.dev) | Walkthrough of the protocol flows |
 | [aauth-conformance](https://gitlab.com/sidecat-dev/aauth-conformance) | Wire-level conformance suite for implementations and deployed servers |
+| [aauth.sidecat.dev](https://aauth.sidecat.dev) | Public AAuth servers for every party, in Rust and Go, and a conformance service that grades a deployment by URL |
 | [aauth-full-demo](https://github.com/christian-posta/aauth-full-demo) | A2A multi-agent flow with Keycloak and user consent |
 
 ## Building
