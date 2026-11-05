@@ -1,5 +1,7 @@
 # AAuth
 
+> **AAuth has been adopted as a working group at the OpenID Foundation.** Specification work will migrate there. Join the [OpenID Foundation AAuth mailing list](https://lists.openid.net/mailman/listinfo/openid-specs-aauth).
+
 AAuth gives every agent its own cryptographic identity and signs every request it makes, so no credential is a bearer token and nothing needs pre-registration. A person server represents the person the agent acts for, and access servers apply resource policy across trust domains. Each party adopts independently.
 
 ## Specifications
@@ -21,7 +23,7 @@ Implementing against an earlier revision? See [Updating from -10 to -11](upgrade
 
 - [aauth.dev](https://www.aauth.dev): explainers, diagrams, and the AAuth Explorer
 - [Office hours](https://lu.ma/aauth): drop in to ask questions or show what you're building
-- Slack: [IETF `#aauth`](https://www.aauth.dev/ietf-slack) for the specifications, [AAuth community](https://www.aauth.dev/slack) for implementations
+- Slack: [AAuth community](https://www.aauth.dev/slack) for implementations
 - [Issues](https://github.com/dickhardt/AAuth/issues) and [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Implementations
