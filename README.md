@@ -22,7 +22,6 @@ Implementing against an earlier revision? See [Updating from -10 to -11](upgrade
 ## Get Involved
 
 - [aauth.dev](https://www.aauth.dev): explainers, diagrams, and the AAuth Explorer
-- [Office hours](https://lu.ma/aauth): drop in to ask questions or show what you're building
 - Slack: [AAuth community](https://www.aauth.dev/slack) for implementations
 - [Issues](https://github.com/dickhardt/AAuth/issues) and [CONTRIBUTING.md](CONTRIBUTING.md)
 
