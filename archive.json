@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-11-05T04:10:26.114423+00:00",
+  "timestamp": "2026-11-08T03:16:22.653060+00:00",
   "repo": "dickhardt/AAuth",
   "labels": [
     {
@@ -7414,6 +7414,62 @@
       "mergedAt": null,
       "mergedBy": null,
       "mergeCommit": null,
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 288,
+      "id": "PR_kwDOQJKwSc8AAAABNGc_2w",
+      "title": "README: announce OpenID Foundation working group adoption",
+      "url": "https://github.com/dickhardt/AAuth/pull/288",
+      "state": "MERGED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "- Adds an announcement at the top: AAuth has been adopted as a working group at the OpenID Foundation, specification work will migrate there, with a link to the openid-specs-aauth mailing list.\n- Removes the IETF `#aauth` Slack link.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01B91Drmbn47fnUWEmcfvyHv",
+      "createdAt": "2026-11-05T15:29:58Z",
+      "updatedAt": "2026-11-05T15:30:14Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "70d67375deb0bb002af7da0711fc58f6e8926e7e",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "readme-openid-wg",
+      "headRefOid": "f67ae0d3469c11d4c4273263158258a730f968d6",
+      "closedAt": "2026-11-05T15:30:10Z",
+      "mergedAt": "2026-11-05T15:30:10Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "a3dce12e81f56606004a2a881e2517a544a6c946"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 289,
+      "id": "PR_kwDOQJKwSc8AAAABNdKulA",
+      "title": "README: drop Office hours link",
+      "url": "https://github.com/dickhardt/AAuth/pull/289",
+      "state": "MERGED",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Removes the Office hours link from Get Involved.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01B91Drmbn47fnUWEmcfvyHv",
+      "createdAt": "2026-11-07T03:22:43Z",
+      "updatedAt": "2026-11-07T03:22:52Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "a3dce12e81f56606004a2a881e2517a544a6c946",
+      "headRepository": "dickhardt/AAuth",
+      "headRefName": "readme-drop-office-hours",
+      "headRefOid": "66a6dbe85ef1c229fb808da02cbfb71e83245236",
+      "closedAt": "2026-11-07T03:22:50Z",
+      "mergedAt": "2026-11-07T03:22:49Z",
+      "mergedBy": "dickhardt",
+      "mergeCommit": {
+        "oid": "e287b1e5d4616b61e5fcda1ac56b1be14f9d8d06"
+      },
       "comments": [],
       "reviews": []
     }
