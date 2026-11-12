@@ -36,6 +36,7 @@ Implementing against an earlier revision? See [Updating from -10 to -11](upgrade
 | [regent-httpsig](https://github.com/regent-protocol/regent-httpsig) | Python resource-side verification and budgets metering |
 | [keycloak-aauth-extension](https://github.com/christian-posta/keycloak-aauth-extension) | Keycloak SPI (26.2.5) |
 | [aauth-person-server](https://github.com/christian-posta/aauth-person-server) | Person server with missions |
+| [ThunderID](https://github.com/thiva-k/thunder/tree/feat/aauth-person-server/backend/internal/aauth) | Person server in the ThunderID IAM stack (Go): person and auth tokens, missions, sub-agents |
 | [extauth-aauth-resource](https://github.com/christian-posta/extauth-aauth-resource) | Envoy / agentgateway ext-authz that makes an HTTP, MCP, or A2A service an AAuth resource |
 | [whoami](https://github.com/aauth-dev/whoami) | Identity claims resource |
 | [proxy](https://github.com/aauth-dev/proxy) | The user's AAuth agent as an MCP server |
