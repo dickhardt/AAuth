@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-11-08T03:16:22.653060+00:00",
+  "timestamp": "2026-11-15T03:46:51.144907+00:00",
   "repo": "dickhardt/AAuth",
   "labels": [
     {
@@ -4462,6 +4462,24 @@
       "updatedAt": "2026-11-04T10:16:44Z",
       "closedAt": null,
       "comments": []
+    },
+    {
+      "number": 290,
+      "id": "I_kwDOQJKwSc8AAAABehj1aA",
+      "title": "Metadata Documents: no rule for members a reader does not recognize",
+      "url": "https://github.com/dickhardt/AAuth/issues/290",
+      "state": "OPEN",
+      "author": "dickhardt",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "protocol"
+      ],
+      "body": "draft-hardt-oauth-aauth-protocol.md at e287b1e:\n- [L1977-L2000](https://github.com/dickhardt/AAuth/blob/e287b1e5d4616b61e5fcda1ac56b1be14f9d8d06/draft-hardt-oauth-aauth-protocol.md#L1977-L2000) (Metadata Documents): defines the members common to all four documents and leaves role-specific members to the per-role sections. It says nothing about members a reader does not recognize.\n- [L2476](https://github.com/dickhardt/AAuth/blob/e287b1e5d4616b61e5fcda1ac56b1be14f9d8d06/draft-hardt-oauth-aauth-protocol.md#L2476) (AAuth-Capabilities Request Header): \"Recipients ignore what they do not recognize throughout AAuth, and no document carries a version or schema identifier.\"\n\nThe only statement that reaches metadata documents is a descriptive sentence in the AAuth-Capabilities section. Someone reading Metadata Documents does not find it, and it is not a requirement. A PS that rejects an `aauth-resource.json` because it carries an extra member conforms as written.\n\nThis blocks extension members. OpenID Federation Well-Known Binding (https://dickhardt.github.io/well-known-binding/main.html) adds `trust_mark_types` and `trust_mark_types_required` to well-known documents. For RFC 8414 and RFC 9728 documents it cites RFC 8414, Section 2 and RFC 9728, Section 3.2 to show existing consumers are unaffected. For AAuth documents there is nothing to cite.\n\n**Ask:** In Metadata Documents, state \"A reader MUST ignore members of a metadata document it does not recognize.\" Related: AAuth defines no registry for metadata document members, so an extension has nowhere to register a member name.\n",
+      "createdAt": "2026-11-12T05:19:45Z",
+      "updatedAt": "2026-11-12T05:19:45Z",
+      "closedAt": null,
+      "comments": []
     }
   ],
   "pulls": [
@@ -7470,6 +7488,32 @@
       "mergeCommit": {
         "oid": "e287b1e5d4616b61e5fcda1ac56b1be14f9d8d06"
       },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 291,
+      "id": "PR_kwDOQJKwSc8AAAABOlm0Eg",
+      "title": "README: add ThunderID to the implementations table",
+      "url": "https://github.com/dickhardt/AAuth/pull/291",
+      "state": "OPEN",
+      "author": "thiva-k",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "Adds ThunderID's AAuth person server to the implementations table.\n\n[ThunderID](https://github.com/thunder-id/thunderid) is an open-source IAM stack for humans, AI agents, and machines (Apache 2.0, an LF Decentralized Trust project), built by [WSO2](https://wso2.com) ([WSO2Con talk](https://wso2.com/library/conference/2026/05/meet-thunderid-an-identity-core-for-the-future)). WSO2 is a member of the Linux Foundation's Agentic AI Foundation, where it contributes its agent identity work ([announcement](https://wso2.com/library/blogs/wso2-agentic-ai-foundation/)). The person server is built into ThunderID in Go:\n\n- Person token and auth token endpoints (three-party), with HTTP Message Signatures under the `Signature-Key` `jwt` scheme, Ed25519 and ES256\n- Missions (proposal, approval with `s256` and `person_tokens`, update, completion)\n- Sub-agents (`subagent_token`), agent-person binding, directed `sub`\n- Deferred `202` responses with Crockford interaction codes; the person signs in to ThunderID and consents on a page that separates agent-asserted content\n\n**Interop.** Tested against `interop-demo-profile.md`, surfaces 1 to 5. The agent is `@aauth/agent` 4.1.1 and the resource is built on `@aauth/resource` 3.1.0 (packages-js at 9002b28), so every token ThunderID issues is checked by the reference code. 47 of 47 checks pass on two consecutive runs:\n\n- Metadata: portless issuer, JWKS with fully-specified `alg`\n- Missions: deferred `202` with `AAuth-Requirement`, approval, `s256` over the served bytes\n- Person and auth tokens: `typ`, `iss`/`aud`/`dwk`, `cnf.jwk`, `mission_s256`, lifetimes, stable directed `sub`, consent through the interaction, remembered consent, an ES256 agent\n- Sub-agents: tokens bound to the sub-agent key; a sub-agent can't request directly\n- Negative cases: unsigned requests, missing `content-digest` coverage (`Signature-Error` with `required_input`), mismatched presented token, resource token bound to another key, `user_unreachable`, `mission_not_found` for another agent's mission\n- Lifecycle: denial as `403 denied`, mission update, completion, `mission_terminated`\n\nUnit tests for the package pass at 80.3% coverage, and `golangci-lint` reports 0 issues on the backend. Four-party federation, call chaining and revocation aren't implemented yet; ThunderID answers them with explicit errors.\n\nAgent identity is an active area for us. ThunderID has an open design track on assistant agents that people bring to an organization: registering them, binding them to their owner, consent, and revocation. That is the setting the person server addresses. We plan to keep ThunderID current with the drafts as the work moves to the OpenID Foundation. We'll also send the spec feedback from this implementation as separate issues, such as agent provider key rotation conflicting with the once-a-minute limit on refetching the key set (JWKS).\n\nThe code is on my fork while it is proposed to ThunderID upstream: [thiva-k/thunder, branch `feat/aauth-person-server`](https://github.com/thiva-k/thunder/tree/feat/aauth-person-server/backend/internal/aauth). I'll update the link once it lands upstream.\n",
+      "createdAt": "2026-11-12T08:13:38Z",
+      "updatedAt": "2026-11-12T18:12:01Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "e287b1e5d4616b61e5fcda1ac56b1be14f9d8d06",
+      "headRepository": "thiva-k/AAuth",
+      "headRefName": "readme-thunderid",
+      "headRefOid": "0d3ce2c48bab2337f5bb54e85d3be3f4bd658a2e",
+      "closedAt": null,
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
       "comments": [],
       "reviews": []
     }
