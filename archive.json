@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-11-15T03:46:51.144907+00:00",
+  "timestamp": "2026-11-19T04:58:29.741137+00:00",
   "repo": "dickhardt/AAuth",
   "labels": [
     {
@@ -4478,6 +4478,22 @@
       "body": "draft-hardt-oauth-aauth-protocol.md at e287b1e:\n- [L1977-L2000](https://github.com/dickhardt/AAuth/blob/e287b1e5d4616b61e5fcda1ac56b1be14f9d8d06/draft-hardt-oauth-aauth-protocol.md#L1977-L2000) (Metadata Documents): defines the members common to all four documents and leaves role-specific members to the per-role sections. It says nothing about members a reader does not recognize.\n- [L2476](https://github.com/dickhardt/AAuth/blob/e287b1e5d4616b61e5fcda1ac56b1be14f9d8d06/draft-hardt-oauth-aauth-protocol.md#L2476) (AAuth-Capabilities Request Header): \"Recipients ignore what they do not recognize throughout AAuth, and no document carries a version or schema identifier.\"\n\nThe only statement that reaches metadata documents is a descriptive sentence in the AAuth-Capabilities section. Someone reading Metadata Documents does not find it, and it is not a requirement. A PS that rejects an `aauth-resource.json` because it carries an extra member conforms as written.\n\nThis blocks extension members. OpenID Federation Well-Known Binding (https://dickhardt.github.io/well-known-binding/main.html) adds `trust_mark_types` and `trust_mark_types_required` to well-known documents. For RFC 8414 and RFC 9728 documents it cites RFC 8414, Section 2 and RFC 9728, Section 3.2 to show existing consumers are unaffected. For AAuth documents there is nothing to cite.\n\n**Ask:** In Metadata Documents, state \"A reader MUST ignore members of a metadata document it does not recognize.\" Related: AAuth defines no registry for metadata document members, so an extension has nowhere to register a member name.\n",
       "createdAt": "2026-11-12T05:19:45Z",
       "updatedAt": "2026-11-12T05:19:45Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 292,
+      "id": "I_kwDOQJKwSc8AAAABgN7Gqw",
+      "title": "What's the reason for representing and working with scopes as a space-separated string of values?",
+      "url": "https://github.com/dickhardt/AAuth/issues/292",
+      "state": "OPEN",
+      "author": "adeinega",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "It's a new protocol.\n\nWhat's holding our back?",
+      "createdAt": "2026-11-18T00:23:43Z",
+      "updatedAt": "2026-11-18T00:23:43Z",
       "closedAt": null,
       "comments": []
     }
