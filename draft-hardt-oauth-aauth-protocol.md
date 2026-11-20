@@ -2683,7 +2683,7 @@ Content-Type: application/problem+json
 | `denied` | 403 | User or approver explicitly denied the request |
 | `abandoned` | 403 | Interaction code was used but user did not complete |
 | `expired` | 408 | Timed out |
-| `revoked` | 403 | A token the pending request depends on was revoked (#token-revocation): the resource token it was started for, the upstream token of a chained request (#call-chaining), or the agent token of the agent that started it. `detail` SHOULD say which |
+| `revoked` | 403 | A token the pending request depends on was revoked (#token-revocation): the resource token it was started for, the token it carried as `presented_token` or `subagent_token`, the upstream token of a chained request (#call-chaining), or the agent token of the agent that started it; or the agent's binding to the person was revoked (#agent-person-binding). `detail` SHOULD say which |
 | `invalid_code` | 410 | Interaction code not recognized or already consumed |
 | `slow_down` | 429 | Polling too frequently; increase interval by 5 seconds |
 | `server_error` | 500 | Internal error |
@@ -2824,7 +2824,7 @@ A request whose signature does not verify is answered with `401` and the `Signat
 A recipient MUST say that a revoked token was revoked, not that it is malformed or expired. Where it says so depends on how the token was carried:
 
 - **Agent, person, or auth token in the `Signature-Key` header**: `401` with `Signature-Error: error=revoked_jwt` ([@!I-D.hardt-httpbis-signature-key]). A resource refusing a revoked auth token SHOULD also include `AAuth-Requirement: requirement=person-token` (#requirement-person-token). It MUST NOT answer with `requirement=auth-token` and a resource token, since the PS or AS would reject a resource token naming a revoked token with `revoked_presented_token`. For a revoked agent token no requirement repairs it; the agent obtains a fresh one from its provider.
-- **A token carried as a request parameter**: the signature verified, so this is not a `401`. The recipient returns `revoked_<parameter>_token` in the response body (#token-endpoint-error-codes). A pending request already started against a withdrawn resource token, or whose upstream token or agent's agent token is revoked while it waits, terminates with `revoked` (#polling-error-codes), with `detail` saying which.
+- **A token carried as a request parameter**: the signature verified, so this is not a `401`. The recipient returns `revoked_<parameter>_token` in the response body (#token-endpoint-error-codes). A pending request already started against a withdrawn resource token, or whose `presented_token`, `subagent_token`, upstream token, or agent's agent token is revoked while it waits, or whose agent's binding to the person is revoked while it waits, terminates with `revoked` (#polling-error-codes), with `detail` saying which.
 
 Verifying a token does not ask the issuer about that token, so a resource learns of a revocation only when one reaches its revocation endpoint. A party that no revocation reaches is bounded by token lifetime alone: at most one hour for an auth token or a person token, five minutes for a resource token, and 24 hours for an agent token presented directly to a resource. Deployments requiring immediate termination should issue shorter-lived tokens rather than rely on revocation reaching every holder.
 
