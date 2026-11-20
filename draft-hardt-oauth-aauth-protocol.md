@@ -1517,13 +1517,16 @@ Signature-Key: sig=jwt;jwt="eyJhbGc..."
 - `action` (REQUIRED): `update`.
 - `description` (REQUIRED): A Markdown string describing what changed.
 
-The PS MAY accept the update on its own, or return a `202 Accepted` deferred response while the person reviews it. On acceptance it appends the update to the mission log and returns its `s256` — the unpadded base64url SHA-256 digest of the update's bytes as the PS persists them — so the sequence of accepted updates is verifiable, not merely stored:
+The PS MAY accept the update on its own, or return a `202 Accepted` deferred response while the person reviews it. On acceptance it appends the update to the mission log and returns its `s256` — the unpadded base64url SHA-256 digest of the update's bytes as the PS persists them — together with those bytes as `update`, base64url-encoded without padding, so the sequence of accepted updates is verifiable, not merely stored:
 
 ```json
 {
-  "s256": "Q2h1Y2sgSW50ZWdyaXR5IENoZWNr..."
+  "s256": "Q2h1Y2sgSW50ZWdyaXR5IENoZWNr...",
+  "update": "eyJkZXNjcmlwdGlvbiI6IiMgSG90ZWwgdW5hdmFpbGFibGVcblxuVGhlIGhv..."
 }
 ```
+
+The PS MUST return as `update` the exact bytes `s256` was computed over, and MUST serve those same bytes wherever it later exposes the update, as it does for the mission blob (#mission-identifier).
 
 An update does not change the mission. The blob is immutable, `mission_s256` is unchanged, and every token carrying it remains valid — which is the point: the agent keeps working while the record catches up.
 
