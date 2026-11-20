@@ -551,11 +551,11 @@ The event endpoint carries what happened. Every request is a report with an `eve
 | `auth_token.issued` | `sdi`, `jti`, `aud`, `scope`, `exp`, `issuer` | The PS issued an auth token, or an AS did on the PS's federation, under `sdi`; `issuer` is the PS or the AS |
 | `decision.resolved` | (#event-decision-resolved) | What the person decided after an `ask`, or when the SS was unavailable |
 | `audit.recorded` | `action`, `description`, `parameters`, `result` | The agent logged an action at the PS's audit endpoint, as it sent it |
-| `interaction.requested` | `type`, `url` | The agent asked the PS to relay an interaction to the person, and the PS did. Not a decision (#why-interaction-is-an-event) |
+| `interaction.requested` | `type`, `url` | The agent asked the PS to carry an interaction request to the person, and the PS did. Not a decision (#why-interaction-is-an-event) |
 | `agent.bound` | `agent_iss`, `agent_sub` | The PS bound the agent to the person on first approval |
 | `revocation.received` | `token_type`, `iss`, `jti`, `exp` | The PS received a revocation: an agent token from the agent provider, or a resource token from a resource. The SS is told; it has no part in the cascade |
 
-Every event carries the envelope (#envelope). The `code` of a relayed interaction is not forwarded. `token_type` is `agent_token` for a revocation from an agent provider and `resource_token` for a revocation from a resource.
+Every event carries the envelope (#envelope). `interaction.requested` is sent for every interaction request the PS carried to the person, of any `type`; `url` is present for `interaction` and `payment`. The `code` of a relayed interaction is not forwarded. `token_type` is `agent_token` for a revocation from an agent provider and `resource_token` for a revocation from a resource.
 
 ## Decision Resolved {#event-decision-resolved}
 
@@ -743,7 +743,7 @@ A JWT would be a second encoding of a body that is already JSON, and a new token
 
 ## Why Interaction Relay Is an Event {#why-interaction-is-an-event}
 
-When an agent asks the PS to relay an interaction, a resource or an AS has already decided the person is needed; the relay is not authorization. A `deny` from the SS could stop the PS relaying, but the protocol then has the agent direct the person itself, so the deny would remove the person's better channel and stop nothing. The SS is told, so an agent that keeps sending the person to interaction pages is visible in its record.
+An interaction request is not authorization. For `interaction` and `payment`, a resource or an AS has already decided the person is needed. For `question`, the agent has decided to ask the person. A `deny` from the SS could stop the PS relaying, but the protocol then has the agent direct the person itself, so the deny would remove the person's better channel and stop nothing. The SS is told, so an agent that keeps sending the person to interaction pages is visible in its record.
 
 ## Why Routing, Not Fan-Out {#why-routing-only}
 
