@@ -1363,7 +1363,7 @@ Missions are OPTIONAL. The protocol operates in all modes without missions. When
 
 The `mission_endpoint` is the agent's surface for the missions it owns. Parties other than the owning agent — the person, an administrator, a management service — read and manage missions at the `mission_control_endpoint` (#ps-metadata) instead, under a different authentication model.
 
-The agent has three operations, all of the same shape: it proposes, the person decides, and the PS returns a deferred response (#deferred-responses) with clarification chat available (#clarification-chat) whenever the person must be asked.
+The agent has three operations, all of the same shape: it proposes, the PS or the person decides, and the PS returns a deferred response (#deferred-responses) with clarification chat available (#clarification-chat) whenever the person must be asked.
 
 | Request | Operation |
 |---|---|
