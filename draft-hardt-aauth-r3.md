@@ -72,6 +72,104 @@ organization = "Hellō"
   </front>
 </reference>
 
+<reference anchor="MCP" target="https://modelcontextprotocol.io/specification/2025-06-18">
+  <front>
+    <title>Model Context Protocol Specification, Revision 2025-06-18</title>
+    <author>
+      <organization>Model Context Protocol</organization>
+    </author>
+    <date year="2025" month="June" day="18"/>
+  </front>
+</reference>
+
+<reference anchor="OpenAPI" target="https://spec.openapis.org/oas/v3.2.1.html">
+  <front>
+    <title>OpenAPI Specification v3.2.1</title>
+    <author>
+      <organization>OpenAPI Initiative</organization>
+    </author>
+    <date year="2026" month="September" day="10"/>
+  </front>
+</reference>
+
+<reference anchor="gRPC" target="https://github.com/grpc/grpc/blob/v1.84.0/doc/PROTOCOL-HTTP2.md">
+  <front>
+    <title>gRPC over HTTP2</title>
+    <author>
+      <organization>gRPC Authors</organization>
+    </author>
+    <date year="2026" month="September"/>
+  </front>
+  <refcontent>gRPC release 1.84.0</refcontent>
+</reference>
+
+<reference anchor="Protobuf" target="https://protobuf.dev/reference/protobuf/proto3-spec/">
+  <front>
+    <title>Protobuf Language Specification (Proto3)</title>
+    <author>
+      <organization>Google</organization>
+    </author>
+    <date year="2026"/>
+  </front>
+</reference>
+
+<reference anchor="GraphQL" target="https://spec.graphql.org/September2025/">
+  <front>
+    <title>GraphQL Specification, September 2025 Edition</title>
+    <author>
+      <organization>GraphQL Foundation</organization>
+    </author>
+    <date year="2025" month="September"/>
+  </front>
+</reference>
+
+<reference anchor="AsyncAPI" target="https://www.asyncapi.com/docs/reference/specification/v3.0.0">
+  <front>
+    <title>AsyncAPI Specification 3.0.0</title>
+    <author>
+      <organization>AsyncAPI Initiative</organization>
+    </author>
+    <date year="2023"/>
+  </front>
+</reference>
+
+<reference anchor="WSDL" target="https://www.w3.org/TR/2001/NOTE-wsdl-20010315">
+  <front>
+    <title>Web Services Description Language (WSDL) 1.1</title>
+    <author initials="E." surname="Christensen" fullname="Erik Christensen">
+      <organization>Microsoft</organization>
+    </author>
+    <author initials="F." surname="Curbera" fullname="Francisco Curbera">
+      <organization>IBM Research</organization>
+    </author>
+    <author initials="G." surname="Meredith" fullname="Greg Meredith">
+      <organization>Microsoft</organization>
+    </author>
+    <author initials="S." surname="Weerawarana" fullname="Sanjiva Weerawarana">
+      <organization>IBM Research</organization>
+    </author>
+    <date year="2001" month="March" day="15"/>
+  </front>
+  <refcontent>W3C Note</refcontent>
+</reference>
+
+<reference anchor="OData-CSDL" target="https://docs.oasis-open.org/odata/odata-csdl-xml/v4.01/odata-csdl-xml-v4.01.html">
+  <front>
+    <title>OData Common Schema Definition Language (CSDL) XML Representation Version 4.01</title>
+    <author initials="M." surname="Pizzo" fullname="Michael Pizzo">
+      <organization>Microsoft</organization>
+    </author>
+    <author initials="R." surname="Handl" fullname="Ralf Handl">
+      <organization>SAP SE</organization>
+    </author>
+    <author initials="M." surname="Zurmuehl" fullname="Martin Zurmuehl">
+      <organization>SAP SE</organization>
+    </author>
+    <date year="2020" month="May" day="11"/>
+  </front>
+  <refcontent>OASIS Standard</refcontent>
+</reference>
+
 
 .# Abstract
 
@@ -147,19 +245,19 @@ R3 also defines an additional value for the `access_mode` field, registered in t
 
 ## Operation Identifier Scope {#operation-identifier-scope}
 
-Operation identifiers are scoped to the discovery endpoint the resource advertises for that vocabulary in `r3_vocabularies`. A resource advertises exactly one discovery endpoint per vocabulary, and each underlying format requires operation identifiers to be unique within a single definition (OpenAPI `operationId` within a document, MCP tool names within a server, GraphQL operation names within a schema, AsyncAPI `operationId` within a document). Bare identifiers in `r3_operations` requests, R3 documents, and `r3_granted`/`r3_per_call` claims therefore resolve unambiguously against that one definition, and no additional qualifier appears in tokens.
+Operation identifiers are scoped to the discovery endpoint the resource advertises for that vocabulary in `r3_vocabularies`. A resource advertises exactly one discovery endpoint per vocabulary, and each underlying format requires operation identifiers to be unique within a single definition (OpenAPI `operationId` within a document, MCP tool names within a server, GraphQL operation names within a schema, AsyncAPI keys of the root `operations` object within a document). Bare identifiers in `r3_operations` requests, R3 documents, and `r3_granted`/`r3_per_call` claims therefore resolve unambiguously against that one definition, and no additional qualifier appears in tokens.
 
 A resource that aggregates multiple backend services behind a single resource identifier MUST do one of the following: present them as one valid definition at the discovery endpoint (renaming colliding identifiers as needed to satisfy the format's uniqueness rules), or expose the services under separate resource identifiers (in which case the auth token's `aud` claim distinguishes them). Identical identifiers at *different* resources are already disambiguated by token binding: an auth token is bound to one resource via `aud`, and `r3_uri`/`r3_s256` pin the exact R3 document the grant was drawn from.
 
 ## Standard Vocabularies
 
-This document defines seven standard vocabularies. Third parties MAY define additional vocabularies using their own URI namespaces. Each vocabulary defines: the vocabulary URI, the structure of operation requests, how the resource maps operations to R3 documents, and the discovery endpoint.
+This document defines seven standard vocabularies. Third parties MAY define additional vocabularies using their own URI namespaces. Each vocabulary defines: the vocabulary URI, the structure of operation requests, how the resource maps operations to R3 documents, and the discovery endpoint. Each standard vocabulary takes its operation identifiers from the revision of its format named in its section.
 
 Standard vocabularies use the `urn:aauth:vocabulary:` namespace.
 
 ### MCP Vocabulary (`urn:aauth:vocabulary:mcp`) {#mcp-vocabulary}
 
-For resources that expose an MCP server. The discovery endpoint is the MCP server URL. Agents discover available tool names via MCP tool discovery.
+For resources that expose an MCP server, as defined by MCP revision 2025-06-18 ([@!MCP]). The discovery endpoint is the MCP server URL. Agents discover available tool names via MCP tool discovery.
 
 Each operation entry contains:
 
@@ -177,11 +275,13 @@ Each operation entry contains:
 
 ### OpenAPI Vocabulary (`urn:aauth:vocabulary:openapi`) {#openapi-vocabulary}
 
-For resources that expose an OpenAPI-described HTTP API. The discovery endpoint is the OpenAPI specification URL. Agents discover available operations by fetching and parsing the spec.
+For resources that expose an HTTP API described by OpenAPI 3.2.1 ([@!OpenAPI]). The discovery endpoint is the OpenAPI specification URL. Agents discover available operations by fetching and parsing the spec.
 
 Each operation entry contains:
 
-- **`operationId`** (REQUIRED). The `operationId` as defined in the OpenAPI specification.
+- **`operationId`** (REQUIRED). The `operationId` of the Operation Object.
+
+OpenAPI makes `operationId` optional. Every operation a resource exposes through R3 MUST have an `operationId`, which OpenAPI requires to be unique among all operations the document describes. An operation without one is not offered through R3. The rule covers operations under `webhooks` and `callbacks` as it covers those under `paths`, since OpenAPI's uniqueness rule spans all of them. A resource SHOULD NOT change an `operationId` it has advertised. A changed `operationId` names a different operation, which existing grants do not cover.
 
 ```json
 {
@@ -195,7 +295,7 @@ Each operation entry contains:
 
 ### gRPC Vocabulary (`urn:aauth:vocabulary:grpc`) {#grpc-vocabulary}
 
-For resources that expose a gRPC server. The discovery endpoint is the gRPC server reflection endpoint (supporting `grpc.reflection.v1.ServerReflection`) or a hosted `.proto` file URL.
+For resources that expose a gRPC server, using gRPC over HTTP2 as of gRPC release 1.84.0 ([@!gRPC]) with services defined in proto3 ([@!Protobuf]). The discovery endpoint is the gRPC server reflection endpoint (supporting `grpc.reflection.v1.ServerReflection`) or a hosted `.proto` file URL.
 
 Each operation entry contains:
 
@@ -213,7 +313,7 @@ Each operation entry contains:
 
 ### GraphQL Vocabulary (`urn:aauth:vocabulary:graphql`) {#graphql-vocabulary}
 
-For resources that expose a GraphQL API. The discovery endpoint is the GraphQL endpoint. Agents discover available operations via GraphQL introspection (`__schema` query).
+For resources that expose a GraphQL API, as defined by the September 2025 edition of the GraphQL specification ([@!GraphQL]). The discovery endpoint is the GraphQL endpoint. Agents discover available operations via GraphQL introspection (`__schema` query).
 
 Each operation entry contains:
 
@@ -232,12 +332,12 @@ Each operation entry contains:
 
 ### AsyncAPI Vocabulary (`urn:aauth:vocabulary:asyncapi`) {#asyncapi-vocabulary}
 
-For resources that emit events described by AsyncAPI. The discovery endpoint is the AsyncAPI specification URL.
+For resources that emit events described by AsyncAPI 3.0.0 ([@!AsyncAPI]). The discovery endpoint is the AsyncAPI specification URL.
 
 Each operation entry contains:
 
-- **`operationId`** (REQUIRED). The `operationId` as defined in the AsyncAPI specification.
-- **`action`** (OPTIONAL). The AsyncAPI action type: `send` or `receive`. Agents subscribing to events use `receive`.
+- **`operationId`** (REQUIRED). The operation's key in the root `operations` object of the resource's AsyncAPI document, which AsyncAPI calls the `operationId`. The Operation Object itself has no `operationId` field.
+- **`action`** (OPTIONAL). `send` or `receive`. When present, it MUST equal the `action` of that operation in the resource's AsyncAPI document. AsyncAPI states `action` from the perspective of the application the document describes, which is the resource, so an event the resource emits is `send`.
 
 When a resource grants an agent an AsyncAPI subscription operation via R3, the actual subscription registration and event delivery use the AAuth Events protocol ([@?I-D.hardt-aauth-events]). The resource issues a subscription ticket URL in response to the authenticated request; the agent then completes subscription registration using a subscribe token per AAuth Events.
 
@@ -253,7 +353,7 @@ When a resource grants an agent an AsyncAPI subscription operation via R3, the a
 
 ### WSDL Vocabulary (`urn:aauth:vocabulary:wsdl`) {#wsdl-vocabulary}
 
-For resources that expose a SOAP/WSDL-described web service. The discovery endpoint is the WSDL document URL.
+For resources that expose a SOAP web service described by WSDL 1.1 ([@!WSDL]). The discovery endpoint is the WSDL document URL.
 
 Each operation entry contains:
 
@@ -271,7 +371,7 @@ Each operation entry contains:
 
 ### OData Vocabulary (`urn:aauth:vocabulary:odata`) {#odata-vocabulary}
 
-For resources that expose an OData service. The discovery endpoint is the OData service root URL. Agents discover entity sets, functions, and actions via the `$metadata` document.
+For resources that expose an OData service whose model is described in CSDL as defined by OData Version 4.01 ([@!OData-CSDL]). The discovery endpoint is the OData service root URL. Agents discover entity sets, functions, and actions via the `$metadata` document.
 
 Each operation entry contains:
 
@@ -342,8 +442,6 @@ Each vocabulary encodes the two annotations using its own format's extension mec
 | AsyncAPI | Operation Object | `x-aauth-access-mode` | `x-aauth-budget` |
 | OData | `Annotation` in `$metadata` | `AAuth.AccessMode` | `AAuth.Budget` |
 
-For OData, the annotation is applied to the entity set or bound operation the R3 operation identifier names (#odata-vocabulary).
-
 OpenAPI, using a specification extension on the Operation Object:
 
 ```json
@@ -369,6 +467,25 @@ MCP, using `_meta` on the tool with a prefix per that specification's convention
 ```
 
 The OpenAPI encoding deliberately does not use the Operation Object's `security` field. AAuth does not correspond to any OpenAPI security scheme type, and tooling acting on a misdeclared scheme would do the wrong thing, where an unrecognized `x-` extension is ignored.
+
+OData, using two terms declared in a vocabulary whose namespace is `dev.aauth.R3.V1` ([@!OData-CSDL]):
+
+```xml
+<edmx:Edmx xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx"
+           Version="4.0">
+  <edmx:DataServices>
+    <Schema xmlns="http://docs.oasis-open.org/odata/ns/edm"
+            Namespace="dev.aauth.R3.V1" Alias="AAuth">
+      <Term Name="AccessMode" Type="Edm.String"
+            AppliesTo="EntitySet Action Function"/>
+      <Term Name="Budget" Type="Edm.Boolean" DefaultValue="true"
+            AppliesTo="EntitySet Action Function"/>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>
+```
+
+`AccessMode` is a string carrying one of the values in (#access-mode-annotation). `Budget` is a boolean, and an `Annotation` naming it without a value is `true`, the term's `DefaultValue`. Each is applied to the entity set, bound action, or bound function the R3 operation identifier names (#odata-vocabulary). A `$metadata` document brings the terms into scope with an `edmx:Include` naming the namespace. The alias `AAuth` used in this document is the one the vocabulary declares; a `$metadata` document chooses its own alias in `edmx:Include`, so a client identifies the terms by namespace.
 
 ## Vocabularies Without an Encoding {#no-annotation-encoding}
 
@@ -490,7 +607,9 @@ The resource's serialization is the document. There is no canonicalization step 
 The `r3_s256` hash is the document's identity, not the URI. The AS caches documents by hash. If a resource updates the document at the same URI, existing auth tokens still reference the previous hash (which the AS has cached). New resource tokens reference the new hash. This enables:
 
 - **Infinite caching by the AS.** A document that verifies against its hash need never be re-fetched.
-- **Permanent audit records.** An auth token carrying `r3_s256` identifies the exact authorization semantics that were approved, regardless of subsequent changes at the same URI.
+- **Audit records.** An auth token carrying `r3_s256` identifies the exact authorization semantics that were approved, regardless of subsequent changes at the same URI.
+
+Verifying such a record later needs the bytes that were hashed. Either of two things is enough: a retained copy of the document, or an `r3_uri` whose bytes never change, for example because the resource serves each revision at a new URI. Without either, `r3_s256` still names the approved document, but nothing remains to check it against.
 
 ## Resource Token Extensions
 
@@ -557,7 +676,7 @@ In four-party access the PS verifies the AS's auth token before returning it to 
 
 ## Caching
 
-The issuer is not required to retain R3 documents beyond their immediate use in token issuance. Its audit log records `r3_uri` and `r3_s256`, which is enough to re-fetch and verify the document later.
+The issuer is not required to retain R3 documents beyond their immediate use in token issuance. Its audit log records `r3_uri` and `r3_s256`, which identify the document. Checking the document later needs its bytes (#content-addressing).
 
 # Auth Token Extensions
 
@@ -609,7 +728,7 @@ R3 extension claims:
 }
 ```
 
-**`r3_uri`** and **`r3_s256`** provide audit provenance: a permanent, verifiable record of which R3 document was in effect at approval time. The issuer can verify the R3 document by fetching `r3_uri` and checking `r3_s256`.
+**`r3_uri`** and **`r3_s256`** provide audit provenance: a record of which R3 document was in effect at approval time, verifiable for as long as that document's bytes can be obtained (#content-addressing).
 
 **`r3_granted`** and **`r3_per_call`** use the same vocabulary-specific operation format as the R3 document's `operations` field and the agent's `r3_operations` request:
 
@@ -816,8 +935,14 @@ There are currently no known implementations.
 
 *Note: This section is to be removed before publishing as an RFC.*
 
-Everything below is a change to the editor's copy, made while the design was being explored against implementations in progress. Earlier entries were logged under `-01` and `-02` before it was settled that the whole of this work becomes the first submission; they are one list here, which is `draft-hardt-aauth-r3-00`. Readers wanting the detail behind any entry will find it in the repository's history and pull requests.
+Everything under `draft-hardt-aauth-r3-00` is a change to the editor's copy, made while the design was being explored against implementations in progress. Earlier entries were logged under `-01` and `-02` before it was settled that the whole of this work becomes the first submission; they are one list here, which is `draft-hardt-aauth-r3-00`. Readers wanting the detail behind any entry will find it in the repository's history and pull requests.
 
+- draft-hardt-aauth-r3-01
+  - Each standard vocabulary cites its format as a normative reference and names the revision its identifiers come from: MCP 2025-06-18, OpenAPI 3.2.1, gRPC over HTTP2 as of gRPC 1.84.0 with proto3 service definitions, GraphQL September 2025, AsyncAPI 3.0.0, WSDL 1.1, and OData CSDL 4.01. Issue #249.
+  - An AsyncAPI operation is identified by its key in the root `operations` object. `action` stays OPTIONAL and, when present, MUST equal the `action` of that operation in the resource's AsyncAPI document, which states it from the resource's perspective. Issue #246.
+  - Every OpenAPI operation offered through R3 MUST have an `operationId`, unique across the document, and the rule covers operations under `webhooks` and `callbacks`. An operation without one is not offered through R3. A resource SHOULD NOT change an advertised `operationId`; a changed one names a different operation, which existing grants do not cover. Issue #255.
+  - Verifying an audit record later needs the R3 document's bytes, from a retained copy or from an `r3_uri` whose bytes never change. The audit claims no longer call the record permanent. Issue #247.
+  - Declared the OData annotation terms in vocabulary `dev.aauth.R3.V1`, alias `AAuth`: `AccessMode` is an `Edm.String` and `Budget` an `Edm.Boolean` defaulting to `true`, both applying to entity sets and bound actions and functions. Issue #248.
 - draft-hardt-aauth-r3-00
   - Aligned with AAuth Protocol -11 as published. A party fetching an R3 document signs as a server under the `jwks_uri` scheme, and the entitled PS is the resource token's `ps`, which on a per-call challenge comes from the auth token the request carried, not a person token. The PS renders `display` as resource-asserted content per Consent Presentation. Issuer Processing verifies the resource token and its `presented_token` per Resource Token Verification, and no longer provides for an AS reached other than by a PS-to-AS token request, since the PS is the only caller. A per-call auth token expires no later than the auth token presented on the call, and under `202` its retained result is the pending URL's exception to `410 Gone`. The access-mode ladder rests on a resource verifying a person token or an auth token before issuing a resource token. A runtime requirement may arrive on a `202` as well as a `401`. The JWT claim registrations name a change controller.
   - A person token or auth token satisfies an `agent-token` operation only where the resource does not decide on the agent identifier. Where it does, the resource answers `requirement=agent-token`, and the agent presents its agent token for that call.
@@ -864,7 +989,7 @@ OAuth 2.0 Rich Authorization Requests ([@RFC9396]) defines `authorization_detail
 
 The difference is not directionality. RAR does not require that the client author `authorization_details`, and OAuth Transaction Authorization Challenge ([@?I-D.rosomakho-oauth-txn-challenge]) has the resource author them: the protected resource returns a signed challenge whose `authorization_details` describe the operation it will not perform without approval, the AS validates the challenge and obtains that approval, and the access token it issues carries granted authorization details derived from the challenge. That is resource-declared authorization detail, expressed in RAR. Three properties of R3 survive that comparison.
 
-**Content addressing.** An R3 document is identified by the hash of the bytes the resource served (#content-addressing). The `r3_uri` and `r3_s256` in an auth token name the exact document that was in effect at approval time, and a later reader re-fetches those bytes and verifies the hash, so the audit record is checkable rather than asserted. A challenge carries its `authorization_details` inline — in the challenge, and again in the token — and nothing versions or addresses them. Two grants over the same operation are two independent copies with no identity relating them, and there is nothing to re-fetch.
+**Content addressing.** An R3 document is identified by the hash of the bytes the resource served (#content-addressing). The `r3_uri` and `r3_s256` in an auth token name the exact document that was in effect at approval time, and a later reader holding those bytes, retained or served unchanged at `r3_uri`, verifies the hash, so the audit record is checkable rather than asserted. A challenge carries its `authorization_details` inline — in the challenge, and again in the token — and nothing versions or addresses them. Two grants over the same operation are two independent copies with no identity relating them, and there is nothing to re-fetch.
 
 **Agent opacity.** The agent relaying a transaction authorization challenge can read it: the challenge is a signed JWT the client is required to validate, its `reason` is intended for display, and its `reason_uri` is dereferenceable by the client. An R3 agent carries the hash of a document the resource will refuse to serve it (#r3-document-access-restriction). What the access does, what data it touches, and what cannot be undone reach the PS and the AS and never the agent.
 
@@ -880,7 +1005,7 @@ RAR and R3 remain complementary. RAR is the OAuth-native way to express structur
 | `urn:aauth:vocabulary:openapi` | HTTP/REST | `operationId` | OpenAPI spec URL |
 | `urn:aauth:vocabulary:grpc` | gRPC | `package.Service/Method` | Server reflection or `.proto` URL |
 | `urn:aauth:vocabulary:graphql` | GraphQL | Operation name | GraphQL introspection |
-| `urn:aauth:vocabulary:asyncapi` | Event-driven | `operationId` | AsyncAPI spec URL |
+| `urn:aauth:vocabulary:asyncapi` | Event-driven | Key in `operations` | AsyncAPI spec URL |
 | `urn:aauth:vocabulary:wsdl` | SOAP/WSDL | Operation name | WSDL document URL |
 | `urn:aauth:vocabulary:odata` | OData | Entity set or bound operation | `$metadata` URL |
 
@@ -892,7 +1017,7 @@ RAR and R3 remain complementary. RAR is the OAuth-native way to express structur
 | Carriage | Inline, in the challenge and the token | Content-addressed document |
 | Agent visibility | Reads what it relays | Carries a hash it cannot resolve |
 | Versioning | None | URI plus hash |
-| Audit trail | Inline copy | `r3_uri` and `r3_s256`, re-fetchable |
+| Audit trail | Inline copy | `r3_uri` and `r3_s256`, checkable against a retained copy or unchanged bytes at `r3_uri` |
 | Large values | Inline | Digest with optional excerpt |
 | Human display | `reason` in a challenge | `display` section |
 | Irreversibility | Not specified | `display.irreversible` |
