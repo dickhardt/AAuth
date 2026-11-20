@@ -440,8 +440,6 @@ Each vocabulary encodes the two annotations using its own format's extension mec
 | AsyncAPI | Operation Object | `x-aauth-access-mode` | `x-aauth-budget` |
 | OData | `Annotation` in `$metadata` | `AAuth.AccessMode` | `AAuth.Budget` |
 
-For OData, the annotation is applied to the entity set or bound operation the R3 operation identifier names (#odata-vocabulary).
-
 OpenAPI, using a specification extension on the Operation Object:
 
 ```json
@@ -467,6 +465,25 @@ MCP, using `_meta` on the tool with a prefix per that specification's convention
 ```
 
 The OpenAPI encoding deliberately does not use the Operation Object's `security` field. AAuth does not correspond to any OpenAPI security scheme type, and tooling acting on a misdeclared scheme would do the wrong thing, where an unrecognized `x-` extension is ignored.
+
+OData, using two terms declared in a vocabulary whose namespace is `dev.aauth.R3.V1` ([@!OData-CSDL]):
+
+```xml
+<edmx:Edmx xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx"
+           Version="4.0">
+  <edmx:DataServices>
+    <Schema xmlns="http://docs.oasis-open.org/odata/ns/edm"
+            Namespace="dev.aauth.R3.V1" Alias="AAuth">
+      <Term Name="AccessMode" Type="Edm.String"
+            AppliesTo="EntitySet Action Function"/>
+      <Term Name="Budget" Type="Edm.Boolean" DefaultValue="true"
+            AppliesTo="EntitySet Action Function"/>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>
+```
+
+`AccessMode` is a string carrying one of the values in (#access-mode-annotation). `Budget` is a boolean, and an `Annotation` naming it without a value is `true`, the term's `DefaultValue`. Each is applied to the entity set, bound action, or bound function the R3 operation identifier names (#odata-vocabulary). A `$metadata` document brings the terms into scope with an `edmx:Include` naming the namespace. The alias `AAuth` used in this document is the one the vocabulary declares; a `$metadata` document chooses its own alias in `edmx:Include`, so a client identifies the terms by namespace.
 
 ## Vocabularies Without an Encoding {#no-annotation-encoding}
 
