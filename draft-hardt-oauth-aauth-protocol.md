@@ -548,7 +548,7 @@ Invalid agent identifiers:
 
 Implementations MUST perform exact string comparison on agent identifiers (case-sensitive): `aauth:Agent@agent.example` and `aauth:agent@agent.example` are different agents, and an implementation MUST NOT case-fold the `local` part.
 
-An agent identifier is stable across key rotations. The agent token binds it to the agent's current signing key.
+An agent identifier is stable across rotations of the agent's request-signing key, the key in `cnf.jwk`, while the durable key the agent enrolled with at its agent provider stays unchanged. The agent token binds it to the agent's current signing key. In AAuth Bootstrap ([@?I-D.hardt-aauth-bootstrap]), replacing the durable key makes a new agent.
 
 ## Agent Token {#agent-tokens}
 
@@ -562,7 +562,7 @@ An agent token is a JWT with `typ: aa-agent+jwt`. Its header and the claims `iss
 - `exp`: Agent tokens SHOULD NOT have a lifetime exceeding 24 hours.
 
 Required payload claims specific to agent tokens:
-- `sub`: Agent identifier (stable across key rotations)
+- `sub`: Agent identifier (stable across rotations of the request-signing key (#agent-identifiers))
 
 Optional payload claims:
 - `ps`: The HTTPS URL of the agent's person server. Configured per agent instance. When present, it tells a resource that the agent has a person server and which one, before the resource has verified a person token — enough to decide whether to challenge for one. The PS of an issued authorization is the `iss` of the person token the resource verified (#person-token-structure), not this claim. This claim is distinct from `iss` (which identifies the agent provider that issued the token).
