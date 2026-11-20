@@ -1466,7 +1466,7 @@ Response members:
 The mission blob MUST include:
 
 - `agent`: The agent identifier (`aauth:local@domain`).
-- `approved_at`: ISO 8601 timestamp of when the mission was approved. Ensures the `s256` is globally unique.
+- `approved_at`: ISO 8601 timestamp of when the mission was approved. Two approvals with the same members and the same `approved_at` have the same bytes and so the same `s256`; a PS MAY add a member to distinguish otherwise identical approvals.
 - `description`: Markdown string describing the approved mission scope.
 
 The mission blob MAY include:
