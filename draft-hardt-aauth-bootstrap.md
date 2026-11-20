@@ -488,6 +488,9 @@ TBD
 
 *Note: This section is to be removed before publishing as an RFC.*
 
+- draft-hardt-aauth-bootstrap-03
+  - Two-Key Refresh: the AP rejects a naming JWT whose `jti` it has already accepted, until that JWT's `exp`, so each refresh takes a new durable-key signature. Issue #251.
+
 - draft-hardt-aauth-bootstrap-02
   - Consistency pass against AAuth Protocol -11. Dropped the BCP 14 boilerplate, which an informational document that uses no keywords does not need. The web enrollment sketch no longer issues agent tokens "directed at" a PS: an agent has one person server, carried in `ps`. The agent-token lifetime bound is the protocol's recommended maximum, not a ceiling. Scheme names are given as prose.
   - Added Many Agents, One Operator under Self-Hosted Agents: one published AP key, one self-issued token per agent with its own `sub` and `cnf` key, agent keys never published, custody by blast radius. The single-key description assumed one agent per domain, and a deployment read it as "each agent holds a key published at a well-known URL". Refresh, enrollment, and Security Considerations gained the several-agent case.
