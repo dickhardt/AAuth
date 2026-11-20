@@ -2185,7 +2185,7 @@ Role-specific fields:
 - `authorization_endpoint` (OPTIONAL): URL where agents request authorization (#authorization-endpoint-request). When absent, the resource issues resource tokens and interaction requirements via `401` responses.
 - `scope_descriptions` (OPTIONAL): Object mapping scope values to Markdown strings for consent display (#scopes).
 - `signature_window` (OPTIONAL): Integer. The signature validity window in seconds for the `created` timestamp (#verification). Default: 60. A resource MAY advertise a larger value for agents with poor clock synchronization, or a smaller one.
-- `additional_signature_components` (OPTIONAL): Array of HTTP message component identifiers ([@!RFC9421]) that agents MUST include in the `Signature-Input` covered components when signing requests to this resource, in addition to the base components (#covered-components).
+- `additional_signature_components` (OPTIONAL): Array of HTTP message component identifiers ([@!RFC9421]) that agents MUST include in the `Signature-Input` covered components when signing requests to this resource, in addition to the base components (#covered-components). A component that describes a body, such as `content-digest` or `content-type`, applies only to requests that carry a body; a bodyless request, such as a poll (#polling-with-get), does not cover it.
 - `revocation_endpoint` (RECOMMENDED for a resource that accepts person tokens): URL where the issuer of an auth token or person token for this resource revokes it (#token-revocation). A resource that accepts only agent tokens receives no revocations and need not publish one.
 
 ### Resource Metadata Link Relation {#resource-metadata-link}
