@@ -46,6 +46,16 @@ organization = "Hellō"
   </front>
 </reference>
 
+<reference anchor="I-D.hardt-aauth-r3" target="https://datatracker.ietf.org/doc/draft-hardt-aauth-r3">
+  <front>
+    <title>AAuth Rich Resource Requests (R3)</title>
+    <author initials="D." surname="Hardt" fullname="Dick Hardt">
+      <organization>Hellō</organization>
+    </author>
+    <date year="2026"/>
+  </front>
+</reference>
+
 .# Abstract
 
 This document defines AAuth Supervision — the interface between a Person Server (PS) and a Supervision Server (SS) under the AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]). The AAuth Protocol names a Supervisor that evaluates each act an agent asks its PS to authorize: the person by default, or a supervision server the PS consults on the person's behalf. This document specifies how a person connects a supervision server to their PS, how the PS puts each decision to it, how the server answers, and how the PS tells it what happened.
@@ -208,7 +218,7 @@ The PS mints an `sdi` for each supervision request before it makes the request. 
 
 ## Delivery {#delivery}
 
-The PS delivers requests for one `(sub, SS)` pair in the order the acts occurred. The PS retries a request that did not receive a terminal response, under the same `id` or `sdi`, until it does. The SS deduplicates on `(iss, id)` and answers a repeated event with `201` and nothing new recorded. A repeated supervision request is answered per (#idempotence).
+The PS delivers requests for one `(sub, SS)` pair in the order the acts occurred. The PS retries an event or a report, under the same `id`, until it receives a terminal response. It retries a supervision request, under the same `sdi`, until it receives a terminal response or the SS becomes unavailable for that decision (#unavailable). The SS deduplicates on `(iss, id)` and answers a repeated event with `201` and nothing new recorded. A repeated supervision request is answered per (#idempotence).
 
 The PS SHOULD send `Prefer: wait` ([@!RFC7240]) on every supervision request, and a wait of 30 seconds is RECOMMENDED, so that an SS which decides within it never has to hold a pending record. An SS that cannot answer within the wait returns a deferred response (#deferred-decisions).
 
@@ -285,7 +295,7 @@ The SS applies whatever reach the person has given earlier answers (#apply). The
 
 An SS that cannot answer within the PS's wait returns a `202 Accepted` deferred response ([@!I-D.hardt-oauth-aauth-protocol], Deferred Responses) with `Location` and `Retry-After`. The PS polls the pending URL with a signed GET, signing under the same identity that made the request, and sends no body. The SS MUST verify that identity and MUST answer `unknown_pending` (#errors) to a poll from any other. The terminal response is the decision, and is signed when the SS signs (#signed-decisions).
 
-The PS polls until it has a decision or until the agent's own pending request at the PS would expire. At that point the PS treats the SS as unavailable for this decision (#unavailable), and a decision the SS returns afterwards is discarded.
+The PS polls until it has a decision or until the agent's own pending request at the PS expires. When the agent's request expires while the PS is still polling, the act ends unanswered, and the PS reports `decision.resolved` with `answer` `abandoned` and `supervisor` `unavailable` (#event-decision-resolved). A decision the SS returns afterwards is discarded.
 
 ## Clarification {#ss-clarification}
 
@@ -313,7 +323,7 @@ Clarification is the SS speaking to the agent through the PS. It is never the SS
 
 ## Idempotence {#idempotence}
 
-A repeated supervision request under an `sdi` the SS has already answered MUST be answered with the same decision, and where the SS signs, the same signed response. A repeated request under an `sdi` the SS is still deciding is answered `202` with the same `Location`. The SS keeps decisions it has given at least until the `exp` of any token the decision could have allowed, and MAY keep them longer.
+A repeated supervision request under an `sdi` the SS has already answered MUST be answered with the same decision, and where the SS signs, signed for the repeated request (#signed-decisions). A request under an `sdi` the SS has answered that differs from the request it answered MUST be rejected with `invalid_request`. A repeated request under an `sdi` the SS is still deciding is answered `202` with the same `Location`. The SS keeps each decision it has given, and where it signs, the signed response as the record of the request it first answered, at least until the `exp` of any token the decision could have allowed, and MAY keep them longer.
 
 ## Signed Decisions {#signed-decisions}
 
@@ -459,7 +469,7 @@ When a mission ends for any reason, the PS reports it with `action: terminated` 
 
 # Decision Endpoint {#decision-endpoint}
 
-The decision endpoint carries an act under the person's authority, with or without a mission. Every request is a supervision request with an `act` member naming which. The PS forwards the tokens and body the agent presented, so the SS sees what the PS saw.
+The decision endpoint carries an act under the person's authority, with or without a mission. Every request is a supervision request with an `act` member naming which. The PS forwards the tokens and body the agent presented, and for an R3 request the R3 document it fetched (`r3_document`), so the SS sees what the PS saw.
 
 ## Person Token
 
@@ -502,10 +512,11 @@ An `allow` MAY carry `exp`, a time no later than which the issued token's `exp` 
 ```
 
 - `resource_token`, `presented_token` (REQUIRED): As the agent sent them. The resource token carries the resource, the scope it requires, and any budget or other requirement the resource attached.
+- `r3_document` (REQUIRED when the resource token carries `r3_uri`): The R3 document the PS fetched at `r3_uri` and verified against `r3_s256` ([@?I-D.hardt-aauth-r3], R3 Processing), base64url-encoded without padding: the R3 document for the request, or on a per-call challenge the per-call proposal. The SS cannot fetch it ([@?I-D.hardt-aauth-r3], R3 Document Access Restriction).
 - `upstream_token`, `subagent_token` (OPTIONAL): As above.
 - `justification` (OPTIONAL): The agent's justification, as it sent it.
 
-An `allow` MAY carry `scope`, a scope narrower than the resource token requested, and `exp`. The PS applies them to the auth token it issues, or passes them to the AS it federates with where the AS accepts them; how a PS narrows a federated request is the AS's business and is not treated here.
+An `allow` MAY carry `scope`, a scope narrower than the resource token requested, and `exp`. The PS applies them to the auth token it issues, or passes them to the AS it federates with where the AS accepts them; how a PS narrows a federated request is the AS's business and is not treated here. A PS that cannot convey a narrowed `scope` or `exp` to the AS treats the `allow` as an `ask` and puts the act to the person.
 
 ## Permission
 
@@ -538,17 +549,17 @@ The event endpoint carries what happened. Every request is a report with an `eve
 |---|---|---|
 | `person_token.issued` | `sdi`, `jti`, `aud`, `exp` | The PS issued a person token under the decision `sdi` |
 | `auth_token.issued` | `sdi`, `jti`, `aud`, `scope`, `exp`, `issuer` | The PS issued an auth token, or an AS did on the PS's federation, under `sdi`; `issuer` is the PS or the AS |
-| `decision.resolved` | (#event-decision-resolved) | What the person decided after an `ask`, or when the SS was unavailable |
+| `decision.resolved` | (#event-decision-resolved) | What the person decided after an `ask` or when the SS was unavailable, or that an act ended unanswered while the PS polled the SS |
 | `audit.recorded` | `action`, `description`, `parameters`, `result` | The agent logged an action at the PS's audit endpoint, as it sent it |
-| `interaction.requested` | `type`, `url` | The agent asked the PS to relay an interaction to the person, and the PS did. Not a decision (#why-interaction-is-an-event) |
+| `interaction.requested` | `type`, `url` | The agent asked the PS to carry an interaction request to the person, and the PS did. Not a decision (#why-interaction-is-an-event) |
 | `agent.bound` | `agent_iss`, `agent_sub` | The PS bound the agent to the person on first approval |
 | `revocation.received` | `token_type`, `iss`, `jti`, `exp` | The PS received a revocation: an agent token from the agent provider, or a resource token from a resource. The SS is told; it has no part in the cascade |
 
-Every event carries the envelope (#envelope). The `code` of a relayed interaction is not forwarded.
+Every event carries the envelope (#envelope). `interaction.requested` is sent for every interaction request the PS carried to the person, of any `type`; `url` is present for `interaction` and `payment`. The `code` of a relayed interaction is not forwarded. `token_type` is `agent_token` for a revocation from an agent provider and `resource_token` for a revocation from a resource.
 
 ## Decision Resolved {#event-decision-resolved}
 
-After an `ask`, and after any decision the PS put to the person because the SS was unavailable (#unavailable), the PS reports what the person decided:
+After an `ask`, and after any decision the PS put to the person because the SS was unavailable (#unavailable), the PS reports what the person decided. It also reports an act that ended unanswered while it polled the SS (#deferred-decisions).
 
 ```json
 {
@@ -569,12 +580,12 @@ After an `ask`, and after any decision the PS put to the person because the SS w
 }
 ```
 
-- `answer` (REQUIRED): `allow` or `deny`, or `abandoned` when the person did not answer before the request expired.
+- `answer` (REQUIRED): `allow` or `deny`, or `abandoned` when the person did not answer before the request expired or the request expired while the PS polled the SS.
 - `apply` (OPTIONAL): The reach the person gave their answer (#apply). Absent means `once`.
 - `recommendation` (OPTIONAL): The recommendation the SS gave in its `ask`, echoed so the SS can compare its policy with the person's answer.
 - `proposed` (OPTIONAL): For a mission proposal, the refinement as the person approved it, after any edits.
 - `transcript` (OPTIONAL): The clarification chat between the person and the agent at the PS, if any, in order. Each entry has `from`, one of `person` or `agent`, and `text`, Markdown.
-- `supervisor` (OPTIONAL): `unavailable` when the PS put the act to the person because it could not reach the SS. There is no `recommendation` in that case.
+- `supervisor` (OPTIONAL): `unavailable` when the PS put the act to the person because it could not reach the SS, or when the request expired while the PS polled the SS. There is no `recommendation` in that case.
 - `reason` (OPTIONAL): A reason the person gave, Markdown. A PS MAY offer the person a reason field and MUST NOT require one.
 
 ## Reach of an Answer {#apply}
@@ -606,7 +617,7 @@ What "this kind" means for `mission` and `always` is the SS's to determine, sinc
 
 # Unavailable Supervisor {#unavailable}
 
-An SS is unavailable for a decision when the PS cannot reach it: the connection fails or times out, the response is malformed, the SS answers `server_error`, or the SS answers `rate_limited` with a `Retry-After` past the point the agent's request would expire. An SS that answers `202` is not unavailable; the PS polls it as (#deferred-decisions) describes, and it becomes unavailable for that decision only when the agent's request would expire first.
+An SS is unavailable for a decision when the PS cannot reach it: the connection fails or times out, the response is malformed, the SS answers `server_error`, or the SS answers `rate_limited` with a `Retry-After` past the point the agent's request would expire. An SS that answers `202` is not unavailable. The PS polls it, and the act ends unanswered if the agent's request expires first (#deferred-decisions).
 
 When the SS is unavailable, the PS puts the act to the person, as it would with no SS configured. The `sdi` stands, the PS's log entry records that the SS was not consulted, and when the SS is reachable again the PS reports the outcome in `decision.resolved` with `supervisor: unavailable`. Events that could not be delivered are delivered then, in order.
 
@@ -666,7 +677,7 @@ The person names the SS, and anyone can run one. A PS that posted to whatever en
 
 ## What the Supervisor Sees
 
-The SS sees everything the PS puts to it for the agents routed to it: mission text, justifications, the resources an agent reaches, the actions it takes, and what the person decides. That is the point; a supervisor that saw less could decide less. It is the person's own choice of a party to see it, made agent by agent (#routing), and the PS SHOULD say so when the person registers an SS.
+The SS sees everything the PS puts to it for the agents routed to it: mission text, justifications, the resources an agent reaches, the actions it takes, and what the person decides. For an R3 request it receives the R3 document or per-call proposal the PS fetched, including its `parameters`. That is the point; a supervisor that saw less could decide less. It is the person's own choice of a party to see it, made agent by agent (#routing), and the PS SHOULD say so when the person registers an SS.
 
 ## Identifiers
 
@@ -697,6 +708,13 @@ There are no known implementations of this specification at the time of writing.
 *Note: This section is to be removed before publishing as an RFC.*
 
 - **-00**: Initial version. Supervisor metadata, connect, three endpoints, supervision decisions, events, replay, signed decisions.
+  - An `auth_token` supervision request carries the R3 document or per-call proposal the PS fetched and verified, as `r3_document`. Issue #256.
+  - A repeated supervision request under an answered `sdi` gets the same decision, signed for the repeated request, and the SS keeps the signed response it first gave as the record. A request under an answered `sdi` that differs from the one answered is rejected with `invalid_request`. Issue #258.
+  - The PS retries a supervision request until it gets a terminal response or the SS becomes unavailable for that decision. Issue #280.
+  - When the agent's request expires while the PS polls the SS, the act ends unanswered, and the PS reports `decision.resolved` with `answer` `abandoned` and `supervisor` `unavailable`. Issue #281.
+  - `revocation.received` `token_type` is `agent_token` or `resource_token`. Issue #283.
+  - A PS that cannot convey a narrowed `scope` or `exp` to the AS treats the `allow` as an `ask`. Issue #284.
+  - `interaction.requested` is sent for an interaction request of any `type`. Issue #285.
 
 # Acknowledgments
 
@@ -732,7 +750,7 @@ A JWT would be a second encoding of a body that is already JSON, and a new token
 
 ## Why Interaction Relay Is an Event {#why-interaction-is-an-event}
 
-When an agent asks the PS to relay an interaction, a resource or an AS has already decided the person is needed; the relay is not authorization. A `deny` from the SS could stop the PS relaying, but the protocol then has the agent direct the person itself, so the deny would remove the person's better channel and stop nothing. The SS is told, so an agent that keeps sending the person to interaction pages is visible in its record.
+An interaction request is not authorization. For `interaction` and `payment`, a resource or an AS has already decided the person is needed. For `question`, the agent has decided to ask the person. A `deny` from the SS could stop the PS relaying, but the protocol then has the agent direct the person itself, so the deny would remove the person's better channel and stop nothing. The SS is told, so an agent that keeps sending the person to interaction pages is visible in its record.
 
 ## Why Routing, Not Fan-Out {#why-routing-only}
 
