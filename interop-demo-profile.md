@@ -63,7 +63,7 @@ The agent presents the auth token via `Signature-Key: sig=jwt;jwt="<auth token>"
 1. Auth-token signature (from issuer JWKS at `{iss}/.well-known/{dwk}`)
 2. `cnf.jwk` matches the key that signed the HTTP request
 3. `aud` matches its own identifier
-4. `sub` is present, and `(iss, sub)` matches or establishes its record for this person
+4. `sub` is present, and `(ps, sub)` matches or establishes its record for this person
 
 Note that no token a resource reads carries an agent identifier. `agent_jkt` in the resource token and `cnf` in every token are the binding.
 

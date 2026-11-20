@@ -1826,14 +1826,14 @@ An auth token is a JWT with `typ: aa-auth+jwt`. Its header and the claims `iss`,
 Required payload claims specific to auth tokens:
 - `aud`: The URL of the resource the agent is authorized to access.
 - `ps`: The person server the person is represented by. Equal to `iss` when a PS issued the token. An intermediary acting as an agent routes its downstream token request here (#call-chaining).
-- `sub`: Directed user identifier, copied from the resource token. An opaque string, unique within `iss`, that identifies the person. The PS SHOULD derive a pairwise pseudonymous value per resource (`aud`), so different resources see different values for the same person (#directed-identifiers).
+- `sub`: Directed user identifier, copied from the resource token. An opaque string, unique within `ps`, that identifies the person. The PS SHOULD derive a pairwise pseudonymous value per resource (`aud`), so different resources see different values for the same person (#directed-identifiers).
 An auth token carries no agent identifier and no delegation chain. `cnf` binds it to one key, and the resource enforces against `sub` and `scope`.
 
 Optional payload claims:
 - `scope`: Authorized scopes, as a space-separated string of scope values consistent with [@!RFC9068] Section 2.2.3
 - `account`: The account the authorization is for, copied from the resource token (#account-binding).
 - `mission_s256`: Copied from the resource token when it carried one. Present when the auth token was issued in the context of a mission.
-- `tenant`: Tenant identifier per OpenID Connect Enterprise Extensions 1.0 [@OpenID.Enterprise], declaring the organization the person belongs to. `(iss, tenant)` identifies the organization. It is not part of the person's identifier, which is `(iss, sub)`.
+- `tenant`: Tenant identifier per OpenID Connect Enterprise Extensions 1.0 [@OpenID.Enterprise], declaring the organization the person belongs to. `(ps, tenant)` identifies the organization. It is not part of the person's identifier, which is `(ps, sub)`.
 
 The auth token MAY include additional claims registered in the IANA JSON Web Token Claims Registry [@!RFC7519] or defined in OpenID Connect Core 1.0 [@!OpenID.Core] Section 5.1.
 
@@ -1860,7 +1860,7 @@ A valid JWT signature alone is not a complete AAuth authorization check — both
 
 2. Verify `aud` matches the resource's own identifier.
 3. `cnf.jwk` is REQUIRED. If it is absent, or if its JWK is missing `kty` or the members required for that key type (e.g., `crv` and `x` for OKP keys; `crv`, `x`, and `y` for EC keys; `n` and `e` for RSA keys), reject the token as structurally incomplete before attempting key decoding. If present but not parseable as a supported public key, reject it as invalid key material. Otherwise verify `cnf.jwk` matches the key used to sign the HTTP request.
-4. Verify `sub` is present, and that `(iss, sub)` matches or establishes the resource's record for this person (#trust-posture-in-ps-asserted-access).
+4. Verify `sub` is present, and that `(ps, sub)` matches or establishes the resource's record for this person (#trust-posture-in-ps-asserted-access). The PS named in `ps` minted `sub`, so a resource MUST NOT key on `(iss, sub)` for an AS-issued token. It can rely on `ps` because the AS verified that the presented token's issuer is the PS that signed the token request (#ps-to-as-token-request).
 
 ### Auth Token Response Verification {#auth-token-response-verification}
 
@@ -1916,7 +1916,7 @@ An intermediary acts for every person whose requests it fulfills, so its agent t
 
 #### Directed Identifiers Across a Chain {#directed-sub-chaining}
 
-The `sub` of an auth token is a directed identifier: a PS SHOULD issue a pairwise pseudonymous value per resource, so that two resources serving the same person cannot correlate them by comparing tokens (#auth-tokens) and (#directed-identifiers). Identity is the pair `(iss, sub)` — a `sub` minted by one issuer for one audience carries no meaning under a different issuer for a different audience.
+The `sub` of an auth token is a directed identifier: a PS SHOULD issue a pairwise pseudonymous value per resource, so that two resources serving the same person cannot correlate them by comparing tokens (#auth-tokens) and (#directed-identifiers). Identity is the pair `(ps, sub)` — a `sub` minted by one PS for one audience carries no meaning under a different PS or for a different audience.
 
 A downstream issuer sees the upstream `sub` in the `upstream_token` it is handed. It MUST NOT carry that value forward:
 
@@ -2918,7 +2918,7 @@ What a link can do is steer. A page an attacker controls can point an agent at a
 
 In three-party mode, the resource has no AS of its own — it accepts identity claims and consent from whichever PS issued the person token it verified. This is a deliberate trust posture: the resource externalizes identity claim issuance while retaining policy enforcement. Resources MUST apply their own policy on the resulting claims rather than treating the PS-issued auth token as a bearer authorization. Resources that need policy decisions made externally (per-resource scope enforcement, organizational gating, billing) should deploy an AS and use four-party mode.
 
-Because identity assertion does not require pre-registration, the resource follows the same protocol flow whether it is meeting the user for the first time or recognizing a returning one. The auth token's `(iss, sub)` pair is a stable identifier per user per PS — the resource looks up the tuple and creates a new user record on a miss, matches an existing one on a hit. As in many OIDC deployments, registration and login are the same flow; the resource's own logic distinguishes the two outcomes. In multi-tenant deployments the auth token MAY also carry a `tenant` claim ([@OpenID.Enterprise]); `(iss, tenant, sub)` identifies a user within an organization, and `(iss, tenant)` identifies the organization itself — useful for grouping users from the same employer or account.
+Because identity assertion does not require pre-registration, the resource follows the same protocol flow whether it is meeting the user for the first time or recognizing a returning one. The auth token's `(ps, sub)` pair is a stable identifier per user per PS — the resource looks up the tuple and creates a new user record on a miss, matches an existing one on a hit. As in many OIDC deployments, registration and login are the same flow; the resource's own logic distinguishes the two outcomes. In multi-tenant deployments the auth token MAY also carry a `tenant` claim ([@OpenID.Enterprise]). It is not part of the person's identifier; `(ps, tenant)` identifies the organization — useful for grouping users from the same employer or account.
 
 The PS MUST protect its signing keys with appropriate rigor — compromise of a PS's signing key allows forgery of identity claims for every resource that accepts that PS.
 
@@ -2940,7 +2940,7 @@ The OPTIONAL `tenant` claim declares the organization the person belongs to, and
 
 That is deliberate. It lets a resource apply organizational policy before it issues anything: recognise a contracted customer, or rate-limit and refuse an organization whose agents are abusing it. Without it a resource's only lever at first contact is the person server, which is far too coarse — refusing one would refuse every organization that uses it — and pairwise `sub` otherwise makes one organization's agents indistinguishable from many unrelated people.
 
-`tenant` is organizational context and MUST NOT be treated as part of the person's identifier, which is `(iss, sub)` (#directed-identifiers).
+`tenant` is organizational context and MUST NOT be treated as part of the person's identifier, which is `(ps, sub)` (#directed-identifiers).
 
 ## Person Token Is Not Authorization {#person-token-not-authorization}
 
@@ -3007,7 +3007,7 @@ A related case is the verifier that is the first to see the artifact, minutes or
 
 The PS SHOULD provide a pairwise pseudonymous user identifier (`sub`) per resource, preventing resources from correlating users across trust domains. Each resource sees a different `sub` for the same user, preserving user privacy.
 
-A `sub` MUST be unique within the issuer, so `(iss, sub)` identifies the person unambiguously and `tenant` is never part of the identifier. The same value MUST be used in the person token (#person-token-structure), in the resource token the resource derives from it, and in every auth token issued for that resource, and MUST NOT vary with the agent or its key.
+A `sub` MUST be unique within the PS that minted it, so `(ps, sub)` identifies the person unambiguously and `tenant` is never part of the identifier. The same value MUST be used in the person token (#person-token-structure), in the resource token the resource derives from it, and in every auth token issued for that resource, and MUST NOT vary with the agent or its key.
 
 Directed identifiers limit correlation between resources. They do not make a person's activity at one resource unlinkable across their agents: the agent signs with one key everywhere and that key appears in `cnf` in every token, so parties able to compare thumbprints correlate regardless of `sub`.
 
@@ -3486,7 +3486,7 @@ Every agent acts on behalf of a person — the entity accountable for the agent'
 
 ### Why Person Tokens
 
-An agent identifier embeds its agent provider's domain, so a person moving to another provider necessarily arrives at a resource as someone new, losing whatever state the resource held for them. The person is the party the resource has a relationship with — the account, the history, and any standing limits are theirs — and keying on `(iss, sub)` makes that relationship survive the change. It also keeps agent providers from becoming gatekeepers: a resource that never learns which agent product is calling cannot condition access on it.
+An agent identifier embeds its agent provider's domain, so a person moving to another provider necessarily arrives at a resource as someone new, losing whatever state the resource held for them. The person is the party the resource has a relationship with — the account, the history, and any standing limits are theirs — and keying on `(ps, sub)` makes that relationship survive the change. It also keeps agent providers from becoming gatekeepers: a resource that never learns which agent product is calling cannot condition access on it.
 
 Identifying the person at the authorization endpoint rather than after authorization also lets the resource decide before it commits. Account selection (#account-binding), standing policy for that person, and any per-person limit are all evaluable when the request arrives, instead of after a resource token has been issued and taken to a PS.
 
