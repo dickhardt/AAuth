@@ -1595,9 +1595,11 @@ Table of Contents
       with upstream_token, which carries the mission itself.
    *  subagent_token (OPTIONAL): A sub-agent's agent token, present when
       a parent agent obtains a person token on behalf of one of its sub-
-      agents Section 10.2.  The signing agent MUST be named by the
-      subagent_token's parent_agent.  The issued token's cnf is the sub-
-      agent's key.
+      agents Section 10.2.  The PS verifies it per Section 5.3.3 without
+      step 1, because the parent signs the request, and checks that its
+      parent_agent names the signing agent and its iss is the signing
+      agent's Section 10.2.1, as for an auth token request
+      Section 10.2.3.  The issued token's cnf is the sub-agent's key.
    *  upstream_token (OPTIONAL): The person token or auth token the
       calling agent presented to the requester, present when a resource
       acting as an agent needs a person token for a downstream resource
@@ -2345,8 +2347,9 @@ Table of Contents
 7.8.  Audit Endpoint
 
    The audit endpoint lets an agent log an action after performing it,
-   so the PS has a complete record of the mission.  It requires a
-   mission; there is no audit outside a mission context.
+   so the mission log Section 8.3 records actions the agent reports as
+   well as the requests it makes.  It requires a mission; there is no
+   audit outside a mission context.
 
 7.8.1.  Audit Request
 
@@ -5818,8 +5821,8 @@ Initial request (with Prefer: wait=N)
       person.
    *  *Consent integrity*: Consent granted by one person cannot be
       exercised by a different person through the same agent.
-   *  *Audit*: The PS can provide a complete record of an agent's
-      actions on behalf of its person.
+   *  *Audit*: The PS can provide a record of what reached it from an
+      agent acting for its person Section 8.3.
    *  *Revocation*: Revoking an agent's association with its person
       immediately prevents the agent from obtaining new auth tokens.
 

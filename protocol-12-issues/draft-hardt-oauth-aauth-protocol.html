@@ -3206,7 +3206,7 @@ Content-Type: application/json
             <code>mission_s256</code> (OPTIONAL): The mission the agent is operating under <a href="#missions" class="auto internal xref">Section 8</a>. The PS MUST verify the mission exists, is active, and belongs to this agent, and MUST reject the request otherwise. When present, the PS includes it in the issued token. Not sent with <code>upstream_token</code>, which carries the mission itself.<a href="#section-7.1-4.2" class="pilcrow">¶</a>
 </li>
           <li class="compact" id="section-7.1-4.3">
-            <code>subagent_token</code> (OPTIONAL): A sub-agent's agent token, present when a parent agent obtains a person token on behalf of one of its sub-agents <a href="#sub-agents" class="auto internal xref">Section 10.2</a>. The signing agent MUST be named by the <code>subagent_token</code>'s <code>parent_agent</code>. The issued token's <code>cnf</code> is the sub-agent's key.<a href="#section-7.1-4.3" class="pilcrow">¶</a>
+            <code>subagent_token</code> (OPTIONAL): A sub-agent's agent token, present when a parent agent obtains a person token on behalf of one of its sub-agents <a href="#sub-agents" class="auto internal xref">Section 10.2</a>. The PS verifies it per <a href="#agent-token-verification" class="auto internal xref">Section 5.3.3</a> without step 1, because the parent signs the request, and checks that its <code>parent_agent</code> names the signing agent and its <code>iss</code> is the signing agent's <a href="#sub-agent-identity" class="auto internal xref">Section 10.2.1</a>, as for an auth token request <a href="#parent-mediated-authorization" class="auto internal xref">Section 10.2.3</a>. The issued token's <code>cnf</code> is the sub-agent's key.<a href="#section-7.1-4.3" class="pilcrow">¶</a>
 </li>
           <li class="compact" id="section-7.1-4.4">
             <code>upstream_token</code> (OPTIONAL): The person token or auth token the calling agent presented to the requester, present when a resource acting as an agent needs a person token for a downstream resource <a href="#call-chaining" class="auto internal xref">Section 10.1.1</a>. The PS MUST verify it per <a href="#upstream-token-verification" class="auto internal xref">Section 9.4.5</a>.<a href="#section-7.1-4.4" class="pilcrow">¶</a>
@@ -3894,7 +3894,7 @@ Content-Type: application/json
         <h3 id="name-audit-endpoint">
 <a href="#section-7.8" class="section-number selfRef">7.8. </a><a href="#name-audit-endpoint" class="section-name selfRef">Audit Endpoint</a>
         </h3>
-<p id="section-7.8-1">The audit endpoint lets an agent log an action after performing it, so the PS has a complete record of the mission. It requires a mission; there is no audit outside a mission context.<a href="#section-7.8-1" class="pilcrow">¶</a></p>
+<p id="section-7.8-1">The audit endpoint lets an agent log an action after performing it, so the mission log <a href="#mission-log" class="auto internal xref">Section 8.3</a> records actions the agent reports as well as the requests it makes. It requires a mission; there is no audit outside a mission context.<a href="#section-7.8-1" class="pilcrow">¶</a></p>
 <div id="audit-request">
 <section id="section-7.8.1">
           <h4 id="name-audit-request">
@@ -6934,7 +6934,7 @@ Content-Type: application/json
             <strong>Consent integrity</strong>: Consent granted by one person cannot be exercised by a different person through the same agent.<a href="#section-13.14-5.2" class="pilcrow">¶</a>
 </li>
           <li class="compact" id="section-13.14-5.3">
-            <strong>Audit</strong>: The PS can provide a complete record of an agent's actions on behalf of its person.<a href="#section-13.14-5.3" class="pilcrow">¶</a>
+            <strong>Audit</strong>: The PS can provide a record of what reached it from an agent acting for its person <a href="#mission-log" class="auto internal xref">Section 8.3</a>.<a href="#section-13.14-5.3" class="pilcrow">¶</a>
 </li>
           <li class="compact" id="section-13.14-5.4">
             <strong>Revocation</strong>: Revoking an agent's association with its person immediately prevents the agent from obtaining new auth tokens.<a href="#section-13.14-5.4" class="pilcrow">¶</a>
