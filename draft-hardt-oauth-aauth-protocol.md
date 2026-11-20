@@ -1043,6 +1043,8 @@ When the resource token carries an `interaction` claim (#resource-token-structur
 5. If the callback carries an `error` parameter, the PS abandons the authorization and returns the mapped polling error to the agent. Otherwise it continues with its own consent step.
 6. On user approval, the PS issues the auth token and resolves the agent's pending request.
 
+In four-party access the PS resolves the resource's interaction before its PS-to-AS token request (#ps-to-as-token-request), and the AS issues the auth token.
+
 A resource's interaction endpoint MUST support the `?code=...&callback=...` pattern whether the redirect comes from an agent or from a PS; it need not distinguish the two. The `interaction.url` MUST be an HTTPS URL; the PS MUST validate this before redirecting and MUST apply its egress admission policy to it.
 
 ## User Interaction {#user-interaction}
