@@ -2871,7 +2871,7 @@ Each step builds on the previous one. An agent that adopts any step gains immedi
 Each step builds on the previous one. A resource that adopts any step works with agents at all identity levels.
 
 1. **Recognize AAuth signatures**: Verify HTTP Message Signatures and respond with `Accept-Signature-Scheme` headers ([@!I-D.hardt-httpbis-signature-key]). Resources that don't recognize AAuth ignore the signature headers — existing auth mechanisms continue to work. This is identity-based access.
-2. **Manage authorization**: Handle authorization with interaction, consent, or existing infrastructure — via `401` responses, an authorization endpoint, or both. Return `AAuth-Access` headers (#aauth-access) for subsequent calls. This is resource-managed access (two-party).
+2. **Manage authorization**: Handle authorization with interaction, consent, or existing infrastructure — via `401` responses, an authorization endpoint, or both. Return `AAuth-Access` headers (#aauth-access) for subsequent calls. Raised on the agent's own calls, this is resource-managed access (two-party). A request to the authorization endpoint presents a person token (#authorization-endpoint-request), so authorization there is resource-local authorization that follows PS-issued identity.
 3. **Accept identity claims from any PS**: Verify person tokens and issue resource tokens with `aud` = the `iss` of the person token verified. The agent's PS returns an auth token asserting identity claims about the user and consent for the requested scope; the resource applies its own policy. This is PS authorization access (three-party).
 4. **Deploy an access server**: Issue resource tokens with `aud` = AS URL. The PS federates with the AS. This is federated access (four-party).
 
