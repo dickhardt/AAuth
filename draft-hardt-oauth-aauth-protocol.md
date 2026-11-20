@@ -148,6 +148,16 @@ organization = "Hellō"
   </front>
 </reference>
 
+<reference anchor="I-D.hardt-aauth-supervision" target="https://dickhardt.github.io/AAuth/draft-hardt-aauth-supervision.html">
+  <front>
+    <title>AAuth Supervision</title>
+    <author initials="D." surname="Hardt" fullname="Dick Hardt">
+      <organization>Hellō</organization>
+    </author>
+    <date year="2026"/>
+  </front>
+</reference>
+
 
 .# Abstract
 
@@ -197,6 +207,21 @@ AAuth builds on existing standards and design patterns:
 - **OpenID Connect vocabulary**: AAuth reuses OpenID Connect scope values, identity claims, and enterprise extensions ([@OpenID.Enterprise]), lowering the adoption barrier for identity-aware resources.
 - **Well-known metadata and key discovery**: Servers publish metadata at well-known URLs ([@!RFC8615]) and signing keys via JWKS endpoints, following the pattern established by OAuth Authorization Server Metadata ([@RFC8414]) and OpenID Connect Discovery ([@OpenID.Core]).
 - **HTTP Message Signatures**: All requests are signed with HTTP Message Signatures ([@!RFC9421]) using keys bound to tokens conveyed via the Signature-Key header ([@!I-D.hardt-httpbis-signature-key]), providing proof-of-possession, identity, and message integrity on every call.
+
+## Related Specifications {#related-specifications}
+
+Built On lists what AAuth depends on. The following documents build on this one or sit beside it:
+
+| Document | Relationship |
+|---|---|
+| HTTP Signature Keys ([@!I-D.hardt-httpbis-signature-key]) | Required (normative); also listed in Built On |
+| AAuth Bootstrap ([@?I-D.hardt-aauth-bootstrap]) | Informational: agent provider enrollment and agent token issuance |
+| AAuth R3 ([@?I-D.hardt-aauth-r3]) | Extension: vocabulary-based authorization, `per-call` access mode |
+| AAuth Budgets ([@?I-D.hardt-aauth-budgets]) | Extension: spending ceilings for metered resources |
+| AAuth Events ([@?I-D.hardt-aauth-events]) | Extension: event delivery through the agent provider |
+| OpenID Federation Well-Known Binding ([@?OpenID.Federation.WellKnownBinding]) | Optional: binds metadata and JWKS to an OpenID Federation Trust Chain (OpenID draft) |
+| AAuth Supervision ([@?I-D.hardt-aauth-supervision]) | PS ↔ supervision server (editor's draft, not yet submitted) |
+| Mission control | Planned: `mission_control_endpoint` operations and administrative principals |
 
 # Conventions and Definitions
 
@@ -461,7 +486,7 @@ Common collocations:
 - **Agent + AP**: A self-hosted agent is its own agent provider, self-issuing agent tokens signed by a key the user controls ([@?I-D.hardt-aauth-bootstrap]).
 - **Org-wide bundle**: One organizational server operates AP + PS + AS for employees and internal resources, with federation only at the boundary when an internal agent reaches an external resource.
 
-The **Supervisor** performs supervision (#policy-evaluation-points): the Person by default, or a **supervision server (SS)** the PS MAY delegate to. Supervision is an independent protocol; a companion specification is TBD, and an implementation may treat supervision as internal to the PS. Nothing an agent, resource, or AS sees changes with who supervises.
+The **Supervisor** performs supervision (#policy-evaluation-points): the Person by default, or a **supervision server (SS)** the PS MAY delegate to. Supervision is an independent protocol, defined in AAuth Supervision ([@?I-D.hardt-aauth-supervision]), and an implementation may treat supervision as internal to the PS. Nothing an agent, resource, or AS sees changes with who supervises.
 
 ## Policy Evaluation Points {#policy-evaluation-points}
 
@@ -1547,7 +1572,7 @@ The PS records why a mission terminated, alongside the mission rather than insid
 
 A termination reason MUST NOT be exposed as a mission state or used to permit a later transition.
 
-Reading a mission's status, terminating one, and querying delegation are operations for parties other than the owning agent, and belong at the `mission_control_endpoint` (#ps-metadata). They will be defined in a companion specification, along with the administrative principals that invoke them.
+Reading a mission's status, terminating one, and querying delegation are operations for parties other than the owning agent, and belong at the `mission_control_endpoint` (#ps-metadata). They will be defined in a companion specification (#related-specifications), along with the administrative principals that invoke them.
 
 ## Mission Endpoint Errors {#mission-endpoint-errors}
 
@@ -2089,7 +2114,7 @@ Role-specific fields:
 - `permission_endpoint` (OPTIONAL): URL where agents request permission for actions not governed by a remote resource (#permission-endpoint).
 - `audit_endpoint` (OPTIONAL): URL where agents log actions performed (#audit-endpoint).
 - `interaction_endpoint` (OPTIONAL): URL where agents relay interactions to the user through the PS (#interaction-endpoint).
-- `mission_control_endpoint` (OPTIONAL): URL of the PS's mission control plane, where parties other than the owning agent read and manage missions (#mission-management). Its authentication model, operations, and responses are out of scope for this document. A PS MAY also use it for a deployment's human-facing administrative interface. **Editor's note:** a mission control companion specification is TBD.
+- `mission_control_endpoint` (OPTIONAL): URL of the PS's mission control plane, where parties other than the owning agent read and manage missions (#mission-management). Its authentication model, operations, and responses are out of scope for this document. A PS MAY also use it for a deployment's human-facing administrative interface. A mission control companion specification is planned (#related-specifications).
 - `revocation_endpoint` (RECOMMENDED): URL where an agent provider revokes an agent token it issued, and where a resource revokes a resource token this PS holds (#token-revocation).
 - `scopes_supported` (RECOMMENDED): Array of scope values the PS supports, including identity scopes (e.g., `openid`, `profile`, `email`) and enterprise scopes (e.g., `tenant`, `groups`, `roles`).
 - `claims_supported` (RECOMMENDED): Array of identity claim names the PS can provide (e.g., `sub`, `email`, `name`, `tenant`).
@@ -3459,7 +3484,7 @@ This appendix is informative. It describes how a person server serving one perso
 
 **Long waits.** The person may not answer for hours. The pending record lives as long as the PS chooses (#pending-url-security); the resource token the request carried will have expired by then, and the agent obtains a fresh one and resubmits (#resource-tokens). The PS remembers the decision it already has and applies it to the resubmission without asking again (#resource-tokens).
 
-**Supervision.** The person is the Supervisor (#roles). Every decision the PS cannot make from what it already recorded waits on them, which is the right default for one person and a handful of agents. A PS that wants to answer routine requests without waking the person applies a standing policy on their behalf; how it consults a supervision server for that is left to a companion specification (#roles), and is the one thing a minimal PS grows into rather than starts with.
+**Supervision.** The person is the Supervisor (#roles). Every decision the PS cannot make from what it already recorded waits on them, which is the right default for one person and a handful of agents. A PS that wants to answer routine requests without waking the person applies a standing policy on their behalf; how it consults a supervision server for that is defined in AAuth Supervision ([@?I-D.hardt-aauth-supervision]), and is the one thing a minimal PS grows into rather than starts with.
 
 # Design Rationale
 
