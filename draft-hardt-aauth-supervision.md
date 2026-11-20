@@ -516,7 +516,7 @@ An `allow` MAY carry `exp`, a time no later than which the issued token's `exp` 
 - `upstream_token`, `subagent_token` (OPTIONAL): As above.
 - `justification` (OPTIONAL): The agent's justification, as it sent it.
 
-An `allow` MAY carry `scope`, a scope narrower than the resource token requested, and `exp`. The PS applies them to the auth token it issues, or passes them to the AS it federates with where the AS accepts them; how a PS narrows a federated request is the AS's business and is not treated here.
+An `allow` MAY carry `scope`, a scope narrower than the resource token requested, and `exp`. The PS applies them to the auth token it issues, or passes them to the AS it federates with where the AS accepts them; how a PS narrows a federated request is the AS's business and is not treated here. A PS that cannot convey a narrowed `scope` or `exp` to the AS treats the `allow` as an `ask` and puts the act to the person.
 
 ## Permission
 
