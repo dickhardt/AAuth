@@ -424,7 +424,7 @@ The resource resolves the AP's `event_endpoint` from `{iss}/.well-known/aauth-ag
 The AP MUST validate the event delivery request as follows:
 
 1. Extract the event token JWT from the `Signature-Key` header (the `self-jwt` scheme). Verify it per ([@!I-D.hardt-oauth-aauth-protocol], Common JWT Verification), with `typ` `aa-event+jwt` and `dwk` `aauth-resource.json`. Verify `cnf` is absent, per the `self-jwt` scheme ([@!I-D.hardt-httpbis-signature-key]).
-2. The AP MAY deduplicate on `(iss, jti)` and drop a delivery it has already recorded.
+2. The AP MAY deduplicate on `(iss, jti)` and drop a delivery it has already recorded. An AP that drops a duplicate answers it as it answered the original delivery, `202` with the current `remaining_uses` when `max_uses` is set, and does not count it again.
 3. Verify the HTTP signature using the same key (matched by `kid`), per the `self-jwt` scheme: the JWT signing key and the HTTP signing key are the same key, discoverable from the resource's well-known document.
 4. If the request carries a body, verify `body_s256` is present and equals the SHA-256 hash of the body bytes. If it carries none, verify `body_s256` is absent. A mismatch is a token verification failure, answered `401` with `Signature-Error: error=invalid_jwt`.
 5. Look up the subscription record by `eid`. If no active subscription exists for this `eid`, return `404`.
@@ -445,7 +445,7 @@ Content-Type: application/json
 
 When `remaining_uses` is `0`, the subscription is exhausted. The resource SHOULD clean up its subscription record and MAY prompt the agent to re-subscribe on the next interaction. When `max_uses` was not set, the AP returns `202 Accepted` with no body (or an empty JSON object).
 
-The AP returns `400` for malformed requests, `401` with `Signature-Error` if the event token or the HTTP signature fails step 1, 3, 4, or 7, an expired event token included ([@!I-D.hardt-oauth-aauth-protocol], Verification (Server)), `403` if the resource does not match the subscription's authorized resource, and `404` if the `eid` is unknown, the subscription has expired, or `max_uses` has been exceeded.
+The AP returns `400` for malformed requests, `401` with `Signature-Error` if the event token or the HTTP signature fails step 1, 3, 4, or 7, an expired event token included ([@!I-D.hardt-oauth-aauth-protocol], Verification (Server)), `403` if the resource does not match the subscription's authorized resource, and `404` if the `eid` is unknown, the subscription has expired, or `max_uses` has been exceeded, unless the delivery is a duplicate dropped at step 2.
 
 Those last three are one condition from the resource's side: the AP has no subscription that will accept this event, and the answer is to clean up and re-subscribe. `410 Gone` would say more — that there was a subscription here and it is finished — but an AP can answer that only while it still holds a record it has no other use for, so the distinction would report its retention policy rather than any protocol state. Nothing is lost by collapsing them, because exhaustion is reported in-band: `remaining_uses: 0` in the `202` of the delivery that spent the subscription reaches the resource at the moment it can act on it. An event posted after that is a race or a resource that ignored the signal, and the `404` tells it what the earlier `202` already did.
 
