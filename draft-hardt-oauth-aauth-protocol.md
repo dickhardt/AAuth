@@ -2899,6 +2899,7 @@ All AAuth tokens are proof-of-possession tokens: the holder must prove possessio
 - Pending URLs MUST be unguessable and SHOULD have limited lifetime
 - Pending URLs are on the same origin as the server that issued them (#deferred-responses)
 - Servers MUST verify the agent's identity on every poll
+- A poll is signed under the same agent identity, and presents the same type of credential, as the request that received the `202`, except where a flow names the credential its polls present, as deferred delivery does with the auth token (#deferred-auth-token)
 - Once a terminal response is returned, the pending URL MUST return `410 Gone`, except where a flow requires a repeated presentation of the same token to be answered from a retained result — deferred auth-token delivery (#deferred-auth-token) and per-call grants ([@?I-D.hardt-aauth-r3]) — in which case the URL answers from the record until its retention ends, and returns `410 Gone` after
 
 ## Untrusted Input {#untrusted-input}
