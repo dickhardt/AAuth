@@ -368,7 +368,7 @@ Required payload claims:
 
 Optional payload claims:
 
-- `body_s256`: The base64url-encoded SHA-256 hash, without padding, of the request body bytes the resource sends with this event token. REQUIRED when the delivery carries a body, and absent when it carries none. The agent receives the body from the AP and cannot verify the resource's HTTP signature, so this claim is what lets it verify the payload end to end.
+- `body_s256`: The base64url-encoded SHA-256 hash, without padding, of the request body bytes the resource sends with this event token. REQUIRED when the delivery carries a body (see (#event-delivery)), and absent when it carries none. The agent receives the body from the AP and cannot verify the resource's HTTP signature, so this claim is what lets it verify the payload end to end.
 
 The event token MUST NOT contain a `cnf` claim. The event token is a self-issued JWT per the `self-jwt` Signature-Key scheme ([@!I-D.hardt-httpbis-signature-key]): the resource is both the JWT issuer and the HTTP request signer, and the key identified by `kid` in the resource's JWKS verifies both the JWT and the HTTP Message Signature.
 
@@ -414,6 +414,8 @@ Signature-Key: sig=self-jwt;
 ```
 
 The event token in `Signature-Key` provides the resource's identity (`iss`), routing and authorization claims (`eid`, `aud`, `exp`), the event's identity (`jti`), and the digest of the body (`body_s256`). Unlike agent tokens and subscribe tokens (which use the `jwt` scheme with `cnf.jwk`), the event token uses the `self-jwt` scheme ([@!I-D.hardt-httpbis-signature-key]): the resource is both the JWT issuer and the HTTP request signer, so no `cnf.jwk` is needed. The resource has a stable JWKS discoverable from `{iss}/.well-known/{dwk}`, and the AP uses the same key (identified by `kid` in the JWT header) to verify both the JWT signature and the HTTP signature. The request body structure is defined by the resource's AsyncAPI message schema for the event type (see (#event-discovery)). The AP forwards both the event token and the payload body to the agent.
+
+A delivery carries a body when its content is one or more bytes. A zero-length delivery carries none: its event token has no `body_s256`, and its signature need not cover `content-digest` or `content-type`.
 
 The signature covers the base components of ([@!I-D.hardt-oauth-aauth-protocol], Covered Components). When the request carries a body, it MUST also cover `content-digest` and `content-type`, as a request to a revocation endpoint does: the event endpoint is defined by this document rather than by the AP's own API, and the body is what the AP forwards to the agent.
 
