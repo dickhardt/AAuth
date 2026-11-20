@@ -3073,7 +3073,7 @@ This specification registers the following link relation type in the IANA Link R
 
 ## Media Type Registrations
 
-This specification registers the following media types:
+This specification registers the following media types. AAuth Events ([@?I-D.hardt-aauth-events]) registers the `application/aa-subscribe+jwt` and `application/aa-event+jwt` media types.
 
 ### application/aa-agent+jwt
 
@@ -3126,24 +3126,6 @@ This specification registers the following media types:
 - Published specification: This document, (#resource-tokens)
 - Applications that use this media type: AAuth resources and ASes
 - Fragment identifier considerations: N/A
-
-## JWT Type Registrations
-
-This specification registers the following JWT `typ` header parameter values in the "JSON Web Token Types" sub-registry:
-
-| Type Value | Reference |
-|---|---|
-| `aa-agent+jwt` | This document, (#agent-tokens) |
-| `aa-person+jwt` | This document, (#person-tokens) |
-| `aa-auth+jwt` | This document, (#auth-tokens) |
-| `aa-resource+jwt` | This document, (#resource-tokens) |
-
-The following JWT `typ` values are registered by AAuth Events ([@?I-D.hardt-aauth-events]):
-
-| Type Value | Reference |
-|---|---|
-| `aa-subscribe+jwt` | [@?I-D.hardt-aauth-events] |
-| `aa-event+jwt` | [@?I-D.hardt-aauth-events] |
 
 ## JWT Claims Registrations
 
