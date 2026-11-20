@@ -43,9 +43,9 @@ A resource must have verified a person token before it issues a resource token, 
 
 ## Surface 3 — Resource-token issuance and issuer discovery
 
-The resource signs a resource token as `aa-resource+jwt` with `iss` set to its own identifier and publishes its JWKS at `{iss}/.well-known/aauth-resource.json`.
+The resource signs a resource token as `aa-resource+jwt` with `iss` set to its own identifier, and publishes its metadata at `{iss}/.well-known/aauth-resource.json`, with `jwks_uri` naming its JWKS.
 
-**What to verify:** fetch `{iss}/.well-known/aauth-resource.json`; confirm `issuer` in the document matches `iss` in the token; locate the key matching the JWT header `kid`; verify the resource-token signature. No PS or AS is required for this surface.
+**What to verify:** fetch `{iss}/.well-known/aauth-resource.json`; confirm `issuer` in the document matches `iss` in the token; fetch the JWKS at its `jwks_uri`; locate the key matching the JWT header `kid`; verify the resource-token signature. No PS or AS is required for this surface.
 
 ## Surface 4 — Auth-token issuance and presentation
 
@@ -60,10 +60,10 @@ The issued `aa-auth+jwt` carries:
 
 The agent presents the auth token via `Signature-Key: sig=jwt;jwt="<auth token>"` on subsequent requests. The resource verifies:
 
-1. Auth-token signature (from issuer JWKS at `{iss}/.well-known/{dwk}`)
+1. Auth-token signature, with the issuer's keys from the `jwks_uri` in the metadata at `{iss}/.well-known/{dwk}`
 2. `cnf.jwk` matches the key that signed the HTTP request
 3. `aud` matches its own identifier
-4. `sub` is present, and `(iss, sub)` matches or establishes its record for this person
+4. `sub` is present, and `(ps, sub)` matches or establishes its record for this person
 
 Note that no token a resource reads carries an agent identifier. `agent_jkt` in the resource token and `cnf` in every token are the binding.
 
@@ -78,7 +78,7 @@ Note that no token a resource reads carries an agent identifier. `agent_jkt` in 
 
 The sub-agent relationship is recorded by the PS, which issued both tokens and holds the `parent_agent` binding. It does not appear in any token the resource sees.
 
-**What to verify:** the resource confirms the auth token is signed with the sub-agent's key; the PS's log records the parent as the requesting agent.
+**What to verify:** the resource verifies the auth token against the issuer's JWKS, and that its `cnf.jwk`, the sub-agent's key, matches the key that signed the request; the PS's log records the parent as the requesting agent.
 
 ## Deployment Configurations
 
