@@ -227,7 +227,7 @@ Built On lists what AAuth depends on. The following documents build on this one 
 
 {::boilerplate bcp14-tagged}
 
-In HTTP examples throughout this document, line breaks and indentation are added for readability. Actual HTTP messages do not contain these extra line breaks. Examples of signed requests show the `Signature-Key` header and omit the `Signature-Input`, `Signature`, and `Content-Digest` headers that every signed request carries; the fully bound form is shown in (#aauth-access) and (#covered-components).
+In HTTP examples throughout this document, line breaks and indentation are added for readability. Actual HTTP messages do not contain these extra line breaks. Examples of signed requests show the `Signature-Key` header and omit the `Signature-Input`, `Signature`, and `Content-Digest` headers that every signed request carries; the fully bound form is shown in (#aauth-access), (#authorization-endpoint-request), and (#covered-components).
 
 # Terminology
 
@@ -720,6 +720,10 @@ A resource MAY publish an `authorization_endpoint` in its metadata (#resource-me
 POST /authorize HTTP/1.1
 Host: resource.example
 Content-Type: application/json
+Content-Digest: sha-256=:...digest...:
+Signature-Input: sig=("@method" "@authority" "@path" \
+    "signature-key" "content-digest" "content-type");created=1730217600
+Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwt;jwt="eyJhbGc..."
 
 {
@@ -2259,7 +2263,7 @@ The signature MUST cover the following derived components and header fields:
 - `@path`: The request path ([@!RFC9421], Section 2.2.6)
 - `signature-key`: The Signature-Key header value
 
-On a request carrying a body to a PS or AS endpoint, or to any revocation endpoint (#token-revocation), the signature MUST additionally cover:
+On a request carrying a body to a PS or AS endpoint, to a resource's authorization endpoint (#authorization-endpoint-request), or to any revocation endpoint (#token-revocation), the signature MUST additionally cover:
 
 - `content-digest`: The Content-Digest header value ([@!RFC9530])
 - `content-type`: The Content-Type header value
@@ -3554,7 +3558,7 @@ AAuth diverges from RFC 9728 on two points. It uses `issuer` as the primary iden
 
 The four mandated components each close a request-substitution attack, and all four are derivable by the agent at signing time on every platform, including browsers. `@method` prevents a captured signature from being replayed with a different method; `@authority` prevents cross-host replay; `@path` binds it to the endpoint; `signature-key` prevents key substitution.
 
-`content-digest` and `content-type` are mandated at PS and AS endpoints because their request bodies carry members that decide what is authorized (`justification`, `mission_s256`, `resource`, the mission proposal itself), and every such endpoint takes a JSON body of known shape, so a digest costs the sender nothing. Resources serve arbitrary APIs, including bodyless requests and streamed uploads, so they declare what they need through `additional_signature_components` instead. A resource's revocation endpoint is the exception because it is defined by this document, not by the resource's API, and its body selects a token and adds to retained state.
+`content-digest` and `content-type` are mandated at PS and AS endpoints because their request bodies carry members that decide what is authorized (`justification`, `mission_s256`, `resource`, the mission proposal itself), and every such endpoint takes a JSON body of known shape, so a digest costs the sender nothing. Resources serve arbitrary APIs, including bodyless requests and streamed uploads, so they declare what they need through `additional_signature_components` instead. A resource's authorization endpoint and revocation endpoint are the exceptions because this document defines them, not the resource's API: the authorization endpoint's body carries `scope` and `account`, which decide what is authorized, and the revocation endpoint's body selects a token and adds to retained state.
 
 ### Why `401` for Every Signature Failure {#why-401-signature-failures}
 
