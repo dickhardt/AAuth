@@ -1045,7 +1045,7 @@ When the resource token carries an `interaction` claim (#resource-token-structur
 
 In four-party access the PS resolves the resource's interaction before its PS-to-AS token request (#ps-to-as-token-request), and the AS issues the auth token.
 
-A resource's interaction endpoint MUST support the `?code=...&callback=...` pattern whether the redirect comes from an agent or from a PS; it need not distinguish the two. The `interaction.url` MUST be an HTTPS URL; the PS MUST validate this before redirecting and MUST apply its egress admission policy to it.
+A resource's interaction endpoint MUST support the `?code=...&callback=...` pattern whether the redirect comes from an agent or from a PS; it need not distinguish the two. The `interaction.url` MUST be an HTTPS URL; the PS MUST validate this before redirecting, and MUST NOT redirect the person to a URL whose host is a loopback, private, or link-local address unless its deployment allows it.
 
 ## User Interaction {#user-interaction}
 
