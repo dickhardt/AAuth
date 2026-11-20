@@ -78,7 +78,7 @@ Note that no token a resource reads carries an agent identifier. `agent_jkt` in 
 
 The sub-agent relationship is recorded by the PS, which issued both tokens and holds the `parent_agent` binding. It does not appear in any token the resource sees.
 
-**What to verify:** the resource confirms the auth token is signed with the sub-agent's key; the PS's log records the parent as the requesting agent.
+**What to verify:** the resource verifies the auth token against the issuer's JWKS, and that its `cnf.jwk`, the sub-agent's key, matches the key that signed the request; the PS's log records the parent as the requesting agent.
 
 ## Deployment Configurations
 
