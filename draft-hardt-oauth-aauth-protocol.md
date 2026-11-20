@@ -905,7 +905,7 @@ A person token is a JWT with `typ: aa-person+jwt`. Its header and the claims `is
 - `iss`: PS URL
 - `dwk`: `aauth-person.json`
 - `cnf`: `jwk` is the agent's public key
-- `exp`: Person tokens MUST NOT have a lifetime exceeding 1 hour, and MUST NOT outlive the agent token presented when the token was requested, the `upstream_token` when the request carried one (#call-chaining), or, when `mission_s256` is present, the mission's `expires_at` (#mission-approval).
+- `exp`: Person tokens MUST NOT have a lifetime exceeding 1 hour, and MUST NOT outlive the `upstream_token` when the request carried one (#call-chaining) or, when `mission_s256` is present, the mission's `expires_at` (#mission-approval). The `exp` MUST NOT be later than the earliest `exp` of the agent tokens the request carried: the one in `Signature-Key` and, when present, the `subagent_token` (#sub-agents).
 
 Required payload claims specific to person tokens:
 
@@ -1337,7 +1337,7 @@ AAuth has no refresh token. When an auth token expires, the agent obtains a fres
 
 When an agent rotates its signing key, every auth token bound to the old key stops working. The agent MUST re-authorize by obtaining fresh resource tokens and submitting them to the PS.
 
-Auth tokens MUST NOT have an `exp` later than the agent token used to obtain them. An agent refreshes its agent token, and the tokens obtained with it, within the margin below.
+Auth tokens MUST NOT have an `exp` later than the agent tokens used to obtain them (#auth-token-structure). An agent refreshes its agent token, and the tokens obtained with it, within the margin below.
 
 ### Expiry and the Refresh Margin {#refresh-margin}
 
@@ -1821,7 +1821,7 @@ An auth token is a JWT with `typ: aa-auth+jwt`. Its header and the claims `iss`,
 - `iss`: The URL of the server that issued the auth token — an AS (four-party) or a PS (three-party)
 - `dwk`: `aauth-access.json` when issued by an AS, `aauth-person.json` when issued by a PS
 - `cnf`: `jwk` is the agent's public key
-- `exp`: Auth tokens MUST NOT have a lifetime exceeding 1 hour, MUST NOT expire later than the agent token used to obtain them (#re-authorization), and MUST NOT expire later than the `presented_token` of the token request (#ps-token-endpoint) and (#ps-to-as-token-request) — a person token, which the PS capped at the mission's `expires_at` when `mission_s256` is present (#person-token-structure), or an auth token bounded the same way in its turn. When the token request carried `upstream_token` (#call-chaining), the auth token MUST NOT expire later than that token either. A PS-issued auth token carrying `mission_s256` MUST NOT expire later than the mission's `expires_at` (#mission-approval).
+- `exp`: Auth tokens MUST NOT have a lifetime exceeding 1 hour, MUST NOT expire later than the earliest `exp` of the agent tokens the token request carried (#re-authorization), and MUST NOT expire later than the `presented_token` of the token request (#ps-token-endpoint) and (#ps-to-as-token-request) — a person token, which the PS capped at the mission's `expires_at` when `mission_s256` is present (#person-token-structure), or an auth token bounded the same way in its turn. When the token request carried `upstream_token` (#call-chaining), the auth token MUST NOT expire later than that token either. A PS-issued auth token carrying `mission_s256` MUST NOT expire later than the mission's `expires_at` (#mission-approval). The agent tokens a token request carries are the signing agent's, which the AS receives as `agent_token`, and the `subagent_token` when present (#sub-agents).
 
 Required payload claims specific to auth tokens:
 - `aud`: The URL of the resource the agent is authorized to access.
