@@ -1981,9 +1981,11 @@ Table of Contents
    The server hosting the interaction accepts as callback only a URL on
    the origin of the requesting agent's callback_endpoint; a loopback
    URL when that agent's localhost_callback_allowed is true
-   Section 11.1.2; or, for a resource's interaction reached through a PS
-   Section 7.2.3, a URL on that PS's origin.  It MUST ignore any other
-   callback and display its completion page.
+   Section 11.1.2; or, for an interaction reached through a PS, a URL on
+   that PS's origin.  That covers a resource's interaction Section 7.2.3
+   and an AS's interaction the PS directs the person to Section 9.1.2;
+   an AS knows the PS as the signer of the PS-to-AS token request.  It
+   MUST ignore any other callback and display its completion page.
 
    The code is single-use: once the user arrives with a valid code, it
    is consumed.  The server hosting the interaction URL MAY instead
@@ -6384,9 +6386,10 @@ Initial request (with Prefer: wait=N)
          exception.  Issues #239, #273.
       -  Interaction: the decision is recorded at the server hosting the
          interaction URL; the host accepts only a callback on the
-         requester's origin; the PS does not redirect the person to a
-         loopback, private, or link-local host; in four-party access the
-         PS resolves a resource's interaction before federating.  Issues
+         requesting agent's origin or on that of a PS that relayed the
+         interaction; the PS does not redirect the person to a loopback,
+         private, or link-local host; in four-party access the PS
+         resolves a resource's interaction before federating.  Issues
          #227, #272, #276, #277.
       -  Missions: an accepted update returns its persisted bytes as
          update; approved_at does not make s256 unique; the PS or the
