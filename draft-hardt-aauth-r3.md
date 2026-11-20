@@ -245,7 +245,7 @@ R3 also defines an additional value for the `access_mode` field, registered in t
 
 ## Operation Identifier Scope {#operation-identifier-scope}
 
-Operation identifiers are scoped to the discovery endpoint the resource advertises for that vocabulary in `r3_vocabularies`. A resource advertises exactly one discovery endpoint per vocabulary, and each underlying format requires operation identifiers to be unique within a single definition (OpenAPI `operationId` within a document, MCP tool names within a server, GraphQL operation names within a schema, AsyncAPI `operationId` within a document). Bare identifiers in `r3_operations` requests, R3 documents, and `r3_granted`/`r3_per_call` claims therefore resolve unambiguously against that one definition, and no additional qualifier appears in tokens.
+Operation identifiers are scoped to the discovery endpoint the resource advertises for that vocabulary in `r3_vocabularies`. A resource advertises exactly one discovery endpoint per vocabulary, and each underlying format requires operation identifiers to be unique within a single definition (OpenAPI `operationId` within a document, MCP tool names within a server, GraphQL operation names within a schema, AsyncAPI keys of the root `operations` object within a document). Bare identifiers in `r3_operations` requests, R3 documents, and `r3_granted`/`r3_per_call` claims therefore resolve unambiguously against that one definition, and no additional qualifier appears in tokens.
 
 A resource that aggregates multiple backend services behind a single resource identifier MUST do one of the following: present them as one valid definition at the discovery endpoint (renaming colliding identifiers as needed to satisfy the format's uniqueness rules), or expose the services under separate resource identifiers (in which case the auth token's `aud` claim distinguishes them). Identical identifiers at *different* resources are already disambiguated by token binding: an auth token is bound to one resource via `aud`, and `r3_uri`/`r3_s256` pin the exact R3 document the grant was drawn from.
 
@@ -334,8 +334,8 @@ For resources that emit events described by AsyncAPI 3.0.0 ([@!AsyncAPI]). The d
 
 Each operation entry contains:
 
-- **`operationId`** (REQUIRED). The `operationId` as defined in the AsyncAPI specification.
-- **`action`** (OPTIONAL). The AsyncAPI action type: `send` or `receive`. Agents subscribing to events use `receive`.
+- **`operationId`** (REQUIRED). The operation's key in the root `operations` object of the resource's AsyncAPI document, which AsyncAPI calls the `operationId`. The Operation Object itself has no `operationId` field.
+- **`action`** (OPTIONAL). `send` or `receive`. When present, it MUST equal the `action` of that operation in the resource's AsyncAPI document. AsyncAPI states `action` from the perspective of the application the document describes, which is the resource, so an event the resource emits is `send`.
 
 When a resource grants an agent an AsyncAPI subscription operation via R3, the actual subscription registration and event delivery use the AAuth Events protocol ([@?I-D.hardt-aauth-events]). The resource issues a subscription ticket URL in response to the authenticated request; the agent then completes subscription registration using a subscribe token per AAuth Events.
 
@@ -978,7 +978,7 @@ RAR and R3 remain complementary. RAR is the OAuth-native way to express structur
 | `urn:aauth:vocabulary:openapi` | HTTP/REST | `operationId` | OpenAPI spec URL |
 | `urn:aauth:vocabulary:grpc` | gRPC | `package.Service/Method` | Server reflection or `.proto` URL |
 | `urn:aauth:vocabulary:graphql` | GraphQL | Operation name | GraphQL introspection |
-| `urn:aauth:vocabulary:asyncapi` | Event-driven | `operationId` | AsyncAPI spec URL |
+| `urn:aauth:vocabulary:asyncapi` | Event-driven | Key in `operations` | AsyncAPI spec URL |
 | `urn:aauth:vocabulary:wsdl` | SOAP/WSDL | Operation name | WSDL document URL |
 | `urn:aauth:vocabulary:odata` | OData | Entity set or bound operation | `$metadata` URL |
 
