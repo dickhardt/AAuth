@@ -708,6 +708,13 @@ There are no known implementations of this specification at the time of writing.
 *Note: This section is to be removed before publishing as an RFC.*
 
 - **-00**: Initial version. Supervisor metadata, connect, three endpoints, supervision decisions, events, replay, signed decisions.
+  - An `auth_token` supervision request carries the R3 document or per-call proposal the PS fetched and verified, as `r3_document`. Issue #256.
+  - A repeated supervision request under an answered `sdi` gets the same decision, signed for the repeated request, and the SS keeps the signed response it first gave as the record. A request under an answered `sdi` that differs from the one answered is rejected with `invalid_request`. Issue #258.
+  - The PS retries a supervision request until it gets a terminal response or the SS becomes unavailable for that decision. Issue #280.
+  - When the agent's request expires while the PS polls the SS, the act ends unanswered, and the PS reports `decision.resolved` with `answer` `abandoned` and `supervisor` `unavailable`. Issue #281.
+  - `revocation.received` `token_type` is `agent_token` or `resource_token`. Issue #283.
+  - A PS that cannot convey a narrowed `scope` or `exp` to the AS treats the `allow` as an `ask`. Issue #284.
+  - `interaction.requested` is sent for an interaction request of any `type`. Issue #285.
 
 # Acknowledgments
 
