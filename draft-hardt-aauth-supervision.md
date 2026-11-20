@@ -677,7 +677,7 @@ The person names the SS, and anyone can run one. A PS that posted to whatever en
 
 ## What the Supervisor Sees
 
-The SS sees everything the PS puts to it for the agents routed to it: mission text, justifications, the resources an agent reaches, the actions it takes, and what the person decides. That is the point; a supervisor that saw less could decide less. It is the person's own choice of a party to see it, made agent by agent (#routing), and the PS SHOULD say so when the person registers an SS.
+The SS sees everything the PS puts to it for the agents routed to it: mission text, justifications, the resources an agent reaches, the actions it takes, and what the person decides. For an R3 request it receives the R3 document or per-call proposal the PS fetched, including its `parameters`. That is the point; a supervisor that saw less could decide less. It is the person's own choice of a party to see it, made agent by agent (#routing), and the PS SHOULD say so when the person registers an SS.
 
 ## Identifiers
 
