@@ -295,7 +295,7 @@ The SS applies whatever reach the person has given earlier answers (#apply). The
 
 An SS that cannot answer within the PS's wait returns a `202 Accepted` deferred response ([@!I-D.hardt-oauth-aauth-protocol], Deferred Responses) with `Location` and `Retry-After`. The PS polls the pending URL with a signed GET, signing under the same identity that made the request, and sends no body. The SS MUST verify that identity and MUST answer `unknown_pending` (#errors) to a poll from any other. The terminal response is the decision, and is signed when the SS signs (#signed-decisions).
 
-The PS polls until it has a decision or until the agent's own pending request at the PS would expire. At that point the PS treats the SS as unavailable for this decision (#unavailable), and a decision the SS returns afterwards is discarded.
+The PS polls until it has a decision or until the agent's own pending request at the PS expires. When the agent's request expires while the PS is still polling, the act ends unanswered, and the PS reports `decision.resolved` with `answer` `abandoned` and `supervisor` `unavailable` (#event-decision-resolved). A decision the SS returns afterwards is discarded.
 
 ## Clarification {#ss-clarification}
 
@@ -559,7 +559,7 @@ Every event carries the envelope (#envelope). The `code` of a relayed interactio
 
 ## Decision Resolved {#event-decision-resolved}
 
-After an `ask`, and after any decision the PS put to the person because the SS was unavailable (#unavailable), the PS reports what the person decided:
+After an `ask`, and after any decision the PS put to the person because the SS was unavailable (#unavailable), the PS reports what the person decided. It also reports an act that ended unanswered while it polled the SS (#deferred-decisions).
 
 ```json
 {
@@ -580,12 +580,12 @@ After an `ask`, and after any decision the PS put to the person because the SS w
 }
 ```
 
-- `answer` (REQUIRED): `allow` or `deny`, or `abandoned` when the person did not answer before the request expired.
+- `answer` (REQUIRED): `allow` or `deny`, or `abandoned` when the person did not answer before the request expired or the request expired while the PS polled the SS.
 - `apply` (OPTIONAL): The reach the person gave their answer (#apply). Absent means `once`.
 - `recommendation` (OPTIONAL): The recommendation the SS gave in its `ask`, echoed so the SS can compare its policy with the person's answer.
 - `proposed` (OPTIONAL): For a mission proposal, the refinement as the person approved it, after any edits.
 - `transcript` (OPTIONAL): The clarification chat between the person and the agent at the PS, if any, in order. Each entry has `from`, one of `person` or `agent`, and `text`, Markdown.
-- `supervisor` (OPTIONAL): `unavailable` when the PS put the act to the person because it could not reach the SS. There is no `recommendation` in that case.
+- `supervisor` (OPTIONAL): `unavailable` when the PS put the act to the person because it could not reach the SS, or when the request expired while the PS polled the SS. There is no `recommendation` in that case.
 - `reason` (OPTIONAL): A reason the person gave, Markdown. A PS MAY offer the person a reason field and MUST NOT require one.
 
 ## Reach of an Answer {#apply}
@@ -617,7 +617,7 @@ What "this kind" means for `mission` and `always` is the SS's to determine, sinc
 
 # Unavailable Supervisor {#unavailable}
 
-An SS is unavailable for a decision when the PS cannot reach it: the connection fails or times out, the response is malformed, the SS answers `server_error`, or the SS answers `rate_limited` with a `Retry-After` past the point the agent's request would expire. An SS that answers `202` is not unavailable; the PS polls it as (#deferred-decisions) describes, and it becomes unavailable for that decision only when the agent's request would expire first.
+An SS is unavailable for a decision when the PS cannot reach it: the connection fails or times out, the response is malformed, the SS answers `server_error`, or the SS answers `rate_limited` with a `Retry-After` past the point the agent's request would expire. An SS that answers `202` is not unavailable. The PS polls it, and the act ends unanswered if the agent's request expires first (#deferred-decisions).
 
 When the SS is unavailable, the PS puts the act to the person, as it would with no SS configured. The `sdi` stands, the PS's log entry records that the SS was not consulted, and when the SS is reachable again the PS reports the outcome in `decision.resolved` with `supervisor: unavailable`. Events that could not be delivered are delivered then, in order.
 
