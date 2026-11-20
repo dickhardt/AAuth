@@ -2019,7 +2019,7 @@ Implementations MUST perform exact string comparison on server identifiers.
 
 ### Endpoint and Other URLs
 
-The `auth_token_endpoint`, `person_token_endpoint`, `authorization_endpoint`, `mission_endpoint`, and `callback_endpoint` values MUST use the `https` scheme and MUST NOT contain a query string or a fragment. The `jwks_uri`, `tos_uri`, `policy_uri`, `logo_uri`, and `logo_dark_uri` values MUST use the `https` scheme.
+The value of every metadata member whose name ends in `_endpoint`, including members defined by extensions, MUST use the `https` scheme and MUST NOT contain a query string or a fragment. The `jwks_uri`, `tos_uri`, `policy_uri`, `logo_uri`, and `logo_dark_uri` values MUST use the `https` scheme.
 
 One exception: when `localhost_callback_allowed` is `true` in the agent's metadata, the agent MAY use a loopback callback URL with the `http` scheme (`http://localhost` or `http://127.0.0.1`, any port) as the `callback` parameter to the interaction endpoint, in place of its `callback_endpoint`.
 
