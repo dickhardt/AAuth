@@ -503,14 +503,15 @@ The resource's AsyncAPI document describes:
 A resource that publishes an AsyncAPI document and offers a subscription that requires only a subscribe token MUST declare the AAuth subscribe token security scheme as follows:
 
 ```yaml
-securitySchemes:
-  aauth_subscribe:
-    type: http
-    scheme: aauth-subscribe
-    description: >
-      AAuth Subscribe Token (typ: aa-subscribe+jwt), issued by the agent's Agent
-      Provider, presented as the Signature-Key JWT with HTTP Message Signatures.
-      See draft-hardt-aauth-events.
+components:
+  securitySchemes:
+    aauth_subscribe:
+      type: http
+      scheme: aauth-subscribe
+      description: >
+        AAuth Subscribe Token (typ: aa-subscribe+jwt), issued by the agent's
+        Agent Provider, presented as the Signature-Key JWT with HTTP Message
+        Signatures. See draft-hardt-aauth-events.
 ```
 
 Operations that require only a subscribe token declare:
