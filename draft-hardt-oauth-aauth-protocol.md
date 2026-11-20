@@ -2442,7 +2442,7 @@ The `code` is a Structured Field String ([@!RFC9651], Section 3.3.3). The user r
 
 **Case.** Comparison MUST be case-insensitive. A server MUST accept the code regardless of the case the user enters, and on input MUST fold the Crockford decode aliases (`I`/`L` → `1`, `O` → `0`) before comparison.
 
-**Correlation only.** The code is a correlation identifier that ties the user's browser session to the pending interaction. It is NOT an authorization credential. The person's approve/deny decision MUST be recorded via an authenticated channel at the PS; how the PS authenticates the person is out of scope. Because the agent relays the code to the user, the code is visible to the agent, and the code alone MUST NOT authorize the decision.
+**Correlation only.** The code is a correlation identifier that ties the user's browser session to the pending interaction. It is NOT an authorization credential. The person's approve/deny decision MUST be recorded via an authenticated channel at the server that hosts the interaction URL — the PS, the resource, or the AS — not necessarily at a PS that relays it; how that server authenticates the person is out of scope. Because the agent relays the code to the user, the code is visible to the agent, and the code alone MUST NOT authorize the decision.
 
 **Single use.** A code MUST be single-use. Once the user arrives at the interaction URL with a valid code and the code is consumed, the server MUST reject any later presentation of the same code with `invalid_code` (#polling-error-codes). A code consumed by out-of-band completion (#user-interaction) is rejected the same way.
 
