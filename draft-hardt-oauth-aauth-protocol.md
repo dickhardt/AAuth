@@ -3246,6 +3246,25 @@ The following implementations are known:
 
 *Note: This section is to be removed before publishing as an RFC.*
 
+- draft-hardt-oauth-aauth-protocol-12
+  - The person is identified by `(ps, sub)` in every token, and a resource MUST NOT key on `(iss, sub)` for an AS-issued token. `tenant` is not part of the identifier. Issues #210, #215.
+  - The AS verifies `agent_token` and `subagent_token`; added `invalid_agent_token` and `expired_agent_token`. The PS verifies `subagent_token` without step 1 of Agent Token Verification. Issue #199.
+  - Parent-mediated authorization: the auth token's `cnf.jwk` is compared with the `subagent_token`'s, and the sub-agent verifies `aud` and `cnf`. A person token or auth token expires no later than the earliest agent token the request carried. Issues #225, #228.
+  - Added Related Specifications. The R3, Events, and Budgets references point at the datatracker. Issues #201, #203.
+  - Metadata Documents: a reader MUST ignore members it does not recognize, and a deployment MAY bind metadata and JWKS to an OpenID Federation Trust Chain. Every `_endpoint` member MUST use `https` with no query or fragment. Issues #202, #211, #290.
+  - A request with a body to a resource's authorization endpoint MUST cover `content-digest` and `content-type`. Body components named in `additional_signature_components` apply only to requests that carry a body. Issues #230, #232.
+  - A server uses the `jwks_uri` scheme for the requests this document defines; a companion specification MAY define the scheme for its own. Issue #217.
+  - `revoked_jwt` applies to a revoked JWT that has also expired. The polling `revoked` code covers `presented_token`, `subagent_token`, and the agent-person binding. Issues #274, #279.
+  - A poll presents the same agent identity and credential type as the request that received the `202`. `updated_request` is a `POST` exception. Issues #239, #273.
+  - Interaction: the decision is recorded at the server hosting the interaction URL; the host accepts only a `callback` on the requester's origin; the PS does not redirect the person to a loopback, private, or link-local host; in four-party access the PS resolves a resource's interaction before federating. Issues #227, #272, #276, #277.
+  - Missions: an accepted update returns its persisted bytes as `update`; `approved_at` does not make `s256` unique; the PS or the person decides; the mission log is the PS's record of what reached it. Issues #49, #237, #242, #278.
+  - An agent identifier is stable across rotation of the request-signing key. In AAuth Bootstrap, replacing the durable key makes a new agent. Issue #252.
+  - The agent presents an auth token where the resource authorizes on it, and an agent token where an endpoint requires one. Issue #218.
+  - The authorization endpoint's `scope` is REQUIRED unless a companion specification replaces it. Issue #213.
+  - `requirement=auth-token` is `401` or `202` in Requirement Values and Resource Metadata. Issues #209, #240.
+  - Removed JWT Type Registrations. Issue #214.
+  - The introduction, the agent provider rationale, and the resource adoption path agree with the normative text. Issues #208, #212, #241.
+
 - draft-hardt-oauth-aauth-protocol-11
   - Restructured for readability: sections follow the order an implementer meets them, each normative statement is made once, and rationale moved from Protocol Primitives to the Design Rationale appendix. Agent Identity is now Agents, with an Agent Provider subsection; Person Token moved under the Person Token Endpoint.
   - A revocation request's signature MUST cover `content-digest` and `content-type` at every recipient. Issue #165.
