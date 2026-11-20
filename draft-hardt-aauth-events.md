@@ -696,6 +696,14 @@ TBD
 
 *Note: This section is to be removed before publishing as an RFC.*
 
+- draft-hardt-aauth-events-01
+  - The AP checks the event token `aud` before it counts a use against `max_uses`, so a delivery it refuses does not spend the subscription. Issue #266.
+  - An AP that drops a duplicate delivery answers it as it answered the original, `202` with the current `remaining_uses` when `max_uses` is set, and does not count it again. Issue #267.
+  - A delivery carries a body when its content is one or more bytes. A zero-length delivery carries none, and its event token has no `body_s256`. Issue #268.
+  - Subscribe tokens SHOULD NOT outlive the agent token the AP issued for the same key. Issue #269.
+  - The subscribe token security scheme is required only of a resource that publishes an AsyncAPI document and offers a subscription that requires only a subscribe token. Issue #270.
+  - An operation's `security` references the scheme with a Reference Object, the AsyncAPI 3.0.0 form. The resource's operations are `send`, since AsyncAPI states `action` from the perspective of the application the document describes. Issues #271, #246.
+
 - draft-hardt-aauth-events-00
   - The event token carries `body_s256`, the SHA-256 hash of the delivery body, REQUIRED when there is a body. The AP delivers the body unchanged, and the agent verifies it before acting, since it cannot verify the resource's HTTP signature. The subscribe token carries a REQUIRED `jti`. An event token whose `aud` does not name the subscribing agent is answered `401` with `Signature-Error: error=invalid_jwt`. A resource applies egress admission before fetching the AP's metadata or posting to its `event_endpoint`. Privacy Considerations state that subscribing discloses the agent identifier and AP to the resource, which departs from the protocol, and that delivery shows the AP which resources its agents subscribe at. Protected subscriptions require a person token or auth token because they bind to a person. Dropped the JWT type table: IANA has no such registry, and the media type registrations carry the `typ` values.
   - Aligned with the published AAuth Protocol -11. The subscribe token takes the place of whichever token the agent otherwise presents to the resource. A subscribe token or event token that fails verification is answered `401` with `Signature-Error`, and an agent MUST NOT act on an event token whose `exp` has passed. Event delivery with a body covers `content-digest` and `content-type`. A resource verifies the AP's metadata document and deduplicates registrations on `(iss, eid)`. Agent identifiers are compared case-sensitively. Registered the media types and the `eid`, `max_uses`, and `body_s256` claims. Protocol citations name their sections.
