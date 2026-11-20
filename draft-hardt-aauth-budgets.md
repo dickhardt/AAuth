@@ -707,7 +707,7 @@ Rule 3 follows from trailers being droppable in transit ([@!RFC9110], Section 6.
 
 A request whose response never arrives — a dropped connection, an aborted stream — leaves the agent unable to say whether it was metered. No trailer arrives on an aborted stream, and the header that would have carried `cost` is on the response that was lost.
 
-The agent MUST assume the request cost as much as the resource had held for it: `reserved` where it saw one, and otherwise the request's maximum cost as the resource would have bounded it (#overshoot). It carries that assumption until a later response's `remaining` supersedes it, and it SHOULD NOT retry a chargeable request before then.
+The agent MUST assume the request cost as much as the resource had held for it: `reserved` where it saw one, and otherwise the request's maximum cost as the resource would have bounded it (#overshoot). An agent that cannot compute that maximum cost, for example because the resource does not publish its pricing, MUST assume the request cost the full `remaining` it last saw. It carries that assumption until a later response's `remaining` supersedes it, and it SHOULD NOT retry a chargeable request before then.
 
 Assuming the maximum is the conservative direction: an agent that under-assumes plans spending it does not have and discovers the shortfall as a `401` (#exhaustion).
 
