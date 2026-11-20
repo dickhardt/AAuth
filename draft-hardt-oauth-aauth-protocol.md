@@ -138,6 +138,16 @@ organization = "Hellō"
   </front>
 </reference>
 
+<reference anchor="OpenID.Federation.WellKnownBinding" target="https://dickhardt.github.io/well-known-binding/main.html">
+  <front>
+    <title>OpenID Federation Well-Known Binding 1.0</title>
+    <author initials="D." surname="Hardt" fullname="Dick Hardt">
+      <organization>Hellō</organization>
+    </author>
+    <date year="2026"/>
+  </front>
+</reference>
+
 
 .# Abstract
 
@@ -1993,6 +2003,8 @@ One exception: when `localhost_callback_allowed` is `true` in the agent's metada
 Participants publish metadata at well-known URLs ([@!RFC8615]).
 
 When fetching a metadata document, implementations MUST verify that it contains an `issuer` member, and that the `issuer` value matches the URL the document was retrieved from (the URL minus the `/.well-known/{dwk}` suffix), compared by byte equality. A document with no `issuer` MUST be rejected with `issuer_missing`; one whose `issuer` does not match MUST be rejected with `issuer_mismatch` ([@!I-D.hardt-httpbis-signature-key]). This is the check [@!RFC8414], Section 3.3 requires of authorization server metadata, and it prevents a document hosted at one domain from claiming the `issuer` of another.
+
+The issuer check and JWKS discovery (#jwks-discovery) trust the origin: whoever can answer for it over HTTPS can publish metadata and keys for it. A deployment that needs a stronger binding MAY bind its metadata documents and JWKS to an OpenID Federation Trust Chain per OpenID Federation Well-Known Binding 1.0 ([@?OpenID.Federation.WellKnownBinding]).
 
 The following fields are defined identically across all four metadata documents (`aauth-agent.json`, `aauth-resource.json`, `aauth-person.json`, `aauth-access.json`):
 
