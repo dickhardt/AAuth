@@ -81,7 +81,7 @@ organization = "Hellō"
   </front>
 </reference>
 
-<reference anchor="I-D.hardt-aauth-r3" target="https://github.com/dickhardt/AAuth">
+<reference anchor="I-D.hardt-aauth-r3" target="https://datatracker.ietf.org/doc/draft-hardt-aauth-r3">
   <front>
     <title>AAuth Rich Resource Requests (R3)</title>
     <author initials="D." surname="Hardt" fullname="Dick Hardt">
@@ -118,9 +118,19 @@ organization = "Hellō"
   </front>
 </reference>
 
-<reference anchor="I-D.hardt-aauth-events" target="https://github.com/dickhardt/AAuth">
+<reference anchor="I-D.hardt-aauth-events" target="https://datatracker.ietf.org/doc/draft-hardt-aauth-events">
   <front>
     <title>AAuth Events</title>
+    <author initials="D." surname="Hardt" fullname="Dick Hardt">
+      <organization>Hellō</organization>
+    </author>
+    <date year="2026"/>
+  </front>
+</reference>
+
+<reference anchor="I-D.hardt-aauth-budgets" target="https://datatracker.ietf.org/doc/draft-hardt-aauth-budgets">
+  <front>
+    <title>AAuth Budgets</title>
     <author initials="D." surname="Hardt" fullname="Dick Hardt">
       <organization>Hellō</organization>
     </author>
