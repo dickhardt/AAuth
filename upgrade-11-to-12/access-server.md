@@ -52,7 +52,12 @@ Each item has an ID for tracking. Items marked **(optional)** add capability; ev
 ## Interactions you host
 
 - [ ] **AS-9 Record the decision at your interaction URL.** If you host an interaction, record the person's approve or deny decision through an authenticated channel of your own. -11 put that channel at the PS, even for interactions the PS only relays. The code alone MUST NOT authorize the decision. (Interaction Code Format)
-- [ ] **AS-10 Accept only known `callback` values.** At your interaction URL, accept `callback` only on the origin of the requesting agent's `callback_endpoint`, or a loopback URL when that agent's `localhost_callback_allowed` is `true`. MUST ignore any other `callback` and display your completion page. (User Interaction)
+- [ ] **AS-10 Accept only known `callback` values.** At your interaction URL, accept `callback` only when it is one of: (User Interaction, AS Response)
+  - a URL on the origin of the requesting agent's `callback_endpoint`;
+  - a loopback URL, when that agent's `localhost_callback_allowed` is `true`;
+  - when the PS directs the person to your interaction, a URL on that PS's origin. The PS is the one that signed the PS-to-AS token request.
+
+  MUST ignore any other `callback` and display your completion page.
 
 ## Error codes
 
