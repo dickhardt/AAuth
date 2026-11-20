@@ -2059,7 +2059,7 @@ The following fields are defined identically across all four metadata documents 
 
 AAuth uses `issuer` rather than the `resource` field of RFC 9728, and unprefixed field names rather than RFC 9728's `resource_`-prefixed forms (#why-issuer-not-resource).
 
-The per-role sections below list role-specific fields and role-specific requirement differences.
+The per-role sections below list role-specific fields and role-specific requirement differences. A reader MUST ignore members of a metadata document it does not recognize.
 
 ### Agent Provider Metadata {#agent-provider-metadata}
 
