@@ -1220,6 +1220,11 @@ Implementation reports and test vectors are expected from these efforts and will
 
 *Note: This section is to be removed before publishing as an RFC.*
 
+- draft-hardt-aauth-budgets-01
+  - Ambiguous Failures: an agent that cannot compute a request's maximum cost, for example because pricing is unpublished, assumes the request cost the full `remaining` it last saw. Issue #250.
+  - The Budget Object: a recipient MUST ignore members of a budget object it does not recognize. Issue #286.
+  - Calendar Counters: `all_time` is REQUIRED unless it exceeds the 15-digit bound of Range Limits; when it is omitted, the other counters are still reported. Issue #287.
+
 - draft-hardt-aauth-budgets-00
   - Initial submission, written against draft-hardt-oauth-aauth-protocol-11.
 
