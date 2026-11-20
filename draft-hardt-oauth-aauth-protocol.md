@@ -2156,7 +2156,7 @@ Role-specific fields:
 
 ### Resource Metadata {#resource-metadata}
 
-Published at `/.well-known/aauth-resource.json`. A resource MAY publish this document, and SHOULD point agents at it from pages they reach first (#resource-metadata-link). A resource that publishes none can still verify identity-based access and issue resource tokens and interaction requirements via `401` responses.
+Published at `/.well-known/aauth-resource.json`. A resource MAY publish this document, and SHOULD point agents at it from pages they reach first (#resource-metadata-link). A resource that publishes none can still verify identity-based access, issue resource tokens with `401` or deferred `202` responses (#deferred-auth-token), and issue interaction requirements with `202` responses (#interaction-required).
 
 ```json
 {
@@ -2185,7 +2185,7 @@ Role-specific fields:
 - `issuer` (REQUIRED): The resource's HTTPS URL. Placed in the `iss` claim of resource tokens.
 - `jwks_uri` (REQUIRED when the resource issues resource tokens or makes signed calls): URL to the resource's JSON Web Key Set. A resource that only verifies agent signatures has no keys to publish and MAY omit it.
 - `access_mode` (OPTIONAL): The credential flow the resource expects, so an agent can plan its first call. Values defined by this document: `agent-token` (the agent signs with its agent token), `person-token` (the agent signs with a person token), `session-token` (the agent completes the resource's interaction flow and receives a session token via `AAuth-Access`), and `auth-token` (the agent obtains an auth token from its PS using a resource token; the initial call MUST present a person token). Default: `agent-token`. Extensions MAY define further values, recorded in the AAuth Access Mode Value Registry (#aauth-access-mode-value-registry); R3 ([@?I-D.hardt-aauth-r3]) defines `per-call`. An agent that does not recognize a value proceeds as with no declaration. The declaration is advisory: a resource MAY return any `AAuth-Requirement` at runtime (#requirement-responses) and MAY apply different modes to different endpoints. An agent MAY use `access_mode` to skip resources its setup cannot satisfy, for example a PS-less agent and `auth-token`.
-- `authorization_endpoint` (OPTIONAL): URL where agents request authorization (#authorization-endpoint-request). When absent, the resource issues resource tokens and interaction requirements via `401` responses.
+- `authorization_endpoint` (OPTIONAL): URL where agents request authorization (#authorization-endpoint-request). When absent, the resource issues resource tokens with `401` or deferred `202` responses (#deferred-auth-token), and interaction requirements with `202` responses (#interaction-required).
 - `scope_descriptions` (OPTIONAL): Object mapping scope values to Markdown strings for consent display (#scopes).
 - `signature_window` (OPTIONAL): Integer. The signature validity window in seconds for the `created` timestamp (#verification). Default: 60. A resource MAY advertise a larger value for agents with poor clock synchronization, or a smaller one.
 - `additional_signature_components` (OPTIONAL): Array of HTTP message component identifiers ([@!RFC9421]) that agents MUST include in the `Signature-Input` covered components when signing requests to this resource, in addition to the base components (#covered-components). A component that describes a body, such as `content-digest` or `content-type`, applies only to requests that carry a body; a bodyless request, such as a poll (#polling-with-get), does not cover it.
