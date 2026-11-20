@@ -1697,7 +1697,7 @@ When the AS issues an auth token (`200` response), the PS MUST verify the auth t
 1. Verify the auth token JWT signature using the AS's JWKS (#jwks-discovery).
 2. Verify `iss` matches the AS the PS sent the token request to.
 3. Verify `aud` matches the resource identified by the resource token's `iss`.
-4. Verify `cnf.jwk` matches the agent's signing key.
+4. Verify `cnf.jwk` matches the agent's signing key, or, in a parent-mediated sub-agent authorization (#sub-agents), the `subagent_token`'s `cnf.jwk`.
 5. Verify `sub` matches the directed identifier the PS issues for this person at this resource.
 6. Verify `scope` is consistent with what was requested — not broader than the scope in the resource token.
 7. Verify `exp` does not exceed the `exp` of the `presented_token` the PS presented (#ps-to-as-token-request).
@@ -1706,7 +1706,7 @@ After verification, the PS returns the auth token to the agent. The agent presen
 
 When the AS answers with a well-formed terminal error, the PS relays it: the response to the agent carries the AS's `error` value and status in the PS's own problem+json body (#error-response-format), so that an AS denial and a federation failure are distinguishable. When the PS cannot obtain a verifiable auth token at all — the AS is unreachable, times out, returns a malformed response, or returns an auth token that fails the verification above — the PS returns `as_unreachable` (#token-endpoint-error-codes). Either outcome reaches the agent on its pending request when the token request was deferred.
 
-The agent receives the auth token from its trusted PS, so signature verification is not strictly required. However, agents SHOULD verify the auth token's signature to detect errors early. Agents MUST verify that `aud` and `cnf` match their own values.
+The agent receives the auth token from its trusted PS, so signature verification is not strictly required. However, agents SHOULD verify the auth token's signature to detect errors early. The agent the token is bound to MUST verify that `aud` and `cnf` match its own values. In a parent-mediated authorization that is the sub-agent, which makes the check on the token the parent relays to it.
 
 ## Claims Required {#requirement-claims}
 
@@ -1869,7 +1869,7 @@ When an agent receives an auth token:
 1. SHOULD verify the auth token JWT signature using the issuer's JWKS (the AS in four-party, or the PS in three-party). The agent trusts its PS, so signature verification is not required but is RECOMMENDED to detect errors early.
 2. Verify `iss` matches the resource token's `aud` claim.
 3. Verify `aud` matches the resource the agent intends to access.
-4. Verify `cnf.jwk` matches the agent's own signing key.
+4. Verify `cnf.jwk` matches the agent's own signing key, or, for a parent receiving a token on behalf of a sub-agent (#sub-agents), the `subagent_token`'s `cnf.jwk`.
 5. Verify `sub` matches the value in the token it presented to that resource.
 
 ### Upstream Token Verification {#upstream-token-verification}
