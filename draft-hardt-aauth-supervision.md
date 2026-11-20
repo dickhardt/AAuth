@@ -323,7 +323,7 @@ Clarification is the SS speaking to the agent through the PS. It is never the SS
 
 ## Idempotence {#idempotence}
 
-A repeated supervision request under an `sdi` the SS has already answered MUST be answered with the same decision, and where the SS signs, the same signed response. A repeated request under an `sdi` the SS is still deciding is answered `202` with the same `Location`. The SS keeps decisions it has given at least until the `exp` of any token the decision could have allowed, and MAY keep them longer.
+A repeated supervision request under an `sdi` the SS has already answered MUST be answered with the same decision, and where the SS signs, signed for the repeated request (#signed-decisions). A request under an `sdi` the SS has answered that differs from the request it answered MUST be rejected with `invalid_request`. A repeated request under an `sdi` the SS is still deciding is answered `202` with the same `Location`. The SS keeps each decision it has given, and where it signs, the signed response as the record of the request it first answered, at least until the `exp` of any token the decision could have allowed, and MAY keep them longer.
 
 ## Signed Decisions {#signed-decisions}
 
