@@ -1017,7 +1017,7 @@ RAR and R3 remain complementary. RAR is the OAuth-native way to express structur
 | Carriage | Inline, in the challenge and the token | Content-addressed document |
 | Agent visibility | Reads what it relays | Carries a hash it cannot resolve |
 | Versioning | None | URI plus hash |
-| Audit trail | Inline copy | `r3_uri` and `r3_s256`, re-fetchable |
+| Audit trail | Inline copy | `r3_uri` and `r3_s256`, checkable against a retained copy or unchanged bytes at `r3_uri` |
 | Large values | Inline | Digest with optional excerpt |
 | Human display | `reason` in a challenge | `display` section |
 | Irreversibility | Not specified | `display.irreversible` |
