@@ -72,6 +72,104 @@ organization = "Hellō"
   </front>
 </reference>
 
+<reference anchor="MCP" target="https://modelcontextprotocol.io/specification/2025-06-18">
+  <front>
+    <title>Model Context Protocol Specification, Revision 2025-06-18</title>
+    <author>
+      <organization>Model Context Protocol</organization>
+    </author>
+    <date year="2025" month="June" day="18"/>
+  </front>
+</reference>
+
+<reference anchor="OpenAPI" target="https://spec.openapis.org/oas/v3.2.1.html">
+  <front>
+    <title>OpenAPI Specification v3.2.1</title>
+    <author>
+      <organization>OpenAPI Initiative</organization>
+    </author>
+    <date year="2026" month="September" day="10"/>
+  </front>
+</reference>
+
+<reference anchor="gRPC" target="https://github.com/grpc/grpc/blob/v1.84.0/doc/PROTOCOL-HTTP2.md">
+  <front>
+    <title>gRPC over HTTP2</title>
+    <author>
+      <organization>gRPC Authors</organization>
+    </author>
+    <date year="2026" month="September"/>
+  </front>
+  <refcontent>gRPC release 1.84.0</refcontent>
+</reference>
+
+<reference anchor="Protobuf" target="https://protobuf.dev/reference/protobuf/proto3-spec/">
+  <front>
+    <title>Protobuf Language Specification (Proto3)</title>
+    <author>
+      <organization>Google</organization>
+    </author>
+    <date year="2026"/>
+  </front>
+</reference>
+
+<reference anchor="GraphQL" target="https://spec.graphql.org/September2025/">
+  <front>
+    <title>GraphQL Specification, September 2025 Edition</title>
+    <author>
+      <organization>GraphQL Foundation</organization>
+    </author>
+    <date year="2025" month="September"/>
+  </front>
+</reference>
+
+<reference anchor="AsyncAPI" target="https://www.asyncapi.com/docs/reference/specification/v3.0.0">
+  <front>
+    <title>AsyncAPI Specification 3.0.0</title>
+    <author>
+      <organization>AsyncAPI Initiative</organization>
+    </author>
+    <date year="2023"/>
+  </front>
+</reference>
+
+<reference anchor="WSDL" target="https://www.w3.org/TR/2001/NOTE-wsdl-20010315">
+  <front>
+    <title>Web Services Description Language (WSDL) 1.1</title>
+    <author initials="E." surname="Christensen" fullname="Erik Christensen">
+      <organization>Microsoft</organization>
+    </author>
+    <author initials="F." surname="Curbera" fullname="Francisco Curbera">
+      <organization>IBM Research</organization>
+    </author>
+    <author initials="G." surname="Meredith" fullname="Greg Meredith">
+      <organization>Microsoft</organization>
+    </author>
+    <author initials="S." surname="Weerawarana" fullname="Sanjiva Weerawarana">
+      <organization>IBM Research</organization>
+    </author>
+    <date year="2001" month="March" day="15"/>
+  </front>
+  <refcontent>W3C Note</refcontent>
+</reference>
+
+<reference anchor="OData-CSDL" target="https://docs.oasis-open.org/odata/odata-csdl-xml/v4.01/odata-csdl-xml-v4.01.html">
+  <front>
+    <title>OData Common Schema Definition Language (CSDL) XML Representation Version 4.01</title>
+    <author initials="M." surname="Pizzo" fullname="Michael Pizzo">
+      <organization>Microsoft</organization>
+    </author>
+    <author initials="R." surname="Handl" fullname="Ralf Handl">
+      <organization>SAP SE</organization>
+    </author>
+    <author initials="M." surname="Zurmuehl" fullname="Martin Zurmuehl">
+      <organization>SAP SE</organization>
+    </author>
+    <date year="2020" month="May" day="11"/>
+  </front>
+  <refcontent>OASIS Standard</refcontent>
+</reference>
+
 
 .# Abstract
 
@@ -153,13 +251,13 @@ A resource that aggregates multiple backend services behind a single resource id
 
 ## Standard Vocabularies
 
-This document defines seven standard vocabularies. Third parties MAY define additional vocabularies using their own URI namespaces. Each vocabulary defines: the vocabulary URI, the structure of operation requests, how the resource maps operations to R3 documents, and the discovery endpoint.
+This document defines seven standard vocabularies. Third parties MAY define additional vocabularies using their own URI namespaces. Each vocabulary defines: the vocabulary URI, the structure of operation requests, how the resource maps operations to R3 documents, and the discovery endpoint. Each standard vocabulary takes its operation identifiers from the revision of its format named in its section.
 
 Standard vocabularies use the `urn:aauth:vocabulary:` namespace.
 
 ### MCP Vocabulary (`urn:aauth:vocabulary:mcp`) {#mcp-vocabulary}
 
-For resources that expose an MCP server. The discovery endpoint is the MCP server URL. Agents discover available tool names via MCP tool discovery.
+For resources that expose an MCP server, as defined by MCP revision 2025-06-18 ([@!MCP]). The discovery endpoint is the MCP server URL. Agents discover available tool names via MCP tool discovery.
 
 Each operation entry contains:
 
@@ -177,7 +275,7 @@ Each operation entry contains:
 
 ### OpenAPI Vocabulary (`urn:aauth:vocabulary:openapi`) {#openapi-vocabulary}
 
-For resources that expose an OpenAPI-described HTTP API. The discovery endpoint is the OpenAPI specification URL. Agents discover available operations by fetching and parsing the spec.
+For resources that expose an HTTP API described by OpenAPI 3.2.1 ([@!OpenAPI]). The discovery endpoint is the OpenAPI specification URL. Agents discover available operations by fetching and parsing the spec.
 
 Each operation entry contains:
 
@@ -195,7 +293,7 @@ Each operation entry contains:
 
 ### gRPC Vocabulary (`urn:aauth:vocabulary:grpc`) {#grpc-vocabulary}
 
-For resources that expose a gRPC server. The discovery endpoint is the gRPC server reflection endpoint (supporting `grpc.reflection.v1.ServerReflection`) or a hosted `.proto` file URL.
+For resources that expose a gRPC server, using gRPC over HTTP2 as of gRPC release 1.84.0 ([@!gRPC]) with services defined in proto3 ([@!Protobuf]). The discovery endpoint is the gRPC server reflection endpoint (supporting `grpc.reflection.v1.ServerReflection`) or a hosted `.proto` file URL.
 
 Each operation entry contains:
 
@@ -213,7 +311,7 @@ Each operation entry contains:
 
 ### GraphQL Vocabulary (`urn:aauth:vocabulary:graphql`) {#graphql-vocabulary}
 
-For resources that expose a GraphQL API. The discovery endpoint is the GraphQL endpoint. Agents discover available operations via GraphQL introspection (`__schema` query).
+For resources that expose a GraphQL API, as defined by the September 2025 edition of the GraphQL specification ([@!GraphQL]). The discovery endpoint is the GraphQL endpoint. Agents discover available operations via GraphQL introspection (`__schema` query).
 
 Each operation entry contains:
 
@@ -232,7 +330,7 @@ Each operation entry contains:
 
 ### AsyncAPI Vocabulary (`urn:aauth:vocabulary:asyncapi`) {#asyncapi-vocabulary}
 
-For resources that emit events described by AsyncAPI. The discovery endpoint is the AsyncAPI specification URL.
+For resources that emit events described by AsyncAPI 3.0.0 ([@!AsyncAPI]). The discovery endpoint is the AsyncAPI specification URL.
 
 Each operation entry contains:
 
@@ -253,7 +351,7 @@ When a resource grants an agent an AsyncAPI subscription operation via R3, the a
 
 ### WSDL Vocabulary (`urn:aauth:vocabulary:wsdl`) {#wsdl-vocabulary}
 
-For resources that expose a SOAP/WSDL-described web service. The discovery endpoint is the WSDL document URL.
+For resources that expose a SOAP web service described by WSDL 1.1 ([@!WSDL]). The discovery endpoint is the WSDL document URL.
 
 Each operation entry contains:
 
@@ -271,7 +369,7 @@ Each operation entry contains:
 
 ### OData Vocabulary (`urn:aauth:vocabulary:odata`) {#odata-vocabulary}
 
-For resources that expose an OData service. The discovery endpoint is the OData service root URL. Agents discover entity sets, functions, and actions via the `$metadata` document.
+For resources that expose an OData service whose model is described in CSDL as defined by OData Version 4.01 ([@!OData-CSDL]). The discovery endpoint is the OData service root URL. Agents discover entity sets, functions, and actions via the `$metadata` document.
 
 Each operation entry contains:
 
