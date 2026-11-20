@@ -500,7 +500,7 @@ The resource's AsyncAPI document describes:
 
 ## Security Scheme
 
-Resources MUST declare the AAuth subscribe token security scheme as follows:
+A resource that publishes an AsyncAPI document and offers a subscription that requires only a subscribe token MUST declare the AAuth subscribe token security scheme as follows:
 
 ```yaml
 securitySchemes:
