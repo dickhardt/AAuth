@@ -469,7 +469,7 @@ When a mission ends for any reason, the PS reports it with `action: terminated` 
 
 # Decision Endpoint {#decision-endpoint}
 
-The decision endpoint carries an act under the person's authority, with or without a mission. Every request is a supervision request with an `act` member naming which. The PS forwards the tokens and body the agent presented, so the SS sees what the PS saw.
+The decision endpoint carries an act under the person's authority, with or without a mission. Every request is a supervision request with an `act` member naming which. The PS forwards the tokens and body the agent presented, and for an R3 request the R3 document it fetched (`r3_document`), so the SS sees what the PS saw.
 
 ## Person Token
 
