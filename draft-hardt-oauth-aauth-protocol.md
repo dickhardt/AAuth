@@ -1495,7 +1495,7 @@ The approved description MAY differ from the proposal — the PS or user may ref
 
 The approved mission description is immutable — the `s256` hash binds it permanently. Missions do not change; they accumulate context.
 
-All agent interactions with the PS within a mission context form the **mission log**: token requests (with justifications), accepted updates (#mission-update), permission requests and responses, audit records, interaction requests, and clarification chats. The PS maintains this log as an ordered record of the agent's actions and the supervision decisions made. The mission log gives the PS the full history it needs to evaluate whether each new request is consistent with the mission's intent.
+All agent interactions with the PS within a mission context form the **mission log**: token requests (with justifications), accepted updates (#mission-update), permission requests and responses, audit records, interaction requests, and clarification chats. The PS maintains this log as an ordered record of the agent's actions and the supervision decisions made. It is the PS's record of what reached it, not an account of what the agent did while it could not reach the PS. The mission log gives the PS the full history it needs to evaluate whether each new request is consistent with the mission's intent.
 
 The agent names the mission when it requests a person token (#person-token-endpoint); the PS validates it and stamps `mission_s256` into the token, from where it flows into the resource token and the auth token. When the agent sends a resource token to its PS, the PS evaluates the request against the mission context and log history before federating with the resource's AS.
 
