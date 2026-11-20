@@ -320,6 +320,8 @@ A request with a body to an AP endpoint — enrollment, refresh, or sub-agent is
 
 The `jwt` parameter value is a JWT signed by the durable key, carrying the ephemeral public key in `cnf.jwk` along with the other claims the `jkt-jwt` scheme requires [@!I-D.hardt-httpbis-signature-key], and a `jti` for replay protection. The HTTP signature is produced by the ephemeral key. The AP correlates the two keys via the naming JWT's payload.
 
+The AP rejects a naming JWT whose `jti` it has already accepted, until that JWT's `exp`. Each refresh therefore takes a new durable-key signature: a party holding a stolen ephemeral key and one observed naming JWT cannot refresh with them again.
+
 ## Single-Key Refresh
 
 APs that opt for the single-durable pattern (#per-platform-keys) sign the refresh request directly with the durable key under the `hwk` scheme [@!I-D.hardt-httpbis-signature-key]. The AP verifies the signature, looks up the enrollment by the key's thumbprint, and issues a fresh agent token with a new `exp`. The same `cnf.jwk` is carried through; the agent's key is unchanged.
