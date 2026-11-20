@@ -1900,30 +1900,34 @@ Appendix B.  Vocabulary Summary
 
 Appendix C.  Comparison with RAR
 
-   +=================+=========================+======================+
-   | Property        | RAR ([RFC9396])         | R3                   |
-   +=================+=========================+======================+
-   | Who declares    | Client, or the resource | Resource             |
-   |                 | in a challenge          |                      |
-   +-----------------+-------------------------+----------------------+
-   | Carriage        | Inline, in the          | Content-addressed    |
-   |                 | challenge and the token | document             |
-   +-----------------+-------------------------+----------------------+
-   | Agent           | Reads what it relays    | Carries a hash it    |
-   | visibility      |                         | cannot resolve       |
-   +-----------------+-------------------------+----------------------+
-   | Versioning      | None                    | URI plus hash        |
-   +-----------------+-------------------------+----------------------+
-   | Audit trail     | Inline copy             | r3_uri and r3_s256,  |
-   |                 |                         | re-fetchable         |
-   +-----------------+-------------------------+----------------------+
-   | Large values    | Inline                  | Digest with optional |
-   |                 |                         | excerpt              |
-   +-----------------+-------------------------+----------------------+
-   | Human display   | reason in a challenge   | display section      |
-   +-----------------+-------------------------+----------------------+
-   | Irreversibility | Not specified           | display.irreversible |
-   +-----------------+-------------------------+----------------------+
+   +=================+================+===============================+
+   | Property        | RAR            | R3                            |
+   |                 | ([RFC9396])    |                               |
+   +=================+================+===============================+
+   | Who declares    | Client, or the | Resource                      |
+   |                 | resource in a  |                               |
+   |                 | challenge      |                               |
+   +-----------------+----------------+-------------------------------+
+   | Carriage        | Inline, in the | Content-addressed document    |
+   |                 | challenge and  |                               |
+   |                 | the token      |                               |
+   +-----------------+----------------+-------------------------------+
+   | Agent           | Reads what it  | Carries a hash it cannot      |
+   | visibility      | relays         | resolve                       |
+   +-----------------+----------------+-------------------------------+
+   | Versioning      | None           | URI plus hash                 |
+   +-----------------+----------------+-------------------------------+
+   | Audit trail     | Inline copy    | r3_uri and r3_s256, checkable |
+   |                 |                | against a retained copy or    |
+   |                 |                | unchanged bytes at r3_uri     |
+   +-----------------+----------------+-------------------------------+
+   | Large values    | Inline         | Digest with optional excerpt  |
+   +-----------------+----------------+-------------------------------+
+   | Human display   | reason in a    | display section               |
+   |                 | challenge      |                               |
+   +-----------------+----------------+-------------------------------+
+   | Irreversibility | Not specified  | display.irreversible          |
+   +-----------------+----------------+-------------------------------+
 
                                  Table 7
 
