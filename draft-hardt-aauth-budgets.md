@@ -345,6 +345,8 @@ Members:
 - **`unit`** (REQUIRED). A string identifying what is metered. For currency, the value SHOULD be an ISO 4217 [@ISO4217] alphabetic code. Units are resource-declared; this document establishes no registry of unit values, for the same reason the base protocol establishes no registry of scope values.
 - **`decimals`** (REQUIRED). A non-negative integer giving the scale of `amount`. When `unit` is an ISO 4217 code, `decimals` is NOT constrained to that currency's minor unit; see (#why-explicit-scale).
 
+A recipient MUST ignore members of a budget object it does not recognize.
+
 The object appears alongside `scope` wherever both are present:
 
 ```json
