@@ -1059,6 +1059,8 @@ When the agent has a browser, it MAY append a `callback` parameter, constructed 
 
 When present, the server redirects the user's browser to the `callback` URL after the user completes the action. Without it, the server displays a completion page and the agent relies on polling.
 
+The server hosting the interaction accepts as `callback` only a URL on the origin of the requesting agent's `callback_endpoint`; a loopback URL when that agent's `localhost_callback_allowed` is `true` (#endpoint-and-other-urls); or, for a resource's interaction reached through a PS (#resource-initiated-interaction), a URL on that PS's origin. It MUST ignore any other `callback` and display its completion page.
+
 The `code` is single-use: once the user arrives with a valid code, it is consumed. The server hosting the interaction URL MAY instead complete the interaction over a channel it already controls, such as a notification the person taps, without the person visiting `url` or presenting `code`; the code is consumed at that completion, and the pending URL returns the terminal response (#deferred-responses). Only the host of `url` can complete an interaction this way.
 
 ### Interaction Callback Errors {#interaction-callback-errors}
