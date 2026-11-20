@@ -218,7 +218,7 @@ The PS mints an `sdi` for each supervision request before it makes the request. 
 
 ## Delivery {#delivery}
 
-The PS delivers requests for one `(sub, SS)` pair in the order the acts occurred. The PS retries a request that did not receive a terminal response, under the same `id` or `sdi`, until it does. The SS deduplicates on `(iss, id)` and answers a repeated event with `201` and nothing new recorded. A repeated supervision request is answered per (#idempotence).
+The PS delivers requests for one `(sub, SS)` pair in the order the acts occurred. The PS retries an event or a report, under the same `id`, until it receives a terminal response. It retries a supervision request, under the same `sdi`, until it receives a terminal response or the SS becomes unavailable for that decision (#unavailable). The SS deduplicates on `(iss, id)` and answers a repeated event with `201` and nothing new recorded. A repeated supervision request is answered per (#idempotence).
 
 The PS SHOULD send `Prefer: wait` ([@!RFC7240]) on every supervision request, and a wait of 30 seconds is RECOMMENDED, so that an SS which decides within it never has to hold a pending record. An SS that cannot answer within the wait returns a deferred response (#deferred-decisions).
 
