@@ -549,7 +549,7 @@ The event endpoint carries what happened. Every request is a report with an `eve
 |---|---|---|
 | `person_token.issued` | `sdi`, `jti`, `aud`, `exp` | The PS issued a person token under the decision `sdi` |
 | `auth_token.issued` | `sdi`, `jti`, `aud`, `scope`, `exp`, `issuer` | The PS issued an auth token, or an AS did on the PS's federation, under `sdi`; `issuer` is the PS or the AS |
-| `decision.resolved` | (#event-decision-resolved) | What the person decided after an `ask`, or when the SS was unavailable |
+| `decision.resolved` | (#event-decision-resolved) | What the person decided after an `ask` or when the SS was unavailable, or that an act ended unanswered while the PS polled the SS |
 | `audit.recorded` | `action`, `description`, `parameters`, `result` | The agent logged an action at the PS's audit endpoint, as it sent it |
 | `interaction.requested` | `type`, `url` | The agent asked the PS to carry an interaction request to the person, and the PS did. Not a decision (#why-interaction-is-an-event) |
 | `agent.bound` | `agent_iss`, `agent_sub` | The PS bound the agent to the person on first approval |
