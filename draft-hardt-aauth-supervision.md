@@ -46,6 +46,16 @@ organization = "Hellō"
   </front>
 </reference>
 
+<reference anchor="I-D.hardt-aauth-r3" target="https://datatracker.ietf.org/doc/draft-hardt-aauth-r3">
+  <front>
+    <title>AAuth Rich Resource Requests (R3)</title>
+    <author initials="D." surname="Hardt" fullname="Dick Hardt">
+      <organization>Hellō</organization>
+    </author>
+    <date year="2026"/>
+  </front>
+</reference>
+
 .# Abstract
 
 This document defines AAuth Supervision — the interface between a Person Server (PS) and a Supervision Server (SS) under the AAuth Protocol ([@!I-D.hardt-oauth-aauth-protocol]). The AAuth Protocol names a Supervisor that evaluates each act an agent asks its PS to authorize: the person by default, or a supervision server the PS consults on the person's behalf. This document specifies how a person connects a supervision server to their PS, how the PS puts each decision to it, how the server answers, and how the PS tells it what happened.
@@ -502,6 +512,7 @@ An `allow` MAY carry `exp`, a time no later than which the issued token's `exp` 
 ```
 
 - `resource_token`, `presented_token` (REQUIRED): As the agent sent them. The resource token carries the resource, the scope it requires, and any budget or other requirement the resource attached.
+- `r3_document` (REQUIRED when the resource token carries `r3_uri`): The R3 document the PS fetched at `r3_uri` and verified against `r3_s256` ([@?I-D.hardt-aauth-r3], R3 Processing), base64url-encoded without padding: the R3 document for the request, or on a per-call challenge the per-call proposal. The SS cannot fetch it ([@?I-D.hardt-aauth-r3], R3 Document Access Restriction).
 - `upstream_token`, `subagent_token` (OPTIONAL): As above.
 - `justification` (OPTIONAL): The agent's justification, as it sent it.
 
