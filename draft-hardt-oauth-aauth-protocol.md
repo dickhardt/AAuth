@@ -2398,7 +2398,7 @@ The `requirement` value is an extension point. This document defines the followi
 |-------|-------------|---------|:--------:|:--:|:--:|
 | `agent-token` | `401` | AAuth agent token required (#requirement-agent-token) | Y | | |
 | `person-token` | `401` | Person token required (#requirement-person-token) | Y | | |
-| `auth-token` | `401` | Auth token required (#requirement-auth-token) | Y | | |
+| `auth-token` | `401` or `202` (#deferred-auth-token) | Auth token required (#requirement-auth-token) | Y | | |
 | `interaction` | `202` | User action required at an interaction URL (#interaction-required) | Y | Y | Y |
 | `approval` | `202` | Approval pending, poll for result (#approval-pending) | Y | Y | Y |
 | `clarification` | `202` | Question posed to the recipient (#requirement-clarification) | Y | Y | Y |
