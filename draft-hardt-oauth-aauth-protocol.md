@@ -1295,7 +1295,7 @@ If the PS requires user input, it returns a deferred response (#deferred-respons
 
 ## Audit Endpoint {#audit-endpoint}
 
-The audit endpoint lets an agent log an action after performing it, so the PS has a complete record of the mission. It requires a mission; there is no audit outside a mission context.
+The audit endpoint lets an agent log an action after performing it, so the mission log (#mission-log) records actions the agent reports as well as the requests it makes. It requires a mission; there is no audit outside a mission context.
 
 ### Audit Request
 
@@ -2986,7 +2986,7 @@ This invariant enables:
 
 - **Accountability**: Every authorization decision traces to a single person.
 - **Consent integrity**: Consent granted by one person cannot be exercised by a different person through the same agent.
-- **Audit**: The PS can provide a complete record of an agent's actions on behalf of its person.
+- **Audit**: The PS can provide a record of what reached it from an agent acting for its person (#mission-log).
 - **Revocation**: Revoking an agent's association with its person immediately prevents the agent from obtaining new auth tokens.
 
 ## PS as High-Value Target
