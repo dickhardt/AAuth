@@ -713,7 +713,7 @@ A resource MAY publish an `authorization_endpoint` in its metadata (#resource-me
 
 **Request parameters:**
 
-- `scope` (REQUIRED): A space-separated string of scope values the agent is requesting (#scopes).
+- `scope` (REQUIRED unless a companion specification defines a replacement request parameter, such as R3's `r3_operations` ([@?I-D.hardt-aauth-r3])): A space-separated string of scope values the agent is requesting (#scopes).
 - `account` (OPTIONAL): A string identifying which account at the resource the authorization is for, drawn from the resource's own account namespace (#account-binding).
 
 ```http
