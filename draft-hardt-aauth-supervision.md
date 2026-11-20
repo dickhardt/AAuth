@@ -555,7 +555,7 @@ The event endpoint carries what happened. Every request is a report with an `eve
 | `agent.bound` | `agent_iss`, `agent_sub` | The PS bound the agent to the person on first approval |
 | `revocation.received` | `token_type`, `iss`, `jti`, `exp` | The PS received a revocation: an agent token from the agent provider, or a resource token from a resource. The SS is told; it has no part in the cascade |
 
-Every event carries the envelope (#envelope). The `code` of a relayed interaction is not forwarded.
+Every event carries the envelope (#envelope). The `code` of a relayed interaction is not forwarded. `token_type` is `agent_token` for a revocation from an agent provider and `resource_token` for a revocation from a resource.
 
 ## Decision Resolved {#event-decision-resolved}
 
