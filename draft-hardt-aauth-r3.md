@@ -279,7 +279,9 @@ For resources that expose an HTTP API described by OpenAPI 3.2.1 ([@!OpenAPI]). 
 
 Each operation entry contains:
 
-- **`operationId`** (REQUIRED). The `operationId` as defined in the OpenAPI specification.
+- **`operationId`** (REQUIRED). The `operationId` of the Operation Object.
+
+OpenAPI makes `operationId` optional. Every operation a resource exposes through R3 MUST have an `operationId`, which OpenAPI requires to be unique among all operations the document describes. An operation without one is not offered through R3. The rule covers operations under `webhooks` and `callbacks` as it covers those under `paths`, since OpenAPI's uniqueness rule spans all of them. A resource SHOULD NOT change an `operationId` it has advertised. A changed `operationId` names a different operation, which existing grants do not cover.
 
 ```json
 {
