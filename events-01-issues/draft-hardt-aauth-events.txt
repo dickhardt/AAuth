@@ -713,18 +713,18 @@ Table of Contents
        typ aa-event+jwt and dwk aauth-resource.json.  Verify cnf is
        absent, per the self-jwt scheme
        ([I-D.hardt-httpbis-signature-key]).
-   2.  The AP MAY deduplicate on (iss, jti) and drop a delivery it has
-       already recorded.  An AP that drops a duplicate answers it as it
-       answered the original delivery, 202 with the current
-       remaining_uses when max_uses is set, and does not count it again.
-   3.  Verify the HTTP signature using the same key (matched by kid),
+   2.  Verify the HTTP signature using the same key (matched by kid),
        per the self-jwt scheme: the JWT signing key and the HTTP signing
        key are the same key, discoverable from the resource's well-known
        document.
-   4.  If the request carries a body, verify body_s256 is present and
+   3.  If the request carries a body, verify body_s256 is present and
        equals the SHA-256 hash of the body bytes.  If it carries none,
        verify body_s256 is absent.  A mismatch is a token verification
        failure, answered 401 with Signature-Error: error=invalid_jwt.
+   4.  The AP MAY deduplicate on (iss, jti) and drop a delivery it has
+       already recorded.  An AP that drops a duplicate answers it as it
+       answered the original delivery, 202 with the current
+       remaining_uses when max_uses is set, and does not count it again.
    5.  Look up the subscription record by eid.  If no active
        subscription exists for this eid, return 404.
    6.  Verify iss matches the resource recorded at subscription time
@@ -758,12 +758,12 @@ Table of Contents
    object).
 
    The AP returns 400 for malformed requests, 401 with Signature-Error
-   if the event token or the HTTP signature fails step 1, 3, 4, or 7, an
+   if the event token or the HTTP signature fails step 1, 2, 3, or 7, an
    expired event token included ([I-D.hardt-oauth-aauth-protocol],
    Verification (Server)), 403 if the resource does not match the
    subscription's authorized resource, and 404 if the eid is unknown,
    the subscription has expired, or max_uses has been exceeded, unless
-   the delivery is a duplicate dropped at step 2.
+   the delivery is a duplicate dropped at step 4.
 
    Those last three are one condition from the resource's side: the AP
    has no subscription that will accept this event, and the answer is to
@@ -867,14 +867,15 @@ Table of Contents
    subscription that requires only a subscribe token MUST declare the
    AAuth subscribe token security scheme as follows:
 
-   securitySchemes:
-     aauth_subscribe:
-       type: http
-       scheme: aauth-subscribe
-       description: >
-         AAuth Subscribe Token (typ: aa-subscribe+jwt), issued by the agent's Agent
-         Provider, presented as the Signature-Key JWT with HTTP Message Signatures.
-         See draft-hardt-aauth-events.
+   components:
+     securitySchemes:
+       aauth_subscribe:
+         type: http
+         scheme: aauth-subscribe
+         description: >
+           AAuth Subscribe Token (typ: aa-subscribe+jwt), issued by the agent's
+           Agent Provider, presented as the Signature-Key JWT with HTTP Message
+           Signatures. See draft-hardt-aauth-events.
 
    Operations that require only a subscribe token declare:
 
@@ -1157,9 +1158,10 @@ Table of Contents
       -  The AP checks the event token aud before it counts a use
          against max_uses, so a delivery it refuses does not spend the
          subscription.  Issue #266.
-      -  An AP that drops a duplicate delivery answers it as it answered
-         the original, 202 with the current remaining_uses when max_uses
-         is set, and does not count it again.  Issue #267.
+      -  The AP deduplicates only after the HTTP signature and body_s256
+         verify.  An AP that drops a duplicate delivery answers it as it
+         answered the original, 202 with the current remaining_uses when
+         max_uses is set, and does not count it again.  Issue #267.
       -  A delivery carries a body when its content is one or more
          bytes.  A zero-length delivery carries none, and its event
          token has no body_s256.  Issue #268.
