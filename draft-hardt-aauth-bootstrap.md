@@ -320,6 +320,8 @@ A request with a body to an AP endpoint — enrollment, refresh, or sub-agent is
 
 The `jwt` parameter value is a JWT signed by the durable key, carrying the ephemeral public key in `cnf.jwk` along with the other claims the `jkt-jwt` scheme requires [@!I-D.hardt-httpbis-signature-key], and a `jti` for replay protection. The HTTP signature is produced by the ephemeral key. The AP correlates the two keys via the naming JWT's payload.
 
+The AP rejects a naming JWT whose `jti` it has already accepted, until that JWT's `exp`. Each refresh therefore takes a new durable-key signature: a party holding a stolen ephemeral key and one observed naming JWT cannot refresh with them again.
+
 ## Single-Key Refresh
 
 APs that opt for the single-durable pattern (#per-platform-keys) sign the refresh request directly with the durable key under the `hwk` scheme [@!I-D.hardt-httpbis-signature-key]. The AP verifies the signature, looks up the enrollment by the key's thumbprint, and issues a fresh agent token with a new `exp`. The same `cnf.jwk` is carried through; the agent's key is unchanged.
@@ -485,6 +487,9 @@ TBD
 # Document History
 
 *Note: This section is to be removed before publishing as an RFC.*
+
+- draft-hardt-aauth-bootstrap-03
+  - Two-Key Refresh: the AP rejects a naming JWT whose `jti` it has already accepted, until that JWT's `exp`, so each refresh takes a new durable-key signature. Issue #251.
 
 - draft-hardt-aauth-bootstrap-02
   - Consistency pass against AAuth Protocol -11. Dropped the BCP 14 boilerplate, which an informational document that uses no keywords does not need. The web enrollment sketch no longer issues agent tokens "directed at" a PS: an agent has one person server, carried in `ps`. The agent-token lifetime bound is the protocol's recommended maximum, not a ceiling. Scheme names are given as prose.
