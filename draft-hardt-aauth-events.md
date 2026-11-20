@@ -517,7 +517,7 @@ Operations that require only a subscribe token declare:
 
 ```yaml
 security:
-  - aauth_subscribe: []
+  - $ref: '#/components/securitySchemes/aauth_subscribe'
 ```
 
 Operations that require a pre-authorized subscription URL (see (#protected-subscriptions)) have no security scheme on the subscription endpoint itself — the subscription ticket in the URL carries the authorization. The resource SHOULD annotate such channels with a description noting that the subscription URL is obtained from a prior authenticated API call.
@@ -557,7 +557,7 @@ operations:
     channel:
       $ref: '#/channels/waitlistPublic'
     security:
-      - aauth_subscribe: []
+      - $ref: '#/components/securitySchemes/aauth_subscribe'
 
   subscribeProtectedWaitlist:
     action: receive
