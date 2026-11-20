@@ -1010,7 +1010,7 @@ The members of `usage` are `day`, `week`, `month`, `year`, and `all_time`, follo
 - **`day`**: since 00:00 UTC today.
 - **`week`**: since Monday 00:00 UTC of the current ISO 8601 week.
 - **`month`**, **`year`**: since the start of the current UTC calendar month or year.
-- **`all_time`** (REQUIRED): everything the resource has metered against budgets under this key.
+- **`all_time`** (REQUIRED unless it exceeds the bound of (#range-limits)): everything the resource has metered against budgets under this key. When it is omitted, the other counters are still reported.
 
 All period boundaries are UTC. This is a definition, not a deployment choice: no timezone appears in metadata or in the response, and every party computes the same figure. The cost is that "today" resets mid-afternoon in Auckland, which Stripe Issuing accepts for the same reason this document does — the counter is decision context, not a bill.
 
