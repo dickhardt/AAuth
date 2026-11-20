@@ -1163,7 +1163,7 @@ The agent MAY obtain a new resource token from the resource, for example with re
 }
 ```
 
-`presented_token` is REQUIRED. The PS verifies the pair per (#resource-token-verification), including step 3, before replacing the pending request, with the errors of that section. The new resource token MUST have the same `iss`, `ps`, `sub`, `agent_jkt`, `mission_s256`, and `tenant` as the original; its `presented_jti` MAY differ, and MUST equal the `jti` of the `presented_token` sent with it. The PS presents the updated request to the user. A PS answering an AS clarification with `updated_request` sends the same body to the AS pending URL, and the AS verifies the pair the same way (#ps-to-as-token-request). A `justification` is OPTIONAL but RECOMMENDED.
+`presented_token` is REQUIRED. The PS verifies the pair per (#resource-token-verification), including step 3, before replacing the pending request, with the errors of that section. The new resource token MUST have the same `iss`, `ps`, `sub`, `agent_jkt`, `mission_s256`, and `tenant` as the original; its `presented_jti` MAY differ, and MUST equal the `jti` of the `presented_token` sent with it. The PS presents the updated request to the user. A PS answering an AS clarification with `updated_request` sends the same body to the AS pending URL, and the AS verifies the pair the same way (#ps-to-as-token-request). A `justification` is OPTIONAL but RECOMMENDED. The response to the `POST` follows the deferred response state machine (#deferred-response-state-machine).
 
 #### Cancel Request
 
@@ -2584,7 +2584,7 @@ Additional body fields may be present depending on the `AAuth-Requirement` value
 
 ### Polling with GET
 
-After receiving a `202`, the agent switches to `GET` for all subsequent requests to the `Location` URL and does not resend the original request body. **Exception**: during clarification chat, the agent uses `POST` to deliver a clarification response (#agent-response-to-clarification).
+After receiving a `202`, the agent switches to `GET` for all subsequent requests to the `Location` URL and does not resend the original request body. **Exception**: during clarification chat, the agent uses `POST` to deliver a clarification response or an updated request (#agent-response-to-clarification).
 
 The agent MUST respect `Retry-After` values. If a `Retry-After` header is not present, the default polling interval is 5 seconds. If the server responds with `429 Too Many Requests`, the agent MUST increase its polling interval by 5 seconds (linear backoff, following [@RFC8628], Section 3.5). The `Prefer: wait=N` header ([@!RFC7240]) MAY be included on polling requests.
 
