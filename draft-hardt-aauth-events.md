@@ -494,7 +494,7 @@ The vocabulary identifier for AAuth Events is `urn:aauth:vocabulary:asyncapi`, r
 The resource's AsyncAPI document describes:
 
 - **Channels**: Event streams the agent may subscribe to. Channels MAY use parameterized addresses (e.g., `/waitlist/{subscriptionTicket}`) when the subscription endpoint URL is dynamic (see (#protected-subscriptions)).
-- **Operations**: `receive` operations on channels, with the security requirement and message schema.
+- **Operations**: `send` operations on channels, with the security requirement and message schema. The `action` is `send` because AsyncAPI states it from the perspective of the application the document describes, which is the resource.
 - **Messages**: The payload schema for each event type. The AsyncAPI payload schema describes the event delivery POST body (see (#event-delivery)). The AAuth event token envelope (`iss`, `aud`, `eid`, `jti`, `exp`, `body_s256`) is implicit and not part of the AsyncAPI schema.
 - **Security schemes**: The AAuth subscribe token security scheme.
 
@@ -553,14 +553,14 @@ channels:
 
 operations:
   subscribePublicWaitlist:
-    action: receive
+    action: send
     channel:
       $ref: '#/channels/waitlistPublic'
     security:
       - $ref: '#/components/securitySchemes/aauth_subscribe'
 
   subscribeProtectedWaitlist:
-    action: receive
+    action: send
     channel:
       $ref: '#/channels/waitlistProtected'
 
