@@ -588,7 +588,9 @@ The resource's serialization is the document. There is no canonicalization step 
 The `r3_s256` hash is the document's identity, not the URI. The AS caches documents by hash. If a resource updates the document at the same URI, existing auth tokens still reference the previous hash (which the AS has cached). New resource tokens reference the new hash. This enables:
 
 - **Infinite caching by the AS.** A document that verifies against its hash need never be re-fetched.
-- **Permanent audit records.** An auth token carrying `r3_s256` identifies the exact authorization semantics that were approved, regardless of subsequent changes at the same URI.
+- **Audit records.** An auth token carrying `r3_s256` identifies the exact authorization semantics that were approved, regardless of subsequent changes at the same URI.
+
+Verifying such a record later needs the bytes that were hashed. Either of two things is enough: a retained copy of the document, or an `r3_uri` whose bytes never change, for example because the resource serves each revision at a new URI. Without either, `r3_s256` still names the approved document, but nothing remains to check it against.
 
 ## Resource Token Extensions
 
@@ -655,7 +657,7 @@ In four-party access the PS verifies the AS's auth token before returning it to 
 
 ## Caching
 
-The issuer is not required to retain R3 documents beyond their immediate use in token issuance. Its audit log records `r3_uri` and `r3_s256`, which is enough to re-fetch and verify the document later.
+The issuer is not required to retain R3 documents beyond their immediate use in token issuance. Its audit log records `r3_uri` and `r3_s256`, which identify the document. Checking the document later needs its bytes (#content-addressing).
 
 # Auth Token Extensions
 
@@ -707,7 +709,7 @@ R3 extension claims:
 }
 ```
 
-**`r3_uri`** and **`r3_s256`** provide audit provenance: a permanent, verifiable record of which R3 document was in effect at approval time. The issuer can verify the R3 document by fetching `r3_uri` and checking `r3_s256`.
+**`r3_uri`** and **`r3_s256`** provide audit provenance: a record of which R3 document was in effect at approval time, verifiable for as long as that document's bytes can be obtained (#content-addressing).
 
 **`r3_granted`** and **`r3_per_call`** use the same vocabulary-specific operation format as the R3 document's `operations` field and the agent's `r3_operations` request:
 
@@ -962,7 +964,7 @@ OAuth 2.0 Rich Authorization Requests ([@RFC9396]) defines `authorization_detail
 
 The difference is not directionality. RAR does not require that the client author `authorization_details`, and OAuth Transaction Authorization Challenge ([@?I-D.rosomakho-oauth-txn-challenge]) has the resource author them: the protected resource returns a signed challenge whose `authorization_details` describe the operation it will not perform without approval, the AS validates the challenge and obtains that approval, and the access token it issues carries granted authorization details derived from the challenge. That is resource-declared authorization detail, expressed in RAR. Three properties of R3 survive that comparison.
 
-**Content addressing.** An R3 document is identified by the hash of the bytes the resource served (#content-addressing). The `r3_uri` and `r3_s256` in an auth token name the exact document that was in effect at approval time, and a later reader re-fetches those bytes and verifies the hash, so the audit record is checkable rather than asserted. A challenge carries its `authorization_details` inline — in the challenge, and again in the token — and nothing versions or addresses them. Two grants over the same operation are two independent copies with no identity relating them, and there is nothing to re-fetch.
+**Content addressing.** An R3 document is identified by the hash of the bytes the resource served (#content-addressing). The `r3_uri` and `r3_s256` in an auth token name the exact document that was in effect at approval time, and a later reader holding those bytes, retained or served unchanged at `r3_uri`, verifies the hash, so the audit record is checkable rather than asserted. A challenge carries its `authorization_details` inline — in the challenge, and again in the token — and nothing versions or addresses them. Two grants over the same operation are two independent copies with no identity relating them, and there is nothing to re-fetch.
 
 **Agent opacity.** The agent relaying a transaction authorization challenge can read it: the challenge is a signed JWT the client is required to validate, its `reason` is intended for display, and its `reason_uri` is dereferenceable by the client. An R3 agent carries the hash of a document the resource will refuse to serve it (#r3-document-access-restriction). What the access does, what data it touches, and what cannot be undone reach the PS and the AS and never the agent.
 
