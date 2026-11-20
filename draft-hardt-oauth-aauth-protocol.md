@@ -951,7 +951,7 @@ Signature-Key: sig=jwt;
     jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtcGVyc29uK2p3dCJ9..."
 ```
 
-The person token's `cnf.jwk` is the same key that signed the request, so HTTP Message Signature verification proceeds identically to the agent-token case. Once an auth token has been issued for a resource, the agent presents the auth token on subsequent requests to that resource (#auth-token-usage).
+The person token's `cnf.jwk` is the same key that signed the request, so HTTP Message Signature verification proceeds identically to the agent-token case. Once an auth token has been issued for a resource, the agent presents the auth token on subsequent requests the resource authorizes on it (#auth-token-usage).
 
 An agent refreshes a person token before it expires, within the margin of (#refresh-margin), and re-obtains resource tokens and auth tokens against it, so that no token in the chain lapses mid-task. The refresh runs through the resource's authorization endpoint (#authorization-endpoint-request) presenting the fresh person token, which is also what restores a full-length chain: a resource token issued on a step-up names the auth token the request carried, and the auth token issued against it inherits that token's `exp` (#auth-token-structure). This parallels the agent-token guidance in (#re-authorization).
 
@@ -1846,7 +1846,7 @@ Signature-Key: sig=jwt;
     jwt="eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYWEtYXV0aCtqd3QiLCJraWQiOiJhcy1rZXktMSJ9..."
 ```
 
-Once an auth token has been issued for a resource, the agent presents the auth token (not the agent token) via `Signature-Key` on subsequent requests to that resource. The auth token's `cnf.jwk` is the same key that signed the request, so HTTP Message Signature verification proceeds identically to the agent-token case.
+Once an auth token has been issued for a resource, the agent presents it via `Signature-Key` on subsequent requests the resource authorizes on it. Where an endpoint's requirement names a different token, the agent presents that one: an endpoint that decides on the agent's identity answers `requirement=agent-token` (#requirement-agent-token), and an auth token carries no agent identifier, so the agent presents its agent token there. The auth token's `cnf.jwk` is the same key that signed the request, so HTTP Message Signature verification proceeds identically to the agent-token case.
 
 ### Auth Token Verification
 
