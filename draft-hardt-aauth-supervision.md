@@ -336,7 +336,7 @@ Content-Digest: sha-256=:X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=:
 Signature-Key: sig=jwks_uri;id="https://ss.example";
     dwk="aauth-supervisor.json";kid="ss-key-1"
 Signature-Input: sig=("@status" "content-type" "content-digest"
-    "content-digest";req "@authority";req "@path";req);
+    "signature-key" "content-digest";req "@authority";req "@path";req);
     created=1790600030;keyid="ss-key-1"
 Signature: sig=:...:
 
@@ -347,7 +347,7 @@ Signature: sig=:...:
 }
 ```
 
-The PS asks for the signature with `Accept-Signature` ([@!RFC9421], Section 5.1) on the request, naming the components it wants covered. The signature MUST cover `@status`, `content-type`, and `content-digest`, and SHOULD cover the request's `content-digest`, `@authority`, and `@path` as `;req` components, which bind a synchronous decision to the request it answers. A decision returned at a pending URL is a response to the PS's GET, and its `;req` components bind it to that poll; the binding to the supervision request is the `sdi` in the body.
+The PS asks for the signature with `Accept-Signature` ([@!RFC9421], Section 5.1) on the request, naming the components it wants covered. The signature MUST cover `@status`, `content-type`, `content-digest`, and `signature-key`, and SHOULD cover the request's `content-digest`, `@authority`, and `@path` as `;req` components, which bind a synchronous decision to the request it answers. A decision returned at a pending URL is a response to the PS's GET, and its `;req` components bind it to that poll; the binding to the supervision request is the `sdi` in the body.
 
 The PS MUST verify the signature against the key set the SS's metadata names, and MUST verify that the `id` in the response's `Signature-Key` is the `issuer` of the SS it called. A signed response that fails either check is treated as `server_error`. An unsigned terminal response from an SS that publishes a `jwks_uri` is likewise treated as `server_error`.
 
@@ -715,6 +715,7 @@ There are no known implementations of this specification at the time of writing.
   - `revocation.received` `token_type` is `agent_token` or `resource_token`. Issue #283.
   - A PS that cannot convey a narrowed `scope` or `exp` to the AS treats the `allow` as an `ask`. Issue #284.
   - `interaction.requested` is sent for an interaction request of any `type`. Issue #285.
+  - Signed Decisions: the signature covers `signature-key`, as HTTP Signature Keys requires of a signed response that carries `Signature-Key`.
 
 # Acknowledgments
 
