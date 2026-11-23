@@ -1038,14 +1038,14 @@ The alternative is a per-unit array at every level, which costs every response t
 
 ### The Signed Response {#signed-response}
 
-Signing the usage response is RECOMMENDED. A resource that signs uses an HTTP Sig with a key from the `jwks_uri` in its resource metadata (#budget-units) — the same key material the PS already fetched to verify resource tokens. The signature MUST cover `@status`, `content-type`, and `content-digest`, and MUST be bound to the request by covering the request's `@authority` and `@path` with the `req` parameter ([@!RFC9421]).
+Signing the usage response is RECOMMENDED. A resource that signs uses an HTTP Sig with a key from the `jwks_uri` in its resource metadata (#budget-units) — the same key material the PS already fetched to verify resource tokens. The signature MUST cover `@status`, `content-type`, `content-digest`, and `signature-key`, and MUST be bound to the request by covering the request's `@authority` and `@path` with the `req` parameter ([@!RFC9421]).
 
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/json
 Content-Digest: sha-256=:...:
 Signature-Input: sig=("@status" "content-type"
-    "content-digest" "@authority";req "@path";req);
+    "content-digest" "signature-key" "@authority";req "@path";req);
     created=1754620001
 Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwks_uri;id="https://inference.example";
@@ -1224,6 +1224,7 @@ Implementation reports and test vectors are expected from these efforts and will
   - Ambiguous Failures: an agent that cannot compute a request's maximum cost, for example because pricing is unpublished, assumes the request cost the full `remaining` it last saw. Issue #250.
   - The Budget Object: a recipient MUST ignore members of a budget object it does not recognize. Issue #286.
   - Calendar Counters: `all_time` is REQUIRED unless it exceeds the 15-digit bound of Range Limits; when it is omitted, the other counters are still reported. Issue #287.
+  - The Signed Response: the signature covers `signature-key`, as HTTP Signature Keys requires of a signed response that carries `Signature-Key`.
 
 - draft-hardt-aauth-budgets-00
   - Initial submission, written against draft-hardt-oauth-aauth-protocol-11.
