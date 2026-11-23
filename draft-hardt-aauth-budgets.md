@@ -345,6 +345,8 @@ Members:
 - **`unit`** (REQUIRED). A string identifying what is metered. For currency, the value SHOULD be an ISO 4217 [@ISO4217] alphabetic code. Units are resource-declared; this document establishes no registry of unit values, for the same reason the base protocol establishes no registry of scope values.
 - **`decimals`** (REQUIRED). A non-negative integer giving the scale of `amount`. When `unit` is an ISO 4217 code, `decimals` is NOT constrained to that currency's minor unit; see (#why-explicit-scale).
 
+A recipient MUST ignore members of a budget object it does not recognize.
+
 The object appears alongside `scope` wherever both are present:
 
 ```json
@@ -707,7 +709,7 @@ Rule 3 follows from trailers being droppable in transit ([@!RFC9110], Section 6.
 
 A request whose response never arrives — a dropped connection, an aborted stream — leaves the agent unable to say whether it was metered. No trailer arrives on an aborted stream, and the header that would have carried `cost` is on the response that was lost.
 
-The agent MUST assume the request cost as much as the resource had held for it: `reserved` where it saw one, and otherwise the request's maximum cost as the resource would have bounded it (#overshoot). It carries that assumption until a later response's `remaining` supersedes it, and it SHOULD NOT retry a chargeable request before then.
+The agent MUST assume the request cost as much as the resource had held for it: `reserved` where it saw one, and otherwise the request's maximum cost as the resource would have bounded it (#overshoot). An agent that cannot compute that maximum cost, for example because the resource does not publish its pricing, MUST assume the request cost the full `remaining` it last saw. It carries that assumption until a later response's `remaining` supersedes it, and it SHOULD NOT retry a chargeable request before then.
 
 Assuming the maximum is the conservative direction: an agent that under-assumes plans spending it does not have and discovers the shortfall as a `401` (#exhaustion).
 
@@ -1008,7 +1010,7 @@ The members of `usage` are `day`, `week`, `month`, `year`, and `all_time`, follo
 - **`day`**: since 00:00 UTC today.
 - **`week`**: since Monday 00:00 UTC of the current ISO 8601 week.
 - **`month`**, **`year`**: since the start of the current UTC calendar month or year.
-- **`all_time`** (REQUIRED): everything the resource has metered against budgets under this key.
+- **`all_time`** (REQUIRED unless it exceeds the bound of (#range-limits)): everything the resource has metered against budgets under this key. When it is omitted, the other counters are still reported.
 
 All period boundaries are UTC. This is a definition, not a deployment choice: no timezone appears in metadata or in the response, and every party computes the same figure. The cost is that "today" resets mid-afternoon in Auckland, which Stripe Issuing accepts for the same reason this document does — the counter is decision context, not a bill.
 
@@ -1036,14 +1038,14 @@ The alternative is a per-unit array at every level, which costs every response t
 
 ### The Signed Response {#signed-response}
 
-Signing the usage response is RECOMMENDED. A resource that signs uses an HTTP Sig with a key from the `jwks_uri` in its resource metadata (#budget-units) — the same key material the PS already fetched to verify resource tokens. The signature MUST cover `@status`, `content-type`, and `content-digest`, and MUST be bound to the request by covering the request's `@authority` and `@path` with the `req` parameter ([@!RFC9421]).
+Signing the usage response is RECOMMENDED. A resource that signs uses an HTTP Sig with a key from the `jwks_uri` in its resource metadata (#budget-units) — the same key material the PS already fetched to verify resource tokens. The signature MUST cover `@status`, `content-type`, `content-digest`, and `signature-key`, and MUST be bound to the request by covering the request's `@authority` and `@path` with the `req` parameter ([@!RFC9421]).
 
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/json
 Content-Digest: sha-256=:...:
 Signature-Input: sig=("@status" "content-type"
-    "content-digest" "@authority";req "@path";req);
+    "content-digest" "signature-key" "@authority";req "@path";req);
     created=1754620001
 Signature: sig=:...signature bytes...:
 Signature-Key: sig=jwks_uri;id="https://inference.example";
@@ -1217,6 +1219,12 @@ Implementation reports and test vectors are expected from these efforts and will
 # Document History
 
 *Note: This section is to be removed before publishing as an RFC.*
+
+- draft-hardt-aauth-budgets-01
+  - Ambiguous Failures: an agent that cannot compute a request's maximum cost, for example because pricing is unpublished, assumes the request cost the full `remaining` it last saw. Issue #250.
+  - The Budget Object: a recipient MUST ignore members of a budget object it does not recognize. Issue #286.
+  - Calendar Counters: `all_time` is REQUIRED unless it exceeds the 15-digit bound of Range Limits; when it is omitted, the other counters are still reported. Issue #287.
+  - The Signed Response: the signature covers `signature-key`, as HTTP Signature Keys requires of a signed response that carries `Signature-Key`.
 
 - draft-hardt-aauth-budgets-00
   - Initial submission, written against draft-hardt-oauth-aauth-protocol-11.
