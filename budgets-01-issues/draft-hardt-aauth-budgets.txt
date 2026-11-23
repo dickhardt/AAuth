@@ -4,8 +4,8 @@
 
 TBD                                                             D. Hardt
 Internet-Draft                                                     Hellō
-Intended status: Standards Track                        20 November 2026
-Expires: 24 May 2027
+Intended status: Standards Track                        23 November 2026
+Expires: 27 May 2027
 
 
                              AAuth Budgets
@@ -51,7 +51,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 24 May 2027.
+   This Internet-Draft will expire on 27 May 2027.
 
 Copyright Notice
 
@@ -1908,15 +1908,15 @@ Table of Contents
    uses an HTTP Sig with a key from the jwks_uri in its resource
    metadata Section 5 — the same key material the PS already fetched to
    verify resource tokens.  The signature MUST cover @status, content-
-   type, and content-digest, and MUST be bound to the request by
-   covering the request's @authority and @path with the req parameter
-   ([RFC9421]).
+   type, content-digest, and signature-key, and MUST be bound to the
+   request by covering the request's @authority and @path with the req
+   parameter ([RFC9421]).
 
    HTTP/1.1 200 OK
    Content-Type: application/json
    Content-Digest: sha-256=:...:
    Signature-Input: sig=("@status" "content-type"
-       "content-digest" "@authority";req "@path";req);
+       "content-digest" "signature-key" "@authority";req "@path";req);
        created=1754620001
    Signature: sig=:...signature bytes...:
    Signature-Key: sig=jwks_uri;id="https://inference.example";
@@ -2366,6 +2366,9 @@ Table of Contents
       -  Calendar Counters: all_time is REQUIRED unless it exceeds the
          15-digit bound of Range Limits; when it is omitted, the other
          counters are still reported.  Issue #287.
+      -  The Signed Response: the signature covers signature-key, as
+         HTTP Signature Keys requires of a signed response that carries
+         Signature-Key.
 
    *  draft-hardt-aauth-budgets-00
 
