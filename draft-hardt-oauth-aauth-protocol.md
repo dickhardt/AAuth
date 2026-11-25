@@ -2007,8 +2007,8 @@ Published at `/.well-known/aauth-agent.json`:
 {
   "issuer": "https://agent.example",
   "jwks_uri": "https://agent.example/.well-known/jwks.json",
-  "name": "Example AI Assistant",
-  "description": "**Example AI Assistant** drafts and sends email on your behalf.",
+  "name": "Example Agent Provider",
+  "description": "**Example Agent Provider** issues identities to agents.",
   "logo_uri": "https://agent.example/logo.png",
   "logo_dark_uri": "https://agent.example/logo-dark.png",
   "documentation_uri": "https://agent.example/docs",
