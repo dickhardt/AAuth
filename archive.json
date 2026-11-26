@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-11-24T07:32:10.991870+00:00",
+  "timestamp": "2026-11-26T05:54:22.223387+00:00",
   "repo": "dickhardt/AAuth",
   "labels": [
     {
@@ -4496,6 +4496,22 @@
       "updatedAt": "2026-11-18T00:23:43Z",
       "closedAt": null,
       "comments": []
+    },
+    {
+      "number": 300,
+      "id": "I_kwDOQJKwSc8AAAABipuRbg",
+      "title": "Metadata Document for an RS",
+      "url": "https://github.com/dickhardt/AAuth/issues/300",
+      "state": "OPEN",
+      "author": "adeinega",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "In practice, it's common to have a single hostname with multiple independent Resource Servers (RSs) behind it, for instance, https://api-gw.example.com/rs1, https://api-gw.example.com/rs2 and so forth. In this setup, https://api-gw.example.com could be a Kubernetes Ingress controller with path-based routing.\n\nI'm not sure how to publish RS metadata in a way that would make sense for all the RSs behind of this hostname (api-gw.example.com).\n\nI understand well why section [Same-Origin Requirement](https://www.ietf.org/archive/id/draft-hardt-oauth-aauth-protocol-11.html#server-identifiers) says\n\n> MUST contain only scheme and host (no port, path, query, or fragment)\n\nand also why\n\n> Server identifiers are scheme and host only [Section 11.1.1](https://www.ietf.org/archive/id/draft-hardt-oauth-aauth-protocol-11.html#server-identifiers), so roles hosted under a shared origin share one identifier and are distinguished by the well-known document (dwk).\n\nfor agent providers, access and person servers.\n\nHowever, I also found this to be too restrictive for Resource Servers to the point it becomes a limitation of the protocol.\n\nIn additional to that, rs1 and rs2 from my example, can start issuing their own session tokens that would immediately confuse an agent per https://www.ietf.org/archive/id/draft-hardt-oauth-aauth-protocol-11.html#name-aauth-access-response-heade.\n",
+      "createdAt": "2026-11-26T05:47:36Z",
+      "updatedAt": "2026-11-26T05:47:36Z",
+      "closedAt": null,
+      "comments": []
     }
   ],
   "pulls": [
@@ -7682,6 +7698,32 @@
       "headRepository": "dickhardt/AAuth",
       "headRefName": "protocol-12-issues",
       "headRefOid": "df66c84bb4f085023b00bff55aa9a5b46c64406b",
+      "closedAt": null,
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 299,
+      "id": "PR_kwDOQJKwSc8AAAABR96YMg",
+      "title": "Update name and description in Agent Provider Metadata",
+      "url": "https://github.com/dickhardt/AAuth/pull/299",
+      "state": "OPEN",
+      "author": "adeinega",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "",
+      "createdAt": "2026-11-25T23:08:02Z",
+      "updatedAt": "2026-11-25T23:08:02Z",
+      "baseRepository": "dickhardt/AAuth",
+      "baseRefName": "main",
+      "baseRefOid": "e287b1e5d4616b61e5fcda1ac56b1be14f9d8d06",
+      "headRepository": "adeinega/AAuth",
+      "headRefName": "patch-1",
+      "headRefOid": "2f7ef783f706540aa823f829659f2e63a6dc93b5",
       "closedAt": null,
       "mergedAt": null,
       "mergedBy": null,
