@@ -2005,18 +2005,18 @@ Published at `/.well-known/aauth-agent.json`:
 
 ```json
 {
-  "issuer": "https://agent.example",
-  "jwks_uri": "https://agent.example/.well-known/jwks.json",
+  "issuer": "https://ap.example",
+  "jwks_uri": "https://ap.example/.well-known/jwks.json",
   "name": "Example Agent Provider",
   "description": "**Example Agent Provider** issues identities to agents.",
-  "logo_uri": "https://agent.example/logo.png",
-  "logo_dark_uri": "https://agent.example/logo-dark.png",
-  "documentation_uri": "https://agent.example/docs",
-  "callback_endpoint": "https://agent.example/callback",
-  "event_endpoint": "https://agent.example/events",
+  "logo_uri": "https://ap.example/logo.png",
+  "logo_dark_uri": "https://ap.example/logo-dark.png",
+  "documentation_uri": "https://ap.example/docs",
+  "callback_endpoint": "https://ap.example/callback",
+  "event_endpoint": "https://ap.example/events",
   "localhost_callback_allowed": true,
-  "tos_uri": "https://agent.example/tos",
-  "policy_uri": "https://agent.example/privacy"
+  "tos_uri": "https://ap.example/tos",
+  "policy_uri": "https://ap.example/privacy"
 }
 ```
 
